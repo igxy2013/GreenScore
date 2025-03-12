@@ -1,0 +1,8 @@
+/.cursor
+/.env
+/.venv
+/database.db
+/output.txt
+/schema.sql
+/tailwind.min.css
+/设计工作说明页面.html

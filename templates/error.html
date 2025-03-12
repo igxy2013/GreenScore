@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错误</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.min.css') }}">
+</head>
+<body class="bg-gray-50 p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h1 class="text-2xl font-bold mb-4 text-red-600">发生错误</h1>
+            <div class="bg-red-100 border border-red-200 p-4 rounded-md mb-6">
+                <p class="text-red-800 whitespace-pre-wrap">{{ error }}</p>
+            </div>
+            <p class="mb-6 text-gray-600">请检查以下可能的问题：</p>
+            <ul class="list-disc pl-6 mb-6 space-y-2 text-gray-600">
+                <li>数据库连接字符串是否正确</li>
+                <li>数据库服务器是否可访问</li>
+                <li>数据库中是否存在"成都市标"表</li>
+                <li>表结构是否与模型定义匹配</li>
+                <li>是否有足够的权限访问数据库</li>
+            </ul>
+            <div class="mt-6">
+                <a href="{{ url_for('index') }}" class="inline-block px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200">
+                    返回主页
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
