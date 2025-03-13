@@ -25,7 +25,13 @@ cache = Cache(app, config=cache_config)
 # 配置数据库连接
 # 使用SQL Server数据库连接
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
-print(f"使用SQL Server数据库: {os.getenv('DATABASE_URL').replace(':' + os.getenv('DATABASE_URL').split(':')[2].split('@')[0] + '@', ':***@')}")
+# 安全地获取数据库URL并打印
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    masked_url = database_url.replace(':' + database_url.split(':')[2].split('@')[0] + '@', ':***@')
+    print(f"使用SQL Server数据库: {masked_url}")
+else:
+    print("警告: DATABASE_URL 环境变量未设置")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True  # 打印SQL语句
@@ -200,7 +206,7 @@ def save_project_info(form_data):
 def index():
     try:
         # 获取页面参数
-        current_page = request.args.get('page', '')
+        current_page = request.args.get('page', 'project_info')  # 默认为项目信息页面
         
         # 检查数据库连接
         db.session.execute(text("SELECT 1"))
