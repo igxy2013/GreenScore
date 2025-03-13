@@ -11,32 +11,55 @@ import pyodbc
 from sqlalchemy import text
 import json
 from datetime import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 
+# 加载环境变量
 load_dotenv()
 
+# 创建日志目录
+os.makedirs('logs', exist_ok=True)
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('greenscore')
+handler = RotatingFileHandler('logs/app.log', maxBytes=10000000, backupCount=5)
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
+
 app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.logger = logger
+
+# 判断是否为生产环境
+is_production = os.environ.get('FLASK_ENV') == 'production'
 
 # 配置缓存
 cache_config = {
-    "DEBUG": True,
-    "CACHE_TYPE": "SimpleCache",  # 使用简单的内存缓存
+    "DEBUG": not is_production,
+    "CACHE_TYPE": "FileSystemCache" if is_production else "SimpleCache",
+    "CACHE_DIR": "cache" if is_production else None,
     "CACHE_DEFAULT_TIMEOUT": 3600  # 缓存过期时间，单位秒（1小时）
 }
 cache = Cache(app, config=cache_config)
 
 # 配置数据库连接
-# 使用SQL Server数据库连接
-app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
+# 优先使用环境变量中的数据库连接字符串
+db_uri = os.environ.get('DATABASE_URL')
+if not db_uri:
+    # 如果环境变量未设置，使用默认连接字符串
+    db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
+    app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 # 安全地获取数据库URL并打印
-database_url = app.config['SQLALCHEMY_DATABASE_URI']
-if database_url:
-    masked_url = database_url.replace(':' + database_url.split(':')[2].split('@')[0] + '@', ':***@')
-    print(f"使用SQL Server数据库: {masked_url}")
-else:
-    print("警告: DATABASE_URL 环境变量未设置")
+masked_url = db_uri.replace(':' + db_uri.split(':')[2].split('@')[0] + '@', ':***@')
+app.logger.info(f"使用SQL Server数据库: {masked_url}")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = True  # 打印SQL语句
+app.config['SQLALCHEMY_ECHO'] = not is_production  # 仅在非生产环境打印SQL语句
 
 # 定义级别与属性的映射关系
 LEVEL_TO_ATTRIBUTE = {
@@ -1365,4 +1388,7 @@ if __name__ == '__main__':
     # 初始化数据库
     init_db()
     
-    app.run(debug=True) 
+    # 根据环境变量决定是否开启调试模式
+    debug_mode = not is_production
+    app.logger.info(f"应用启动: 调试模式={debug_mode}")
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 

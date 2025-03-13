@@ -70,6 +70,47 @@ flask run
 7. 访问应用
 在浏览器中访问 `http://localhost:5000`
 
+## 生产环境部署
+
+### Windows服务器部署
+
+#### 方法一：一键部署（临时运行）
+
+1. 双击运行 `deploy.bat` 脚本
+2. 脚本会自动安装依赖并启动应用
+3. 应用将在命令行窗口中运行，关闭窗口即停止应用
+
+#### 方法二：作为Windows服务运行（推荐）
+
+1. 下载并安装 [NSSM](https://nssm.cc/download)
+2. 以管理员身份运行 `install_service.bat` 脚本
+3. 脚本会自动创建并启动Windows服务
+4. 服务将在后台运行，即使用户注销也不会停止
+5. 可以通过Windows服务管理器管理服务
+
+### 环境配置
+
+1. 复制 `.env.example` 为 `.env`
+2. 编辑 `.env` 文件，设置数据库连接和其他配置
+3. 主要配置项：
+   - `DATABASE_URL`: 数据库连接字符串
+   - `FLASK_ENV`: 设置为 `production`
+   - `PORT`: 应用端口，默认5000
+
+### 访问应用
+
+部署完成后，可以通过以下地址访问应用：
+- 本地访问：http://localhost:5000
+- 局域网访问：http://服务器IP:5000
+
+### 故障排除
+
+如果应用无法启动或运行异常，请检查以下日志文件：
+- `logs/app.log`: 应用日志
+- `logs/server.log`: 服务器日志
+- `logs/service_stdout.log`: 服务标准输出（仅服务模式）
+- `logs/service_stderr.log`: 服务错误输出（仅服务模式）
+
 ## 使用指南
 
 ### 创建新项目
