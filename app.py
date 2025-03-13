@@ -735,6 +735,16 @@ def get_template():
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+# 添加一个函数来生成得分表缓存的键
+def get_scores_cache_key(level, specialty, project_id=None, standard=None):
+    """生成得分表缓存的键"""
+    key = f"scores_{level}_{specialty}"
+    if project_id:
+        key += f"_{project_id}"
+    if standard:
+        key += f"_{standard}"
+    return key
+
 @app.route('/api/save_score', methods=['POST'])
 def save_score():
     conn = None
@@ -863,6 +873,20 @@ def save_score():
             conn.close()
             print("数据库连接已关闭")
         
+        # 保存成功后，删除相关缓存
+        cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+        cache.delete(cache_key)
+        
+        # 同时删除评分汇总相关的缓存
+        summary_cache_key = f"score_summary_{project_id}"
+        cache.delete(summary_cache_key)
+        
+        # 删除专业得分缓存
+        specialty_scores_key = f"specialty_scores_{project_id}"
+        cache.delete(specialty_scores_key)
+        
+        print(f"已清除缓存: {cache_key}, {summary_cache_key}, {specialty_scores_key}")
+        
         return jsonify({'success': True, 'message': f'成功保存{success_count}条评分记录', 'project_id': project_id}), 200
     
     except Exception as e:
@@ -908,6 +932,18 @@ def load_scores():
             if project and project.standard:
                 standard = project.standard
         
+        # 生成缓存键
+        cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+        
+        # 尝试从缓存获取数据
+        cached_scores = cache.get(cache_key)
+        if cached_scores is not None:
+            print(f"从缓存加载评分数据: {cache_key}, 找到 {len(cached_scores)} 条记录")
+            return jsonify({'success': True, 'scores': cached_scores, 'from_cache': True}), 200
+        
+        # 缓存未命中，从数据库加载
+        print(f"缓存未命中，从数据库加载评分数据: {cache_key}")
+        
         # 连接数据库
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -951,8 +987,11 @@ def load_scores():
         
         conn.close()
         
-        print(f"找到 {len(scores)} 条评分记录")
-        return jsonify({'success': True, 'scores': scores}), 200
+        # 将结果存入缓存
+        cache.set(cache_key, scores)
+        
+        print(f"找到 {len(scores)} 条评分记录，已存入缓存: {cache_key}")
+        return jsonify({'success': True, 'scores': scores, 'from_cache': False}), 200
     
     except Exception as e:
         app.logger.error(f"加载评分失败: {str(e)}")
@@ -1144,9 +1183,14 @@ def init_db():
             print(f"创建得分表时出错: {str(e)}")
             traceback.print_exc()
 
-# 获取评分汇总数据
+# 修改get_score_summary函数，添加缓存
+@cache.memoize(timeout=3600)
 def get_score_summary(project_id):
+    """获取项目评分汇总，使用缓存"""
     try:
+        # 生成缓存键
+        cache_key = f"score_summary_{project_id}"
+        
         # 初始化评分汇总数据结构
         summary = {
             'advanced_level': {
@@ -1200,6 +1244,10 @@ def get_score_summary(project_id):
                 summary['by_category'][category]['total_score'] = float(score)
         
         conn.close()
+        
+        # 记录日志
+        print(f"获取评分汇总数据成功: 项目ID={project_id}")
+        
         return summary
     except Exception as e:
         print(f"获取评分汇总数据失败: {str(e)}")
@@ -1223,9 +1271,10 @@ def get_score_summary(project_id):
             }
         }
 
+@cache.memoize(timeout=3600)
 def calculate_specialty_scores(project_id=None, by_category=False):
     """
-    计算各专业的总得分
+    计算各专业的总得分，使用缓存
     
     参数:
         project_id: 项目ID，如果为None则计算所有项目的得分
@@ -1235,6 +1284,9 @@ def calculate_specialty_scores(project_id=None, by_category=False):
         包含各专业总得分的字典，如果by_category为True，则返回按分类细分的得分
     """
     try:
+        # 生成缓存键
+        cache_key = f"specialty_scores_{project_id}_{by_category}"
+        
         # 专业名称映射
         specialties_map = {
             '建筑': '建筑专业',
