@@ -51,9 +51,10 @@
 
         /* 侧边栏标题样式 */
         .p-6.border-b h1 {
-            font-size: 1.25rem;
+            font-size: 1.65rem;
             font-weight: bold;
-            color: #1F2937;
+            color: #3176FF;
+            white-space: nowrap;
         }
 
         /* 移除重复的样式定义 */
@@ -359,6 +360,62 @@
         
         /* 修复Remix Icon显示问题 */
         :where([class^="ri-"])::before { content: ""; }
+
+        /* 悬浮保存按钮样式 */
+        .floating-save-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: var(--color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .floating-save-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+        }
+        
+        .floating-save-btn i {
+            font-size: 24px;
+        }
+        
+        /* 悬浮按钮的提示文本 */
+        .floating-save-btn::after {
+            content: "保存评分";
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        
+        .floating-save-btn:hover::after {
+            opacity: 1;
+        }
+
+        /* 添加旋转动画样式 */
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -366,77 +423,77 @@
         <!-- 侧边导航栏 -->
         <aside class="w-64 bg-white shadow-lg fixed h-screen overflow-y-auto">
             <div class="p-6 border-b">
-                <h1 class="text-xl font-bold text-gray-800">绿色建筑评价系统</h1>
+                <h1 class="text-3xl font-bold text-blue-500">绿色建筑评价系统</h1>
             </div>
             <nav class="p-4">
                 <div class="space-y-4">
-                    <a href="{{ url_for('index', page='project_info') }}" class="menu-item flex items-center p-3 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
+                    <a href="{{ url_for('project_detail', project_id=project.id) }}" class="menu-item flex items-center p-3 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
                         <i class="ri-file-list-line mr-3"></i>
                         <span>项目信息</span>
                     </a>
                     <div class="menu-item flex items-center p-3 text-gray-600 rounded-lg hover:bg-gray-50" id="basicMenuToggle">
                         <i class="ri-checkbox-line mr-3"></i>
-                        <span>基本级审查要点</span>
+                        <span>基本级</span>
                         <i class="ri-arrow-down-s-line ml-auto"></i>
                     </div>
                     <div id="basicMenuContent" class="menu-content">
-                        <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}">
                             <i class="ri-building-line mr-3"></i>
                             <span>建筑</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='基本级', specialty='结构') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='基本级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}">
                             <i class="ri-layout-2-line mr-3"></i>
                             <span>结构</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='基本级', specialty='给排水') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '给排水' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='基本级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '给排水' %}active{% endif %}">
                             <i class="ri-drop-line mr-3"></i>
                             <span>给排水</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='基本级', specialty='电气') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '电气' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='基本级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '电气' %}active{% endif %}">
                             <i class="ri-flashlight-line mr-3"></i>
                             <span>电气</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='基本级', specialty='暖通') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '暖通' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='基本级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '暖通' %}active{% endif %}">
                             <i class="ri-temp-hot-line mr-3"></i>
                             <span>暖通</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='基本级', specialty='景观') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '景观' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='基本级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '景观' %}active{% endif %}">
                             <i class="ri-plant-line mr-3"></i>
                             <span>景观</span>
                         </a>
                     </div>
                     <div class="menu-item flex items-center p-3 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
                         <i class="ri-checkbox-multiple-line mr-3"></i>
-                        <span>提高级审查要点</span>
+                        <span>提高级</span>
                         <i class="ri-arrow-down-s-line ml-auto"></i>
                     </div>
                     <div id="advancedMenuContent" class="menu-content">
-                        <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '建筑' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '建筑' %}active{% endif %}">
                             <i class="ri-building-line mr-3"></i>
                             <span>建筑</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='提高级', specialty='结构') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '结构' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='提高级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '结构' %}active{% endif %}">
                             <i class="ri-layout-2-line mr-3"></i>
                             <span>结构</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='提高级', specialty='给排水') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '给排水' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='提高级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '给排水' %}active{% endif %}">
                             <i class="ri-drop-line mr-3"></i>
                             <span>给排水</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='提高级', specialty='电气') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='提高级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
                             <i class="ri-flashlight-line mr-3"></i>
                             <span>电气</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='提高级', specialty='暖通') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '暖通' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='提高级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '暖通' %}active{% endif %}">
                             <i class="ri-temp-hot-line mr-3"></i>
                             <span>暖通</span>
                         </a>
-                        <a href="{{ url_for('filter_standards', level='提高级', specialty='景观') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
+                        <a href="{{ url_for('filter_standards', level='提高级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
                             <i class="ri-plant-line mr-3"></i>
                             <span>景观</span>
                         </a>
                     </div>
-                    <a href="{{ url_for('index', page='score_summary') }}" class="menu-item flex items-center p-3 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}">
+                    <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" class="menu-item flex items-center p-3 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}">
                         <i class="ri-bar-chart-line mr-3"></i>
                         <span>评分汇总</span>
                     </a>
@@ -446,11 +503,11 @@
                         <i class="ri-arrow-down-s-line ml-auto"></i>
                     </div>
                     <div id="reportMenuContent" class="menu-content">
-                        <a href="{{ url_for('index', page='report_table') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
+                        <a href="{{ url_for('project_detail', project_id=project.id, page='report_table') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
                             <i class="ri-file-list-3-line mr-3"></i>
                             <span>报审表</span>
                         </a>
-                        <a href="{{ url_for('index', page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                        <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
                             <i class="ri-leaf-line mr-3"></i>
                             <span>绿色建材</span>
                         </a>
@@ -462,9 +519,49 @@
         <!-- 主内容区域 -->
         <main class="flex-1 overflow-y-auto p-8 ml-64 w-full bg-transparent" style="min-height: 100vh; width: calc(100% - 16rem);">
             <div class="max-w-7xl mx-auto">
+                <!-- 添加项目管理按钮 -->
+                {% if current_page == 'green_materials' %}
+                <!-- 绿色建材页面特殊布局 -->
+                <div class="flex flex-col items-center mb-6">
+                    <h1 class="text-3xl font-bold text-primary mb-6">绿色建材应用比例计算</h1>
+                </div>
+                {% else %}
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        {% if current_page == 'score_summary' %}
+                        <h2 class="text-2xl font-bold">评分汇总</h2>
+                        {% elif current_page == 'project_info' %}
+                        <h2 class="text-2xl font-bold">项目信息</h2>
+                        {% elif current_page == 'report_table' %}
+                        <h2 class="text-2xl font-bold">报审表</h2>
+                        {% elif current_level %}
+                        <h2 class="text-2xl font-bold">{{ current_specialty }}专业</h2>
+                        <div class="text-sm text-gray-600 mt-1">
+                            当前评价标准: {% if project and project.standard == '国标' %}
+                                绿色建筑评价标准 GB/T 50378-2019（2024版）
+                            {% elif project and project.standard == '四川省标' %}
+                                四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）
+                            {% elif project and project.standard == '成都市标' %}
+                                成都市绿色建筑施工图设计与审查技术要点（2024版）
+                            {% else %}
+                                成都市绿色建筑施工图设计与审查技术要点（2024版）
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <h2 class="text-2xl font-bold">绿色建筑评价系统</h2>
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for('project_management') }}" class="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        <i class="ri-arrow-left-line mr-2"></i>
+                        <span>返回项目管理</span>
+                    </a>
+                </div>
+                {% endif %}
+
+                <!-- 添加隐藏的项目名称字段，在所有页面都可用 -->
+                <input type="hidden" id="current_project_name" value="{{ project.name if project else '' }}">
+
                 {% if current_page == 'score_summary' %}
-                <h2 class="text-2xl font-bold mb-8">提高级专业评分汇总</h2>
-                
                 <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
                     <h3 class="text-lg font-medium mb-4">项目信息</h3>
                     <div class="grid grid-cols-2 gap-6">
@@ -570,40 +667,71 @@
                 <form action="{{ url_for('index') }}" method="post" class="space-y-6">
                     <input type="hidden" name="form_type" value="project_info">
                     <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
+                    <input type="hidden" id="project_name_hidden" value="{{ project.name if project else '' }}">
                     <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称</label>
-                            <input type="text" id="project_name" name="project_name" class="w-full rounded focus:border-primary" placeholder="请输入项目名称" value="{{ project.name if project else '' }}">
+                            <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称 <span class="text-red-500">*</span></label>
+                            <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目名称" value="{{ project.name if project else '' }}" required>
                         </div>
                         
                         <div>
                             <label for="project_code" class="block text-base font-medium text-gray-700 mb-1">项目编号</label>
-                            <input type="text" id="project_code" name="project_code" class="w-full rounded focus:border-primary" placeholder="请输入项目编号" value="{{ project.code if project else '' }}">
+                            <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目编号" value="{{ project.code if project else '' }}">
                         </div>
                         
                         <div>
                             <label for="construction_unit" class="block text-base font-medium text-gray-700 mb-1">建设单位</label>
-                            <input type="text" id="construction_unit" name="construction_unit" class="w-full rounded focus:border-primary" placeholder="请输入建设单位名称" value="{{ project.construction_unit if project else '' }}">
+                            <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建设单位名称" value="{{ project.construction_unit if project else '' }}">
                         </div>
                         
                         <div>
                             <label for="design_unit" class="block text-base font-medium text-gray-700 mb-1">设计单位</label>
-                            <input type="text" id="design_unit" name="design_unit" class="w-full rounded focus:border-primary" placeholder="请输入设计单位名称" value="{{ project.design_unit if project else '' }}">
+                            <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入设计单位名称" value="{{ project.design_unit if project else '' }}">
                         </div>
                         
                         <div>
                             <label for="project_location" class="block text-base font-medium text-gray-700 mb-1">项目地点</label>
-                            <input type="text" id="project_location" name="project_location" class="w-full rounded focus:border-primary" placeholder="请输入项目地点" value="{{ project.location if project else '' }}">
+                            <input type="text" id="project_location" name="project_location" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目地点" value="{{ project.location if project else '' }}">
+                        </div>
+                        
+                        <div>
+                            <label for="building_type" class="block text-base font-medium text-gray-700 mb-1">建筑类型</label>
+                            <div class="relative">
+                                <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
+                                    <option value="">请选择建筑类型</option>
+                                    <option value="住宅建筑" {% if project and project.building_type == '住宅建筑' %}selected{% endif %}>住宅建筑</option>
+                                    <option value="公共建筑" {% if project and project.building_type == '公共建筑' %}selected{% endif %}>公共建筑</option>
+                                    <option value="工业建筑" {% if project and project.building_type == '工业建筑' %}selected{% endif %}>工业建筑</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="standard_selection" class="block text-base font-medium text-gray-700 mb-1">评价标准 <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                    <option value="">请选择评价标准</option>
+                                    <option value="国标" {% if project and project.standard == '国标' %}selected{% endif %}>绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
+                                    <option value="四川省标" {% if project and project.standard == '四川省标' %}selected{% endif %}>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
+                                    <option value="成都市标" {% if project and project.standard == '成都市标' %}selected{% endif %}>成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
                         </div>
                         
                         <div>
                             <label for="building_area" class="block text-base font-medium text-gray-700 mb-1">建筑面积（平方米）</label>
-                            <input type="number" id="building_area" name="building_area" class="w-full rounded focus:border-primary" placeholder="请输入建筑面积" value="{{ project.building_area if project else '' }}">
+                            <input type="number" id="building_area" name="building_area" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建筑面积" value="{{ project.building_area if project else '' }}">
                         </div>
                     </div>
                     
                     <div class="mt-6">
-                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
                             保存信息
                         </button>
                     </div>
@@ -611,8 +739,6 @@
                 {% elif current_page == 'green_materials' %}
                 <!-- 绿色建材计算器内容 -->
                 <div class="green-materials-container ">
-                    <h1 style="text-align: center; font-size: 2.25rem; font-weight: 600; color: #3176FF; margin-bottom: 2rem; width: 100%;">绿色建材应用比例计算</h1>
-                    
                     <!-- 使用iframe嵌入绿色建材计算器 -->
                     <iframe src="{{ url_for('static', filename='calculator.html') }}" 
                         style="width:100%; height:3000px; border:none;"
@@ -622,8 +748,6 @@
                 <!-- 评分汇总内容已在上面定义，这里不再重复 -->
                 {% elif current_page == 'specialty' %}
                 <!-- 标准列表内容 -->
-                <h1 class="text-2xl font-medium text-gray-900 mb-6 text-center">{{ current_specialty }}专业</h1>
-                
                 <!-- 添加隐藏的项目ID字段 -->
                 <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
                 
@@ -634,7 +758,6 @@
                             <tr>
                                 {% if current_level == '基本级' %}
                                 <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">条文号</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">分类</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-40">条文内容</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分值</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">是否达标</th>
@@ -661,30 +784,32 @@
                             {% for standard in standards %}
                             <tr class="table-row-hover">
                                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.条文号 }}</td>
+                                {% if current_level == '提高级' %}
                                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
                                     <span class="category-tag category-{{ standard.分类 }}">{{ standard.分类 }}</span>
                                 </td>
+                                {% endif %}
                                 <td class="px-6 py-4 text-base text-gray-700">{{ standard.条文内容 }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.分值 }}</td>
                                 
                                 {% if current_level == '基本级' %}
                                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
-                                    <select class="w-full rounded focus:border-primary">
+                                    <select name="is_achieved" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary is-achieved-select">
                                         <option value="是">是</option>
                                         <option value="否">否</option>
                                         <option value="不参评">不参评</option>
                                     </select>
                                 </td>
                                 <td class="px-6 py-4 text-base text-gray-700">
-                                    <textarea class="w-full rounded focus:border-primary" placeholder="请输入技术措施"></textarea>
+                                    <textarea name="technical_measures" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary technical-measures" placeholder="请输入技术措施"></textarea>
                                 </td>
                                 <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
                                 {% elif current_level == '提高级' %}
                                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
-                                    <input type="text" class="w-full rounded focus:border-primary" placeholder="得分">
+                                    <input type="text" name="score" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary" placeholder="得分">
                                 </td>
                                 <td class="px-6 py-4 text-base text-gray-700">
-                                    <textarea class="w-full rounded focus:border-primary" placeholder="请输入技术措施"></textarea>
+                                    <textarea name="technical_measures" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary technical-measures" placeholder="请输入技术措施"></textarea>
                                 </td>
                                 <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
                                 {% else %}
@@ -719,6 +844,11 @@
                 {% endblock %}
             </div>
         </main>
+    </div>
+
+    <!-- 添加悬浮保存按钮 -->
+    <div class="floating-save-btn" id="floatingSaveBtn">
+        <i class="ri-save-line"></i>
     </div>
 
     <script>
@@ -986,125 +1116,295 @@
     // 添加JavaScript代码，用于收集表格数据并发送到服务器
     document.addEventListener('DOMContentLoaded', function() {
         const saveScoreBtn = document.getElementById('saveScoreBtn');
-        if (saveScoreBtn) {
-            saveScoreBtn.addEventListener('click', function() {
-                // 显示保存中状态
-                const saveBtn = this;
-                const originalText = saveBtn.textContent;
+        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+        
+        // 定义保存评分的函数
+        function saveScoreData() {
+            // 显示保存中状态
+            const saveBtn = this;
+            const originalText = saveBtn.textContent || '';
+            const originalHTML = saveBtn.innerHTML;
+            
+            if (saveBtn.tagName === 'BUTTON') {
                 saveBtn.textContent = '保存中...';
-                saveBtn.disabled = true;
-                
-                // 获取项目名称
-                const projectName = document.querySelector('h1.text-2xl').textContent.trim();
-                
-                // 获取项目ID（如果有的话）
-                let projectId = null;
-                // 从页面上获取项目ID的逻辑，可根据实际页面结构调整
-                const projectIdField = document.getElementById('project_id');
-                if (projectIdField) {
-                    projectId = projectIdField.value;
+            } else {
+                saveBtn.innerHTML = '<i class="ri-loader-2-line"></i>';
+                saveBtn.style.animation = 'rotate 1s linear infinite';
+            }
+            saveBtn.disabled = true;
+            
+            // 获取项目名称 - 优先使用隐藏的项目名称字段
+            let projectName = '';
+            
+            // 首先尝试从隐藏字段获取项目名称
+            const hiddenProjectNameField = document.getElementById('current_project_name');
+            if (hiddenProjectNameField && hiddenProjectNameField.value) {
+                projectName = hiddenProjectNameField.value.trim();
+            }
+            
+            // 如果隐藏字段没有项目名称，尝试从项目信息区域获取
+            if (!projectName) {
+                const projectInfoElements = document.querySelectorAll('.mt-1');
+                if (projectInfoElements && projectInfoElements.length > 0) {
+                    // 第一个.mt-1元素通常包含项目名称
+                    projectName = projectInfoElements[0].textContent.trim();
+                    if (projectName === '未设置') {
+                        projectName = '';
+                    }
                 }
-                
-                // 收集表格数据
-                const scoreData = [];
-                const rows = document.querySelectorAll('table tbody tr');
-                
-                rows.forEach(row => {
+            }
+            
+            // 如果仍然无法获取项目名称，使用默认值
+            if (!projectName) {
+                projectName = '{{ project.name if project else "未命名项目" }}';
+            }
+            
+            console.log('项目名称:', projectName);
+            
+            // 获取项目ID（如果有的话）
+            let projectId = null;
+            // 从页面上获取项目ID的逻辑，可根据实际页面结构调整
+            const projectIdField = document.getElementById('project_id');
+            if (projectIdField) {
+                projectId = projectIdField.value;
+                console.log('项目ID:', projectId);
+            } else {
+                console.warn('未找到项目ID字段');
+                // 尝试从URL中提取项目ID
+                const urlParams = new URLSearchParams(window.location.search);
+                projectId = urlParams.get('project_id');
+                if (projectId) {
+                    console.log('从URL获取项目ID:', projectId);
+                }
+            }
+            
+            // 收集表格数据
+            const scoreData = [];
+            const rows = document.querySelectorAll('table tbody tr');
+            console.log('找到表格行数:', rows.length);
+            
+            // 获取当前级别和专业
+            const currentLevel = '{{ current_level }}';
+            const currentSpecialty = '{{ current_specialty }}';
+            console.log('当前级别:', currentLevel, '当前专业:', currentSpecialty);
+            
+            rows.forEach((row, index) => {
+                try {
                     // 基本级
-                    if ('{{ current_level }}' === '基本级') {
+                    if (currentLevel === '基本级') {
                         const clauseNumber = row.querySelector('td:nth-child(1)')?.textContent.trim();
-                        const category = row.querySelector('td:nth-child(2) span')?.textContent.trim();
-                        const isAchievedSelect = row.querySelector('td:nth-child(5) select');
-                        const isAchieved = isAchievedSelect ? isAchievedSelect.value : '否';
-                        const technicalMeasures = row.querySelector('td:nth-child(6) textarea')?.value;
-                        
-                        console.log(`条文: ${clauseNumber}, 是否达标: ${isAchieved}`); // 调试日志
-                        
-                        if (clauseNumber && category) {
-                            // 基本级得分始终为0
-                            scoreData.push({
-                                project_name: projectName,
-                                clause_number: clauseNumber,
-                                category: category,
-                                is_achieved: isAchieved,
-                                score: '0', // 固定为0
-                                technical_measures: technicalMeasures || ''
-                            });
+                        if (!clauseNumber) {
+                            console.log(`行 ${index+1} - 跳过：未找到条文号`);
+                            return;
                         }
+                        
+                        // 获取是否达标下拉框
+                        const isAchievedSelect = row.querySelector('select.is-achieved-select');
+                        if (!isAchievedSelect) {
+                            console.log(`行 ${index+1} - 跳过：未找到是否达标下拉框`);
+                            return;
+                        }
+                        const isAchieved = isAchievedSelect.value;
+                        
+                        // 获取技术措施文本框
+                        const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures');
+                        if (!technicalMeasuresTextarea) {
+                            console.log(`行 ${index+1} - 跳过：未找到技术措施文本框`);
+                            return;
+                        }
+                        const technicalMeasures = technicalMeasuresTextarea.value || '';
+                        
+                        // 从条文内容中提取分类信息
+                        const contentText = row.querySelector('td:nth-child(3)')?.textContent.trim() || '';
+                        let category = '其他'; // 默认分类
+                        
+                        // 尝试从内容中识别分类
+                        if (contentText.includes('安全') || contentText.includes('耐久')) {
+                            category = '安全耐久';
+                        } else if (contentText.includes('健康') || contentText.includes('舒适')) {
+                            category = '健康舒适';
+                        } else if (contentText.includes('生活') || contentText.includes('便利')) {
+                            category = '生活便利';
+                        } else if (contentText.includes('资源') || contentText.includes('节约')) {
+                            category = '资源节约';
+                        } else if (contentText.includes('环境') || contentText.includes('宜居')) {
+                            category = '环境宜居';
+                        }
+                        
+                        console.log(`行 ${index+1} - 条文: ${clauseNumber}, 分类: ${category}, 是否达标: ${isAchieved}, 技术措施长度: ${technicalMeasures.length}`);
+                        
+                        // 基本级得分始终为0，但保存是否达标和技术措施
+                        scoreData.push({
+                            project_name: projectName,
+                            clause_number: clauseNumber,
+                            category: category,
+                            is_achieved: isAchieved,
+                            score: '0', // 固定为0
+                            technical_measures: technicalMeasures
+                        });
+                        console.log(`添加基本级数据: 条文号=${clauseNumber}, 是否达标=${isAchieved}, 技术措施长度=${technicalMeasures.length}`);
                     } 
                     // 提高级
-                    else if ('{{ current_level }}' === '提高级') {
+                    else if (currentLevel === '提高级') {
                         const clauseNumber = row.querySelector('td:nth-child(1)')?.textContent.trim();
-                        const category = row.querySelector('td:nth-child(2) span')?.textContent.trim();
-                        const scoreInput = row.querySelector('td:nth-child(5) input')?.value;
-                        const technicalMeasures = row.querySelector('td:nth-child(6) textarea')?.value;
-                        
-                        if (clauseNumber && category) {
-                            scoreData.push({
-                                project_name: projectName,
-                                clause_number: clauseNumber,
-                                category: category,
-                                is_achieved: scoreInput && parseFloat(scoreInput) > 0 ? '是' : '否',
-                                score: scoreInput || '0',
-                                technical_measures: technicalMeasures || ''
-                            });
+                        if (!clauseNumber) {
+                            console.log(`行 ${index+1} - 跳过：未找到条文号`);
+                            return;
                         }
+                        
+                        // 获取分类
+                        const categoryElement = row.querySelector('td:nth-child(2) span');
+                        if (!categoryElement) {
+                            console.log(`行 ${index+1} - 跳过：未找到分类`);
+                            return;
+                        }
+                        const category = categoryElement.textContent.trim();
+                        
+                        // 获取得分输入框
+                        const scoreInput = row.querySelector('input[name="score"]');
+                        if (!scoreInput) {
+                            console.log(`行 ${index+1} - 跳过：未找到得分输入框`);
+                            return;
+                        }
+                        const score = scoreInput.value || '0';
+                        
+                        // 获取技术措施文本框
+                        const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures');
+                        if (!technicalMeasuresTextarea) {
+                            console.log(`行 ${index+1} - 跳过：未找到技术措施文本框`);
+                            return;
+                        }
+                        const technicalMeasures = technicalMeasuresTextarea.value || '';
+                        
+                        console.log(`行 ${index+1} - 条文: ${clauseNumber}, 分类: ${category}, 得分: ${score}, 技术措施长度: ${technicalMeasures.length}`);
+                        
+                        scoreData.push({
+                            project_name: projectName,
+                            clause_number: clauseNumber,
+                            category: category,
+                            is_achieved: '是', // 默认设置为"是"，不再根据得分判断
+                            score: score,
+                            technical_measures: technicalMeasures
+                        });
+                        console.log(`添加提高级数据: 条文号=${clauseNumber}, 得分=${score}, 技术措施长度=${technicalMeasures.length}`);
                     }
-                });
-                
-                // 发送数据到服务器
-                fetch('/api/save_score', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        level: '{{ current_level }}',
-                        specialty: '{{ current_specialty }}',
-                        project_id: projectId,
-                        scores: scoreData
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('网络响应异常');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // 显示成功消息
-                    alert('评分信息保存成功！');
-                    
-                    // 恢复按钮状态
-                    saveBtn.textContent = originalText;
-                    saveBtn.disabled = false;
-                    
-                    // 如果需要，可以更新统计数据
-                    if ('{{ current_level }}' === '提高级') {
-                        updateScoreStatistics();
-                    }
-                })
-                .catch(error => {
-                    alert('保存失败: ' + error.message);
-                    console.error('保存失败:', error);
-                    
-                    // 恢复按钮状态
-                    saveBtn.textContent = originalText;
-                    saveBtn.disabled = false;
-                });
+                } catch (rowError) {
+                    console.error(`处理第 ${index+1} 行时出错:`, rowError);
+                }
             });
+            
+            console.log(`收集到 ${scoreData.length} 条评分数据`);
+            
+            // 如果没有收集到数据，提前返回
+            if (scoreData.length === 0) {
+                alert('未找到可保存的评分数据，请确保页面包含评分表格。');
+                if (saveBtn.tagName === 'BUTTON') {
+                    saveBtn.textContent = originalText;
+                } else {
+                    saveBtn.innerHTML = originalHTML;
+                    saveBtn.style.animation = '';
+                }
+                saveBtn.disabled = false;
+                return;
+            }
+            
+            const requestData = {
+                level: currentLevel,
+                specialty: currentSpecialty,
+                project_id: projectId,
+                scores: scoreData,
+                standard: '{{ project.standard if project and project.standard else "成都市标" }}'  // 添加评价标准信息
+            };
+            
+            console.log('发送的数据:', JSON.stringify(requestData));
+            console.log(`发送的评分数据数量: ${scoreData.length}, 级别: ${currentLevel}, 专业: ${currentSpecialty}`);
+            
+            // 发送数据到服务器
+            fetch('/api/save_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                console.log('服务器响应状态:', response.status);
+                return response.json().then(data => {
+                    console.log('服务器响应数据:', data);
+                    if (!response.ok) {
+                        throw new Error(`服务器错误 (${response.status}): ${data.error || '未知错误'}`);
+                    }
+                    return data;
+                });
+            })
+            .then(data => {
+                console.log('保存成功，服务器响应:', data);
+                // 显示成功消息
+                alert('评分信息保存成功！');
+                
+                // 恢复按钮状态
+                if (saveBtn.tagName === 'BUTTON') {
+                    saveBtn.textContent = originalText;
+                } else {
+                    saveBtn.innerHTML = originalHTML;
+                    saveBtn.style.animation = '';
+                }
+                saveBtn.disabled = false;
+                
+                // 如果需要，可以更新统计数据
+                if (currentLevel === '提高级') {
+                    updateScoreStatistics();
+                }
+            })
+            .catch(error => {
+                console.error('保存失败:', error);
+                alert('保存失败: ' + error.message);
+                
+                // 恢复按钮状态
+                if (saveBtn.tagName === 'BUTTON') {
+                    saveBtn.textContent = originalText;
+                } else {
+                    saveBtn.innerHTML = originalHTML;
+                    saveBtn.style.animation = '';
+                }
+                saveBtn.disabled = false;
+            });
+        }
+        
+        // 为保存按钮添加点击事件
+        if (saveScoreBtn) {
+            saveScoreBtn.addEventListener('click', saveScoreData);
+        } else {
+            console.warn('未找到保存评分按钮');
+        }
+        
+        // 为悬浮保存按钮添加点击事件
+        if (floatingSaveBtn) {
+            floatingSaveBtn.addEventListener('click', saveScoreData);
         }
 
         // 检查当前是否在专业评分页面
         if ('{{ current_page }}' === 'specialty') {
+            console.log('当前在专业评分页面，加载已保存的评分');
             loadSavedScores();
         }
     });
+
+    // 添加旋转动画样式
+    document.head.insertAdjacentHTML('beforeend', `
+        <style>
+            @keyframes rotate {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        </style>
+    `);
 
     // 加载已保存的评分数据
     function loadSavedScores() {
         const level = '{{ current_level }}';
         const specialty = '{{ current_specialty }}';
+        const standard = '{{ project.standard if project and project.standard else "成都市标" }}';
         
         // 获取项目ID（如果有的话）
         let projectId = null;
@@ -1114,10 +1414,12 @@
         }
         
         // 构建API URL
-        let apiUrl = `/api/load_scores?level=${encodeURIComponent(level)}&specialty=${encodeURIComponent(specialty)}`;
+        let apiUrl = `/api/load_scores?level=${encodeURIComponent(level)}&specialty=${encodeURIComponent(specialty)}&standard=${encodeURIComponent(standard)}`;
         if (projectId) {
             apiUrl += `&project_id=${encodeURIComponent(projectId)}`;
         }
+        
+        console.log('加载评分数据URL:', apiUrl);
         
         // 请求服务器数据
         fetch(apiUrl)
@@ -1131,12 +1433,14 @@
             if (data.success && data.scores && data.scores.length > 0) {
                 // 填充表格数据
                 fillScoreTable(data.scores);
-                console.log('成功加载评分数据');
+                console.log('成功加载评分数据，共', data.scores.length, '条记录');
                 
                 // 如果需要，可以更新统计数据
                 if (level === '提高级') {
                     updateScoreStatistics();
                 }
+            } else {
+                console.log('未找到评分数据或数据为空');
             }
         })
         .catch(error => {
@@ -1157,30 +1461,44 @@
             const scoreData = scores.find(s => s.clause_number === clauseNumber);
             if (!scoreData) return;
             
+            console.log(`填充数据: 条文号=${clauseNumber}, 是否达标=${scoreData.is_achieved}, 技术措施长度=${scoreData.technical_measures ? scoreData.technical_measures.length : 0}`);
+            
             // 根据不同级别填充数据
             if (level === '基本级') {
                 // 选择"是否达标"下拉框
-                const selectElement = row.querySelector('td:nth-child(5) select');
+                const selectElement = row.querySelector('select.is-achieved-select');
                 if (selectElement) {
                     selectElement.value = scoreData.is_achieved;
+                    console.log(`设置是否达标: ${scoreData.is_achieved}`);
+                } else {
+                    console.log(`未找到是否达标下拉框: 条文号=${clauseNumber}`);
                 }
                 
                 // 填充技术措施
-                const textareaElement = row.querySelector('td:nth-child(6) textarea');
+                const textareaElement = row.querySelector('textarea.technical-measures');
                 if (textareaElement) {
                     textareaElement.value = scoreData.technical_measures || '';
+                    console.log(`设置技术措施: 长度=${scoreData.technical_measures ? scoreData.technical_measures.length : 0}`);
+                } else {
+                    console.log(`未找到技术措施文本框: 条文号=${clauseNumber}`);
                 }
             } else if (level === '提高级') {
                 // 填充得分
-                const inputElement = row.querySelector('td:nth-child(5) input');
+                const inputElement = row.querySelector('input[name="score"]');
                 if (inputElement) {
                     inputElement.value = scoreData.score || '0';
+                    console.log(`设置得分: ${scoreData.score}`);
+                } else {
+                    console.log(`未找到得分输入框: 条文号=${clauseNumber}`);
                 }
                 
                 // 填充技术措施
-                const textareaElement = row.querySelector('td:nth-child(6) textarea');
+                const textareaElement = row.querySelector('textarea.technical-measures');
                 if (textareaElement) {
                     textareaElement.value = scoreData.technical_measures || '';
+                    console.log(`设置技术措施: 长度=${scoreData.technical_measures ? scoreData.technical_measures.length : 0}`);
+                } else {
+                    console.log(`未找到技术措施文本框: 条文号=${clauseNumber}`);
                 }
             }
         });

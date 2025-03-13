@@ -1,50 +1,90 @@
-# 绿建标准数据库-成都市标 网页展示系统
+# 绿色建筑评价系统
 
-这是一个用于展示绿建标准数据库中成都市标准的Web应用程序。
+## 项目概述
+绿色建筑评价系统是一个基于Flask的Web应用，用于评估建筑项目的绿色建材应用比例和绿色建筑评分。系统支持多种评价标准，包括成都市标、四川省标和通用国标。
 
 ## 功能特点
 
-- 从SQL Server数据库读取绿建标准数据
-- 以表格形式展示标准数据
-- 响应式设计，适应不同屏幕尺寸
+### 项目管理
+- 创建新项目并选择评价标准（成都市标、四川省标、通用国标）
+- 查看和管理现有项目
+- 每个项目可以独立设置项目信息和评价标准
 
-## 安装步骤
+### 绿色建材计算
+- 计算绿色建材应用比例
+- 支持多种建材类别的评估
+- 自动计算得分和达标率
 
-1. 安装依赖：
-```bash
+### 评分汇总
+- 汇总各项评分结果
+- 生成评分报告
+- 导出计算书
+
+## 技术栈
+- 后端：Flask, SQLAlchemy
+- 前端：HTML, CSS (Tailwind CSS), JavaScript
+- 数据库：SQL Server
+
+## 安装与运行
+
+### 环境要求
+- Python 3.8+
+- SQL Server 数据库
+- ODBC Driver 17 for SQL Server
+
+### 安装步骤
+1. 克隆仓库
+```
+git clone <repository-url>
+cd <repository-directory>
+```
+
+2. 创建并激活虚拟环境
+```
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
+```
+
+3. 安装依赖
+```
 pip install -r requirements.txt
 ```
 
-2. 安装SQL Server ODBC驱动程序：
-   - 对于Windows：从Microsoft官网下载并安装"ODBC Driver for SQL Server"
-   - 对于Linux：按照Microsoft文档安装相应的驱动程序
-
-3. 配置数据库连接：
-   - 编辑`.env`文件，设置正确的SQL Server连接信息：
-   ```
-   DATABASE_URL=mssql+pyodbc://用户名:密码@服务器名/绿建标准?driver=ODBC+Driver+17+for+SQL+Server
-   ```
-   - 将`用户名`、`密码`和`服务器名`替换为您的SQL Server凭据
-
-4. 确保SQL Server数据库中存在名为"绿建标准"的数据库，并包含"成都市标"表，表结构应包含以下中文字段：
-   - 序号 (主键)
-   - 条文号
-   - 分类
-   - 专业
-   - 条文内容
-   - 分值
-   - 审查材料
-
-## 运行应用
-
-```bash
-python app.py
+4. 配置数据库连接
+创建 `.env` 文件并设置数据库连接字符串：
+```
+DATABASE_URL=mssql+pyodbc://username:password@server/database?driver=ODBC+Driver+17+for+SQL+Server
 ```
 
-应用将在本地启动，访问 http://localhost:5000 查看数据表格。
+5. 创建数据库表
+```
+python create_tables.py
+```
 
-## 技术栈
+6. 运行应用
+```
+flask run
+```
 
-- 后端：Flask, SQLAlchemy
-- 数据库：SQL Server
-- 前端：HTML, CSS 
+7. 访问应用
+在浏览器中访问 `http://localhost:5000`
+
+## 使用指南
+
+### 创建新项目
+1. 访问项目管理页面
+2. 填写项目信息（名称、编号、建设单位等）
+3. 选择评价标准（成都市标、四川省标、通用国标）
+4. 点击"创建项目"按钮
+
+### 绿色建材计算
+1. 进入项目详情页面
+2. 选择"绿色建材"选项卡
+3. 填写各类建材的应用比例
+4. 点击"立即计算"按钮查看结果
+
+### 导出计算书
+1. 完成绿色建材计算后
+2. 点击"导出计算书"按钮
+3. 保存生成的Word文档 

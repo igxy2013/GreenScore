@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绿色建筑评价系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#3176FF',
+                    secondary: '#4CAF50'
+                },
+                borderRadius: {
+                    'none': '0px',
+                    'sm': '4px',
+                    DEFAULT: '8px',
+                    'md': '12px',
+                    'lg': '16px',
+                    'xl': '20px',
+                    '2xl': '24px',
+                    '3xl': '32px',
+                    'full': '9999px',
+                    'button': '8px'
+                }
+            }
+        }
+    }
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+    :where([class^="ri-"])::before { content: "\f3c2"; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-primary mb-2">绿色建筑评价系统</h1>
+        <h2 class="text-lg text-gray-600 mb-8">项目管理中心</h2>
+        
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold">现有项目</h3>
+                <!-- 添加新建项目按钮 -->
+                <button id="openCreateProjectModal" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors flex items-center">
+                    <i class="ri-add-line mr-2"></i>
+                    <span>新建项目</span>
+                </button>
+            </div>
+            
+            <!-- 添加搜索框 -->
+            <div class="mb-4">
+                <div class="relative">
+                    <input type="text" id="projectSearchInput" 
+                        class="w-full px-4 py-2 pl-10 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+                        placeholder="搜索项目名称...">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i class="ri-search-line text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">项目编号</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">建设单位</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">建筑类型</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="projectList">
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                正在加载项目列表...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 添加分页控件 -->
+            <div class="mt-4 flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    显示 <span id="pageStart">1</span> 到 <span id="pageEnd">10</span> 条，共 <span id="totalRecords">0</span> 条记录
+                </div>
+                <div class="flex space-x-2">
+                    <button id="prevPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                        上一页
+                    </button>
+                    <div id="pageNumbers" class="flex space-x-1">
+                        <!-- 页码将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                        下一页
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 创建新项目模态窗口 -->
+        <div id="createProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 relative">
+                <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+                <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">创建新项目</h3>
+                
+                <form id="modalProjectForm" action="/create_project" method="POST" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称 <span class="text-red-500">*</span></label>
+                            <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目名称" required>
+                        </div>
+                        
+                        <div>
+                            <label for="project_code" class="block text-base font-medium text-gray-700 mb-1">项目编号</label>
+                            <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目编号">
+                        </div>
+                        
+                        <div>
+                            <label for="construction_unit" class="block text-base font-medium text-gray-700 mb-1">建设单位</label>
+                            <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建设单位名称">
+                        </div>
+                        
+                        <div>
+                            <label for="design_unit" class="block text-base font-medium text-gray-700 mb-1">设计单位</label>
+                            <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入设计单位名称">
+                        </div>
+                        
+                        <div>
+                            <label for="project_location" class="block text-base font-medium text-gray-700 mb-1">项目地点</label>
+                            <input type="text" id="project_location" name="project_location" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目地点">
+                        </div>
+                        
+                        <div>
+                            <label for="standard_selection" class="block text-base font-medium text-gray-700 mb-1">评价标准 <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                    <option value="">请选择评价标准</option>
+                                    <option value="国标">绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
+                                    <option value="四川省标">四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
+                                    <option value="成都市标">成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="building_type" class="block text-base font-medium text-gray-700 mb-1">建筑类型 <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                    <option value="">请选择建筑类型</option>
+                                    <option value="住宅建筑">住宅建筑</option>
+                                    <option value="公共建筑">公共建筑</option>
+                                    <option value="工业建筑">工业建筑</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="building_area" class="block text-base font-medium text-gray-700 mb-1">建筑面积（平方米）</label>
+                            <input type="number" id="building_area" name="building_area" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建筑面积">
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-center">
+                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                            创建项目
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 页面加载完成后获取项目列表
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchProjects();
+            
+            // 添加搜索框事件监听
+            const searchInput = document.getElementById('projectSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    // 防止页面滚动
+                    e.preventDefault();
+                    
+                    // 保存当前滚动位置
+                    const scrollPos = window.scrollY;
+                    
+                    currentPage = 1; // 搜索时重置到第一页
+                    fetchProjects();
+                    
+                    // 恢复滚动位置
+                    setTimeout(() => {
+                        window.scrollTo(0, scrollPos);
+                    }, 10);
+                });
+            }
+            
+            // 添加分页按钮事件监听
+            document.getElementById('prevPageBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (currentPage > 1) {
+                    currentPage--;
+                    fetchProjects();
+                }
+            });
+            
+            document.getElementById('nextPageBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    fetchProjects();
+                }
+            });
+            
+            // 使用事件委托处理页码按钮点击
+            document.getElementById('pageNumbers').addEventListener('click', function(e) {
+                const pageButton = e.target.closest('button[data-page]');
+                if (pageButton) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const pageNum = parseInt(pageButton.getAttribute('data-page'), 10);
+                    if (!isNaN(pageNum) && currentPage !== pageNum) {
+                        currentPage = pageNum;
+                        fetchProjects();
+                    }
+                }
+            });
+            
+            // 添加删除项目的事件委托
+            document.getElementById('projectList').addEventListener('click', function(e) {
+                const deleteBtn = e.target.closest('.delete-project-btn');
+                if (deleteBtn) {
+                    const projectId = deleteBtn.getAttribute('data-project-id');
+                    const projectName = deleteBtn.getAttribute('data-project-name');
+                    
+                    if (confirm(`确定要删除项目"${projectName}"吗？此操作不可恢复。`)) {
+                        deleteProject(projectId);
+                    }
+                }
+            });
+        });
+        
+        // 分页变量
+        let currentPage = 1;
+        let totalPages = 1;
+        let pageSize = 10;
+        let allProjects = [];
+        
+        // 获取项目列表
+        function fetchProjects() {
+            fetch('/api/projects')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.projects) {
+                        // 保存所有项目数据
+                        allProjects = data.projects;
+                        
+                        // 应用搜索过滤
+                        const searchTerm = document.getElementById('projectSearchInput').value.toLowerCase();
+                        const filteredProjects = allProjects.filter(project => 
+                            project.name && project.name.toLowerCase().includes(searchTerm)
+                        );
+                        
+                        // 计算分页信息
+                        totalPages = Math.ceil(filteredProjects.length / pageSize);
+                        if (totalPages === 0) totalPages = 1;
+                        if (currentPage > totalPages) currentPage = totalPages;
+                        
+                        // 获取当前页的项目
+                        const startIndex = (currentPage - 1) * pageSize;
+                        const endIndex = Math.min(startIndex + pageSize, filteredProjects.length);
+                        const currentPageProjects = filteredProjects.slice(startIndex, endIndex);
+                        
+                        // 更新分页信息显示
+                        document.getElementById('pageStart').textContent = filteredProjects.length > 0 ? startIndex + 1 : 0;
+                        document.getElementById('pageEnd').textContent = endIndex;
+                        document.getElementById('totalRecords').textContent = filteredProjects.length;
+                        
+                        // 更新分页按钮状态
+                        document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+                        document.getElementById('nextPageBtn').disabled = currentPage >= totalPages;
+                        
+                        // 生成页码按钮
+                        generatePageNumbers(currentPage, totalPages);
+                        
+                        // 显示项目列表
+                        displayProjects(currentPageProjects);
+                    } else {
+                        // 显示无项目提示
+                        displayNoProjects();
+                    }
+                })
+                .catch(error => {
+                    console.error('获取项目列表失败:', error);
+                    displayError();
+                });
+        }
+        
+        // 生成页码按钮
+        function generatePageNumbers(currentPage, totalPages) {
+            const pageNumbersContainer = document.getElementById('pageNumbers');
+            pageNumbersContainer.innerHTML = '';
+            
+            // 确定显示的页码范围
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            // 添加第一页按钮
+            if (startPage > 1) {
+                addPageButton(1, currentPage === 1);
+                if (startPage > 2) {
+                    // 添加省略号
+                    const ellipsis = document.createElement('span');
+                    ellipsis.className = 'px-3 py-1 text-gray-500';
+                    ellipsis.textContent = '...';
+                    pageNumbersContainer.appendChild(ellipsis);
+                }
+            }
+            
+            // 添加中间页码
+            for (let i = startPage; i <= endPage; i++) {
+                addPageButton(i, currentPage === i);
+            }
+            
+            // 添加最后一页按钮
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    // 添加省略号
+                    const ellipsis = document.createElement('span');
+                    ellipsis.className = 'px-3 py-1 text-gray-500';
+                    ellipsis.textContent = '...';
+                    pageNumbersContainer.appendChild(ellipsis);
+                }
+                addPageButton(totalPages, currentPage === totalPages);
+            }
+            
+            function addPageButton(pageNum, isActive) {
+                // 创建按钮元素，使用data-page属性存储页码
+                const buttonHtml = `
+                    <button type="button" 
+                        class="${isActive 
+                            ? 'px-3 py-1 bg-primary text-white rounded' 
+                            : 'px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300'}"
+                        data-page="${pageNum}">
+                        ${pageNum}
+                    </button>
+                `;
+                
+                // 将HTML字符串添加到容器中
+                pageNumbersContainer.insertAdjacentHTML('beforeend', buttonHtml);
+            }
+        }
+        
+        // 显示项目列表
+        function displayProjects(projects) {
+            const projectList = document.getElementById('projectList');
+            
+            if (projects && projects.length > 0) {
+                // 清空加载提示
+                projectList.innerHTML = '';
+                
+                // 添加项目列表
+                projects.forEach((project, index) => {
+                    const row = document.createElement('tr');
+                    row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                    
+                    // 获取建筑类型显示文本
+                    let buildingType = '未设置';
+                    if (project.building_type) {
+                        buildingType = project.building_type;
+                    }
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${project.name || '未设置'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.code || '未设置'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.construction_unit || '未设置'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${buildingType}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at || '未知'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm flex space-x-2">
+                            <a href="/project/${project.id}" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
+                                进入项目
+                            </a>
+                            <button type="button" 
+                                class="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-colors cursor-pointer delete-project-btn"
+                                data-project-id="${project.id}" data-project-name="${project.name || ''}">
+                                删除
+                            </button>
+                        </td>
+                    `;
+                    
+                    projectList.appendChild(row);
+                });
+            } else {
+                displayNoProjects();
+            }
+        }
+        
+        // 删除项目
+        function deleteProject(projectId) {
+            fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 显示成功消息
+                    showNotification('项目删除成功', 'success');
+                    
+                    // 重新加载项目列表
+                    fetchProjects();
+                } else {
+                    showNotification('删除失败: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('删除项目失败:', error);
+                showNotification('删除失败，请稍后重试', 'error');
+            });
+        }
+        
+        // 显示通知
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded shadow-lg transform transition-all duration-500 opacity-0 ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '1';
+            }, 100);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notification.remove();
+                }, 500);
+            }, 3000);
+        }
+        
+        // 显示无项目提示
+        function displayNoProjects() {
+            document.getElementById('projectList').innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                        暂无项目，请创建新项目
+                    </td>
+                </tr>
+            `;
+            
+            // 更新分页信息
+            document.getElementById('pageStart').textContent = '0';
+            document.getElementById('pageEnd').textContent = '0';
+            document.getElementById('totalRecords').textContent = '0';
+            document.getElementById('prevPageBtn').disabled = true;
+            document.getElementById('nextPageBtn').disabled = true;
+            document.getElementById('pageNumbers').innerHTML = '';
+        }
+        
+        // 显示错误提示
+        function displayError() {
+            document.getElementById('projectList').innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-red-500">
+                        获取项目列表失败，请刷新页面重试
+                    </td>
+                </tr>
+            `;
+        }
+        
+        // 模态窗口相关的JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            const openModalBtn = document.getElementById('openCreateProjectModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const modal = document.getElementById('createProjectModal');
+            const modalForm = document.getElementById('modalProjectForm');
+            
+            // 打开模态窗口
+            openModalBtn.addEventListener('click', function() {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // 防止背景滚动
+            });
+            
+            // 关闭模态窗口
+            closeModalBtn.addEventListener('click', function() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            });
+            
+            // 点击模态窗口外部关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // 模态窗口表单提交
+            modalForm.addEventListener('submit', function(e) {
+                // 不阻止表单提交，确保数据正常发送到后端
+                
+                // 关闭模态窗口
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+                
+                // 显示成功通知
+                showNotification('项目创建成功！');
+            });
+        });
+    </script>
+</body>
+</html>

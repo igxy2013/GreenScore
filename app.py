@@ -9,6 +9,8 @@ import time
 import sqlite3
 import pyodbc
 from sqlalchemy import text
+import json
+from datetime import datetime
 
 load_dotenv()
 
@@ -24,9 +26,9 @@ cache = Cache(app, config=cache_config)
 
 # 配置数据库连接
 # 使用SQL Server数据库连接
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
 # 安全地获取数据库URL并打印
-database_url = os.getenv('DATABASE_URL')
+database_url = app.config['SQLALCHEMY_DATABASE_URI']
 if database_url:
     masked_url = database_url.replace(':' + database_url.split(':')[2].split('@')[0] + '@', ':***@')
     print(f"使用SQL Server数据库: {masked_url}")
@@ -54,6 +56,8 @@ class Project(db.Model):
     design_unit = db.Column(db.String(100))  # 设计单位
     location = db.Column(db.String(200))  # 项目地点
     building_area = db.Column(db.Float)  # 建筑面积
+    standard = db.Column(db.String(20))  # 评价标准
+    building_type = db.Column(db.String(50))  # 建筑类型
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     
     def to_dict(self):
@@ -65,8 +69,37 @@ class Project(db.Model):
             'design_unit': self.design_unit,
             'location': self.location,
             'building_area': self.building_area,
+            'standard': self.standard,
+            'building_type': self.building_type,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
         }
+
+# 添加四川省标和通用国标的模型
+class StandardSichuan(db.Model):
+    __tablename__ = '四川省标'
+    
+    # 使用中文字段名
+    序号 = db.Column(db.Integer, primary_key=True)
+    条文号 = db.Column(db.String(20))
+    分类 = db.Column(db.String(50))
+    专业 = db.Column(db.String(50))
+    条文内容 = db.Column(db.Text)
+    分值 = db.Column(db.String(10))
+    审查材料 = db.Column(db.Text)
+    属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
+
+class StandardNational(db.Model):
+    __tablename__ = '国标'
+    
+    # 使用中文字段名
+    序号 = db.Column(db.Integer, primary_key=True)
+    条文号 = db.Column(db.String(20))
+    分类 = db.Column(db.String(50))
+    专业 = db.Column(db.String(50))
+    条文内容 = db.Column(db.Text)
+    分值 = db.Column(db.String(10))
+    审查材料 = db.Column(db.Text)
+    属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
 
 class Standard(db.Model):
     __tablename__ = '成都市标'
@@ -118,52 +151,116 @@ def get_filtered_standards(level, specialty):
     if attribute:
         print(f"级别 '{level}' 对应属性值 '{attribute}'")
     
+    # 获取当前项目
+    project = get_project()
+    standard_name = project.standard if project and project.standard else '成都市标'
+    print(f"当前评价标准: {standard_name}")
+    
+    # 根据标准名称选择对应的模型
+    if standard_name == '成都市标':
+        model_class = Standard
+    elif standard_name == '四川省标':
+        model_class = StandardSichuan
+    elif standard_name == '国标':
+        model_class = StandardNational
+    else:
+        model_class = Standard
+    
     # 尝试多种筛选方法
     standards = []
     
     # 方法1: 使用属性字段精确匹配
     if attribute and specialty:
-        query1 = Standard.query.filter(Standard.属性 == attribute).filter(Standard.专业.like(f'%{specialty}%'))
-        standards1 = query1.all()
-        print(f"方法1 (属性精确匹配): 找到 {len(standards1)} 条记录")
-        if standards1:
-            standards = standards1
+        try:
+            query1 = model_class.query.filter(getattr(model_class, '属性') == attribute).filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            standards1 = query1.all()
+            print(f"方法1 (属性精确匹配): 找到 {len(standards1)} 条记录")
+            if standards1:
+                standards = standards1
+        except Exception as e:
+            print(f"方法1查询错误: {str(e)}")
     
     # 方法2: 使用属性字段模糊匹配
     if not standards and attribute:
-        query2 = Standard.query
-        query2 = query2.filter(Standard.属性.like(f'%{attribute}%'))
-        if specialty:
-            query2 = query2.filter(Standard.专业.like(f'%{specialty}%'))
-        standards2 = query2.all()
-        print(f"方法2 (属性模糊匹配): 找到 {len(standards2)} 条记录")
-        if standards2:
-            standards = standards2
+        try:
+            query2 = model_class.query
+            query2 = query2.filter(getattr(model_class, '属性').like(f'%{attribute}%'))
+            if specialty:
+                query2 = query2.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            standards2 = query2.all()
+            print(f"方法2 (属性模糊匹配): 找到 {len(standards2)} 条记录")
+            if standards2:
+                standards = standards2
+        except Exception as e:
+            print(f"方法2查询错误: {str(e)}")
     
     # 方法3: 只按专业筛选
     if not standards and specialty:
-        query3 = Standard.query.filter(Standard.专业.like(f'%{specialty}%'))
-        standards3 = query3.all()
-        print(f"方法3 (仅按专业): 找到 {len(standards3)} 条记录")
-        if standards3:
-            standards = standards3
+        try:
+            query3 = model_class.query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            standards3 = query3.all()
+            print(f"方法3 (仅按专业): 找到 {len(standards3)} 条记录")
+            if standards3:
+                standards = standards3
+        except Exception as e:
+            print(f"方法3查询错误: {str(e)}")
+    
+    # 方法4: 使用SQL文本查询
+    if not standards:
+        try:
+            sql = f"SELECT * FROM [{model_class.__tablename__}]"
+            conditions = []
+            if attribute:
+                conditions.append(f"属性 = N'{attribute}'")
+            if specialty:
+                conditions.append(f"专业 LIKE N'%{specialty}%'")
+            
+            if conditions:
+                sql += " WHERE " + " AND ".join(conditions)
+            
+            print(f"执行SQL: {sql}")
+            result = db.session.execute(text(sql))
+            standards = [dict(zip(result.keys(), row)) for row in result]
+            print(f"方法4 (SQL文本查询): 找到 {len(standards)} 条记录")
+        except Exception as e:
+            print(f"方法4查询错误: {str(e)}")
     
     # 如果所有方法都失败，返回所有记录
     if not standards:
-        standards = Standard.query.all()
-        print(f"所有筛选方法都失败，返回所有 {len(standards)} 条记录")
+        try:
+            standards = model_class.query.all()
+            print(f"所有筛选方法都失败，返回所有 {len(standards)} 条记录")
+        except Exception as e:
+            print(f"获取所有记录错误: {str(e)}")
+            standards = []
     
     end_time = time.time()
     print(f"筛选查询耗时: {end_time - start_time:.2f}秒")
     
     return standards
 
+# 根据标准名称获取对应的标准数据
+def get_standards_by_name(standard_name):
+    print(f"获取标准数据: {standard_name}")
+    if standard_name == '成都市标':
+        return Standard.query.all()
+    elif standard_name == '四川省标':
+        return StandardSichuan.query.all()
+    elif standard_name == '通用国标' or standard_name == '国标':
+        return StandardNational.query.all()
+    else:
+        # 默认返回成都市标
+        return Standard.query.all()
+
 # 获取项目信息
-def get_project():
+def get_project(project_id=None):
     try:
-        # 这里简单处理，获取第一个项目
-        # 实际应用中可能需要根据用户会话或其他方式获取特定项目
-        project = Project.query.first()
+        if project_id:
+            # 获取指定ID的项目
+            project = Project.query.get(project_id)
+        else:
+            # 获取第一个项目
+            project = Project.query.first()
         return project
     except Exception as e:
         print(f"获取项目信息时出错: {str(e)}")
@@ -172,73 +269,199 @@ def get_project():
 # 保存项目信息
 def save_project_info(form_data):
     try:
-        # 获取现有项目或创建新项目
-        project = Project.query.first()
-        if not project:
+        # 获取项目ID
+        project_id = form_data.get('project_id')
+        
+        # 打印接收到的表单数据
+        print(f"接收到的表单数据: project_id={project_id}, project_name={form_data.get('project_name')}, standard_selection={form_data.get('standard_selection')}")
+        
+        # 如果有项目ID，获取现有项目；否则创建新项目
+        if project_id:
+            project = Project.query.get(project_id)
+            if not project:
+                print(f"未找到ID为{project_id}的项目，创建新项目")
+                project = Project()
+        else:
+            print("未提供项目ID，创建新项目")
             project = Project()
         
-        # 更新项目信息
+        # 更新项目属性
         project.name = form_data.get('project_name', '')
         project.code = form_data.get('project_code', '')
         project.construction_unit = form_data.get('construction_unit', '')
         project.design_unit = form_data.get('design_unit', '')
         project.location = form_data.get('project_location', '')
+        project.building_type = form_data.get('building_type', '')
+        project.standard = form_data.get('standard_selection', '')  # 保存评价标准
         
-        # 处理建筑面积，确保是数字
+        # 处理建筑面积
         building_area = form_data.get('building_area', '')
-        if building_area and building_area.strip():
+        if building_area:
             try:
                 project.building_area = float(building_area)
-            except ValueError:
-                project.building_area = 0
+            except ValueError as ve:
+                print(f"建筑面积转换错误: {str(ve)}")
+                pass
+        
+        # 打印调试信息
+        print(f"保存项目信息: ID={project.id}, 名称={project.name}, 评价标准={project.standard}")
         
         # 保存到数据库
         db.session.add(project)
         db.session.commit()
         
+        print(f"项目保存成功: ID={project.id}")
         return project
     except Exception as e:
         db.session.rollback()
         print(f"保存项目信息时出错: {str(e)}")
+        print(traceback.format_exc())  # 打印详细的错误堆栈
         return None
+
+# 项目管理页面路由
+@app.route('/projects')
+def project_management():
+    try:
+        return render_template('project_management.html')
+    except Exception as e:
+        print(f"项目管理页面出错: {str(e)}")
+        print(traceback.format_exc())
+        return render_template('error.html', error=str(e))
+
+# 创建项目路由
+@app.route('/create_project', methods=['POST'])
+def create_project():
+    try:
+        # 获取表单数据
+        project_name = request.form.get('project_name')
+        project_code = request.form.get('project_code')
+        construction_unit = request.form.get('construction_unit')
+        design_unit = request.form.get('design_unit')
+        project_location = request.form.get('project_location')
+        building_area = request.form.get('building_area')
+        standard_selection = request.form.get('standard_selection')
+        building_type = request.form.get('building_type')  # 获取建筑类型
+        
+        # 创建新项目
+        project = Project(
+            name=project_name,
+            code=project_code,
+            construction_unit=construction_unit,
+            design_unit=design_unit,
+            location=project_location,
+            standard=standard_selection,
+            building_type=building_type  # 设置建筑类型
+        )
+        
+        # 处理建筑面积
+        if building_area:
+            try:
+                project.building_area = float(building_area)
+            except ValueError:
+                pass
+        
+        # 保存到数据库
+        db.session.add(project)
+        db.session.commit()
+        
+        # 重定向到项目页面
+        return redirect(url_for('project_detail', project_id=project.id))
+    except Exception as e:
+        db.session.rollback()
+        print(f"创建项目出错: {str(e)}")
+        print(traceback.format_exc())
+        return render_template('error.html', error=str(e))
+
+# 项目详情页面路由
+@app.route('/project/<int:project_id>')
+def project_detail(project_id):
+    try:
+        # 获取页面参数
+        page = request.args.get('page', 'project_info')
+        
+        # 获取项目信息
+        project = get_project(project_id)
+        if not project:
+            print(f"项目不存在: ID={project_id}")
+            return render_template('error.html', error="项目不存在")
+        
+        # 获取项目对应标准的数据
+        standards = get_standards_by_name(project.standard)
+        
+        # 打印项目信息，确保建筑类型和标准正确传递
+        print(f"项目详情: ID={project.id}, 名称={project.name}, 建筑类型={project.building_type}, 评价标准={project.standard}, 页面={page}")
+        print(f"获取到标准数据: {len(standards)}条记录")
+        
+        # 如果是评分汇总页面，获取评分数据
+        score_summary = {}
+        if page == 'score_summary':
+            # 获取评分汇总数据
+            score_summary = get_score_summary(project_id)
+            print(f"获取评分汇总数据: {score_summary}")
+        
+        # 渲染项目详情页面
+        print(f"渲染页面: index.html, current_page={page}")
+        return render_template('index.html', 
+                              standards=standards, 
+                              current_page=page,
+                              project=project,
+                              score_summary=score_summary)
+    except Exception as e:
+        print(f"项目详情页面出错: {str(e)}")
+        print(traceback.format_exc())
+        return render_template('error.html', error=str(e))
+
+# 获取项目列表API
+@app.route('/api/projects')
+def api_projects():
+    try:
+        projects = Project.query.order_by(Project.created_at.desc()).all()
+        return jsonify({
+            'success': True,
+            'projects': [project.to_dict() for project in projects]
+        })
+    except Exception as e:
+        print(f"获取项目列表API出错: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# 删除项目API
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    try:
+        # 查找项目
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({
+                'success': False,
+                'error': '项目不存在'
+            }), 404
+        
+        # 删除项目
+        db.session.delete(project)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'项目 {project.name} 已成功删除'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"删除项目API出错: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/')
 def index():
     try:
-        # 获取页面参数
-        current_page = request.args.get('page', 'project_info')  # 默认为项目信息页面
-        
-        # 检查数据库连接
-        db.session.execute(text("SELECT 1"))
-        print("数据库连接成功!")
-        
-        # 使用缓存获取数据
-        standards = get_all_standards()
-        
-        # 获取项目信息
-        project = get_project()
-        
-        # 如果是绿色建材页面，直接使用静态HTML文件的内容
-        if current_page == 'green_materials':
-            # 通过iframe嵌入的方式来显示绿色建材计算器内容
-            return render_template('index.html',
-                                  standards=standards,
-                                  current_page=current_page,
-                                  project=project)
-        
-        # 如果是评分汇总页面，需要获取评分统计数据
-        if current_page == 'score_summary':
-            score_summary = get_score_summary(project.id if project else None)
-            return render_template('index.html', 
-                              standards=standards, 
-                              current_page=current_page,
-                              project=project,
-                              score_summary=score_summary)
-        
-        return render_template('index.html', 
-                              standards=standards, 
-                              current_page=current_page,
-                              project=project)
+        # 重定向到项目管理页面
+        return redirect(url_for('project_management'))
     except Exception as e:
         print(f"发生错误: {str(e)}")
         print(traceback.format_exc())
@@ -248,17 +471,27 @@ def index():
 def handle_form():
     try:
         form_type = request.form.get('form_type', '')
+        print(f"接收到表单提交: form_type={form_type}")
+        
+        # 打印所有表单字段
+        print("表单数据:")
+        for key, value in request.form.items():
+            print(f"  {key}: {value}")
         
         if form_type == 'project_info':
             # 处理项目信息表单提交
+            print("处理项目信息表单...")
             project = save_project_info(request.form)
             if project:
-                print(f"项目信息保存成功: {project.name}")
+                print(f"项目信息保存成功: ID={project.id}, 名称={project.name}, 标准={project.standard}")
+                # 重定向回项目详情页面
+                return redirect(url_for('project_detail', project_id=project.id))
             else:
-                print("项目信息保存失败")
-            
-            # 重定向回项目信息页面
-            return redirect(url_for('index', page='project_info'))
+                print("项目信息保存失败，重定向到项目管理页面")
+                # 如果保存失败，重定向到项目管理页面
+                return redirect(url_for('project_management'))
+        else:
+            print(f"未知的表单类型: {form_type}")
         
         # 如果不是已知的表单类型，返回首页
         return redirect(url_for('index'))
@@ -270,26 +503,84 @@ def handle_form():
 @app.route('/filter')
 def filter_standards():
     try:
-        level = request.args.get('level', '')  # 基本级或提高级
-        specialty = request.args.get('specialty', '')  # 专业
-        
-        print(f"请求筛选: 级别={level}, 专业={specialty}")
-        
-        # 使用缓存获取筛选后的数据
-        standards = get_filtered_standards(level, specialty)
+        level = request.args.get('level', '基本级')
+        specialty = request.args.get('specialty', '建筑')
+        project_id = request.args.get('project_id')
         
         # 获取项目信息
-        project = get_project()
+        project = None
+        if project_id:
+            project = Project.query.get(project_id)
         
-        return render_template('index.html', 
-                            standards=standards, 
-                            current_level=level, 
-                            current_specialty=specialty,
-                            current_page='specialty',
-                            project=project)
+        # 获取项目对应的标准名称
+        standard_name = None
+        if project and project.standard:
+            standard_name = project.standard
+            print(f"使用项目设置的评价标准: {standard_name}")
+        else:
+            standard_name = request.args.get('standard', '成都市标')
+            print(f"项目未设置评价标准，使用默认标准: {standard_name}")
+        
+        # 获取过滤后的标准
+        standards = []
+        
+        # 根据标准名称选择对应的模型
+        if standard_name == '成都市标':
+            model_class = Standard
+        elif standard_name == '四川省标':
+            model_class = StandardSichuan
+        elif standard_name == '国标':
+            model_class = StandardNational
+        else:
+            # 默认使用成都市标
+            model_class = Standard
+            standard_name = '成都市标'
+        
+        # 获取属性值
+        attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
+        
+        # 查询数据
+        try:
+            query = model_class.query
+            if attribute:
+                query = query.filter(getattr(model_class, '属性') == attribute)
+            if specialty:
+                query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            
+            standards = query.all()
+            print(f"从 {standard_name} 获取标准数据: level={level}, specialty={specialty}, 找到{len(standards)}条记录")
+        except Exception as e:
+            print(f"查询标准数据出错: {str(e)}")
+            print(traceback.format_exc())
+        
+        # 如果没有找到数据，尝试使用更宽松的条件
+        if not standards:
+            try:
+                query = model_class.query
+                if specialty:
+                    query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+                
+                standards = query.all()
+                print(f"使用宽松条件从 {standard_name} 获取标准数据: specialty={specialty}, 找到{len(standards)}条记录")
+            except Exception as e:
+                print(f"宽松查询标准数据出错: {str(e)}")
+                print(traceback.format_exc())
+        
+        # 打印调试信息
+        print(f"过滤标准: level={level}, specialty={specialty}, standard={standard_name}, 找到{len(standards)}条记录")
+        
+        # 渲染模板
+        return render_template(
+            'index.html', 
+            standards=standards, 
+            current_level=level, 
+            current_specialty=specialty,
+            current_page='specialty',  # 设置为specialty页面，确保保存按钮正常工作
+            project=project
+        )
     except Exception as e:
-        print(f"筛选时发生错误: {str(e)}")
-        print(traceback.format_exc())
+        app.logger.error(f"过滤标准时出错: {str(e)}")
+        traceback.print_exc()
         return render_template('error.html', error=str(e))
 
 @app.route('/calculator')
@@ -396,6 +687,7 @@ def get_project_info():
             'designUnit': project.design_unit if project else '',
             'projectLocation': project.location if project else '',
             'buildingArea': project.building_area if project else '',
+            'buildingType': project.building_type if project else '',  # 添加建筑类型
             'buildingNo': form_data.building_no if form_data else '',
             'designNo': form_data.design_no if form_data else '',
             'standardSelection': form_data.standard_selection if form_data else 'municipal'
@@ -422,6 +714,7 @@ def get_template():
 
 @app.route('/api/save_score', methods=['POST'])
 def save_score():
+    conn = None
     try:
         data = request.get_json()
         if not data:
@@ -430,8 +723,11 @@ def save_score():
         level = data.get('level')
         specialty = data.get('specialty')
         scores = data.get('scores', [])
+        standard = data.get('standard', '成都市标')  # 获取评价标准
         # 从请求中获取项目ID
         project_id_from_request = data.get('project_id')
+        
+        print(f"接收到保存评分请求: level={level}, specialty={specialty}, standard={standard}, project_id={project_id_from_request}, scores数量={len(scores)}")
         
         if not scores:
             return jsonify({'error': '评分数据为空'}), 400
@@ -444,68 +740,128 @@ def save_score():
             project = Project.query.first()
             project_id = project.id if project else None
         
+        print(f"使用项目ID: {project_id}")
+        
         # 连接数据库
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # 批量执行插入操作
+        success_count = 0
         for score in scores:
             # 处理得分值
             is_achieved = score.get('is_achieved', '否')
             score_value = score.get('score', '0')
+            clause_number = score.get('clause_number', '')
+            category = score.get('category', '')
+            technical_measures = score.get('technical_measures', '')
+            project_name = score.get('project_name', '')
+            
+            # 打印每条记录的详细信息
+            print(f"处理评分记录: 条文号={clause_number}, 是否达标={is_achieved}, 技术措施={technical_measures[:20]}...")
             
             # 如果是基本级，得分始终为0
             if level == '基本级':
                 score_value = '0'
+                print(f"基本级记录: 是否达标={is_achieved}, 技术措施长度={len(technical_measures)}")
+                print(f"基本级完整数据: {score}")
             
-            # SQL Server不支持REPLACE INTO，使用MERGE代替
-            sql = """
-            MERGE [得分表] AS target
-            USING (SELECT ? AS [项目ID], ? AS [项目名称], ? AS [条文号], ? AS [分类], ? AS [是否达标], 
-                         ? AS [得分], ? AS [技术措施], ? AS [评价等级], ? AS [专业]) AS source
-            ON (target.[项目ID] = source.[项目ID] AND 
-                target.[条文号] = source.[条文号] AND 
-                target.[评价等级] = source.[评价等级] AND 
-                target.[专业] = source.[专业])
-            WHEN MATCHED THEN
-                UPDATE SET 
-                    target.[项目名称] = source.[项目名称],
-                    target.[分类] = source.[分类],
-                    target.[是否达标] = source.[是否达标],
-                    target.[得分] = source.[得分],
-                    target.[技术措施] = source.[技术措施]
-            WHEN NOT MATCHED THEN
-                INSERT ([项目ID], [项目名称], [条文号], [分类], [是否达标], [得分], [技术措施], [评价等级], [专业])
-                VALUES (source.[项目ID], source.[项目名称], source.[条文号], source.[分类], 
-                        source.[是否达标], source.[得分], source.[技术措施], source.[评价等级], source.[专业]);
-            """
-            
-            cursor.execute(
-                sql,
-                (
-                    project_id,
-                    score.get('project_name', ''),
-                    score.get('clause_number', ''),
-                    score.get('category', ''),
-                    is_achieved,
-                    score_value,
-                    score.get('technical_measures', ''),
-                    level,
-                    specialty
-                )
-            )
+            try:
+                # 首先检查记录是否存在
+                check_sql = """
+                SELECT COUNT(*) FROM [得分表] 
+                WHERE [项目ID] = ? AND [条文号] = ? AND [评价等级] = ? AND [专业] = ?
+                """
+                cursor.execute(check_sql, (project_id, clause_number, level, specialty))
+                exists = cursor.fetchone()[0] > 0
+                
+                if exists:
+                    # 更新现有记录
+                    update_sql = """
+                    UPDATE [得分表] SET 
+                        [项目名称] = ?,
+                        [分类] = ?,
+                        [是否达标] = ?,
+                        [得分] = ?,
+                        [技术措施] = ?,
+                        [评价标准] = ?
+                    WHERE [项目ID] = ? AND [条文号] = ? AND [评价等级] = ? AND [专业] = ?
+                    """
+                    cursor.execute(
+                        update_sql,
+                        (
+                            project_name,
+                            category,
+                            is_achieved,
+                            score_value,
+                            technical_measures,
+                            standard,  # 添加评价标准
+                            project_id,
+                            clause_number,
+                            level,
+                            specialty
+                        )
+                    )
+                    print(f"更新记录: 条文号={clause_number}, 是否达标={is_achieved}, 技术措施长度={len(technical_measures)}")
+                else:
+                    # 插入新记录
+                    insert_sql = """
+                    INSERT INTO [得分表] ([项目ID], [项目名称], [条文号], [分类], [是否达标], [得分], [技术措施], [评价等级], [专业], [评价标准])
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(
+                        insert_sql,
+                        (
+                            project_id,
+                            project_name,
+                            clause_number,
+                            category,
+                            is_achieved,
+                            score_value,
+                            technical_measures,
+                            level,
+                            specialty,
+                            standard  # 添加评价标准
+                        )
+                    )
+                    print(f"插入记录: 条文号={clause_number}, 是否达标={is_achieved}, 技术措施长度={len(technical_measures)}")
+                
+                success_count += 1
+            except Exception as e:
+                print(f"执行SQL时出错: {str(e)}")
+                print(f"SQL参数: project_id={project_id}, clause_number={clause_number}, category={category}, standard={standard}")
+                raise
         
         # 提交事务
         conn.commit()
-        conn.close()
+        print(f"事务已提交，成功保存 {success_count} 条记录")
         
-        return jsonify({'success': True, 'message': f'成功保存{len(scores)}条评分记录', 'project_id': project_id}), 200
+        if conn:
+            conn.close()
+            print("数据库连接已关闭")
+        
+        return jsonify({'success': True, 'message': f'成功保存{success_count}条评分记录', 'project_id': project_id}), 200
     
     except Exception as e:
+        # 回滚事务
+        if conn:
+            try:
+                conn.rollback()
+                print("事务已回滚")
+                conn.close()
+                print("数据库连接已关闭")
+            except Exception as close_error:
+                print(f"关闭数据库连接时出错: {str(close_error)}")
+        
         # 记录错误信息到日志
-        app.logger.error(f"保存评分失败: {str(e)}")
-        traceback.print_exc()  # 打印详细的错误堆栈
-        return jsonify({'error': f'保存评分失败: {str(e)}'}), 500
+        error_msg = f"保存评分失败: {str(e)}"
+        stack_trace = traceback.format_exc()
+        print(error_msg)
+        print(stack_trace)
+        app.logger.error(error_msg)
+        app.logger.error(stack_trace)
+        
+        return jsonify({'error': error_msg, 'stack_trace': stack_trace}), 500
 
 @app.route('/api/load_scores', methods=['GET'])
 def load_scores():
@@ -513,6 +869,7 @@ def load_scores():
         level = request.args.get('level')
         specialty = request.args.get('specialty')
         project_id = request.args.get('project_id')
+        standard = request.args.get('standard')  # 获取评价标准参数
         
         if not level or not specialty:
             return jsonify({'error': '缺少必要参数'}), 400
@@ -521,6 +878,12 @@ def load_scores():
         if not project_id:
             project = Project.query.first()
             project_id = project.id if project else None
+            
+        # 如果未指定评价标准，获取项目的评价标准
+        if not standard and project_id:
+            project = Project.query.get(project_id)
+            if project and project.standard:
+                standard = project.standard
         
         # 连接数据库
         conn = get_db_connection()
@@ -534,11 +897,19 @@ def load_scores():
         if project_id:
             query_conditions.append("[项目ID]=?")
             query_params.append(project_id)
+            
+        # 如果有评价标准，添加到查询条件
+        if standard:
+            query_conditions.append("[评价标准]=?")
+            query_params.append(standard)
         
         # 构建查询SQL
-        query_sql = f"""SELECT [项目名称], [条文号], [分类], [是否达标], [得分], [技术措施] 
+        query_sql = f"""SELECT [项目名称], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准] 
                         FROM [得分表] 
                         WHERE {' AND '.join(query_conditions)}"""
+        
+        print(f"加载评分数据: level={level}, specialty={specialty}, project_id={project_id}, standard={standard}")
+        print(f"执行SQL: {query_sql}, 参数: {query_params}")
         
         # 执行查询
         cursor.execute(query_sql, query_params)
@@ -551,11 +922,13 @@ def load_scores():
                 'category': row[2],
                 'is_achieved': row[3],
                 'score': row[4],
-                'technical_measures': row[5]
+                'technical_measures': row[5],
+                'standard': row[6] if len(row) > 6 else standard or '成都市标'  # 添加评价标准
             })
         
         conn.close()
         
+        print(f"找到 {len(scores)} 条评分记录")
         return jsonify({'success': True, 'scores': scores}), 200
     
     except Exception as e:
@@ -598,7 +971,7 @@ def get_project_scores():
         
         # 查询项目信息 - 使用SQL Server语法
         cursor.execute(
-            """SELECT [id], [name], [code], [construction_unit], [design_unit], [location], [building_area]
+            """SELECT [id], [name], [code], [construction_unit], [design_unit], [location], [building_area], [building_type]
                FROM [projects] 
                WHERE [id]=?""",
             (project_id,)
@@ -614,7 +987,8 @@ def get_project_scores():
                 'construction_unit': project_row[3],
                 'design_unit': project_row[4],
                 'location': project_row[5],
-                'building_area': project_row[6]
+                'building_area': project_row[6],
+                'building_type': project_row[7]
             }
         
         conn.close()
@@ -653,30 +1027,46 @@ def get_project_scores():
 
 # 添加数据库连接函数 - 支持SQL Server
 def get_db_connection():
-    # 使用与SQLAlchemy相同的连接字符串
-    db_url = os.getenv('DATABASE_URL', '')
-    
-    # 从连接字符串中提取参数
-    # 格式：mssql+pyodbc://username:password@server/database?driver=ODBC+Driver+17+for+SQL+Server
-    parts = db_url.replace('mssql+pyodbc://', '').split('@')
-    auth = parts[0].split(':')
-    username = auth[0]
-    password = auth[1] if len(auth) > 1 else ''
-    
-    server_db = parts[1].split('/')
-    server = server_db[0]
-    db_with_params = server_db[1] if len(server_db) > 1 else ''
-    
-    # 分离数据库名和驱动程序
-    db_parts = db_with_params.split('?')
-    database = db_parts[0]
-    
-    # 构建连接字符串
-    conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-    
-    # 连接数据库
-    conn = pyodbc.connect(conn_str)
-    return conn
+    try:
+        # 直接使用已配置的数据库连接字符串
+        db_url = app.config['SQLALCHEMY_DATABASE_URI']
+        
+        # 从连接字符串中提取参数
+        # 格式：mssql+pyodbc://username:password@server/database?driver=ODBC+Driver+17+for+SQL+Server
+        parts = db_url.replace('mssql+pyodbc://', '').split('@')
+        auth = parts[0].split(':')
+        username = auth[0]
+        password = auth[1] if len(auth) > 1 else ''
+        
+        server_db = parts[1].split('/')
+        server = server_db[0]
+        db_with_params = server_db[1] if len(server_db) > 1 else ''
+        
+        # 分离数据库名和驱动程序
+        db_parts = db_with_params.split('?')
+        database = db_parts[0]
+        
+        # 使用正确的数据库名称 - 绿色建筑 而不是 缁垫缓鏍囧噯
+        # 构建连接字符串 - 使用SQL Server驱动
+        conn_str = f'DRIVER={{SQL Server}};SERVER={server};DATABASE=绿色建筑;UID={username};PWD={password}'
+        
+        print(f"连接数据库: SERVER={server}, DATABASE=绿色建筑, UID={username}")
+        print(f"连接字符串: {conn_str.replace(password, '******')}")
+        
+        # 打印可用的ODBC驱动程序
+        print(f"可用的ODBC驱动程序: {pyodbc.drivers()}")
+        
+        # 连接数据库
+        print("尝试连接数据库...")
+        conn = pyodbc.connect(conn_str)
+        print("数据库连接成功!")
+        return conn
+    except Exception as e:
+        print(f"数据库连接错误: {str(e)}")
+        print(f"详细错误信息: {traceback.format_exc()}")
+        app.logger.error(f"数据库连接错误: {str(e)}")
+        app.logger.error(f"详细错误信息: {traceback.format_exc()}")
+        raise
 
 # 初始化数据库
 def init_db():
@@ -705,10 +1095,22 @@ def init_db():
                     [技术措施] NVARCHAR(MAX),
                     [评价等级] NVARCHAR(20) NOT NULL,
                     [专业] NVARCHAR(50) NOT NULL,
+                    [评价标准] NVARCHAR(50) DEFAULT N'成都市标',
                     [创建时间] DATETIME DEFAULT GETDATE(),
                     FOREIGN KEY([项目ID]) REFERENCES [projects]([id]) ON DELETE CASCADE,
                     CONSTRAINT UC_得分表 UNIQUE([项目ID], [条文号], [评价等级], [专业])
                 )
+            END
+            """)
+            
+            # 检查评价标准字段是否存在，如果不存在则添加
+            cursor.execute("""
+            IF NOT EXISTS (
+                SELECT * FROM sys.columns 
+                WHERE object_id = OBJECT_ID(N'[得分表]') AND name = N'评价标准'
+            )
+            BEGIN
+                ALTER TABLE [得分表] ADD [评价标准] NVARCHAR(50) DEFAULT N'成都市标'
             END
             """)
             
@@ -719,319 +1121,82 @@ def init_db():
             print(f"创建得分表时出错: {str(e)}")
             traceback.print_exc()
 
-# 添加评分汇总函数
+# 获取评分汇总数据
 def get_score_summary(project_id):
-    """
-    获取项目的评分汇总数据
-    
-    参数:
-        project_id: 项目ID
-    
-    返回值:
-        包含评分汇总信息的字典
-    """
     try:
-        # 初始化默认返回结构，确保即使在失败时也返回有效结构
-        default_result = {
-            'basic_level': {},
-            'advanced_level': {},
-            'by_category': {},
-            'matrix': {
-                '建筑专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '结构专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '给排水专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '电气专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '暖通空调专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '景观专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                }
+        # 初始化评分汇总数据结构
+        summary = {
+            'advanced_level': {
+                '建筑': {'total_score': 0},
+                '结构': {'total_score': 0},
+                '给排水': {'total_score': 0},
+                '电气': {'total_score': 0},
+                '暖通': {'total_score': 0},
+                '景观': {'total_score': 0}
+            },
+            'by_category': {
+                '安全耐久': {'total_score': 0},
+                '健康舒适': {'total_score': 0},
+                '生活便利': {'total_score': 0},
+                '资源节约': {'total_score': 0},
+                '环境宜居': {'total_score': 0},
+                '提高与创新': {'total_score': 0}
             }
         }
         
-        if not project_id:
-            app.logger.warning("获取评分汇总时项目ID为空")
-            return default_result
+        # 连接数据库
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-        # 尝试连接数据库
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-        except Exception as db_error:
-            app.logger.error(f"数据库连接失败: {str(db_error)}")
-            return default_result
+        # 查询提高级各专业得分
+        cursor.execute("""
+        SELECT 专业, SUM(CAST(得分 AS FLOAT)) AS total_score
+        FROM 得分表
+        WHERE 项目ID = ? AND 评价等级 = '提高级'
+        GROUP BY 专业
+        """, project_id)
         
-        # 基本级专业评分汇总
-        basic_level = {}
-        specialties = ['建筑', '结构', '给排水', '电气', '暖通', '景观']
+        # 更新各专业得分
+        for row in cursor.fetchall():
+            specialty, score = row
+            if specialty in summary['advanced_level']:
+                summary['advanced_level'][specialty]['total_score'] = float(score)
         
-        for specialty in specialties:
-            # 查询基本级该专业的评分数据
-            try:
-                query = """
-                SELECT COUNT(*) as total_items,
-                       SUM(CASE WHEN [是否达标] = N'是' THEN 1 ELSE 0 END) as achieved_items
-                FROM [得分表]
-                WHERE [项目ID] = ? AND [评价等级] = N'基本级' AND [专业] = ?
-                """
-                cursor.execute(query, (project_id, specialty))
-                row = cursor.fetchone()
-                
-                if row and row[0] > 0:
-                    total_items = row[0]
-                    achieved_items = row[1] if row[1] is not None else 0
-                    achievement_rate = round((achieved_items / total_items) * 100, 2) if total_items > 0 else 0
-                    
-                    basic_level[specialty] = {
-                        'total_items': total_items,
-                        'achieved_items': achieved_items,
-                        'achievement_rate': achievement_rate
-                    }
-            except Exception as query_error:
-                app.logger.error(f"查询基本级{specialty}专业评分数据失败: {str(query_error)}")
-                # 继续下一个专业的查询
+        # 查询各分类得分
+        cursor.execute("""
+        SELECT 分类, SUM(CAST(得分 AS FLOAT)) AS total_score
+        FROM 得分表
+        WHERE 项目ID = ? AND 评价等级 = '提高级'
+        GROUP BY 分类
+        """, project_id)
         
-        # 提高级专业评分汇总
-        advanced_level = {}
+        # 更新各分类得分
+        for row in cursor.fetchall():
+            category, score = row
+            if category in summary['by_category']:
+                summary['by_category'][category]['total_score'] = float(score)
         
-        for specialty in specialties:
-            # 查询提高级该专业的评分数据
-            try:
-                query = """
-                SELECT COUNT(*) as total_items,
-                       SUM(CAST([得分] AS float)) as total_score
-                FROM [得分表]
-                WHERE [项目ID] = ? AND [评价等级] = N'提高级' AND [专业] = ?
-                """
-                cursor.execute(query, (project_id, specialty))
-                row = cursor.fetchone()
-                
-                if row and row[0] > 0:
-                    total_items = row[0]
-                    total_score = float(row[1]) if row[1] is not None else 0
-                    
-                    # 计算该专业的最大可能分值
-                    max_query = """
-                    SELECT SUM(CAST([分值] AS float)) as max_score
-                    FROM [成都市标]
-                    WHERE [属性] = N'评分项' AND [专业] LIKE ?
-                    """
-                    try:
-                        cursor.execute(max_query, (f'%{specialty}%',))
-                        max_row = cursor.fetchone()
-                        max_score = float(max_row[0]) if max_row and max_row[0] is not None else 100
-                    except Exception:
-                        max_score = 100  # 如果查询失败，使用默认值
-                    
-                    score_rate = round((total_score / max_score) * 100, 2) if max_score > 0 else 0
-                    
-                    advanced_level[specialty] = {
-                        'total_items': total_items,
-                        'total_score': total_score,
-                        'max_score': max_score,
-                        'score_rate': score_rate
-                    }
-            except Exception as query_error:
-                app.logger.error(f"查询提高级{specialty}专业评分数据失败: {str(query_error)}")
-                # 继续下一个专业的查询
-        
-        # 按分类汇总（提高级）
-        by_category = {}
-        categories = ['安全耐久', '健康舒适', '生活便利', '资源节约', '环境宜居', '提高与创新']
-        
-        for category in categories:
-            # 查询该分类的评分数据
-            try:
-                query = """
-                SELECT COUNT(*) as total_items,
-                       SUM(CAST([得分] AS float)) as total_score
-                FROM [得分表]
-                WHERE [项目ID] = ? AND [评价等级] = N'提高级' AND [分类] = ?
-                """
-                cursor.execute(query, (project_id, category))
-                row = cursor.fetchone()
-                
-                if row and row[0] > 0:
-                    total_items = row[0]
-                    total_score = float(row[1]) if row[1] is not None else 0
-                    
-                    # 计算该分类的最大可能分值
-                    max_query = """
-                    SELECT SUM(CAST([分值] AS float)) as max_score
-                    FROM [成都市标]
-                    WHERE [属性] = N'评分项' AND [分类] = ?
-                    """
-                    try:
-                        cursor.execute(max_query, (category,))
-                        max_row = cursor.fetchone()
-                        max_score = float(max_row[0]) if max_row and max_row[0] is not None else 100
-                    except Exception:
-                        max_score = 100  # 如果查询失败，使用默认值
-                    
-                    score_rate = round((total_score / max_score) * 100, 2) if max_score > 0 else 0
-                    
-                    by_category[category] = {
-                        'total_items': total_items,
-                        'total_score': total_score,
-                        'max_score': max_score,
-                        'score_rate': score_rate
-                    }
-            except Exception as query_error:
-                app.logger.error(f"查询{category}分类评分数据失败: {str(query_error)}")
-                # 继续下一个分类的查询
-        
-        # 初始化矩阵数据结构（使用默认结构）
-        matrix = default_result['matrix'].copy()
-        
-        # 查询专业和分类的得分数据
-        try:
-            specialties_map = {
-                '建筑': '建筑专业',
-                '结构': '结构专业',
-                '给排水': '给排水专业',
-                '电气': '电气专业',
-                '暖通': '暖通空调专业',
-                '景观': '景观专业'
-            }
-            
-            categories = ['安全耐久', '健康舒适', '生活便利', '资源节约', '环境宜居', '提高与创新']
-            
-            query = """
-            SELECT [专业], [分类], SUM(CAST([得分] AS float)) as total_score
-            FROM [得分表]
-            WHERE [项目ID] = ? AND [评价等级] = N'提高级'
-            GROUP BY [专业], [分类]
-            """
-            cursor.execute(query, (project_id,))
-            rows = cursor.fetchall()
-            
-            # 更新矩阵数据
-            for row in rows:
-                specialty_db = row[0]
-                category = row[1]
-                score = float(row[2]) if row[2] is not None else 0
-                
-                # 跳过未知的专业或分类
-                if specialty_db not in specialties_map or category not in categories:
-                    continue
-                    
-                specialty_display = specialties_map[specialty_db]
-                matrix[specialty_display][category] = int(score)
-        except Exception as matrix_error:
-            app.logger.error(f"查询矩阵数据失败: {str(matrix_error)}")
-            # 使用默认矩阵数据
-        
-        # 无论成功与否，确保关闭数据库连接
-        try:
-            conn.close()
-        except Exception:
-            pass
-        
-        # 返回结果，确保所有键都存在
-        return {
-            'basic_level': basic_level,
-            'advanced_level': advanced_level,
-            'by_category': by_category,
-            'matrix': matrix
-        }
-    
+        conn.close()
+        return summary
     except Exception as e:
-        app.logger.error(f"获取评分汇总数据失败: {str(e)}")
+        print(f"获取评分汇总数据失败: {str(e)}")
         traceback.print_exc()
-        
-        # 出现任何错误时，返回带有默认矩阵的结构，而不是None
         return {
-            'basic_level': {},
-            'advanced_level': {},
-            'by_category': {},
-            'matrix': {
-                '建筑专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '结构专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '给排水专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '电气专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '暖通空调专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                },
-                '景观专业': {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0
-                }
+            'advanced_level': {
+                '建筑': {'total_score': 0},
+                '结构': {'total_score': 0},
+                '给排水': {'total_score': 0},
+                '电气': {'total_score': 0},
+                '暖通': {'total_score': 0},
+                '景观': {'total_score': 0}
+            },
+            'by_category': {
+                '安全耐久': {'total_score': 0},
+                '健康舒适': {'total_score': 0},
+                '生活便利': {'total_score': 0},
+                '资源节约': {'total_score': 0},
+                '环境宜居': {'total_score': 0},
+                '提高与创新': {'total_score': 0}
             }
         }
 

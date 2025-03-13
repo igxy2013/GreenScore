@@ -1,5 +1,4 @@
 /.cursor
-/.env
 /.venv
 /database.db
 /output.txt

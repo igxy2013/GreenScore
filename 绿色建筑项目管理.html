@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>绿色建筑评价系统</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+primary: '#3176FF',
+secondary: '#4CAF50'
+},
+borderRadius: {
+'none': '0px',
+'sm': '4px',
+DEFAULT: '8px',
+'md': '12px',
+'lg': '16px',
+'xl': '20px',
+'2xl': '24px',
+'3xl': '32px',
+'full': '9999px',
+'button': '8px'
+}
+}
+}
+}
+</script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+:where([class^="ri-"])::before { content: "\f3c2"; }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+-webkit-appearance: none;
+margin: 0;
+}
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div class="max-w-7xl mx-auto px-4 py-8">
+<h1 class="text-3xl font-bold text-gray-900 mb-2">绿色建筑评价系统</h1>
+<h2 class="text-lg text-gray-600 mb-8">项目管理中心</h2>
+<div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+<h3 class="text-xl font-semibold mb-6">创建新项目</h3>
+<form id="projectForm" class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+项目名称 <span class="text-red-500">*</span>
+</label>
+<input type="text" required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+placeholder="请输入项目名称">
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+项目编号 <span class="text-red-500">*</span>
+</label>
+<input type="text" required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+placeholder="请输入项目编号">
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+建设单位 <span class="text-red-500">*</span>
+</label>
+<input type="text" required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+placeholder="请输入建设单位">
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+设计单位 <span class="text-red-500">*</span>
+</label>
+<input type="text" required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+placeholder="请输入设计单位">
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+项目地点 <span class="text-red-500">*</span>
+</label>
+<input type="text" required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+placeholder="请输入项目地点">
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+建筑面积 (m²) <span class="text-red-500">*</span>
+</label>
+<input type="number" required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+placeholder="请输入建筑面积">
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+评价标准 <span class="text-red-500">*</span>
+</label>
+<div class="relative">
+<select required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
+<option value="">请选择评价标准</option>
+<option value="1">绿色建筑评价标准 GB/T 50378-2019</option>
+<option value="2">绿色建筑评价技术细则</option>
+<option value="3">绿色建筑评价标识管理办法</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+<i class="ri-arrow-down-s-line text-gray-400"></i>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-sm font-medium text-gray-700 mb-2">
+建筑类型 <span class="text-red-500">*</span>
+</label>
+<div class="relative">
+<select required
+class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
+<option value="">请选择建筑类型</option>
+<option value="residential">住宅建筑</option>
+<option value="public">公共建筑</option>
+<option value="industrial">工业建筑</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+<i class="ri-arrow-down-s-line text-gray-400"></i>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end">
+<button type="submit"
+class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
+创建项目
+</button>
+</div>
+</form>
+</div>
+<div class="bg-white rounded-lg shadow-sm p-6">
+<h3 class="text-xl font-semibold mb-6">现有项目</h3>
+<div class="overflow-x-auto">
+<table class="min-w-full divide-y divide-gray-200">
+<thead class="bg-gray-50">
+<tr>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目编号</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">建设单位</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">建筑类型</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+</tr>
+</thead>
+<tbody class="bg-white divide-y divide-gray-200" id="projectList">
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+const mockProjects = [
+{
+name: '成都市高新区绿色科技园区A区',
+code: 'GX2025001',
+company: '成都高新投资集团有限公司',
+buildingType: '公共建筑',
+createTime: '2025-03-13 14:44:13'
+},
+{
+name: '天府新区生态住宅示范项目',
+code: 'TF2025002',
+company: '四川天府新区建设投资有限公司',
+buildingType: '住宅建筑',
+createTime: '2025-03-12 09:15:23'
+},
+{
+name: '锦江区滨河商务中心',
+code: 'JJ2025003',
+company: '成都城市建设投资管理集团有限责任公司',
+buildingType: '工业建筑',
+createTime: '2025-03-11 16:30:45'
+}
+];
+function renderProjects() {
+const projectList = document.getElementById('projectList');
+projectList.innerHTML = mockProjects.map((project, index) => `
+<tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${project.name}</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.code}</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.company}</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.buildingType}</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.createTime}</td>
+<td class="px-6 py-4 whitespace-nowrap text-sm">
+<button class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
+进入项目
+</button>
+</td>
+</tr>
+`).join('');
+}
+document.getElementById('projectForm').addEventListener('submit', function(e) {
+e.preventDefault();
+const formData = new FormData(e.target);
+const data = Object.fromEntries(formData.entries());
+const notification = document.createElement('div');
+notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg transform transition-all duration-500 opacity-0';
+notification.textContent = '项目创建成功！';
+document.body.appendChild(notification);
+setTimeout(() => {
+notification.style.opacity = '1';
+}, 100);
+setTimeout(() => {
+notification.style.opacity = '0';
+setTimeout(() => {
+notification.remove();
+}, 500);
+}, 3000);
+e.target.reset();
+});
+renderProjects();
+</script>
+</body>
+</html>
