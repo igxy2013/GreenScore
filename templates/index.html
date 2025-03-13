@@ -106,9 +106,9 @@
         } */
         
         /* 确保表头文字左对齐 */
-        /* th {
+        th {
             text-align: left !important;
-        } */
+        } 
         
         /* 移除可能影响对齐的样式 */
         /* .uppercase {
@@ -177,7 +177,7 @@
                 box-shadow: 0 0 0 1000px var(--select-option-selected-bg) inset !important;
                 -webkit-text-fill-color: #374151 !important;
             }
-        } */
+        } 
         
         /* 针对Chrome和Safari的样式 */
         @media screen and (-webkit-min-device-pixel-ratio:0) {
@@ -941,64 +941,16 @@
         });
         
         // 增强下拉菜单样式
-        // const selects = document.querySelectorAll('select');
-        // selects.forEach(select => {
-        //     // 监听change事件，为选中的选项添加selected属性
-        //     select.addEventListener('change', function() {
-        //         const options = this.querySelectorAll('option');
-        //         options.forEach(option => {
-        //             if (option.selected) {
-        //                 option.setAttribute('selected', '');
-        //                 option.style.backgroundColor = '#f3f4f6';
-        //                 option.style.color = '#374151';
-        //                 option.style.boxShadow = '0 0 0 1000px #f3f4f6 inset';
-        //                 option.style.webkitTextFillColor = '#374151';
-        //             } else {
-        //                 option.removeAttribute('selected');
-        //                 option.style.backgroundColor = '';
-        //                 option.style.color = '';
-        //                 option.style.boxShadow = '';
-        //                 option.style.webkitTextFillColor = '';
-        //             }
-        //         });
-        //     });
-            
+        const selects = document.querySelectorAll('select');
+        selects.forEach(select => {
             // 初始化时设置选中项的样式
-            // const selectedOption = select.querySelector('option:checked');
-            // if (selectedOption) {
-            //     selectedOption.style.backgroundColor = '#f3f4f6';
-            //     selectedOption.style.color = '#374151';
-            //     selectedOption.style.boxShadow = '0 0 0 1000px #f3f4f6 inset';
-            //     selectedOption.style.webkitTextFillColor = '#374151';
-            // }
-            
-            // 为select添加事件监听器，在打开下拉菜单时应用样式
-            // select.addEventListener('mousedown', function() {
-            //     // 延迟执行，确保下拉菜单已经打开
-            //     setTimeout(() => {
-            //         const options = this.querySelectorAll('option');
-            //         options.forEach(option => {
-            //             if (!option.selected) {
-            //                 // 添加鼠标悬停事件
-            //                 option.addEventListener('mouseover', function() {
-            //                     this.style.backgroundColor = '#f3f4f6';
-            //                     this.style.color = '#374151';
-            //                     this.style.boxShadow = '0 0 0 1000px #f3f4f6 inset';
-            //                     this.style.webkitTextFillColor = '#374151';
-            //                 });
-                            
-            //                 option.addEventListener('mouseout', function() {
-            //                     if (!this.selected) {
-            //                         this.style.backgroundColor = '';
-            //                         this.style.color = '';
-            //                         this.style.boxShadow = '';
-            //                         this.style.webkitTextFillColor = '';
-            //                     }
-            //                 });
-            //             }
-            //         });
-            //     }, 10);
-            // });
+            const selectedOption = select.querySelector('option:checked');
+            if (selectedOption) {
+                selectedOption.style.backgroundColor = '#f3f4f6';
+                selectedOption.style.color = '#374151';
+                selectedOption.style.boxShadow = '0 0 0 1000px #f3f4f6 inset';
+                selectedOption.style.webkitTextFillColor = '#374151';
+            }
         });
     });
 
