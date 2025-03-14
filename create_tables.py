@@ -32,8 +32,26 @@ def create_tables():
                     print("standard列添加成功！")
                 else:
                     print("standard列已存在，无需添加。")
+                    
+                # 检查projects表是否存在public_building_type列
+                result = conn.execute(text("""
+                    SELECT COUNT(*) 
+                    FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = 'projects' AND COLUMN_NAME = 'public_building_type'
+                """))
+                
+                # 如果列不存在，添加它
+                if result.scalar() == 0:
+                    print("添加public_building_type列到projects表...")
+                    conn.execute(text("""
+                        ALTER TABLE projects 
+                        ADD public_building_type NVARCHAR(50)
+                    """))
+                    print("public_building_type列添加成功！")
+                else:
+                    print("public_building_type列已存在，无需添加。")
         except Exception as e:
-            print(f"检查或添加standard列时出错: {str(e)}")
+            print(f"检查或添加列时出错: {str(e)}")
 
 if __name__ == "__main__":
     create_tables() 

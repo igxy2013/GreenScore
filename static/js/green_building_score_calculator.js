@@ -17,17 +17,7 @@ function calculatePerCapitaLandScore(totalLandArea, residentialUnits, averagePer
     // 1. 在HTML中引入此JS文件：<script src="/static/js/green_building_score_calculator.js"></script>
     // 2. 然后直接调用：const result = calculatePerCapitaLandScore(1000, 30, 3.2, 'III', 10);
     // 3. 或者通过window对象调用：window.calculatePerCapitaLandScore(1000, 30);
-    // 参数验证
-    if (!totalLandArea || totalLandArea <= 0) {
-        console.error('总用地面积必须大于0');
-        return { score: 0, rating: '无效数据', perCapitaLand: 0 };
-    }
-    
-    if (!residentialUnits || residentialUnits <= 0) {
-        console.error('住宅户数必须大于0');
-        return { score: 0, rating: '无效数据', perCapitaLand: 0 };
-    }
-    
+
     // 计算总人数
     const totalPopulation = residentialUnits * averagePersonPerUnit;
     
@@ -39,191 +29,142 @@ function calculatePerCapitaLandScore(totalLandArea, residentialUnits, averagePer
     
     // 根据评分规则计算得分
     let score = 0;
-    let rating = '';
     
     // 根据气候区划和平均层数确定评分标准
-    if (['I', 'VI'].includes(normalizedClimateZone)) {
+    if (['I', 'VII'].includes(normalizedClimateZone)) {
         // I、VI气候区
         if (averageFloors <= 3) {
             if (perCapitaLand <= 33) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 36) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 4 && averageFloors <= 6) {
             if (perCapitaLand <= 29) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 32) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 7 && averageFloors <= 9) {
             if (perCapitaLand <= 21) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 22) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 10 && averageFloors <= 18) {
             if (perCapitaLand <= 17) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 19) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else { // 19层及以上
             if (perCapitaLand <= 12) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 13) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         }
-    } else if (['II', 'V'].includes(normalizedClimateZone)) {
+    } else if (['II', 'VI'].includes(normalizedClimateZone)) {
         // II、V气候区
         if (averageFloors <= 3) {
             if (perCapitaLand <= 33) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 36) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 4 && averageFloors <= 6) {
             if (perCapitaLand <= 27) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 30) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 7 && averageFloors <= 9) {
             if (perCapitaLand <= 20) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 21) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 10 && averageFloors <= 18) {
             if (perCapitaLand <= 16) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 17) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else { // 19层及以上
             if (perCapitaLand <= 12) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 13) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         }
     } else {
-        // III、IV气候区（默认）
+        // III、IV、气候区（默认）
         if (averageFloors <= 3) {
             if (perCapitaLand <= 33) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 36) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 4 && averageFloors <= 6) {
             if (perCapitaLand <= 24) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 27) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 7 && averageFloors <= 9) {
             if (perCapitaLand <= 19) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 20) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else if (averageFloors >= 10 && averageFloors <= 18) {
             if (perCapitaLand <= 15) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 16) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         } else { // 19层及以上
             if (perCapitaLand <= 11) {
                 score = 20;
-                rating = '卓越';
             } else if (perCapitaLand <= 12) {
                 score = 15;
-                rating = '优秀';
             } else {
                 score = 0;
-                rating = '不达标';
             }
         }
     }
-    
-    return {
-        score: score,
-        rating: rating,
-        perCapitaLand: perCapitaLand.toFixed(2)
-    };
+
+    return score;
 }
+
 
 /**
  * 计算绿地率得分
@@ -282,7 +223,7 @@ function calculateGreenRatioScore(greenArea, totalLandArea) {
  */
 function calculatePlotRatioScore(r, type) {
     // 处理第一类建筑（行政办公、商务办公等）
-    if (type === '行政办公、商务办公、商业金融、旅馆饭店、交通枢纽等') {
+    if (['办公', '商业', '金融', '旅馆饭店', '交通枢纽'].includes(type)) {
         if (r >= 1.0 && r < 1.5) return 8;
         if (r >= 1.5 && r < 2.5) return 12;
         if (r >= 2.5 && r < 3.5) return 16;
@@ -290,14 +231,14 @@ function calculatePlotRatioScore(r, type) {
     }
     
     // 处理第二类建筑（教育、医疗等） 
-    if (type === '教育、文化、体育、医疗、卫生、社会福利等') {
+    if (['教育', '文化', '体育', '医疗', '卫生', '社会福利'].includes(type)) {
         if (r >= 0.5 && r < 0.8) return 8;
         if (r >= 0.8 && r < 1.5) return 16;
         if (r >= 1.5 && r < 2.0) return 20;
         if (r >= 2.0) return 12;  // 注意这个特殊规则：R≥2.0得12分
     }
 
-    return null; // 无效输入时返回null
+    return 0; //    
 }
 
 

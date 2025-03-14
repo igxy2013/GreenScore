@@ -110,6 +110,8 @@ class Project(db.Model):
     construction_type = db.Column(db.String(50))  # 项目建设情况
     has_water_landscape = db.Column(db.String(10))  # 有无景观水体
     is_fully_decorated = db.Column(db.String(10))  # 是否为全装修项目
+    public_building_type = db.Column(db.String(50))  # 公建类型
+    
     
     def to_dict(self):
         return {
@@ -147,7 +149,8 @@ class Project(db.Model):
             'has_underground_garage': self.has_underground_garage,
             'construction_type': self.construction_type,
             'has_water_landscape': self.has_water_landscape,
-            'is_fully_decorated': self.is_fully_decorated
+            'is_fully_decorated': self.is_fully_decorated,
+            'public_building_type': self.public_building_type,
         }
 
 # 添加四川省标和通用国标的模型
@@ -414,9 +417,10 @@ def save_project_info(form_data):
         project.construction_type = form_data.get('construction_type', '')
         project.has_water_landscape = form_data.get('has_water_landscape', '')
         project.is_fully_decorated = form_data.get('is_fully_decorated', '')
+        project.public_building_type = form_data.get('public_building_type', '')
         
         # 打印调试信息
-        print(f"保存项目信息: ID={project.id}, 名称={project.name}, 评价标准={project.standard}")
+        print(f"保存项目信息: ID={project.id}, 名称={project.name}, 评价标准={project.standard}, 公建类型={project.public_building_type}")
         
         # 保存到数据库
         db.session.add(project)
@@ -1317,7 +1321,8 @@ def check_and_add_missing_columns():
             'has_underground_garage': 'NVARCHAR(10)',
             'construction_type': 'NVARCHAR(50)',
             'has_water_landscape': 'NVARCHAR(10)',
-            'is_fully_decorated': 'NVARCHAR(10)'
+            'is_fully_decorated': 'NVARCHAR(10)',
+            'public_building_type': 'NVARCHAR(50)',
         }
         
         # 检查并添加缺失的列

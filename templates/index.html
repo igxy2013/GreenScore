@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>绿色建筑评价系统</title>
     <!-- 先加载Alpine.js -->
+
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.min.css') }}">
     <!-- 使用Remix Icon图标库 -->
@@ -13,7 +14,7 @@
     <!-- 绿色建材计算所需的外部库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
-    
+    <script src="/static/js/green_building_score_calculator.js"></script>
     <style>
         .page-container {
             min-width: 1024px;
@@ -847,6 +848,28 @@
                                                 </div>
                                             </div>
                                         </td>
+                                        <td class="px-3 py-2 whitespace-nowrap">
+                                            <label for="public_building_type" class="block text-sm font-medium text-gray-700 mb-1">公建类型</label>
+                                            <div class="relative">
+                                                <select id="public_building_type" name="public_building_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8" form="projectDetailForm">
+                                                    <option value="">请选择</option>
+                                                    <option value="办公" {% if project and project.public_building_type == '办公' %}selected{% endif %}>办公</option>
+                                                    <option value="商业" {% if project and project.public_building_type == '商业' %}selected{% endif %}>商业</option>
+                                                    <option value="金融" {% if project and project.public_building_type == '金融' %}selected{% endif %}>金融</option>
+                                                    <option value="旅馆饭店" {% if project and project.public_building_type == '旅馆饭店' %}selected{% endif %}>旅馆饭店</option>
+                                                    <option value="交通枢纽" {% if project and project.public_building_type == '交通枢纽' %}selected{% endif %}>交通枢纽</option>
+                                                    <option value="教育" {% if project and project.public_building_type == '教育' %}selected{% endif %}>教育</option>
+                                                    <option value="文化" {% if project and project.public_building_type == '文化' %}selected{% endif %}>文化</option>
+                                                    <option value="体育" {% if project and project.public_building_type == '体育' %}selected{% endif %}>体育</option>
+                                                    <option value="医疗" {% if project and project.public_building_type == '医疗' %}selected{% endif %}>医疗</option>
+                                                    <option value="卫生" {% if project and project.public_building_type == '卫生' %}selected{% endif %}>卫生</option>
+                                                    <option value="社会福利" {% if project and project.public_building_type == '社会福利' %}selected{% endif %}>社会福利</option>
+                                                </select>
+                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td class="px-3 py-2 whitespace-nowrap"></td>
                                         <td class="px-3 py-2 whitespace-nowrap">
                                             <button type="submit" form="projectDetailForm" class="mt-4 px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
@@ -856,9 +879,29 @@
                                     </tr>
                                 </tbody>
                             </table>
+
                         </div>
+
                     </div>
-                    
+
+                    <label class="text-lg font-medium text-primary">自动计算得分</label>
+                    <div class="flex flex-col gap-2">
+                        <label id="per_capita_land_score">人均居住用地指标得分：</label>
+                        <label id="plot_ratio_score">公建容积率指标得分：</label>
+                        <!-- 自动计算得分 -->   
+                        <script>
+                        const totalLandArea = parseFloat(document.getElementById('total_land_area').value) || 0;
+                        const residentialUnits = parseInt(document.getElementById('residential_units').value) || 0;
+                        const result = calculatePerCapitaLandScore(totalLandArea, residentialUnits, 3.2, 'III', 10);
+                        document.getElementById('per_capita_land_score').innerHTML = '人均居住用地指标得分：' + result; // 获取得分
+                        const plotRatio = parseFloat(document.getElementById('plot_ratio').value) || 0;
+                        const publicBuildingType = document.getElementById('public_building_type').value;
+                        const plotRatioScore = calculatePlotRatioScore(plotRatio, publicBuildingType);
+                        document.getElementById('plot_ratio_score').innerHTML = '公建容积率指标得分：' + plotRatioScore; // 获取得分
+                    </script>
+                    </div>
+
+
                     <!-- 添加隐藏的表单用于提交项目详细信息 -->
                     <form id="projectDetailForm" action="{{ url_for('index') }}" method="post" class="hidden">
                         <input type="hidden" name="form_type" value="project_info">
