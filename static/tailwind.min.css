@@ -10,6 +10,7 @@
   --color-secondary: #6B7280;
 }
 
+    
 /* Utility classes */
 .bg-primary { background-color: var(--color-primary); }
 .bg-primary-dark { background-color: var(--color-primary-dark); }
@@ -321,4 +322,357 @@ a.link-primary:hover {
 .score-summary-container th,
 .score-summary-container td {
     text-align: center !important;
+}
+
+/* 从index.html移动过来的样式 */
+[x-cloak] { 
+    display: none !important; 
+}
+
+/* 侧边栏标题样式 */
+.p-6.border-b h1 {
+    font-size: 1.65rem;
+    font-weight: bold;
+    color: #3176FF;
+    white-space: nowrap;
+}
+
+/* 设置活动子菜单项和菜单项的背景颜色和文字颜色 */
+.submenu-item.active, .menu-item.active {
+    background-color: #3176FF; /* 活动项的背景颜色 */
+    color: #f8f8f8; /* 活动项的文字颜色 */
+}
+
+/* 导航栏hover效果 */
+.menu-item:hover, .submenu-item:hover {
+    background-color: #3176ff79;
+    cursor: pointer; /* 添加鼠标手形图标 */
+    color: #fdfdfd;
+}   
+
+/* 导航栏图标样式 */
+.menu-item i, .submenu-item i {
+    color: #6B7280;
+}
+
+/* 设置活动菜单项和子菜单项的图标颜色*/
+.menu-item.active i, .submenu-item.active i {
+    color: #fafafa;
+}
+
+/* 下拉箭头样式 */
+.ri-arrow-down-s-line {
+    transition: transform 0.3s ease;
+}
+
+/* 表格列宽调整 */
+.w-10 {
+    width: 10%;
+}
+
+/* 确保表头文字左对齐 */
+th {
+    text-align: left !important;
 } 
+
+/* 表格行悬停效果 */
+.table-row-hover:hover {
+    background-color: rgba(215, 224, 241, 0.39);
+}
+
+/* 菜单显示/隐藏状态 */
+.menu-content {
+    display: none;
+}
+
+.menu-content.expanded {
+    display: block;
+}
+
+/* 达标和未达标文字颜色和背景 */
+.text-green-600 {
+    color: #059669;
+    font-weight: bold;
+}
+
+.text-red-600 {
+    color: #dc2626;
+    font-weight: bold;
+}
+
+/* 达标和未达标背景颜色 */
+.bg-green-50 {
+    background-color: rgba(5, 150, 105, 0.1);
+}
+
+.bg-red-50 {
+    background-color: rgba(220, 38, 38, 0.1);
+}
+
+/* 针对Chrome和Safari的样式 */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    select option:hover,
+    select option:focus {
+        background-color: var(--select-option-hover-bg) !important;
+        color: #374151 !important;
+        box-shadow: 0 0 0 1000px var(--select-option-hover-bg) inset !important;
+        -webkit-text-fill-color: #374151 !important;
+    }
+    
+    select option:checked {
+        background-color: var(--select-option-selected-bg) !important;
+        color: #374151 !important;
+        box-shadow: 0 0 0 1000px var(--select-option-selected-bg) inset !important;
+        -webkit-text-fill-color: #374151 !important;
+    }
+}
+
+/* 分类标签样式 */
+.category-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+    width: 100%;
+}
+
+.category-安全耐久 {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #1e40af;
+    border-left: 3px solid #1e40af;
+}
+
+.category-健康舒适 {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #065f46;
+    border-left: 3px solid #065f46;
+}
+
+.category-生活便利 {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #92400e;
+    border-left: 3px solid #92400e;
+}
+
+.category-资源节约 {
+    background-color: rgba(5, 150, 105, 0.15);
+    color: #064e3b;
+    border-left: 3px solid #064e3b;
+}
+
+.category-环境宜居 {
+    background-color: rgba(124, 58, 237, 0.15);
+    color: #5b21b6;
+    border-left: 3px solid #5b21b6;
+}
+
+.category-提高与创新 {
+    background-color: rgba(217, 70, 239, 0.15);
+    color: #7e22ce;
+    border-left: 3px solid #7e22ce;
+}
+
+.category-其他 {
+    background-color: rgba(156, 163, 175, 0.15);
+    color: #4b5563;
+    border-left: 3px solid #4b5563;
+}
+
+/* 悬浮保存按钮样式 */
+.floating-save-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.floating-save-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+}
+
+.floating-save-btn i {
+    font-size: 24px;
+}
+
+/* 悬浮按钮的提示文本 */
+.floating-save-btn::after {
+    content: "保存评分";
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.floating-save-btn:hover::after {
+    opacity: 1;
+}
+
+/* 添加旋转动画样式 */
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+} 
+
+
+    /*
+    * Remix Icon v4.5.0 (Simplified)
+    */
+    [class^="ri-"], [class*=" ri-"] {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: center;
+      vertical-align: middle;
+    }
+    
+    /* 复选框样式 */
+    .checkbox-wrapper input[type="checkbox"] {
+        opacity: 0;
+        position: absolute;
+        cursor: pointer;
+    }
+    .checkbox-wrapper .custom-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #e5e7eb;
+        border-radius: 4px;
+        display: inline-block;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-right: 8px;
+    }
+    .checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox {
+        background-color: #3176FF;
+        border-color: #3176FF;
+    }
+    .checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox::after {
+        content: '';
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 5px;
+        height: 9px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    .note-italic {
+        font-style: italic;
+        font-size: 14px;
+        color: #6B7280;
+    }
+
+    html {
+        overflow: visible !important;
+    }
+
+    .bg {
+        background-color: #3176FF; 
+    }
+    
+    /* 确保iframe内容不会影响外部标题 */
+    body {
+        margin-top: 0;
+        padding-top: 0;
+    }
+    
+    /* 美化二级指标标题和数据行 - 新样式 */
+    .sub-items {
+        padding: 1rem !important;
+    }
+    
+    .sub-item {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .sub-item.font-bold {
+        background-color: #f3f4f6;
+        padding: 0.75rem 0.5rem;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+    
+    /* 调整列宽和对齐方式 */
+    .col-indicator {
+        width: 33%;
+        text-align: left;
+        padding-left: 0.5rem;
+    }
+    
+    .col-requirement {
+        width: 33%;
+        text-align: center;
+    }
+    
+    .col-actual {
+        width: 33%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    
+    /* 美化标题行 */
+    .header-row {
+        background-color: #f3f4f6;
+        color: #374151;
+    }
+    
+    /* 美化复选框容器 */
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        margin-right: 0.5rem;
+    }
+    
+    /* 美化输入框 */
+    .input-container {
+        display: flex;
+        align-items: center;
+    }
+    
+    .input-container input {
+        width: 5rem;
+        text-align: center;
+        margin-right: 0.25rem;
+    }
+    
+    /* 交替行背景色 */
+    .sub-item:nth-child(even) {
+        background-color: #f9fafb;
+    }
+    
+    /* 分类标题样式 */
+    .category h3 {
+        background-color: #3176FF;
+        color: white;
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+    }

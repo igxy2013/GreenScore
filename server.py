@@ -23,7 +23,7 @@ if __name__ == '__main__':
     os.environ['FLASK_ENV'] = 'production'
     
     # 获取端口，默认为5000
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8091))
     
     # 输出启动信息
     logger.info(f"启动生产服务器 - 端口: {port}")
