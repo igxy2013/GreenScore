@@ -533,9 +533,6 @@
                                         <option value="公共建筑" {% if project and project.building_type == '公共建筑' %}selected{% endif %}>公共建筑</option>
                                         <option value="工业建筑" {% if project and project.building_type == '工业建筑' %}selected{% endif %}>工业建筑</option>
                                     </select>
-                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                        <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                    </div>
                                 </div>
                             </div>
                             
@@ -548,9 +545,7 @@
                                         <option value="四川省标" {% if project and project.standard == '四川省标' %}selected{% endif %}>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
                                         <option value="成都市标" {% if project and project.standard == '成都市标' %}selected{% endif %}>成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
                                     </select>
-                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                        <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                    </div>
+
                                 </div>
                             </div>
                             
@@ -567,9 +562,6 @@
                                         <option value="VI" {% if project and project.climate_zone == 'VI' %}selected{% endif %}>VI</option>
                                         <option value="VII" {% if project and project.climate_zone == 'VII' %}selected{% endif %}>VII</option>
                                     </select>
-                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                        <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                    </div>
                                 </div>
                             </div>
                             <div class="mb-4">
@@ -581,9 +573,6 @@
                                         <option value="二星级" {% if project and project.star_rating_target == '二星级' %}selected{% endif %}>二星级</option>
                                         <option value="三星级" {% if project and project.star_rating_target == '三星级' %}selected{% endif %}>三星级</option>
                                     </select>
-                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                        <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -746,9 +735,7 @@
                                                     <option value="组合形式" {% if project and project.air_conditioning_type == '组合形式' %}selected{% endif %}>组合形式</option>
                                                     <option value="无" {% if project and project.air_conditioning_type == '无' %}selected{% endif %}>无</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
+                                          
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
@@ -762,9 +749,7 @@
                                                     <option value="平均10-18层" {% if project and project.average_floors == '平均10-18层' %}selected{% endif %}>平均10-18层</option>
                                                     <option value="平均19层及以上" {% if project and project.average_floors == '平均19层及以上' %}selected{% endif %}>平均19层及以上</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
+                                                
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
@@ -775,9 +760,7 @@
                                                     <option value="有" {% if project and project.has_garbage_room == '有' %}selected{% endif %}>有</option>
                                                     <option value="无" {% if project and project.has_garbage_room == '无' %}selected{% endif %}>无</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
+                              
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
@@ -788,9 +771,7 @@
                                                     <option value="有" {% if project and project.has_elevator == '有' %}selected{% endif %}>有</option>
                                                     <option value="无" {% if project and project.has_elevator == '无' %}selected{% endif %}>无</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
+                                                
                                             </div>
                                         </td>
                                     </tr>
@@ -804,22 +785,17 @@
                                                     <option value="有" {% if project and project.has_underground_garage == '有' %}selected{% endif %}>有</option>
                                                     <option value="无" {% if project and project.has_underground_garage == '无' %}selected{% endif %}>无</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
+                                            
                                             </div>
                                         </td>
                                         <td class="px-4 py-3 whitespace-nowrap">
                                             <label for="construction_type" class="block text-sm font-medium text-gray-700 mb-1">项目建设情况</label>
                                             <div class="relative">
-                                                <select id="construction_type" name="construction_type" class="w-full px-3 py-2 border border-gray-300 rounded-md appearance-none pr-8" form="projectDetailForm">
+                                                <select id="construction_type" name="construction_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8" form="projectDetailForm">
                                                     <option value="">请选择</option>
                                                     <option value="新区建设" {% if project and project.construction_type == '新区建设' %}selected{% endif %}>新区建设</option>
                                                     <option value="旧区改建" {% if project and project.construction_type == '旧区改建' %}selected{% endif %}>旧区改建</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
@@ -830,9 +806,6 @@
                                                     <option value="有" {% if project and project.has_water_landscape == '有' %}selected{% endif %}>有</option>
                                                     <option value="无" {% if project and project.has_water_landscape == '无' %}selected{% endif %}>无</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
@@ -843,9 +816,6 @@
                                                     <option value="是" {% if project and project.is_fully_decorated == '是' %}selected{% endif %}>是</option>
                                                     <option value="否" {% if project and project.is_fully_decorated == '否' %}selected{% endif %}>否</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap">
@@ -865,9 +835,6 @@
                                                     <option value="卫生" {% if project and project.public_building_type == '卫生' %}selected{% endif %}>卫生</option>
                                                     <option value="社会福利" {% if project and project.public_building_type == '社会福利' %}selected{% endif %}>社会福利</option>
                                                 </select>
-                                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
-                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap"></td>

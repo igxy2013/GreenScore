@@ -236,9 +236,6 @@
   padding-left: 2.5rem;
   background-color: rgba(243, 244, 246, 0.5);
 }
-.menu-item {
-  font-weight: bold;
-}
 .submenu-item.active, .menu-item.active {
   background-color: rgba(49, 118, 255, 0.1);
   color: #3176FF;
