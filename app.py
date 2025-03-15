@@ -438,6 +438,33 @@ def save_project_info(form_data):
         db.session.commit()
         
         print(f"项目保存成功: ID={project.id}")
+        
+        # 自动保存基本级和提高级各专业的评分信息
+        try:
+            # 定义要保存的专业列表
+            specialties = ['建筑专业', '结构专业', '给排水专业', '暖通专业', '电气专业']
+            levels = ['基本级', '提高级']
+            
+            # 为每个等级和专业创建初始评分记录
+            for level in levels:
+                for specialty in specialties:
+                    # 创建空的评分数据
+                    score_data = {
+                        'level': level,
+                        'specialty': specialty,
+                        'project_id': project.id,
+                        'scores': [],
+                        'standard': project.standard
+                    }
+                    
+                    # 调用保存评分的函数
+                    save_score_for_new_project(score_data)
+            
+            print(f"已为项目 {project.id} 自动创建评分记录")
+        except Exception as e:
+            print(f"自动创建评分记录失败: {str(e)}")
+            # 不影响项目创建，继续执行
+        
         return project
     except Exception as e:
         db.session.rollback()
@@ -485,9 +512,21 @@ def create_project():
         construction_unit = request.form.get('construction_unit')
         design_unit = request.form.get('design_unit')
         project_location = request.form.get('project_location')
-        building_area = request.form.get('building_area')
         standard_selection = request.form.get('standard_selection')
         building_type = request.form.get('building_type')  # 获取建筑类型
+        star_rating_target = request.form.get('star_rating_target')  # 获取目标星级
+        import_star_case = request.form.get('import_star_case') == 'on'  # 是否导入一星级案例数据
+        
+        print(f"收到创建项目请求: 名称={project_name}, 标准={standard_selection}, 建筑类型={building_type}, 星级目标={star_rating_target}, 导入一星级案例={import_star_case}")
+        print(f"表单数据: {request.form}")
+        
+        # 验证必填字段
+        if not project_name:
+            raise ValueError("项目名称不能为空")
+        if not standard_selection:
+            raise ValueError("评价标准不能为空")
+        if not building_type:
+            raise ValueError("建筑类型不能为空")
         
         # 创建新项目
         project = Project(
@@ -497,21 +536,43 @@ def create_project():
             design_unit=design_unit,
             location=project_location,
             standard=standard_selection,
-            building_type=building_type  # 设置建筑类型
+            building_type=building_type,  # 设置建筑类型
+            star_rating_target=star_rating_target  # 设置目标星级
         )
-        
-        # 处理建筑面积
-        if building_area:
-            try:
-                project.building_area = float(building_area)
-            except ValueError:
-                pass
         
         # 保存到数据库
         db.session.add(project)
         db.session.commit()
         
-        # 重定向到项目页面
+        print(f"项目创建成功: ID={project.id}, 名称={project_name}, 标准={standard_selection}")
+        
+        # 自动导入星级案例数据
+        try:
+            print(f"开始自动导入星级案例数据到项目 {project.id}")
+            # 调用API导入星级案例数据，根据项目的评价标准和星级目标
+            import_url = f"/api/star_case_scores?target_project_id={project.id}"
+            with app.test_client() as client:
+                response = client.get(import_url)
+                result = response.get_json()
+                if result and result.get('success'):
+                    print(f"成功导入星级案例数据: {result.get('message')}")
+                else:
+                    error_msg = result.get('message') if result else "未知错误"
+                    print(f"导入星级案例数据失败: {error_msg}")
+                    # 如果导入失败，则使用默认方式创建评分记录
+                    print("使用默认方式创建评分记录...")
+                    # 直接使用SQL为新项目生成所有条文号的默认得分数据
+                    create_default_scores(project.id, project.name, standard_selection)
+            
+        except Exception as import_error:
+            print(f"导入星级案例数据出错: {str(import_error)}")
+            traceback.print_exc()
+            # 如果导入出错，则使用默认方式创建评分记录
+            print("使用默认方式创建评分记录...")
+            # 直接使用SQL为新项目生成所有条文号的默认得分数据
+            create_default_scores(project.id, project.name, standard_selection)
+        
+        # 重定向到项目详情页面
         return redirect(url_for('project_detail', project_id=project.id))
     except Exception as e:
         db.session.rollback()
@@ -1380,39 +1441,57 @@ def init_db():
 # 获取数据库连接
 def get_db_connection():
     """获取数据库连接"""
-    try:
-        # 获取数据库连接字符串
-        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-        
-        # 解析连接字符串
-        if 'sqlite' in db_uri:
-            # SQLite连接
-            db_path = db_uri.replace('sqlite:///', '')
-            return sqlite3.connect(db_path)
-        elif 'mssql' in db_uri:
-            # SQL Server连接
-            # 从连接字符串中提取参数
-            conn_parts = db_uri.replace('mssql+pyodbc://', '').split('?')[0].split('@')
-            user_pass = conn_parts[0].split(':')
-            server_db = conn_parts[1].split('/')
+    retry_count = 0
+    max_retries = 3
+    retry_delay = 2  # 秒
+    
+    while retry_count < max_retries:
+        try:
+            # 获取数据库连接字符串
+            db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+            print(f"尝试连接数据库 (尝试 {retry_count + 1}/{max_retries})...")
             
-            username = user_pass[0]
-            password = user_pass[1]
-            server = server_db[0]
-            database = server_db[1]
+            # 解析连接字符串
+            if 'sqlite' in db_uri:
+                # SQLite连接
+                db_path = db_uri.replace('sqlite:///', '')
+                conn = sqlite3.connect(db_path)
+                print(f"SQLite数据库连接成功: {db_path}")
+                return conn
+            elif 'mssql' in db_uri:
+                # SQL Server连接
+                # 从连接字符串中提取参数
+                conn_parts = db_uri.replace('mssql+pyodbc://', '').split('?')[0].split('@')
+                user_pass = conn_parts[0].split(':')
+                server_db = conn_parts[1].split('/')
+                
+                username = user_pass[0]
+                password = user_pass[1]
+                server = server_db[0]
+                database = server_db[1]
+                
+                # 构建连接字符串
+                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+                
+                # 创建连接
+                conn = pyodbc.connect(conn_str)
+                print(f"SQL Server数据库连接成功: 服务器={server}, 数据库={database}, 用户={username}")
+                return conn
+            else:
+                # 其他数据库类型
+                raise ValueError(f"不支持的数据库类型: {db_uri}")
+        except Exception as e:
+            retry_count += 1
+            print(f"获取数据库连接失败 (尝试 {retry_count}/{max_retries}): {str(e)}")
+            traceback.print_exc()
             
-            # 构建连接字符串
-            conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-            
-            # 创建连接
-            return pyodbc.connect(conn_str)
-        else:
-            # 其他数据库类型
-            raise ValueError(f"不支持的数据库类型: {db_uri}")
-    except Exception as e:
-        app.logger.error(f"获取数据库连接失败: {str(e)}")
-        traceback.print_exc()
-        raise
+            if retry_count < max_retries:
+                print(f"将在 {retry_delay} 秒后重试...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # 指数退避
+            else:
+                print("已达到最大重试次数，放弃连接")
+                raise
 
 # 获取评分汇总数据的函数
 def get_score_summary(project_id, force_refresh=False):
@@ -2169,6 +2248,626 @@ def execute_sql():
             'success': False,
             'message': f'处理请求失败: {str(e)}'
         }), 500
+
+@app.route('/api/project_scores', methods=['GET'])
+def check_project_scores():
+    """检查项目是否有得分数据的API端点"""
+    try:
+        # 获取请求参数
+        project_id = request.args.get('project_id')
+        standard = request.args.get('standard', '成都市标')
+        
+        if not project_id:
+            return jsonify({'error': '缺少必要参数: project_id'}), 400
+        
+        # 连接数据库
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 查询项目得分数据
+        query = """
+        SELECT COUNT(*) AS count
+        FROM [得分表]
+        WHERE [项目ID] = ?
+        """
+        
+        cursor.execute(query, (project_id,))
+        result = cursor.fetchone()
+        
+        # 获取得分记录数
+        score_count = result[0] if result else 0
+        
+        # 如果有得分记录，返回一些示例得分数据
+        scores = []
+        if score_count > 0:
+            sample_query = """
+            SELECT TOP 5 [条文号], [分类], [是否达标], [得分], [技术措施], [专业], [评价等级]
+            FROM [得分表]
+            WHERE [项目ID] = ?
+            """
+            cursor.execute(sample_query, (project_id,))
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                scores.append({
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'is_achieved': row[2],
+                    'score': row[3],
+                    'technical_measures': row[4],
+                    'specialty': row[5],
+                    'level': row[6]
+                })
+        
+        # 关闭数据库连接
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'project_id': project_id,
+            'standard': standard,
+            'has_scores': score_count > 0,
+            'score_count': score_count,
+            'scores': scores
+        })
+        
+    except Exception as e:
+        app.logger.error(f"检查项目得分数据时出错: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def save_score_for_new_project(data):
+    """为新创建的项目保存初始评分数据"""
+    try:
+        # 获取评价等级和专业
+        level = data.get('level')
+        specialty = data.get('specialty')
+        project_id = data.get('project_id')
+        standard = data.get('standard', '成都市标')
+        
+        print(f"开始为项目 {project_id} 创建 {level}-{specialty} 的初始评分记录，标准: {standard}")
+        
+        # 获取项目信息
+        project_name = None
+        if project_id:
+            try:
+                project = get_project(project_id)
+                if project:
+                    project_name = project.name
+                    print(f"获取到项目信息: ID={project_id}, 名称={project_name}")
+                else:
+                    print(f"未找到项目: ID={project_id}")
+                    return False
+            except Exception as e:
+                print(f"获取项目信息失败: {str(e)}")
+                traceback.print_exc()
+                return False
+        
+        # 根据标准获取条文数据
+        try:
+            # 获取该标准下该专业该级别的所有条文
+            standards_data = get_standards_by_name(standard)
+            print(f"获取到 {len(standards_data)} 条 {standard} 标准数据")
+            
+            # 过滤出该专业该级别的条文
+            filtered_standards = []
+            for std in standards_data:
+                # 检查专业是否匹配
+                if std.专业 == specialty:
+                    # 检查级别是否匹配
+                    if (level == '基本级' and std.属性 == '控制项') or \
+                       (level == '提高级' and std.属性 == '评分项'):
+                        filtered_standards.append(std)
+            
+            print(f"找到 {len(filtered_standards)} 条 {standard} 的 {specialty} 专业 {level} 级别条文")
+            
+            # 如果没有找到条文，返回失败
+            if not filtered_standards:
+                print(f"未找到 {standard} 的 {specialty} 专业 {level} 级别条文")
+                return False
+            
+            # 生成默认评分数据
+            scores = []
+            for std in filtered_standards:
+                # 基本级默认达标，提高级默认不达标
+                is_achieved = '是' if level == '基本级' else '否'
+                
+                # 创建评分数据
+                score_data = {
+                    'clause_number': std.条文号,
+                    'category': std.分类,
+                    'is_achieved': is_achieved,
+                    'score': '0',  # 默认得分为0
+                    'technical_measures': '',  # 默认技术措施为空
+                    'project_name': project_name
+                }
+                
+                scores.append(score_data)
+            
+            print(f"已生成 {len(scores)} 条默认评分数据")
+        except Exception as e:
+            print(f"生成默认评分数据失败: {str(e)}")
+            traceback.print_exc()
+            return False
+        
+        # 连接数据库
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            print("数据库连接成功")
+        except Exception as db_error:
+            print(f"数据库连接失败: {str(db_error)}")
+            traceback.print_exc()
+            return False
+        
+        # 检查得分表是否存在
+        try:
+            cursor.execute("SELECT TOP 1 * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '得分表'")
+            if not cursor.fetchone():
+                print("得分表不存在，尝试创建")
+                # 尝试创建得分表
+                create_table_query = """
+                CREATE TABLE [得分表] (
+                    [ID] INT IDENTITY(1,1) PRIMARY KEY,
+                    [项目ID] INT,
+                    [项目名称] NVARCHAR(100),
+                    [专业] NVARCHAR(50),
+                    [评价等级] NVARCHAR(20),
+                    [条文号] NVARCHAR(50),
+                    [分类] NVARCHAR(50),
+                    [是否达标] NVARCHAR(10),
+                    [得分] NVARCHAR(10),
+                    [技术措施] NVARCHAR(MAX),
+                    [评价标准] NVARCHAR(50)
+                )
+                """
+                cursor.execute(create_table_query)
+                conn.commit()
+                print("得分表创建成功")
+        except Exception as e:
+            print(f"检查或创建得分表失败: {str(e)}")
+            traceback.print_exc()
+            conn.close()
+            return False
+        
+        # 开始事务
+        try:
+            # 如果提供了项目ID，先删除该项目该专业该级别的所有评分记录
+            if project_id:
+                delete_query = """
+                DELETE FROM [得分表]
+                WHERE [项目ID] = ? AND [专业] = ? AND [评价等级] = ?
+                """
+                cursor.execute(delete_query, (project_id, specialty, level))
+                print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+            
+            # 插入评分数据
+            insert_count = 0
+            for score_data in scores:
+                # 获取评分数据
+                clause_number = score_data.get('clause_number')
+                category = score_data.get('category')
+                is_achieved = score_data.get('is_achieved')
+                score = score_data.get('score', '0')
+                technical_measures = score_data.get('technical_measures', '')
+                
+                # 插入评分记录
+                insert_query = """
+                INSERT INTO [得分表] (
+                    [项目ID], [项目名称], [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                
+                try:
+                    cursor.execute(
+                        insert_query,
+                        (
+                            project_id, project_name, specialty, level,
+                            clause_number, category, is_achieved, score,
+                            technical_measures, standard
+                        )
+                    )
+                    insert_count += 1
+                except Exception as insert_error:
+                    print(f"插入评分记录失败: {str(insert_error)}, 条文号: {clause_number}")
+                    continue
+            
+            # 提交事务
+            conn.commit()
+            
+            # 关闭数据库连接
+            conn.close()
+            
+            # 同时也保存到缓存
+            cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+            cache.set(cache_key, scores)
+            
+            print(f"已为项目 {project_id} 创建 {level}-{specialty} 的初始评分记录，共 {insert_count} 条")
+            return True
+        except Exception as e:
+            # 回滚事务
+            try:
+                conn.rollback()
+            except:
+                pass
+            
+            try:
+                conn.close()
+            except:
+                pass
+            
+            print(f"保存评分记录失败: {str(e)}")
+            traceback.print_exc()
+            return False
+    except Exception as e:
+        print(f"保存初始评分记录失败: {str(e)}")
+        traceback.print_exc()
+        return False
+
+@app.route('/api/star_case_scores', methods=['GET'])
+def get_star_case_scores():
+    """
+    从"星级案例"表获取项目的得分数据
+    
+    请求参数:
+    - target_project_id: 目标项目ID（可选，如果提供则直接导入数据到该项目）
+    
+    响应:
+    {
+        "success": true,             // 是否成功
+        "message": "获取成功",        // 消息
+        "data": {                    // 数据
+            "standard": "评价标准",
+            "star_rating_target": "星级目标",
+            "scores": [...]          // 得分数据列表
+        }
+    }
+    """
+    try:
+        # 获取目标项目ID（可选）
+        target_project_id = request.args.get('target_project_id')
+        
+        # 连接数据库
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            print("数据库连接成功")
+        except Exception as e:
+            print(f"数据库连接失败: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'数据库连接失败: {str(e)}'
+            }), 500
+        
+        try:
+            # 如果提供了目标项目ID，获取项目信息和评价标准
+            standard = '成都市标'  # 默认标准
+            star_rating_target = '一星级'  # 默认星级目标
+            
+            if target_project_id:
+                target_project = get_project(target_project_id)
+                if not target_project:
+                    return jsonify({
+                        'success': False,
+                        'message': f'目标项目(ID={target_project_id})不存在'
+                    }), 404
+                standard = target_project.standard
+                star_rating_target = target_project.star_rating_target or '一星级'
+                print(f"目标项目评价标准: {standard}, 星级目标: {star_rating_target}")
+            
+            # 从"星级案例"表获取数据，同时匹配评价标准和星级目标
+            scores_query = """
+            SELECT [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
+            FROM [星级案例]
+            WHERE [评价标准] = ? AND [星级目标] = ?
+            """
+            cursor.execute(scores_query, (standard, star_rating_target))
+            scores = cursor.fetchall()
+            
+            # 如果没有找到完全匹配的数据，则只匹配评价标准
+            if not scores:
+                print(f"未找到评价标准为\"{standard}\"且星级目标为\"{star_rating_target}\"的星级案例数据，尝试只匹配评价标准")
+                scores_query = """
+                SELECT [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
+                FROM [星级案例]
+                WHERE [评价标准] = ?
+                """
+                cursor.execute(scores_query, (standard,))
+                scores = cursor.fetchall()
+                
+                if not scores:
+                    return jsonify({
+                        'success': False,
+                        'message': f'未找到评价标准为"{standard}"的星级案例数据'
+                    }), 404
+                
+                print(f"获取到评价标准为\"{standard}\"的 {len(scores)} 条星级案例数据")
+            else:
+                print(f"获取到评价标准为\"{standard}\"且星级目标为\"{star_rating_target}\"的 {len(scores)} 条星级案例数据")
+            
+            # 如果提供了目标项目ID，则导入数据
+            if target_project_id:
+                # 开始事务
+                conn.autocommit = False
+                
+                # 先删除目标项目的所有得分数据
+                delete_query = """
+                DELETE FROM [得分表]
+                WHERE [项目ID] = ?
+                """
+                cursor.execute(delete_query, (target_project_id,))
+                deleted_count = cursor.rowcount
+                print(f"删除目标项目的 {deleted_count} 条得分数据")
+                
+                # 插入新的得分数据
+                inserted_count = 0
+                for score in scores:
+                    specialty, level, clause_number, category, is_achieved, score_value, technical_measures, standard = score
+                    
+                    insert_query = """
+                    INSERT INTO [得分表] (
+                        [项目ID], [项目名称], [专业], [评价等级], [条文号], 
+                        [分类], [是否达标], [得分], [技术措施], [评价标准]
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(
+                        insert_query,
+                        (target_project_id, target_project.name, specialty, level, clause_number,
+                         category, is_achieved, score_value, technical_measures, standard)
+                    )
+                    inserted_count += 1
+                    
+                    # 每100条提交一次，避免事务过大
+                    if inserted_count % 100 == 0:
+                        conn.commit()
+                        print(f"已提交 {inserted_count} 条记录")
+                
+                # 提交事务
+                conn.commit()
+                print(f"事务提交成功，共导入 {inserted_count} 条记录")
+                
+                # 清除目标项目的缓存
+                cache_key = f"score_summary_{target_project_id}_{target_project.standard}"
+                if cache.has(cache_key):
+                    cache.delete(cache_key)
+                    print(f"清除目标项目的评分汇总缓存: {cache_key}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'成功导入 {inserted_count} 条得分数据到项目"{target_project.name}"',
+                    'data': {
+                        'standard': standard,
+                        'star_rating_target': star_rating_target,
+                        'imported_count': inserted_count
+                    }
+                })
+            
+            # 如果没有提供目标项目ID，则只返回数据
+            scores_data = []
+            for score in scores:
+                specialty, level, clause_number, category, is_achieved, score_value, technical_measures, standard = score
+                scores_data.append({
+                    'specialty': specialty,
+                    'level': level,
+                    'clause_number': clause_number,
+                    'category': category,
+                    'is_achieved': is_achieved,
+                    'score': score_value,
+                    'technical_measures': technical_measures,
+                    'standard': standard
+                })
+            
+            return jsonify({
+                'success': True,
+                'message': '获取成功',
+                'data': {
+                    'standard': standard,
+                    'star_rating_target': star_rating_target,
+                    'scores_count': len(scores),
+                    'scores': scores_data[:10]  # 只返回前10条数据作为示例
+                }
+            })
+        
+        except Exception as e:
+            # 回滚事务
+            if target_project_id:
+                conn.rollback()
+            print(f"数据库操作失败: {str(e)}")
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'message': f'数据库操作失败: {str(e)}'
+            }), 500
+        
+        finally:
+            # 关闭数据库连接
+            cursor.close()
+            conn.close()
+            print("数据库连接已关闭")
+    
+    except Exception as e:
+        print(f"处理请求失败: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
+
+def create_default_scores(project_id, project_name, standard_selection):
+    """
+    为项目创建默认评分记录
+    
+    参数:
+    - project_id: 项目ID
+    - project_name: 项目名称
+    - standard_selection: 评价标准
+    """
+    try:
+        # 连接数据库
+        print("尝试连接数据库...")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        print("数据库连接成功")
+        
+        # 检查得分表是否存在，如果不存在则创建
+        try:
+            print("检查得分表是否存在...")
+            cursor.execute("SELECT TOP 1 * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '得分表'")
+            table_exists = cursor.fetchone()
+            if not table_exists:
+                print("得分表不存在，创建新表")
+                create_table_sql = """
+                CREATE TABLE [得分表] (
+                    [ID] INT IDENTITY(1,1) PRIMARY KEY,
+                    [项目ID] INT,
+                    [项目名称] NVARCHAR(100),
+                    [专业] NVARCHAR(50),
+                    [评价等级] NVARCHAR(20),
+                    [条文号] NVARCHAR(50),
+                    [分类] NVARCHAR(50),
+                    [是否达标] NVARCHAR(10),
+                    [得分] NVARCHAR(10),
+                    [技术措施] NVARCHAR(MAX),
+                    [评价标准] NVARCHAR(50)
+                )
+                """
+                cursor.execute(create_table_sql)
+                conn.commit()
+                print("得分表创建成功")
+            else:
+                print("得分表已存在")
+        except Exception as e:
+            print(f"检查或创建得分表失败: {str(e)}")
+            traceback.print_exc()
+        
+        # 获取标准数据
+        print(f"获取标准数据: {standard_selection}")
+        standards_data = get_standards_by_name(standard_selection)
+        if standards_data:
+            print(f"获取到 {len(standards_data)} 条 {standard_selection} 标准数据")
+            # 打印前5条标准数据的示例
+            if len(standards_data) > 0:
+                print("标准数据示例:")
+                for i, std in enumerate(standards_data[:5]):
+                    try:
+                        print(f"  {i+1}. 条文号: {std.条文号}, 专业: {std.专业}, 属性: {std.属性}, 分类: {std.分类}")
+                    except Exception as attr_error:
+                        print(f"  {i+1}. 无法显示标准数据: {str(attr_error)}")
+        else:
+            print(f"未获取到 {standard_selection} 标准数据")
+            # 尝试获取默认标准数据
+            print("尝试获取默认标准数据")
+            standards_data = get_standards_by_name('成都市标')
+            if standards_data:
+                print(f"获取到 {len(standards_data)} 条默认标准数据")
+                # 打印前5条标准数据的示例
+                if len(standards_data) > 0:
+                    print("默认标准数据示例:")
+                    for i, std in enumerate(standards_data[:5]):
+                        try:
+                            print(f"  {i+1}. 条文号: {std.条文号}, 专业: {std.专业}, 属性: {std.属性}, 分类: {std.分类}")
+                        except Exception as attr_error:
+                            print(f"  {i+1}. 无法显示标准数据: {str(attr_error)}")
+            else:
+                print("未获取到任何标准数据")
+                raise Exception("未获取到任何标准数据")
+        
+        # 定义要处理的专业和级别
+        specialties = ['建筑专业', '结构专业', '给排水专业', '暖通专业', '电气专业']
+        levels = ['基本级', '提高级']
+        
+        # 为每个专业和级别生成评分数据
+        total_inserted = 0
+        for specialty in specialties:
+            for level in levels:
+                # 过滤出该专业该级别的条文
+                filtered_standards = []
+                for std in standards_data:
+                    try:
+                        if std.专业 == specialty:
+                            if (level == '基本级' and std.属性 == '控制项') or \
+                               (level == '提高级' and std.属性 == '评分项'):
+                                filtered_standards.append(std)
+                    except Exception as attr_error:
+                        print(f"处理标准数据时出错: {str(attr_error)}, 标准数据: {std}")
+                        continue
+                
+                print(f"找到 {len(filtered_standards)} 条 {standard_selection} 的 {specialty} 专业 {level} 级别条文")
+                
+                # 如果找到了条文，则插入评分数据
+                if filtered_standards:
+                    # 先删除该项目该专业该级别的所有评分记录
+                    try:
+                        delete_sql = """
+                        DELETE FROM [得分表]
+                        WHERE [项目ID] = ? AND [专业] = ? AND [评价等级] = ?
+                        """
+                        cursor.execute(delete_sql, (project_id, specialty, level))
+                        print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                    except Exception as delete_error:
+                        print(f"删除评分记录失败: {str(delete_error)}")
+                        traceback.print_exc()
+                    
+                    # 插入新的评分记录
+                    insert_count = 0
+                    insert_errors = 0
+                    for std in filtered_standards:
+                        # 基本级默认达标，提高级默认不达标
+                        is_achieved = '是' if level == '基本级' else '否'
+                        
+                        # 插入评分记录
+                        insert_sql = """
+                        INSERT INTO [得分表] (
+                            [项目ID], [项目名称], [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """
+                        
+                        try:
+                            cursor.execute(
+                                insert_sql,
+                                (
+                                    project_id, project_name, specialty, level,
+                                    std.条文号, std.分类, is_achieved, '0',
+                                    '', standard_selection
+                                )
+                            )
+                            insert_count += 1
+                            # 每插入10条记录提交一次事务，避免事务过大
+                            if insert_count % 10 == 0:
+                                conn.commit()
+                                print(f"已提交 {insert_count} 条记录")
+                        except Exception as insert_error:
+                            insert_errors += 1
+                            print(f"插入评分记录失败: {str(insert_error)}, 条文号: {std.条文号}")
+                            if insert_errors <= 3:  # 只打印前3个错误的详细信息
+                                traceback.print_exc()
+                            continue
+                    
+                    print(f"为项目 {project_id} 的 {specialty} 专业 {level} 级别插入了 {insert_count} 条评分记录，失败 {insert_errors} 条")
+                    total_inserted += insert_count
+        
+        # 提交事务并关闭连接
+        try:
+            conn.commit()
+            print("最终提交事务成功")
+        except Exception as commit_error:
+            print(f"提交事务失败: {str(commit_error)}")
+            traceback.print_exc()
+        
+        try:
+            conn.close()
+            print("数据库连接关闭成功")
+        except Exception as close_error:
+            print(f"关闭数据库连接失败: {str(close_error)}")
+            traceback.print_exc()
+        
+        print(f"为项目 {project_id} 总共插入了 {total_inserted} 条评分记录")
+        return True
+    
+    except Exception as e:
+        print(f"生成项目评分数据失败: {str(e)}")
+        traceback.print_exc()
+        return False
 
 if __name__ == '__main__':
     # 初始化数据库

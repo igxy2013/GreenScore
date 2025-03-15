@@ -543,15 +543,32 @@
                             </div>
                             
                             <div class="mb-4">
-                                <label for="standard_selection" class="block text-base font-medium text-primary mb-2">评价标准 <span class="text-red-500">*</span></label>
-                                <div class="relative">
-                                    <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button  appearance-none pr-8" required>
-                                        <option value="">请选择评价标准</option>
-                                        <option value="国标" {% if project and project.standard == '国标' %}selected{% endif %}>绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
-                                        <option value="四川省标" {% if project and project.standard == '四川省标' %}selected{% endif %}>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
-                                        <option value="成都市标" {% if project and project.standard == '成都市标' %}selected{% endif %}>成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
-                                    </select>
-
+                                <label for="standard_selection" class="block text-base font-medium text-primary mb-2">评价标准</label>
+                                <div class="mt-2">
+                                    {% if project and project.standard %}
+                                        {% if project.standard == '国标' %}
+                                            <div class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                                <span>绿色建筑评价标准 GB/T 50378-2019（2024版）</span>
+                                            </div>
+                                        {% elif project.standard == '四川省标' %}
+                                            <div class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                                <span>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</span>
+                                            </div>
+                                        {% elif project.standard == '成都市标' %}
+                                            <div class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+                                                <span>成都市绿色建筑施工图设计与审查技术要点（2024版）</span>
+                                            </div>
+                                        {% else %}
+                                            <div class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                                                <span>{{ project.standard }}</span>
+                                            </div>
+                                        {% endif %}
+                                        <input type="hidden" name="standard_selection" value="{{ project.standard }}">
+                                    {% else %}
+                                        <div class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                                            <span>未设置</span>
+                                        </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -589,77 +606,6 @@
                             </button>
                         </div>
                     </form>
-                    
-                    <!-- 添加JavaScript代码，处理保存信息按钮点击事件 -->
-                    <script>
-                        document.addEventListener('DOMContentLoaded', function() {
-                            // 获取保存信息按钮
-                            const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
-                            
-                            // 如果按钮存在，添加点击事件处理
-                            if (saveProjectInfoBtn) {
-                                saveProjectInfoBtn.addEventListener('click', function(e) {
-                                    // 阻止表单默认提交行为
-                                    e.preventDefault();
-                                    
-                                    // 保存详细信息表格中的数据到临时存储
-                                    const detailInputs = document.querySelectorAll('input[form="projectDetailForm"]');
-                                    const detailSelects = document.querySelectorAll('select[form="projectDetailForm"]');
-                                    const tempData = {};
-                                    
-                                    // 保存输入框的值
-                                    detailInputs.forEach(input => {
-                                        tempData[input.id] = input.value;
-                                    });
-                                    
-                                    // 保存下拉框的值
-                                    detailSelects.forEach(select => {
-                                        tempData[select.id] = select.value;
-                                    });
-                                    
-                                    // 将临时数据存储到localStorage
-                                    localStorage.setItem('projectDetailTempData', JSON.stringify(tempData));
-                                    
-                                    // 提交基本信息表单
-                                    document.querySelector('form[action="{{ url_for("index") }}"]').submit();
-                                });
-                            }
-                            
-                            // 页面加载时，恢复之前保存的详细信息数据
-                            const restoreDetailData = function() {
-                                const tempDataStr = localStorage.getItem('projectDetailTempData');
-                                if (tempDataStr) {
-                                    try {
-                                        const tempData = JSON.parse(tempDataStr);
-                                        
-                                        // 恢复输入框的值
-                                        const detailInputs = document.querySelectorAll('input[form="projectDetailForm"]');
-                                        detailInputs.forEach(input => {
-                                            if (tempData[input.id]) {
-                                                input.value = tempData[input.id];
-                                            }
-                                        });
-                                        
-                                        // 恢复下拉框的值
-                                        const detailSelects = document.querySelectorAll('select[form="projectDetailForm"]');
-                                        detailSelects.forEach(select => {
-                                            if (tempData[select.id]) {
-                                                select.value = tempData[select.id];
-                                            }
-                                        });
-                                        
-                                        // 清除临时数据
-                                        localStorage.removeItem('projectDetailTempData');
-                                    } catch (e) {
-                                        console.error('恢复详细信息数据失败:', e);
-                                    }
-                                }
-                            };
-                            
-                            // 页面加载完成后恢复数据
-                            setTimeout(restoreDetailData, 500);
-                        });
-                    </script>
                     
                     <div class="mt-8 mb-4">
                         <h3 class="text-xl font-medium text-primary mb-4">项目详细信息</h3>
@@ -854,19 +800,18 @@
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap"></td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
-                                            <button type="submit" form="projectDetailForm" class="mt-4 px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
-                                                保存详细信息
-                                            </button>
-                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
+                    <div>
+                        <button type="submit" form="projectDetailForm" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                            保存详细信息
+                        </button>
+                    </div>
                         <!-- 自动计算得分 --> 
-                    <label class="ftext-gray-700">绿建得分计算</label>
+                    <label class="ftext-gray-700">绿建得分自动计算</label>
                     <div class="text-sm text-gray-700" style="font-style: italic;">
                         <label id="per_capita_land_score">人均居住用地指标得分：</label>
                         <label id="plot_ratio_score">公建容积率指标得分：</label>
@@ -875,6 +820,29 @@
                         <label id="parking_score">停车设施得分：</label>
                     </div>
                     <script>
+                        // 页面加载完成后执行计算和更新
+                        document.addEventListener('DOMContentLoaded', function() {
+                            calculateAndUpdateScores();
+                            
+                            // 监听表单字段变化，重新计算得分
+                            const formFields = [
+                                'total_land_area', 'residential_units', 'avg_floors', 'building_type',
+                                'underground_area', 'first_floor_underground_area', 'above_ground_area',
+                                'green_area', 'construction_type', 'public_green_space', 'climate_zone',
+                                'plot_ratio', 'public_building_type', 'green_ratio', 'ground_parking_spaces',
+                                'has_underground_garage'
+                            ];
+                            
+                            formFields.forEach(fieldId => {
+                                const field = document.getElementById(fieldId);
+                                if (field) {
+                                    field.addEventListener('change', calculateAndUpdateScores);
+                                }
+                            });
+                        });
+                        
+                        // 计算得分并更新数据库
+                        function calculateAndUpdateScores() {
                             //总用地面积
                             const totalLandArea = parseFloat(document.getElementById('total_land_area').value) || 0;
                             //住宅总套数
@@ -942,16 +910,54 @@
                             document.getElementById('underground_score').innerHTML = '地下空间开发利用得分：' + undergroundScore;
                             document.getElementById('green_space_score').innerHTML = '绿化用地指标得分：' + greenSpaceScore;
                             document.getElementById('parking_score').innerHTML = '停车设施得分：' + parkingScore;
+                            
                             // 修改多个条文的得分
-                            if (buildingType === '住宅建筑'){
-                            updateDatabaseScore('3.1.2.14', perCapitaLandScore);
-                            } else if (buildingType === '公共建筑'){
-                            updateDatabaseScore('3.1.2.14', plotRatioScore);
+                            let standard = document.getElementById('current-project-standard').value || '成都市标';
+                            let projectId = document.getElementById('current-project-id').value;
+                            
+                            if (!projectId) {
+                                console.log('未找到项目ID，无法更新得分');
+                                return;
                             }
-                            updateDatabaseScore('3.1.2.15', undergroundScore);
-                            updateDatabaseScore('3.1.2.21', greenSpaceScore);
-                            updateDatabaseScore('3.1.2.16', parkingScore);
-
+                            
+                            try {
+                                if (standard === '成都市标'){
+                                    if (buildingType === '住宅建筑'){
+                                        updateDatabaseScore('3.1.2.14', perCapitaLandScore, projectId);
+                                    } else if (buildingType === '公共建筑'){
+                                        updateDatabaseScore('3.1.2.14', plotRatioScore, projectId);
+                                    }
+                                    updateDatabaseScore('3.1.2.15', undergroundScore, projectId);
+                                    updateDatabaseScore('3.1.2.21', greenSpaceScore, projectId);
+                                    updateDatabaseScore('3.1.2.16', parkingScore, projectId);
+                                }
+                                else if (standard === '四川省标'){
+                                    if (buildingType === '住宅建筑'){
+                                        updateDatabaseScore('3.1.16', perCapitaLandScore, projectId);
+                                    }
+                                    else if (buildingType === '公共建筑'){
+                                        updateDatabaseScore('3.1.16', plotRatioScore, projectId);
+                                    }
+                                    updateDatabaseScore('3.1.17', undergroundScore, projectId);
+                                    updateDatabaseScore('3.1.25', greenSpaceScore, projectId);
+                                    updateDatabaseScore('3.1.18', parkingScore, projectId);
+                                }
+                                else if (standard === '国标'){
+                                    if (buildingType === '住宅建筑'){
+                                        updateDatabaseScore('7.2.1', perCapitaLandScore, projectId);
+                                    }
+                                    else if (buildingType === '公共建筑'){
+                                        updateDatabaseScore('7.2.1', plotRatioScore, projectId);
+                                    }
+                                    updateDatabaseScore('7.2.2', undergroundScore, projectId);
+                                    updateDatabaseScore('8.2.3', greenSpaceScore, projectId);
+                                    updateDatabaseScore('7.2.3', parkingScore, projectId);
+                                }
+                                console.log('得分更新完成');
+                            } catch (error) {
+                                console.error('更新得分时出错:', error);
+                            }
+                        }
                     </script>
 
                     
@@ -2136,55 +2142,5 @@
         }
     }
     </script>
-
-    <!-- <script>
-        // 页面加载完成后执行
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化代码
-        }); -->
-        
-        <!-- // // 测试SQL执行功能
-        // function testSQLExecution() {
-        //     const sql = prompt("请输入要执行的SQL语句:", "SELECT TOP 5 * FROM dbo.ClauseScores");
-        //     if (sql) {
-        //         executeSQL(sql, (error, results) => {
-        //             if (error) {
-        //                 console.error('SQL执行失败:', error);
-        //                 alert(`SQL执行失败: ${error.message}`);
-        //             } else {
-        //                 console.log('SQL执行结果:', results);
-        //                 alert(`SQL执行成功，返回 ${results.length} 条记录`);
-        //             }
-        //         });
-        //     }
-        // }
-        
-        // // 测试更新得分功能
-        // function testUpdateScore() {
-        //     const clauseNumber = prompt("请输入条文编号:", "3.1.2.14");
-        //     if (!clauseNumber) return;
-            
-        //     const score = prompt("请输入得分:", "12");
-        //     if (!score) return;
-            
-        //     updateScoreWithSQL(clauseNumber, parseInt(score));
-        // }
-        
-        // // 测试查询得分功能
-        // function testQueryScore() {
-        //     const clauseNumber = prompt("请输入条文编号:", "3.1.2.14");
-        //     if (clauseNumber) {
-        //         queryScoreWithSQL(clauseNumber);
-        //     }
-        // } -->
-    <!-- // </script> -->
-    
-    <!-- 测试按钮 -->
-    <!-- <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
-        <button onclick="testSQLExecution()" style="margin: 5px; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">测试SQL执行</button>
-        <button onclick="testUpdateScore()" style="margin: 5px; padding: 10px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">测试更新得分</button>
-        <button onclick="testQueryScore()" style="margin: 5px; padding: 10px; background-color: #FF9800; color: white; border: none; border-radius: 5px; cursor: pointer;">测试查询得分</button>
-        <button onclick="testBatchUpdate()" style="margin: 5px; padding: 10px; background-color: #9C27B0; color: white; border: none; border-radius: 5px; cursor: pointer;">测试批量更新</button>
-    </div> -->
 </body>
 </html>

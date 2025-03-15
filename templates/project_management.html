@@ -71,9 +71,9 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">项目编号</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">建设单位</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">目标星级</th>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">建筑类型</th>
+                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">评价标准</th>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
                             <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">操作</th>
                         </tr>
@@ -164,7 +164,7 @@
                                     <option value="">请选择建筑类型</option>
                                     <option value="住宅建筑">住宅建筑</option>
                                     <option value="公共建筑">公共建筑</option>
-                                    <option value="工业建筑">工业建筑</option>
+                                    <option value="住宅+公共建筑">住宅+公共建筑</option>
                                 </select>
                                 <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                                     <i class="ri-arrow-down-s-line text-gray-400"></i>
@@ -173,8 +173,19 @@
                         </div>
                         
                         <div>
-                            <label for="building_area" class="block text-base font-medium text-gray-700 mb-1">建筑面积（平方米）</label>
-                            <input type="number" id="building_area" name="building_area" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建筑面积">
+                            <label for="target_star_level" class="block text-base font-medium text-gray-700 mb-1">目标星级</label>
+                            <div class="relative">
+                                <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
+                                    <option value="">请选择目标星级</option>
+                                    <option value="基本级">基本级</option>
+                                    <option value="一星级">一星级</option>
+                                    <option value="二星级">二星级</option>
+                                    <option value="三星级">三星级</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -394,9 +405,9 @@
                     
                     row.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${project.name || '未设置'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.code || '未设置'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.construction_unit || '未设置'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.star_rating_target || '未设置'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${buildingType}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.standard || '未设置'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at || '未知'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm flex space-x-2">
                             <a href="/project/${project.id}" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
