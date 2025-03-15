@@ -16,7 +16,7 @@ if not exist .env (
 
 REM 安装依赖
 echo 正在安装依赖...
-pip install -r requirements.txt
+pip install --user -r requirements.txt
 if %ERRORLEVEL% neq 0 (
     echo 安装依赖失败，请检查网络连接和requirements.txt文件
     pause

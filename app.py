@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
 from flask_migrate import Migrate
@@ -14,6 +14,7 @@ import json
 from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
+from flask_cors import CORS
 
 # 加载环境变量
 load_dotenv()
@@ -33,6 +34,9 @@ logger.addHandler(handler)
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.logger = logger
+
+# 配置CORS
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # 判断是否为生产环境
 is_production = os.environ.get('FLASK_ENV') == 'production'
@@ -111,6 +115,7 @@ class Project(db.Model):
     has_water_landscape = db.Column(db.String(10))  # 有无景观水体
     is_fully_decorated = db.Column(db.String(10))  # 是否为全装修项目
     public_building_type = db.Column(db.String(50))  # 公建类型
+    public_green_space = db.Column(db.String(10))  # 绿地向公众开放
     
     
     def to_dict(self):
@@ -151,6 +156,7 @@ class Project(db.Model):
             'has_water_landscape': self.has_water_landscape,
             'is_fully_decorated': self.is_fully_decorated,
             'public_building_type': self.public_building_type,
+            'public_green_space': self.public_green_space,
         }
 
 # 添加四川省标和通用国标的模型
@@ -419,8 +425,13 @@ def save_project_info(form_data):
         project.is_fully_decorated = form_data.get('is_fully_decorated', '')
         project.public_building_type = form_data.get('public_building_type', '')
         
+        # 处理public_green_space字段
+        public_green_space = form_data.get('public_green_space', '')
+        print(f"处理public_green_space字段: {public_green_space}")
+        project.public_green_space = public_green_space
+        
         # 打印调试信息
-        print(f"保存项目信息: ID={project.id}, 名称={project.name}, 评价标准={project.standard}, 公建类型={project.public_building_type}")
+        print(f"保存项目信息: ID={project.id}, 名称={project.name}, 评价标准={project.standard}, 公建类型={project.public_building_type}, 绿地向公众开放={project.public_green_space}")
         
         # 保存到数据库
         db.session.add(project)
@@ -617,9 +628,17 @@ def handle_form():
         if form_type == 'project_info':
             # 处理项目信息表单提交
             print("处理项目信息表单...")
+            # 检查是否是详细信息表单
+            is_detail_form = request.form.get('detail_form') == '1'
+            print(f"表单类型: {'详细信息表单' if is_detail_form else '基本信息表单'}")
+            
+            # 检查public_green_space字段
+            public_green_space = request.form.get('public_green_space', '')
+            print(f"绿地向公众开放: {public_green_space}")
+            
             project = save_project_info(request.form)
             if project:
-                print(f"项目信息保存成功: ID={project.id}, 名称={project.name}, 标准={project.standard}")
+                print(f"项目信息保存成功: ID={project.id}, 名称={project.name}, 标准={project.standard}, 绿地向公众开放={project.public_green_space}")
                 # 重定向回项目详情页面
                 return redirect(url_for('project_detail', project_id=project.id))
             else:
@@ -1323,6 +1342,7 @@ def check_and_add_missing_columns():
             'has_water_landscape': 'NVARCHAR(10)',
             'is_fully_decorated': 'NVARCHAR(10)',
             'public_building_type': 'NVARCHAR(50)',
+            'public_green_space': 'NVARCHAR(10)',
         }
         
         # 检查并添加缺失的列
@@ -1656,6 +1676,499 @@ def get_test_score_data():
         'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'is_test_data': True
     }
+
+@app.route('/update_score', methods=['POST'])
+def update_score():
+    """
+    接收并处理更新项目得分的请求
+    """
+    try:
+        # 获取JSON数据
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': '未接收到数据'}), 400
+        
+        # 提取必要的字段
+        project_id = data.get('project_id')
+        standard = data.get('standard')
+        clause_number = data.get('clause_number')
+        score = data.get('score')
+        page = data.get('page')
+        level = data.get('level')
+        
+        # 验证必要字段
+        if not all([project_id, standard, clause_number, score is not None]):
+            return jsonify({'success': False, 'message': '缺少必要的字段'}), 400
+        
+        # 连接数据库
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 检查项目是否存在
+        cursor.execute("SELECT id FROM projects WHERE id = ?", (project_id,))
+        project = cursor.fetchone()
+        
+        if not project:
+            conn.close()
+            return jsonify({'success': False, 'message': '项目不存在'}), 404
+        
+        # 检查得分记录是否已存在
+        cursor.execute(
+            "SELECT id FROM project_scores WHERE project_id = ? AND standard = ? AND clause_number = ?",
+            (project_id, standard, clause_number)
+        )
+        existing_score = cursor.fetchone()
+        
+        if existing_score:
+            # 更新现有记录
+            cursor.execute(
+                """
+                UPDATE project_scores 
+                SET score = ?, page = ?, level = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE project_id = ? AND standard = ? AND clause_number = ?
+                """,
+                (score, page, level, project_id, standard, clause_number)
+            )
+            app.logger.info(f"更新项目 {project_id} 的得分记录，条文号: {clause_number}, 分值: {score}")
+        else:
+            # 创建新记录
+            cursor.execute(
+                """
+                INSERT INTO project_scores (project_id, standard, clause_number, score, page, level, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """,
+                (project_id, standard, clause_number, score, page, level)
+            )
+            app.logger.info(f"创建项目 {project_id} 的新得分记录，条文号: {clause_number}, 分值: {score}")
+        
+        # 提交事务并关闭连接
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': '得分更新成功'})
+        
+    except Exception as e:
+        app.logger.error(f"更新得分时出错: {str(e)}")
+        return jsonify({'success': False, 'message': f'服务器错误: {str(e)}'}), 500
+
+# 添加新的路由用于直接更新得分
+@app.route('/api/update_score_direct', methods=['POST'])
+def update_score_direct():
+    """
+    直接更新数据库中的得分
+    
+    请求参数:
+    {
+        "project_id": 1,                 // 项目ID
+        "clause_number": "3.1.2.14",     // 条文号
+        "score": 12,                     // 得分值
+        "standard": "成都市标",           // 评价标准
+        "specialty": "建筑专业",          // 专业，可选
+        "level": "提高级",               // 评价等级，可选
+        "category": "资源节约",           // 分类，可选
+        "is_achieved": "true"            // 是否达标，可选
+    }
+    
+    响应:
+    {
+        "success": true,                 // 是否成功
+        "message": "更新成功",            // 消息
+        "data": {                        // 更新后的数据
+            "project_id": 1,
+            "clause_number": "3.1.2.14",
+            "score": 12,
+            "standard": "成都市标"
+        }
+    }
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '未接收到JSON数据'
+            }), 400
+        
+        # 验证必要参数
+        project_id = data.get('project_id')
+        clause_number = data.get('clause_number')
+        score = data.get('score')
+        standard = data.get('standard', '成都市标')
+        
+        # 可选参数
+        specialty = data.get('specialty', '建筑专业')
+        level = data.get('level', '提高级')
+        category = data.get('category', '资源节约')
+        is_achieved = data.get('is_achieved', 'true')
+        technical_measures = data.get('technical_measures', '')
+        
+        # 记录请求信息
+        app.logger.info(f"接收到更新请求: 项目ID={project_id}, 条文号={clause_number}, 得分={score}, 标准={standard}")
+        
+        # 验证必要参数
+        if not all([project_id, clause_number, score is not None]):
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数: project_id, clause_number, score'
+            }), 400
+        
+        # 连接数据库
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            app.logger.info("数据库连接成功")
+        except Exception as e:
+            app.logger.error(f"数据库连接失败: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'数据库连接失败: {str(e)}'
+            }), 500
+        
+        try:
+            # 开始事务
+            conn.autocommit = False
+            
+            # 先检查记录是否存在
+            check_query = """
+            SELECT COUNT(*) FROM [得分表]
+            WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+            """
+            cursor.execute(check_query, (project_id, clause_number, standard))
+            count = cursor.fetchone()[0]
+            
+            if count > 0:
+                # 更新现有记录，只修改得分字段
+                update_query = """
+                UPDATE [得分表]
+                SET [得分] = ?
+                WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+                """
+                cursor.execute(
+                    update_query,
+                    (score, project_id, clause_number, standard)
+                )
+                app.logger.info(f"更新记录: 影响行数={cursor.rowcount}")
+            else:
+                # 插入新记录
+                insert_query = """
+                INSERT INTO [得分表] (
+                    [项目ID], [项目名称], [专业], [评价等级], [条文号], 
+                    [分类], [是否达标], [得分], [技术措施], [评价标准]
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """
+                cursor.execute(
+                    insert_query,
+                    (project_id, f'项目{project_id}', specialty, level, clause_number,
+                     category, is_achieved, score, technical_measures, standard)
+                )
+                app.logger.info(f"插入记录: 影响行数={cursor.rowcount}")
+            
+            # 提交事务
+            conn.commit()
+            app.logger.info("事务提交成功")
+            
+            # 验证更新是否成功
+            verify_query = """
+            SELECT [得分] FROM [得分表]
+            WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+            """
+            cursor.execute(verify_query, (project_id, clause_number, standard))
+            result = cursor.fetchone()
+            
+            if result:
+                actual_score = result[0]
+                app.logger.info(f"验证成功: 条文 {clause_number} 的得分为 {actual_score}")
+                
+                # 返回成功响应
+                return jsonify({
+                    'success': True,
+                    'message': '更新成功',
+                    'data': {
+                        'project_id': project_id,
+                        'clause_number': clause_number,
+                        'score': actual_score,
+                        'standard': standard
+                    }
+                })
+            else:
+                app.logger.error(f"验证失败: 未找到条文 {clause_number} 的记录")
+                return jsonify({
+                    'success': False,
+                    'message': f'验证失败: 未找到条文 {clause_number} 的记录'
+                }), 500
+        
+        except Exception as e:
+            # 回滚事务
+            conn.rollback()
+            app.logger.error(f"数据库操作失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({
+                'success': False,
+                'message': f'数据库操作失败: {str(e)}'
+            }), 500
+        
+        finally:
+            # 关闭数据库连接
+            cursor.close()
+            conn.close()
+            app.logger.info("数据库连接已关闭")
+    
+    except Exception as e:
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
+
+# 添加新的路由用于根据条文号查询得分
+@app.route('/api/get_score_by_clause', methods=['POST'])
+def get_score_by_clause():
+    """
+    根据条文号查询得分
+    
+    请求参数:
+    {
+        "project_id": 1,                 // 项目ID
+        "clause_number": "3.1.2.14",     // 条文号
+        "standard": "成都市标"            // 评价标准
+    }
+    
+    响应:
+    {
+        "success": true,                 // 是否成功
+        "message": "查询成功",            // 消息
+        "clause_number": "3.1.2.14",     // 条文号
+        "score": 12,                     // 得分值
+        "category": "资源节约",           // 分类
+        "specialty": "建筑专业",          // 专业
+        "is_achieved": "true"            // 是否达标
+    }
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '未接收到JSON数据'
+            }), 400
+        
+        # 验证必要参数
+        project_id = data.get('project_id')
+        clause_number = data.get('clause_number')
+        standard = data.get('standard', '成都市标')
+        
+        # 记录请求信息
+        app.logger.info(f"接收到查询请求: 项目ID={project_id}, 条文号={clause_number}, 标准={standard}")
+        
+        # 验证必要参数
+        if not all([project_id, clause_number]):
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数: project_id, clause_number'
+            }), 400
+        
+        # 连接数据库
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            app.logger.info("数据库连接成功")
+        except Exception as e:
+            app.logger.error(f"数据库连接失败: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'数据库连接失败: {str(e)}'
+            }), 500
+        
+        try:
+            # 查询记录
+            query = """
+            SELECT [条文号], [分类], [专业], [是否达标], [得分]
+            FROM [得分表]
+            WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+            """
+            cursor.execute(query, (project_id, clause_number, standard))
+            result = cursor.fetchone()
+            
+            # 关闭数据库连接
+            cursor.close()
+            conn.close()
+            
+            if result:
+                # 返回成功响应
+                return jsonify({
+                    'success': True,
+                    'message': '查询成功',
+                    'clause_number': result[0],
+                    'category': result[1],
+                    'specialty': result[2],
+                    'is_achieved': result[3],
+                    'score': result[4]
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': f'未找到条文 {clause_number} 的记录'
+                }), 404
+        
+        except Exception as e:
+            app.logger.error(f"数据库查询失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            
+            # 关闭数据库连接
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+            if 'conn' in locals() and conn:
+                conn.close()
+                
+            return jsonify({
+                'success': False,
+                'message': f'数据库查询失败: {str(e)}'
+            }), 500
+    
+    except Exception as e:
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
+
+# 添加新的路由用于执行SQL语句
+@app.route('/api/execute_sql', methods=['POST'])
+def execute_sql():
+    """
+    执行SQL语句
+    
+    请求参数:
+    {
+        "sql": "SQL语句",
+        "params": [参数1, 参数2, ...] (可选)
+    }
+    
+    响应:
+    {
+        "success": true,
+        "message": "执行成功",
+        "results": [
+            {
+                "column1": "value1",
+                "column2": "value2"
+            }
+        ]
+    }
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '未接收到JSON数据'
+            }), 400
+        
+        # 获取SQL语句和参数
+        sql = data.get('sql')
+        params = data.get('params', [])
+        
+        if not sql:
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数: sql'
+            }), 400
+        
+        # 记录请求信息
+        app.logger.info(f"接收到SQL执行请求: {sql}, 参数: {params}")
+        
+        # 安全检查：禁止执行危险操作
+        sql_lower = sql.lower().strip()
+        
+        # 禁止执行的操作列表
+        forbidden_operations = [
+            'drop table', 'drop database', 'truncate table', 
+            'alter table', 'create table', 'create database',
+            'exec ', 'execute ', 'sp_', 'xp_'
+        ]
+        
+        # 检查是否包含禁止的操作
+        for op in forbidden_operations:
+            if op in sql_lower:
+                app.logger.warning(f"尝试执行危险SQL操作: {sql}")
+                return jsonify({
+                    'success': False,
+                    'message': f'禁止执行危险操作: {op}'
+                }), 403
+        
+        # 连接数据库
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            app.logger.info("数据库连接成功")
+        except Exception as e:
+            app.logger.error(f"数据库连接失败: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'数据库连接失败: {str(e)}'
+            }), 500
+        
+        try:
+            # 开始事务
+            conn.autocommit = False
+            
+            # 执行SQL语句
+            if params:
+                cursor.execute(sql, params)
+            else:
+                cursor.execute(sql)
+            
+            # 如果是SELECT语句，获取结果
+            results = []
+            if sql_lower.startswith('select'):
+                columns = [column[0] for column in cursor.description]
+                for row in cursor.fetchall():
+                    results.append(dict(zip(columns, row)))
+            
+            # 提交事务
+            conn.commit()
+            app.logger.info("SQL执行成功，事务已提交")
+            
+            # 关闭数据库连接
+            cursor.close()
+            conn.close()
+            
+            # 返回成功响应
+            return jsonify({
+                'success': True,
+                'message': '执行成功',
+                'results': results
+            })
+        
+        except Exception as e:
+            # 回滚事务
+            conn.rollback()
+            app.logger.error(f"SQL执行失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            
+            # 关闭数据库连接
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                'success': False,
+                'message': f'SQL执行失败: {str(e)}'
+            }), 500
+    
+    except Exception as e:
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     # 初始化数据库

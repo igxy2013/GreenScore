@@ -242,128 +242,129 @@ function calculatePlotRatioScore(r, type) {
 }
 
 
-
 /**
- * 计算建筑密度得分
- * @param {number} buildingDensity - 建筑密度(%)
- * @param {string} buildingType - 建筑类型 (住宅/公共建筑)
- * @returns {Object} 包含得分和评级的对象
+ * 计算地下空间开发利用得分
+ * @param {string} buildingType        - 建筑类型 ('住宅建筑'/'公共建筑')
+ * @param {number} undergroundArea    - 地下建筑面积
+ * @param {number} undergroundFirstFloor - 地下一层建筑面积
+ * @param {number} aboveGroundArea     - 地上建筑面积（住宅建筑用）
+ * @param {number} totalLandArea       - 总用地面积
+ * @returns {number}                   - 得分 0/5/7/12
  */
-function calculateBuildingDensityScore(buildingDensity, buildingType) {
-    // 参数验证
-    if (buildingDensity === undefined || buildingDensity < 0 || buildingDensity > 100) {
-        console.error('建筑密度必须在0-100%之间');
-        return { score: 0, rating: '无效数据' };
+function calculateUndergroundScore(buildingType, undergroundArea, undergroundFirstFloor, aboveGroundArea, totalLandArea) {
+    // 参数有效性校验（所有面积不能为负数）
+    if ([undergroundArea, undergroundFirstFloor, aboveGroundArea, totalLandArea].some(v => typeof v !== 'number' || v < 0)) {
+        return 0;
     }
-    
-    // 根据建筑类型和评分规则计算得分
-    let score = 0;
-    let rating = '';
-    
-    if (buildingType === '住宅') {
-        // 住宅建筑密度评分规则
-        if (buildingDensity > 30) {
-            score = 0;
-            rating = '不达标';
-        } else if (buildingDensity > 25 && buildingDensity <= 30) {
-            score = 8;
-            rating = '一般';
-        } else if (buildingDensity > 20 && buildingDensity <= 25) {
-            score = 12;
-            rating = '良好';
-        } else if (buildingDensity > 15 && buildingDensity <= 20) {
-            score = 16;
-            rating = '优秀';
-        } else {
-            score = 20;
-            rating = '卓越';
-        }
-    } else {
-        // 公共建筑密度评分规则
-        if (buildingDensity > 40) {
-            score = 0;
-            rating = '不达标';
-        } else if (buildingDensity > 35 && buildingDensity <= 40) {
-            score = 8;
-            rating = '一般';
-        } else if (buildingDensity > 30 && buildingDensity <= 35) {
-            score = 12;
-            rating = '良好';
-        } else if (buildingDensity > 25 && buildingDensity <= 30) {
-            score = 16;
-            rating = '优秀';
-        } else {
-            score = 20;
-            rating = '卓越';
-        }
+
+    let R1, Rp;
+    R1 = undergroundArea / aboveGroundArea;      // 地下/地上比率
+    Rp = undergroundFirstFloor / totalLandArea;  // 地下一层/总用地
+
+    if (buildingType === '住宅建筑') {
+        // 住宅建筑计算规则
+        if (aboveGroundArea === 0) return 0; // 避免除以零
+        R1 = undergroundArea / aboveGroundArea;      // 地下/地上比率
+        Rp = undergroundFirstFloor / totalLandArea;  // 地下一层/总用地
+        
+        // 评分逻辑（优先级从高到低）
+        if (R1 >= 0.35 && Rp <= 0.6) return 12;  // 同时满足两个条件
+        if (R1 >= 0.2) return 7;
+        if (R1 >= 0.05) return 5;
+        
+    } else if (buildingType === '公共建筑') {
+        // 公共建筑计算规则
+        if (totalLandArea === 0) return 0; // 避免除以零
+        R1 = undergroundArea / totalLandArea;       // 地下/总用地比率
+        Rp = undergroundFirstFloor / totalLandArea; // 地下一层/总用地
+        
+        // 评分逻辑（优先级从高到低）
+        if (R1 >= 1.0 && Rp <= 0.6) return 12;  // R1≥100%且Rp≤60%
+        if (R1 >= 0.7 && Rp <= 0.7) return 7;   // R1≥70%且Rp≤70%
+        if (R1 >= 0.5) return 5;
     }
-    
-    return {
-        score: score,
-        rating: rating,
-        buildingDensity: buildingDensity.toFixed(2)
-    };
+
+    return 0;
 }
 
 /**
- * 从项目数据中计算总绿建得分
- * @param {Object} projectData - 项目数据对象
- * @returns {Object} 包含各项得分和总分的对象
+ * 计算绿化用地评分的函数
+ * @param {string} buildingType - 建筑类型（'住宅' 或 '公共'）
+ * @param {number} greenRate - 绿地率（实际绿地率 / 规划绿地率）
+ * @param {number} greenArea - 人均集中绿地面积（平方米/人）
+ * @param {string} projectType - 项目类型（'新区建设' 或 '旧区改建'）
+ * @param {boolean} [isPublicGreenOpen] - 绿地向公众开放（仅适用于公共建筑）
+ * @returns {number} 总评分
  */
-function calculateTotalGreenBuildingScore(projectData) {
-    // 验证项目数据
-    if (!projectData) {
-        console.error('项目数据不能为空');
-        return { totalScore: 0, details: {} };
-    }
-    
-    // 提取项目数据
-    const {
-        total_land_area,
-        residential_units,
-        green_area,
-        plot_ratio,
-        building_density,
-        building_type,
-        climate_zone,
-        average_floors
-    } = projectData;
-    
-    // 计算各项得分
-    const perCapitaLandResult = calculatePerCapitaLandScore(
-        total_land_area, 
-        residential_units, 
-        3.2, // 默认每户平均3.2人
-        climate_zone, 
-        average_floors
-    );
-    const greenRatioResult = calculateGreenRatioScore(green_area, total_land_area);
-    const plotRatioResult = calculatePlotRatioScore(plot_ratio, building_type);
-    const buildingDensityResult = calculateBuildingDensityScore(building_density, building_type);
-    
-    // 计算总分
-    const totalScore = perCapitaLandResult.score + greenRatioResult.score + 
-                       plotRatioResult.score + buildingDensityResult.score;
-    
-    // 返回详细结果
-    return {
-        totalScore: totalScore,
-        details: {
-            perCapitaLand: perCapitaLandResult,
-            greenRatio: greenRatioResult,
-            plotRatio: plotRatioResult,
-            buildingDensity: buildingDensityResult
+function calculateGreenScore(buildingType, greenRate, greenArea, projectType, isPublicGreenOpen) {
+    let totalScore = 0;
+
+    // 住宅建筑评分
+    if (buildingType === '住宅建筑') {
+        // 绿地率评分
+        if (greenRate >= 1.05) {
+            totalScore += 10;
         }
-    };
+
+        // 人均集中绿地面积评分
+        if (projectType === '新区建设') {
+            if (greenArea >= 0.60) {
+                totalScore += 6;
+            } else if (greenArea >= 0.50) {
+                totalScore += 4;
+            } else if (greenArea === 0.50) {
+                totalScore += 2;
+            }
+        } else if (projectType === '旧区改建') {
+            if (greenArea >= 0.45) {
+                totalScore += 6;
+            } else if (greenArea >= 0.35) {
+                totalScore += 4;
+            } else if (greenArea === 0.35) {
+                totalScore += 2;
+            }
+        }
+    }
+
+    // 公共建筑评分
+    if (buildingType === '公共建筑') {
+        // 绿地率评分
+        if (greenRate >= 1.05) {
+            totalScore += 10;
+        }
+
+        // 绿地向公众开放评分
+        if (isPublicGreenOpen) {
+            totalScore += 6;
+        }
+    }
+
+    return totalScore;
 }
 
-// 导出函数供其他模块使用
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        calculatePerCapitaLandScore,
-        calculateGreenRatioScore,
-        calculatePlotRatioScore,
-        calculateBuildingDensityScore,
-        calculateTotalGreenBuildingScore
-    };
-} 
+
+/**
+ * 计算停车设施得分
+ * @param {string} buildingType - 建筑类型（'住宅' 或 '公共'）
+ * @param {number} groundParkingCount - 地面停车位数量（住宅建筑）或地面停车占地面积（公共建筑）
+ * @param {number} totalUnits - 住宅总套数（住宅建筑）或总建设用地面积（公共建筑）
+ * @returns {number} - 得分（0 或 8）
+ */
+function calculateParkingScore(buildingType, groundParkingCount, totalUnits) {
+    // 参数有效性校验
+    if (typeof groundParkingCount !== 'number' || groundParkingCount < 0) return 0;
+    if (typeof totalUnits !== 'number' || totalUnits <= 0) return 0;
+
+    // 计算比率
+    const ratio = groundParkingCount / totalUnits;
+
+    // 根据建筑类型评分
+    if (buildingType === '住宅建筑') {
+        if (ratio < 0.10) return 8; // 比率小于 10%，得 8 分
+    } else if (buildingType === '公共建筑') {
+        if (ratio < 0.08) return 8; // 比率小于 8%，得 8 分
+    }
+
+    // 默认返回 0 分
+    return 0;
+}
