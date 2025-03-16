@@ -801,8 +801,13 @@
                             </table>
                         </div>
                     </div>
-
-                        <!-- 自动计算得分 --> 
+                    <div class="mt-8">
+                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                            保存项目信息
+                        </button>
+                    </div>
+                    </form>
+                    <!-- 自动计算得分 --> 
                     <div class="mt-4">
                         <label class="text-gray-700">绿建得分自动计算</label>
                     <div class="text-sm text-gray-700" style="font-style: italic;">
@@ -813,14 +818,146 @@
                         <label id="parking_score">停车设施得分：</label>
                     </div>
                     </div>
-
-                    <div class="mt-8">
-                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
-                            保存项目信息
-                        </button>
-                    </div>
-                    </form>
-
+                    <script>
+                        // 页面加载完成后执行计算和更新
+                        document.addEventListener('DOMContentLoaded', function() {
+                            calculateAndUpdateScores();
+                            
+                            // 监听表单字段变化，重新计算得分
+                            const formFields = [
+                                'total_land_area', 'residential_units', 'avg_floors', 'building_type',
+                                'underground_area', 'first_floor_underground_area', 'above_ground_area',
+                                'green_area', 'construction_type', 'public_green_space', 'climate_zone',
+                                'plot_ratio', 'public_building_type', 'green_ratio', 'ground_parking_spaces',
+                                'has_underground_garage'
+                            ];
+                            
+                            formFields.forEach(fieldId => {
+                                const field = document.getElementById(fieldId);
+                                if (field) {
+                                    field.addEventListener('change', calculateAndUpdateScores);
+                                }
+                            });
+                        });
+                        
+                        // 计算得分并更新数据库
+                        function calculateAndUpdateScores() {
+                            //总用地面积
+                            const totalLandArea = parseFloat(document.getElementById('total_land_area').value) || 0;
+                            //住宅总套数
+                            const residentialUnits = parseInt(document.getElementById('residential_units').value) || 0;
+                            //住宅平均层数
+                            const averageFloors = document.getElementById('avg_floors').value;
+                            //建筑类型
+                            const buildingType = document.getElementById('building_type').value;
+                            //地下空间面积
+                            const undergroundArea = parseFloat(document.getElementById('underground_area').value) || 0;
+                            //地下一层面积
+                            const undergroundFirstFloor = parseFloat(document.getElementById('first_floor_underground_area').value) || 0;
+                            //地上面积
+                            const aboveGroundArea = parseFloat(document.getElementById('above_ground_area').value) || 0;
+                            //绿化用地面积
+                            const greenSpaceArea = parseFloat(document.getElementById('green_area').value) || 0;
+                            //项目类型
+                            const projectType = document.getElementById('construction_type').value;
+                            //绿地向公众开放
+                            const publicGreenSpace = document.getElementById('public_green_space').value;
+                            //建筑层数
+                            let floors = 0;
+                            switch (averageFloors) {
+                                case "平均3层及以下": floors = 3; break;
+                                case "平均4-6层": floors = 4; break;
+                                case "平均7-9层": floors = 7; break;
+                                case "平均10-18层": floors = 10; break;
+                                case "平均19层及以上": floors = 19; break;
+                                default: floors = 0;
+                            }
+                            //气候区
+                            const climateZone = document.getElementById('climate_zone').value;
+                            //容积率
+                            const plotRatio = parseFloat(document.getElementById('plot_ratio').value) || 0;
+                            //公建类型
+                            const publicBuildingType = document.getElementById('public_building_type').value;
+                            //绿地率与规划绿地率的比值
+                            const greenRate = parseFloat(document.getElementById('green_ratio').value) /0.3|| 0;
+                            //人均集中绿地面积
+                            const greenArea = parseFloat(document.getElementById('green_area').value)/(residentialUnits*3.2) || 0;
+                            //地面停车位数量
+                            const groundParkingCount = parseFloat(document.getElementById('ground_parking_spaces').value) || 0;
+                            // 计算各项得分
+                            const perCapitaLandScore = calculatePerCapitaLandScore(totalLandArea, residentialUnits, 3.2, climateZone, floors);
+                            //公建容积率指标得分
+                            const plotRatioScore = calculatePlotRatioScore(plotRatio, publicBuildingType);
+                            //地下空间开发利用得分
+                            const undergroundScore = calculateUndergroundScore(buildingType, undergroundArea, undergroundFirstFloor, aboveGroundArea, totalLandArea);
+                            //绿化用地指标得分
+                            const greenSpaceScore = calculateGreenScore(buildingType, greenRate, greenArea, projectType, publicGreenSpace);
+                            //有无地下车库
+                            const hasundergroundgarage=document.getElementById('has_underground_garage').value;
+                            //停车设施得分
+                            let parkingScore = 0;
+                            if (hasundergroundgarage === '有') {
+                                if (buildingType === '住宅建筑') {
+                                     parkingScore = calculateParkingScore(buildingType, groundParkingCount, residentialUnits);
+                                } else if (buildingType === '公共建筑'){
+                                     parkingScore = calculateParkingScore(buildingType, groundParkingCount*34, totalLandArea);
+                                }
+                            }
+                            // 更新显示
+                            document.getElementById('per_capita_land_score').innerHTML = '人均居住用地指标得分：' + perCapitaLandScore;
+                            document.getElementById('plot_ratio_score').innerHTML = '公建容积率指标得分：' + plotRatioScore;
+                            document.getElementById('underground_score').innerHTML = '地下空间开发利用得分：' + undergroundScore;
+                            document.getElementById('green_space_score').innerHTML = '绿化用地指标得分：' + greenSpaceScore;
+                            document.getElementById('parking_score').innerHTML = '停车设施得分：' + parkingScore;
+                            
+                            // 修改多个条文的得分
+                            let standard = document.getElementById('current-project-standard').value || '成都市标';
+                            let projectId = document.getElementById('current-project-id').value;
+                            
+                            if (!projectId) {
+                                console.log('未找到项目ID，无法更新得分');
+                                return;
+                            }
+                            
+                            try {
+                                if (standard === '成都市标'){
+                                    if (buildingType === '住宅建筑'){
+                                        updateDatabaseScore('3.1.2.14', perCapitaLandScore, projectId);
+                                    } else if (buildingType === '公共建筑'){
+                                        updateDatabaseScore('3.1.2.14', plotRatioScore, projectId);
+                                    }
+                                    updateDatabaseScore('3.1.2.15', undergroundScore, projectId);
+                                    updateDatabaseScore('3.1.2.21', greenSpaceScore, projectId);
+                                    updateDatabaseScore('3.1.2.16', parkingScore, projectId);
+                                }
+                                else if (standard === '四川省标'){
+                                    if (buildingType === '住宅建筑'){
+                                        updateDatabaseScore('3.1.16', perCapitaLandScore, projectId);
+                                    }
+                                    else if (buildingType === '公共建筑'){
+                                        updateDatabaseScore('3.1.16', plotRatioScore, projectId);
+                                    }
+                                    updateDatabaseScore('3.1.17', undergroundScore, projectId);
+                                    updateDatabaseScore('3.1.25', greenSpaceScore, projectId);
+                                    updateDatabaseScore('3.1.18', parkingScore, projectId);
+                                }
+                                else if (standard === '国标'){
+                                    if (buildingType === '住宅建筑'){
+                                        updateDatabaseScore('7.2.1', perCapitaLandScore, projectId);
+                                    }
+                                    else if (buildingType === '公共建筑'){
+                                        updateDatabaseScore('7.2.1', plotRatioScore, projectId);
+                                    }
+                                    updateDatabaseScore('7.2.2', undergroundScore, projectId);
+                                    updateDatabaseScore('8.2.3', greenSpaceScore, projectId);
+                                    updateDatabaseScore('7.2.3', parkingScore, projectId);
+                                }
+                                console.log('得分更新完成');
+                            } catch (error) {
+                                console.error('更新得分时出错:', error);
+                            }
+                        }
+                    </script>
                     {% elif current_page == 'green_materials' %}
                     <!-- 绿色建材计算器内容 -->
                     <div class="green-materials-container">
