@@ -237,7 +237,12 @@
                     {% if current_page == 'score_summary' %}
 
                     <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                        <h3 class="text-lg font-medium mb-4">各专业得分汇总</h3>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-medium">各专业得分汇总</h3>
+                            <button id="calculateScoresBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                                <i class="ri-refresh-line mr-1"></i>计算评分
+                            </button>
+                        </div>
                         <div class="overflow-x-auto">
                             <table class="w-full">
                                 <thead>
@@ -1251,6 +1256,62 @@
                 });
             }
             
+            // 为计算评分按钮添加点击事件
+            const calculateScoresBtn = document.getElementById('calculateScoresBtn');
+            if (calculateScoresBtn) {
+                calculateScoresBtn.addEventListener('click', function() {
+                    // 获取项目ID
+                    let projectId = null;
+                    const projectIdField = document.getElementById('project_id');
+                    if (projectIdField) {
+                        projectId = projectIdField.value;
+                    } else {
+                        // 尝试从URL中获取项目ID
+                        const urlParams = new URLSearchParams(window.location.search);
+                        projectId = urlParams.get('project_id');
+                    }
+                    
+                    // 如果没有项目ID，则无法计算评分
+                    if (!projectId) {
+                        alert('未找到项目ID，无法计算评分');
+                        return;
+                    }
+                    
+                    // 显示加载状态
+                    calculateScoresBtn.disabled = true;
+                    calculateScoresBtn.innerHTML = '<i class="ri-loader-2-line animate-spin mr-1"></i>计算中...';
+                    
+                    // 调用计算评分的API
+                    fetch(`/api/calculate_scores/${projectId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('计算评分结果:', data);
+                        
+                        // 恢复按钮状态
+                        calculateScoresBtn.disabled = false;
+                        calculateScoresBtn.innerHTML = '<i class="ri-refresh-line mr-1"></i>计算评分';
+                        
+                        // 获取最新评分汇总数据
+                        fetchScoreSummary(true);
+                    })
+                    .catch(error => {
+                        console.error('计算评分失败:', error);
+                        
+                        // 恢复按钮状态
+                        calculateScoresBtn.disabled = false;
+                        calculateScoresBtn.innerHTML = '<i class="ri-refresh-line mr-1"></i>计算评分';
+                        
+                        // 显示错误消息
+                        alert(`计算评分失败: ${error.message}`);
+                    });
+                });
+            }
+            
             // 设置定时刷新（每60秒刷新一次）
             setInterval(() => {
                 console.log('定时刷新评分汇总数据');
@@ -1434,11 +1495,59 @@
             console.log('找到评分汇总菜单项，添加点击事件');
             scoreSummaryMenuItem.addEventListener('click', function(e) {
                 console.log('评分汇总菜单被点击');
-                // 不阻止默认行为，让页面正常跳转
-                // 但在跳转后获取最新数据，强制刷新
-                setTimeout(function() {
-                    fetchScoreSummary(true); // 强制刷新
-                }, 500); // 延迟500毫秒，确保页面已加载
+                
+                // 获取项目ID
+                let projectId = null;
+                const projectIdField = document.getElementById('project_id');
+                if (projectIdField) {
+                    projectId = projectIdField.value;
+                } else {
+                    // 尝试从URL中获取项目ID
+                    const urlParams = new URLSearchParams(window.location.search);
+                    projectId = urlParams.get('project_id');
+                }
+                
+                // 如果没有项目ID，则无法保存评分
+                if (!projectId) {
+                    console.warn('未找到项目ID，无法保存评分');
+                    return;
+                }
+                
+                // 添加加载效果
+                this.classList.add('loading');
+                
+                // 先调用计算评分的API
+                fetch(`/api/calculate_scores/${projectId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('计算评分结果:', data);
+                    
+                    // 移除加载效果
+                    this.classList.remove('loading');
+                    
+                    // 不阻止默认行为，让页面正常跳转
+                    // 但在跳转后获取最新数据，强制刷新
+                    setTimeout(function() {
+                        fetchScoreSummary(true); // 强制刷新
+                    }, 500); // 延迟500毫秒，确保页面已加载
+                })
+                .catch(error => {
+                    console.error('计算评分失败:', error);
+                    
+                    // 移除加载效果
+                    this.classList.remove('loading');
+                    
+                    // 仍然允许页面跳转
+                    // 但在跳转后获取最新数据，强制刷新
+                    setTimeout(function() {
+                        fetchScoreSummary(true); // 强制刷新
+                    }, 500); // 延迟500毫秒，确保页面已加载
+                });
             });
         } else {
             console.log('未找到评分汇总菜单项');
@@ -2295,6 +2404,93 @@
             }
         });
     }
+
+    // 计算项目评分
+    function calculateProjectScores() {
+        // 获取项目ID
+        let projectId = null;
+        const projectIdField = document.getElementById('project_id');
+        if (projectIdField) {
+            projectId = projectIdField.value;
+        } else {
+            // 尝试从URL中获取项目ID
+            const urlParams = new URLSearchParams(window.location.search);
+            projectId = urlParams.get('project_id');
+        }
+        
+        // 如果没有项目ID，则无法计算评分
+        if (!projectId) {
+            alert('未找到项目ID，无法计算评分');
+            return;
+        }
+        
+        // 显示加载状态
+        const calculateBtn = document.getElementById('calculateScoresBtn');
+        if (calculateBtn) {
+            calculateBtn.disabled = true;
+            calculateBtn.innerHTML = '<i class="ri-loader-2-line animate-spin mr-1"></i>计算中...';
+        }
+        
+        // 构建API URL
+        const apiUrl = `/api/calculate_scores/${projectId}`;
+        
+        // 发送请求
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`服务器错误 (${response.status})`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('评分计算结果:', data);
+            if (data.success) {
+                // 计算成功，刷新评分汇总
+                fetchScoreSummary(true);
+                alert('评分计算完成');
+            } else {
+                alert(`评分计算失败: ${data.message}`);
+            }
+        })
+        .catch(error => {
+            console.error('计算评分时出错:', error);
+            alert(`计算评分时出错: ${error.message}`);
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            if (calculateBtn) {
+                calculateBtn.disabled = false;
+                calculateBtn.innerHTML = '<i class="ri-refresh-line mr-1"></i>计算评分';
+            }
+        });
+    }
+    
+    // 页面加载完成后，添加事件监听器
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取评分汇总数据
+        if (document.querySelector('.score-summary-container')) {
+            fetchScoreSummary();
+        }
+        
+        // 添加计算评分按钮的事件监听器
+        const calculateBtn = document.getElementById('calculateScoresBtn');
+        if (calculateBtn) {
+            calculateBtn.addEventListener('click', calculateProjectScores);
+        }
+        
+        // 添加刷新评分按钮的事件监听器
+        const refreshBtn = document.getElementById('refreshScoreBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                fetchScoreSummary(true);
+            });
+        }
+    });
     </script>
 </body>
 </html>

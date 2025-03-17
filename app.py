@@ -119,6 +119,25 @@ class Project(db.Model):
     public_building_type = db.Column(db.String(50))  # 公建类型
     public_green_space = db.Column(db.String(10))  # 绿地向公众开放
     
+    # 新增评分字段（使用英文字段名）
+    architecture_score = db.Column(db.Float)  # 建筑总分
+    structure_score = db.Column(db.Float)  # 结构总分
+    water_supply_score = db.Column(db.Float)  # 给排水总分
+    electrical_score = db.Column(db.Float)  # 电气总分
+    hvac_score = db.Column(db.Float)  # 暖通总分
+    landscape_score = db.Column(db.Float)  # 景观总分
+    architecture_innovation_score = db.Column(db.Float)  # 建筑创新总分
+    structure_innovation_score = db.Column(db.Float)  # 结构创新总分
+    hvac_innovation_score = db.Column(db.Float)  # 暖通创新总分
+    landscape_innovation_score = db.Column(db.Float)  # 景观创新总分
+    safety_durability_score = db.Column(db.Float)  # 安全耐久总分
+    health_comfort_score = db.Column(db.Float)  # 健康舒适总分
+    life_convenience_score = db.Column(db.Float)  # 生活便利总分
+    resource_saving_score = db.Column(db.Float)  # 资源节约总分
+    environment_livability_score = db.Column(db.Float)  # 环境宜居总分
+    improvement_innovation_score = db.Column(db.Float)  # 提高与创新总分
+    total_score = db.Column(db.Float)  # 项目总分
+    evaluation_result = db.Column(db.String(20))  # 评定结果
     
     def to_dict(self):
         return {
@@ -159,6 +178,25 @@ class Project(db.Model):
             'is_fully_decorated': self.is_fully_decorated,
             'public_building_type': self.public_building_type,
             'public_green_space': self.public_green_space,
+            # 新增评分字段（使用中文键名以保持前端兼容性）
+            '建筑总分': self.architecture_score,
+            '结构总分': self.structure_score,
+            '给排水总分': self.water_supply_score,
+            '电气总分': self.electrical_score,
+            '暖通总分': self.hvac_score,
+            '景观总分': self.landscape_score,
+            '建筑创新总分': self.architecture_innovation_score,
+            '结构创新总分': self.structure_innovation_score,
+            '暖通创新总分': self.hvac_innovation_score,
+            '景观创新总分': self.landscape_innovation_score,
+            '安全耐久总分': self.safety_durability_score,
+            '健康舒适总分': self.health_comfort_score,
+            '生活便利总分': self.life_convenience_score,
+            '资源节约总分': self.resource_saving_score,
+            '环境宜居总分': self.environment_livability_score,
+            '提高与创新总分': self.improvement_innovation_score,
+            '项目总分': self.total_score,
+            '评定结果': self.evaluation_result,
         }
 
 # 添加四川省标和通用国标的模型
@@ -2923,6 +2961,185 @@ def handle_generate_dwg():
     except Exception as e:
         app.logger.error(f"处理生成DWG请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+
+@app.route('/api/calculate_scores/<int:project_id>', methods=['POST'])
+def calculate_project_scores(project_id):
+    """计算并更新项目的各项评分"""
+    try:
+        # 获取项目信息
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({'success': False, 'message': '项目不存在'}), 404
+        
+        # 获取项目的所有评分记录
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 查询项目的所有评分记录
+        cursor.execute("""
+            SELECT ps.clause_number, ps.score, s.分类, s.专业, s.属性
+            FROM project_scores ps
+            LEFT JOIN 
+            (
+                SELECT 条文号, 分类, 专业, 属性 FROM [成都市标]
+                UNION ALL
+                SELECT 条文号, 分类, 专业, 属性 FROM [四川省标]
+                UNION ALL
+                SELECT 条文号, 分类, 专业, 属性 FROM [国标]
+            ) s ON ps.clause_number = s.条文号
+            WHERE ps.project_id = ?
+        """, (project_id,))
+        
+        scores = cursor.fetchall()
+        
+        # 初始化各专业分数
+        专业分数 = {
+            '建筑': 0,
+            '结构': 0,
+            '给排水': 0,
+            '电气': 0,
+            '暖通': 0,
+            '景观': 0,
+            '建筑创新': 0,
+            '结构创新': 0,
+            '暖通创新': 0,
+            '景观创新': 0,
+        }
+        
+        # 初始化各章节分数
+        章节分数 = {
+            '安全耐久': 0,
+            '健康舒适': 0,
+            '生活便利': 0,
+            '资源节约': 0,
+            '环境宜居': 0,
+            '提高与创新': 0,
+        }
+        
+        # 计算各专业和章节的分数
+        for score in scores:
+            clause_number = score[0]  # 条文号
+            score_value = score[1] or 0  # 得分
+            分类 = score[2]  # 分类
+            专业 = score[3]  # 专业
+            属性 = score[4]  # 属性
+            
+            # 判断专业
+            if 专业 and '建' in 专业:
+                if 属性 and '创新' in 属性:
+                    专业分数['建筑创新'] += score_value
+                else:
+                    专业分数['建筑'] += score_value
+            elif 专业 and '结' in 专业:
+                if 属性 and '创新' in 属性:
+                    专业分数['结构创新'] += score_value
+                else:
+                    专业分数['结构'] += score_value
+            elif 专业 and ('给' in 专业 or '排' in 专业 or '水' in 专业):
+                专业分数['给排水'] += score_value
+            elif 专业 and '电' in 专业:
+                专业分数['电气'] += score_value
+            elif 专业 and ('暖' in 专业 or '通' in 专业 or '空调' in 专业):
+                if 属性 and '创新' in 属性:
+                    专业分数['暖通创新'] += score_value
+                else:
+                    专业分数['暖通'] += score_value
+            elif 专业 and ('景' in 专业 or '园' in 专业):
+                if 属性 and '创新' in 属性:
+                    专业分数['景观创新'] += score_value
+                else:
+                    专业分数['景观'] += score_value
+            
+            # 判断章节
+            if clause_number and clause_number.startswith('4') or (分类 and ('安全' in 分类 or '耐久' in 分类)):
+                章节分数['安全耐久'] += score_value
+            elif clause_number and clause_number.startswith('5') or (分类 and ('健康' in 分类 or '舒适' in 分类)):
+                章节分数['健康舒适'] += score_value
+            elif clause_number and clause_number.startswith('6') or (分类 and ('生活' in 分类 or '便利' in 分类)):
+                章节分数['生活便利'] += score_value
+            elif clause_number and clause_number.startswith('7') or (分类 and ('资源' in 分类 or '节约' in 分类)):
+                章节分数['资源节约'] += score_value
+            elif clause_number and clause_number.startswith('8') or (分类 and ('环境' in 分类 or '宜居' in 分类)):
+                章节分数['环境宜居'] += score_value
+            elif clause_number and clause_number.startswith('9') or (分类 and ('提高' in 分类 or '创新' in 分类)):
+                章节分数['提高与创新'] += score_value
+        
+        # 关闭数据库连接
+        cursor.close()
+        conn.close()
+        
+        # 更新项目的各项评分
+        project.architecture_score = 专业分数['建筑']
+        project.structure_score = 专业分数['结构']
+        project.water_supply_score = 专业分数['给排水']
+        project.electrical_score = 专业分数['电气']
+        project.hvac_score = 专业分数['暖通']
+        project.landscape_score = 专业分数['景观']
+        project.architecture_innovation_score = 专业分数['建筑创新']
+        project.structure_innovation_score = 专业分数['结构创新']
+        project.hvac_innovation_score = 专业分数['暖通创新']
+        project.landscape_innovation_score = 专业分数['景观创新']
+        
+        project.safety_durability_score = 章节分数['安全耐久']
+        project.health_comfort_score = 章节分数['健康舒适']
+        project.life_convenience_score = 章节分数['生活便利']
+        project.resource_saving_score = 章节分数['资源节约']
+        project.environment_livability_score = 章节分数['环境宜居']
+        project.improvement_innovation_score = 章节分数['提高与创新']
+        
+        # 计算项目总分
+        project.total_score = sum(专业分数.values())
+        
+        # 根据总分和评价标准确定评定结果
+        if project.standard == '成都市标':
+            if project.total_score >= 80:
+                project.evaluation_result = '绿色建筑'
+            else:
+                project.evaluation_result = '未达标'
+        elif project.standard == '四川省标':
+            if project.total_score >= 60 and project.total_score < 70:
+                project.evaluation_result = '基本级'
+            elif project.total_score >= 70 and project.total_score < 80:
+                project.evaluation_result = '一星级'
+            elif project.total_score >= 80 and project.total_score < 90:
+                project.evaluation_result = '二星级'
+            elif project.total_score >= 90:
+                project.evaluation_result = '三星级'
+            else:
+                project.evaluation_result = '未达标'
+        elif project.standard == '国标':
+            if project.total_score >= 60 and project.total_score < 70:
+                project.evaluation_result = '基本级'
+            elif project.total_score >= 70 and project.total_score < 80:
+                project.evaluation_result = '一星级'
+            elif project.total_score >= 80 and project.total_score < 90:
+                project.evaluation_result = '二星级'
+            elif project.total_score >= 90:
+                project.evaluation_result = '三星级'
+            else:
+                project.evaluation_result = '未达标'
+        else:
+            project.evaluation_result = '未知'
+        
+        # 保存更新
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': '评分计算完成',
+            'scores': {
+                '专业分数': 专业分数,
+                '章节分数': 章节分数,
+                '项目总分': project.total_score,
+                '评定结果': project.evaluation_result
+            }
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"计算项目评分时出错: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'计算评分失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # 初始化数据库
