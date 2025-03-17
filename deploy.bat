@@ -14,6 +14,10 @@ if not exist .env (
     copy .env.example .env
 )
 
+REM 卸载可能存在的错误docx包
+echo 正在卸载可能存在的错误docx包...
+pip uninstall -y docx
+
 REM 安装依赖
 echo 正在安装依赖...
 pip install --user -r requirements.txt
@@ -22,6 +26,10 @@ if %ERRORLEVEL% neq 0 (
     pause
     exit /b 1
 )
+
+REM 确保安装了python-docx和pywin32
+echo 确保安装了python-docx和pywin32...
+pip install --user python-docx pywin32
 
 REM 设置环境变量
 set FLASK_ENV=production

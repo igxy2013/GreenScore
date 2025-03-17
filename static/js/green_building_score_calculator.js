@@ -6,10 +6,10 @@
 /**
  * 计算人均居住用地指标得分
  * @param {number} totalLandArea - 总用地面积(平方米)
- * @param {number} residentialUnits - 住宅户数
+ * @param {number} residentialUnits - 居住户数
  * @param {number} averagePersonPerUnit - 每户平均人数，默认为3.2人/户
  * @param {string} climateZone - 建筑气候区划 (I、II、III、IV、V、VI)
- * @param {number} averageFloors - 住宅平均层数
+ * @param {number} averageFloors - 居住平均层数
  * @returns {Object} 包含得分和评级的对象
  */
 function calculatePerCapitaLandScore(totalLandArea, residentialUnits, averagePersonPerUnit = 3.2, climateZone = 'III', averageFloors = 10) {
@@ -167,56 +167,6 @@ function calculatePerCapitaLandScore(totalLandArea, residentialUnits, averagePer
 
 
 /**
- * 计算绿地率得分
- * @param {number} greenArea - 绿地面积(平方米)
- * @param {number} totalLandArea - 总用地面积(平方米)
- * @returns {Object} 包含得分和评级的对象
- */
-function calculateGreenRatioScore(greenArea, totalLandArea) {
-    // 参数验证
-    if (!greenArea || greenArea <= 0) {
-        console.error('绿地面积必须大于0');
-        return { score: 0, rating: '无效数据', greenRatio: 0 };
-    }
-    
-    if (!totalLandArea || totalLandArea <= 0) {
-        console.error('总用地面积必须大于0');
-        return { score: 0, rating: '无效数据', greenRatio: 0 };
-    }
-    
-    // 计算绿地率(%)
-    const greenRatio = (greenArea / totalLandArea) * 100;
-    
-    // 根据评分规则计算得分
-    let score = 0;
-    let rating = '';
-    
-    // 评分规则 (这里需要根据实际表格调整)
-    if (greenRatio < 30) {
-        score = 0;
-        rating = '不达标';
-    } else if (greenRatio >= 30 && greenRatio < 35) {
-        score = 8;
-        rating = '一般';
-    } else if (greenRatio >= 35 && greenRatio < 40) {
-        score = 12;
-        rating = '良好';
-    } else if (greenRatio >= 40 && greenRatio < 45) {
-        score = 16;
-        rating = '优秀';
-    } else {
-        score = 20;
-        rating = '卓越';
-    }
-    
-    return {
-        score: score,
-        rating: rating,
-        greenRatio: greenRatio.toFixed(2)
-    };
-}
-
-/**
  * 计算容积率得分
  * @param {number} r - 容积率
  * @param {string} type - 公共建筑类型 
@@ -244,10 +194,10 @@ function calculatePlotRatioScore(r, type) {
 
 /**
  * 计算地下空间开发利用得分
- * @param {string} buildingType        - 建筑类型 ('住宅建筑'/'公共建筑')
+ * @param {string} buildingType        - 建筑类型 ('居住建筑'/'公共建筑')
  * @param {number} undergroundArea    - 地下建筑面积
  * @param {number} undergroundFirstFloor - 地下一层建筑面积
- * @param {number} aboveGroundArea     - 地上建筑面积（住宅建筑用）
+ * @param {number} aboveGroundArea     - 地上建筑面积（居住建筑用）
  * @param {number} totalLandArea       - 总用地面积
  * @returns {number}                   - 得分 0/5/7/12
  */
@@ -261,8 +211,8 @@ function calculateUndergroundScore(buildingType, undergroundArea, undergroundFir
     R1 = undergroundArea / aboveGroundArea;      // 地下/地上比率
     Rp = undergroundFirstFloor / totalLandArea;  // 地下一层/总用地
 
-    if (buildingType === '住宅建筑') {
-        // 住宅建筑计算规则
+    if (buildingType === '居住建筑') {
+        // 居住建筑计算规则
         if (aboveGroundArea === 0) return 0; // 避免除以零
         R1 = undergroundArea / aboveGroundArea;      // 地下/地上比率
         Rp = undergroundFirstFloor / totalLandArea;  // 地下一层/总用地
@@ -289,7 +239,7 @@ function calculateUndergroundScore(buildingType, undergroundArea, undergroundFir
 
 /**
  * 计算绿化用地评分的函数
- * @param {string} buildingType - 建筑类型（'住宅' 或 '公共'）
+ * @param {string} buildingType - 建筑类型（'居住' 或 '公共'）
  * @param {number} greenRate - 绿地率（实际绿地率 / 规划绿地率）
  * @param {number} greenArea - 人均集中绿地面积（平方米/人）
  * @param {string} projectType - 项目类型（'新区建设' 或 '旧区改建'）
@@ -299,8 +249,8 @@ function calculateUndergroundScore(buildingType, undergroundArea, undergroundFir
 function calculateGreenScore(buildingType, greenRate, greenArea, projectType, isPublicGreenOpen) {
     let totalScore = 0;
 
-    // 住宅建筑评分
-    if (buildingType === '住宅建筑') {
+    // 居住建筑评分
+    if (buildingType === '居住建筑') {
         // 绿地率评分
         if (greenRate >= 1.05) {
             totalScore += 10;
@@ -345,9 +295,9 @@ function calculateGreenScore(buildingType, greenRate, greenArea, projectType, is
 
 /**
  * 计算停车设施得分
- * @param {string} buildingType - 建筑类型（'住宅' 或 '公共'）
- * @param {number} groundParkingCount - 地面停车位数量（住宅建筑）或地面停车占地面积（公共建筑）
- * @param {number} totalUnits - 住宅总套数（住宅建筑）或总建设用地面积（公共建筑）
+ * @param {string} buildingType - 建筑类型（'居住' 或 '公共'）
+ * @param {number} groundParkingCount - 地面停车位数量（居住建筑）或地面停车占地面积（公共建筑）
+ * @param {number} totalUnits - 居住总套数（居住建筑）或总建设用地面积（公共建筑）
  * @returns {number} - 得分（0 或 8）
  */
 function calculateParkingScore(buildingType, groundParkingCount, totalUnits) {
@@ -359,7 +309,7 @@ function calculateParkingScore(buildingType, groundParkingCount, totalUnits) {
     const ratio = groundParkingCount / totalUnits;
 
     // 根据建筑类型评分
-    if (buildingType === '住宅建筑') {
+    if (buildingType === '居住建筑') {
         if (ratio < 0.10) return 8; // 比率小于 10%，得 8 分
     } else if (buildingType === '公共建筑') {
         if (ratio < 0.08) return 8; // 比率小于 8%，得 8 分

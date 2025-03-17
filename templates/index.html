@@ -572,9 +572,9 @@
                                 <div class="relative">
                                     <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button  appearance-none pr-8">
                                         <option value="">请选择建筑类型</option>
-                                        <option value="住宅建筑" {% if project and project.building_type == '住宅建筑' %}selected{% endif %}>住宅建筑</option>
+                                        <option value="居住建筑" {% if project and project.building_type == '居住建筑' %}selected{% endif %}>居住建筑</option>
                                         <option value="公共建筑" {% if project and project.building_type == '公共建筑' %}selected{% endif %}>公共建筑</option>
-                                        <option value="住宅+公共建筑" {% if project and project.building_type == '住宅+公共建筑' %}selected{% endif %}>住宅+公共建筑</option>
+                                        <option value="居住+公共建筑" {% if project and project.building_type == '居住+公共建筑' %}selected{% endif %}>居住+公共建筑</option>
                                     </select>
                                 </div>
                             </div>
@@ -930,7 +930,7 @@
                             //停车设施得分
                             let parkingScore = 0;
                             if (hasundergroundgarage === '有') {
-                                if (buildingType === '住宅建筑') {
+                                if (buildingType === '居住建筑') {
                                      parkingScore = calculateParkingScore(buildingType, groundParkingCount, residentialUnits);
                                 } else if (buildingType === '公共建筑'){
                                      parkingScore = calculateParkingScore(buildingType, groundParkingCount*34, totalLandArea);
@@ -954,7 +954,7 @@
                             
                             try {
                                 if (standard === '成都市标'){
-                                    if (buildingType === '住宅建筑'){
+                                    if (buildingType === '居住建筑'){
                                         updateDatabaseScore('3.1.2.14', perCapitaLandScore, projectId);
                                     } else if (buildingType === '公共建筑'){
                                         updateDatabaseScore('3.1.2.14', plotRatioScore, projectId);
@@ -964,7 +964,7 @@
                                     updateDatabaseScore('3.1.2.16', parkingScore, projectId);
                                 }
                                 else if (standard === '四川省标'){
-                                    if (buildingType === '住宅建筑'){
+                                    if (buildingType === '居住建筑'){
                                         updateDatabaseScore('3.1.16', perCapitaLandScore, projectId);
                                     }
                                     else if (buildingType === '公共建筑'){
@@ -975,7 +975,7 @@
                                     updateDatabaseScore('3.1.18', parkingScore, projectId);
                                 }
                                 else if (standard === '国标'){
-                                    if (buildingType === '住宅建筑'){
+                                    if (buildingType === '居住建筑'){
                                         updateDatabaseScore('7.2.1', perCapitaLandScore, projectId);
                                     }
                                     else if (buildingType === '公共建筑'){

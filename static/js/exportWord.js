@@ -15,7 +15,7 @@ async function exportWord() {
         const projectInfo = projectInfoResponse.ok ? await projectInfoResponse.json() : {};
         
         // 直接从静态目录获取模板文件
-        const response = await fetch('/static/绿色建材应用比例计算书.docx');
+        const response = await fetch('/static/templates/绿色建材应用比例计算书.docx');
         if (!response.ok) throw new Error('无法获取模板文件，请确认模板文件存在');
         
         const blob = await response.blob();
