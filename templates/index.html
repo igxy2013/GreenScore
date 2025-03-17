@@ -54,6 +54,28 @@
             min-height: 100px;
             resize: vertical;
         }
+        /* 进度条样式 */
+        .submenu-item.loading {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .submenu-item.loading::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: rgba(79, 209, 197, 0.3);
+            transition: width 0.1s linear;
+            z-index: 0;
+        }
+        
+        .submenu-item.loading > * {
+            position: relative;
+            z-index: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -151,9 +173,13 @@
                                     <i class="ri-file-list-3-line mr-3"></i>
                                     <span>报审表</span>
                                 </a>
-                                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                                <a href="javascript:void(0)" onclick="generateDWG()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'dwg_export' %}active{% endif %}">
                                     <i class="ri-leaf-line mr-3"></i>
-                                    <span>绿色建材</span>
+                                    <span>绿色建筑设计专篇</span>
+                                </a>
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                                    <i class="ri-calculator-line mr-3"></i>
+                                    <span>绿色建材应用比例</span>
                                 </a>
                             </div>
                         </div>
@@ -2037,6 +2063,32 @@
 
     // 添加生成Word文档的函数
     function generateWord() {
+        // 临时设置当前页面为report_table，以便高亮显示菜单项
+        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+        currentMenuItems.forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // 找到报审表菜单项并添加active类
+        const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
+        let progressInterval;
+        
+        if (wordMenuItem) {
+            wordMenuItem.classList.add('active');
+            wordMenuItem.classList.add('loading');
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                wordMenuItem.style.setProperty('--progress', `${progress}%`);
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
         // 显示加载指示器
         const pageLoader = document.getElementById('page-loader');
         if (pageLoader) {
@@ -2050,9 +2102,14 @@
             if (pageLoader) {
                 pageLoader.style.display = 'none';
             }
+            if (wordMenuItem) {
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+            }
             return;
         }
-
+        
         // 调用generate_word接口
         fetch('/api/generate_word', {
             method: 'POST',
@@ -2086,6 +2143,16 @@
             if (pageLoader) {
                 pageLoader.style.display = 'none';
             }
+            
+            // 完成进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    wordMenuItem.classList.remove('loading');
+                    wordMenuItem.style.backgroundImage = '';
+                }, 500);
+            }
         })
         .catch(error => {
             console.error('生成报审表失败:', error);
@@ -2094,6 +2161,13 @@
             // 隐藏加载指示器
             if (pageLoader) {
                 pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
             }
         });
     }
@@ -2111,6 +2185,116 @@
             console.error('找不到main-content元素');
         }
     });
+
+    // 添加生成DWG文档的函数
+    function generateDWG() {
+        // 临时设置当前页面为dwg_export，以便高亮显示菜单项
+        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+        currentMenuItems.forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // 找到绿色建筑设计专篇菜单项并添加active类
+        const dwgMenuItem = document.querySelector('a[onclick="generateDWG()"]');
+        let progressInterval;
+        
+        if (dwgMenuItem) {
+            dwgMenuItem.classList.add('active');
+            dwgMenuItem.classList.add('loading');
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (dwgMenuItem) {
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+            }
+            return;
+        }
+        
+        // 调用generate_dwg接口
+        fetch('/api/generate_dwg', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成绿色建筑设计专篇失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '绿色建筑设计专篇.dwg';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    dwgMenuItem.classList.remove('loading');
+                    dwgMenuItem.style.backgroundImage = '';
+                }, 500);
+            }
+        })
+        .catch(error => {
+            console.error('生成绿色建筑设计专篇失败:', error);
+            alert(error.message || '生成绿色建筑设计专篇失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+            }
+        });
+    }
     </script>
 </body>
 </html>

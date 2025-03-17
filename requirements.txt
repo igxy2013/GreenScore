@@ -9,3 +9,4 @@ Flask-Caching==2.0.2
 waitress==2.1.2 
 flask_migrate
 flask_cors
+pywin32

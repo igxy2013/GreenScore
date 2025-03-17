@@ -17,7 +17,7 @@ from logging.handlers import RotatingFileHandler
 from flask_cors import CORS
 from word_template import process_template  # 添加这行导入
 # 从export.py中导入的generate_word函数
-from export import generate_word
+from export import generate_word, generate_dwg
 # 加载环境变量
 load_dotenv()
 
@@ -2901,6 +2901,27 @@ def handle_generate_word():
         return generate_word(data)
     except Exception as e:
         app.logger.error(f"处理生成Word请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+
+# 注册export.py中的generate_dwg函数为app的路由
+@app.route('/api/generate_dwg', methods=['POST'])
+def handle_generate_dwg():
+    """
+    处理生成DWG文档的请求
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        data['use_cache'] = False
+        
+        # 调用generate_dwg函数
+        return generate_dwg(data)
+    except Exception as e:
+        app.logger.error(f"处理生成DWG请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
 
 if __name__ == '__main__':

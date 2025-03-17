@@ -26,3 +26,4 @@ htmlcov/
 .__pycache__/
 /temp/*.json
 /temp/*.docx
+temp/*.dwg

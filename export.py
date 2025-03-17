@@ -6,6 +6,7 @@ from docx import Document
 from word_template import process_template
 import json
 import traceback
+from update_dwg_attribute import update_attribute_text
 # 加载环境变量
 load_dotenv()
 
@@ -309,6 +310,178 @@ def save_project_info(project_data):
         print(f"保存项目信息失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
         return jsonify({"error": f"保存项目信息失败: {str(e)}"}), 500
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print("数据库连接已关闭")
+
+def generate_dwg(request_data):
+    """
+    生成DWG文档的函数
+    
+    参数:
+    - request_data: 包含project_id的字典
+    
+    返回:
+    - tuple: (response, status_code)
+    """
+    cursor = None
+    conn = None
+    try:
+        # 从请求参数中获取项目ID
+        project_id = request_data.get('project_id')
+        if not project_id:
+            print("未提供项目ID")
+            return jsonify({"error": "请提供项目ID"}), 400
+
+        # 检查模板文件是否存在
+        template_path = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计专篇(市标2024).dwg')
+        print(f"CAD模板文件路径: {template_path}")
+        if not os.path.exists(template_path):
+            print(f"CAD模板文件不存在: {template_path}")
+            return jsonify({"error": "CAD模板文件不存在，请确保templates目录下有绿色建筑设计专篇(市标2024).dwg文件"}), 404
+
+        # 尝试从缓存获取数据
+        cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
+        data = None
+        use_cache = request_data.get('use_cache', True)
+        
+        if use_cache and os.path.exists(cache_file):
+            try:
+                print(f"从缓存文件加载数据: {cache_file}")
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                print("成功从缓存加载数据")
+                
+                # 检查缓存数据是否有效
+                if not data or len(data) < 1 or not isinstance(data[0], dict) or not data[0].get("项目名称"):
+                    print("缓存数据无效，将从数据库重新获取")
+                    data = None
+            except Exception as e:
+                print(f"读取缓存文件失败: {str(e)}")
+                data = None
+
+        # 如果缓存不存在或无效，从数据库获取数据
+        if not data:
+            print("从数据库获取数据...")
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # 获取项目基本信息
+            print(f"获取项目 {project_id} 的基本信息")
+            cursor.execute("""
+                SELECT name, design_unit, construction_unit, total_building_area, 
+                       building_type, location, climate_zone, star_rating_target
+                FROM projects 
+                WHERE id = ?
+            """, [project_id])
+            project_rows = cursor.fetchall()
+
+            if not project_rows:
+                print(f"未找到项目数据: ID={project_id}")
+                return jsonify({"error": "未找到项目数据"}), 404
+
+            print(f"获取到项目数据: {project_rows[0]}")
+
+            # 获取得分数据
+            print(f"获取项目 {project_id} 的得分数据")
+            cursor.execute("""
+                SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
+                FROM 得分表 
+                WHERE 项目ID = ?
+                ORDER BY 条文号
+            """, [project_id])
+            score_rows = cursor.fetchall()
+            
+            print(f"获取到 {len(score_rows)} 条得分数据")
+
+            # 准备数据
+            data = []
+            # 添加项目信息作为第一条数据
+            data.append({
+                "项目名称": project_rows[0][0] or '',
+                "设计单位": project_rows[0][1] or '',
+                "建设单位": project_rows[0][2] or '',
+                "建筑面积": str(project_rows[0][3] or ''),
+                "建筑类型": project_rows[0][4] or '',
+                "项目地点": project_rows[0][5] or '',
+                "气候区划": project_rows[0][6] or '',
+                "星级目标": project_rows[0][7] or ''
+            })
+
+            # 添加得分数据
+            for score_row in score_rows:
+                data.append({
+                    "条文号": score_row[0] or '',
+                    "分类": score_row[1] or '',
+                    "是否达标": score_row[2] or '',
+                    "得分": str(score_row[3] or '0'),
+                    "技术措施": score_row[4] or ''
+                })
+
+            # 保存数据到缓存
+            try:
+                os.makedirs('temp', exist_ok=True)
+                with open(cache_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                print(f"数据已保存到缓存: {cache_file}")
+            except Exception as e:
+                print(f"保存缓存失败: {str(e)}")
+
+        # 准备属性块数据
+        attributes = {}
+        
+        # 添加项目基本信息
+        if data and len(data) > 0:
+            project_info = data[0]
+            for key, value in project_info.items():
+                attributes[key] = str(value)
+        
+        # 添加得分数据
+        for item in data[1:]:  # 跳过第一项（项目信息）
+            条文号 = item.get("条文号", "")
+            得分 = item.get("得分", "")
+            技术措施 = item.get("技术措施", "")
+            
+            if 条文号:
+                # 添加条文号对应的分值
+                attributes[条文号] = str(得分)
+                # 添加条文号对应的技术措施
+                attributes[f"{条文号}-措施"] = 技术措施
+        
+        # 生成输出文件路径
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        output_path = os.path.join('temp', f'green_building_{timestamp}.dwg')
+        
+        # 调用update_attribute_text更新DWG文件
+        print("开始更新CAD文件...")
+        update_attribute_text(template_path, output_path, attributes)
+        
+        # 检查生成的文件是否存在
+        if not os.path.exists(output_path):
+            print(f"生成的CAD文件不存在: {output_path}")
+            return jsonify({"error": "生成的CAD文件不存在"}), 500
+            
+        # 获取文件名
+        download_name = f"{data[0]['项目名称']}_绿色建筑设计专篇.dwg"
+        if not download_name:
+            download_name = "green_building.dwg"
+        
+        print(f"准备下载CAD文件: {download_name}")
+        return send_file(
+            output_path,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype='application/acad'
+        )
+    except Exception as e:
+        print(f"生成CAD文件失败: {str(e)}")
+        print(f"异常详情: {traceback.format_exc()}")
+        return jsonify({"error": f"生成CAD文件失败: {str(e)}"}), 500
         
     finally:
         if cursor:
