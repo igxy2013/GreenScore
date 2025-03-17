@@ -337,12 +337,57 @@ def generate_dwg(request_data):
             print("未提供项目ID")
             return jsonify({"error": "请提供项目ID"}), 400
 
+        # 获取数据库连接
+        print("从数据库获取数据...")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 获取项目基本信息
+        print(f"获取项目 {project_id} 的基本信息")
+        cursor.execute("""
+            SELECT name, design_unit, construction_unit, total_building_area, 
+                   building_type, location, climate_zone, star_rating_target, standard
+            FROM projects 
+            WHERE id = ?
+        """, [project_id])
+        project_rows = cursor.fetchall()
+
+        if not project_rows:
+            print(f"未找到项目数据: ID={project_id}")
+            return jsonify({"error": "未找到项目数据"}), 404
+
+        print(f"获取到项目数据: {project_rows[0]}")
+        
+        # 获取项目的评价标准和星级目标
+        standard = project_rows[0][8] or '成都市标'  # 默认为成都市标
+        star_rating_target = project_rows[0][7] or ''  # 星级目标
+        
+        print(f"项目评价标准: {standard}, 星级目标: {star_rating_target}")
+        
+        # 根据评价标准和星级目标选择模板文件
+        template_filename = ""
+        if standard == '成都市标':
+            template_filename = '绿色建筑设计专篇(市标2024).dwg'
+        elif standard == '四川省标':
+            if star_rating_target == '基本级':
+                template_filename = '绿色建筑设计专篇(省标基本级2024).dwg'
+            else:
+                template_filename = '绿色建筑设计专篇(省标2024).dwg'
+        elif standard == '国标':
+            if star_rating_target == '基本级':
+                template_filename = '绿色建筑设计专篇(国标基本级2024).dwg'
+            else:
+                template_filename = '绿色建筑设计专篇(国标2024).dwg'
+        else:
+            # 默认使用成都市标模板
+            template_filename = '绿色建筑设计专篇(市标2024).dwg'
+        
         # 检查模板文件是否存在
-        template_path = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计专篇(市标2024).dwg')
+        template_path = os.path.join(current_app.static_folder, 'templates', template_filename)
         print(f"CAD模板文件路径: {template_path}")
         if not os.path.exists(template_path):
             print(f"CAD模板文件不存在: {template_path}")
-            return jsonify({"error": "CAD模板文件不存在，请确保templates目录下有绿色建筑设计专篇(市标2024).dwg文件"}), 404
+            return jsonify({"error": f"CAD模板文件不存在，请确保templates目录下有{template_filename}文件"}), 404
 
         # 尝试从缓存获取数据
         cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
@@ -366,26 +411,6 @@ def generate_dwg(request_data):
 
         # 如果缓存不存在或无效，从数据库获取数据
         if not data:
-            print("从数据库获取数据...")
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # 获取项目基本信息
-            print(f"获取项目 {project_id} 的基本信息")
-            cursor.execute("""
-                SELECT name, design_unit, construction_unit, total_building_area, 
-                       building_type, location, climate_zone, star_rating_target
-                FROM projects 
-                WHERE id = ?
-            """, [project_id])
-            project_rows = cursor.fetchall()
-
-            if not project_rows:
-                print(f"未找到项目数据: ID={project_id}")
-                return jsonify({"error": "未找到项目数据"}), 404
-
-            print(f"获取到项目数据: {project_rows[0]}")
-
             # 获取得分数据
             print(f"获取项目 {project_id} 的得分数据")
             cursor.execute("""
@@ -409,7 +434,7 @@ def generate_dwg(request_data):
                 "建筑类型": project_rows[0][4] or '',
                 "项目地点": project_rows[0][5] or '',
                 "气候区划": project_rows[0][6] or '',
-                "星级目标": project_rows[0][7] or ''
+                "星级目标": star_rating_target
             })
 
             # 添加得分数据
@@ -458,7 +483,7 @@ def generate_dwg(request_data):
         output_path = os.path.join('temp', f'green_building_{timestamp}.dwg')
         
         # 调用update_attribute_text更新DWG文件
-        print("开始更新CAD文件...")
+        print(f"开始更新CAD文件，使用模板: {template_filename}...")
         update_attribute_text(template_path, output_path, attributes)
         
         # 检查生成的文件是否存在
@@ -467,7 +492,13 @@ def generate_dwg(request_data):
             return jsonify({"error": "生成的CAD文件不存在"}), 500
             
         # 获取文件名
-        download_name = f"{data[0]['项目名称']}_绿色建筑设计专篇.dwg"
+        standard_short = {
+            '成都市标': '市标',
+            '四川省标': '省标',
+            '国标': '国标'
+        }.get(standard, '市标')
+        
+        download_name = f"{data[0]['项目名称']}_{standard_short}_{star_rating_target}_绿色建筑设计专篇.dwg"
         if not download_name:
             download_name = "green_building.dwg"
         
