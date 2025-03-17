@@ -146,14 +146,16 @@
                             <i class="ri-arrow-down-s-line ml-auto"></i>
                         </div>
                         <div id="reportMenuContent" class="menu-content">
-                            <a href="{{ url_for('project_detail', project_id=project.id, page='report_table') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
-                                <i class="ri-file-list-3-line mr-3"></i>
-                                <span>报审表</span>
-                            </a>
-                            <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
-                                <i class="ri-leaf-line mr-3"></i>
-                                <span>绿色建材</span>
-                            </a>
+                            <div class="submenu-group" id="reportSubmenu">
+                                <a href="javascript:void(0)" onclick="generateWord()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
+                                    <i class="ri-file-list-3-line mr-3"></i>
+                                    <span>报审表</span>
+                                </a>
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                                    <i class="ri-leaf-line mr-3"></i>
+                                    <span>绿色建材</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </nav>
@@ -2032,6 +2034,83 @@
             }
         }
     }
+
+    // 添加生成Word文档的函数
+    function generateWord() {
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            return;
+        }
+
+        // 调用generate_word接口
+        fetch('/api/generate_word', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成报审表失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '报审表.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('生成报审表失败:', error);
+            alert(error.message || '生成报审表失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+        });
+    }
+
+    // 基础脚本
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('base.html: DOM加载完成');
+        hideLoader();
+        
+        // 检查main-content元素
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            console.log('找到main-content元素');
+        } else {
+            console.error('找不到main-content元素');
+        }
+    });
     </script>
 </body>
 </html>

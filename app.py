@@ -15,7 +15,9 @@ from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_cors import CORS
-
+from word_template import process_template  # 添加这行导入
+# 从export.py中导入的generate_word函数
+from export import generate_word
 # 加载环境变量
 load_dotenv()
 
@@ -438,6 +440,17 @@ def save_project_info(form_data):
         db.session.commit()
         
         print(f"项目保存成功: ID={project.id}")
+        
+        # 清除项目缓存文件
+        try:
+            import os
+            cache_file = os.path.join('temp', f'project_{project.id}_cache.json')
+            if os.path.exists(cache_file):
+                os.remove(cache_file)
+                print(f"已清除项目缓存: {cache_file}")
+        except Exception as e:
+            print(f"清除项目缓存失败: {str(e)}")
+            # 不影响项目保存，继续执行
         
         # 自动保存基本级和提高级各专业的评分信息
         try:
@@ -2868,6 +2881,27 @@ def create_default_scores(project_id, project_name, standard_selection):
         print(f"生成项目评分数据失败: {str(e)}")
         traceback.print_exc()
         return False
+
+# 注册export.py中的generate_word函数为app的路由
+@app.route('/api/generate_word', methods=['POST'])
+def handle_generate_word():
+    """
+    处理生成Word文档的请求
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        data['use_cache'] = False
+        
+        # 调用generate_word函数
+        return generate_word(data)
+    except Exception as e:
+        app.logger.error(f"处理生成Word请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
 
 if __name__ == '__main__':
     # 初始化数据库

@@ -24,3 +24,5 @@ htmlcov/
 .idea/
 *.log
 .__pycache__/
+/temp/*.json
+/temp/*.docx
