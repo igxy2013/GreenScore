@@ -28,3 +28,6 @@ htmlcov/
 /temp/*.docx
 temp/*.dwg
 __pycache__/*.pyc
+static/templates/绿色建筑设计专篇(市标2024).dwl2
+
+static/templates/acad.err

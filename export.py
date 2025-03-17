@@ -346,7 +346,17 @@ def generate_dwg(request_data):
         print(f"获取项目 {project_id} 的基本信息")
         cursor.execute("""
             SELECT name, design_unit, construction_unit, total_building_area, 
-                   building_type, location, climate_zone, star_rating_target, standard
+                   building_type, location, climate_zone, star_rating_target, standard,
+                   total_land_area, green_area, green_ratio, plot_ratio, building_density,
+                   building_floors, building_height, above_ground_area, underground_area,
+                   architecture_score, structure_score, water_supply_score, 
+                   electrical_score, hvac_score, landscape_score,
+                   architecture_innovation_score, structure_innovation_score, 
+                   hvac_innovation_score, landscape_innovation_score,
+                   safety_durability_score, health_comfort_score, 
+                   life_convenience_score, resource_saving_score, 
+                   environment_livability_score, improvement_innovation_score,
+                   total_score, evaluation_result
             FROM projects 
             WHERE id = ?
         """, [project_id])
@@ -389,10 +399,60 @@ def generate_dwg(request_data):
             print(f"CAD模板文件不存在: {template_path}")
             return jsonify({"error": f"CAD模板文件不存在，请确保templates目录下有{template_filename}文件"}), 404
 
+        # 同步得分表和project_scores表的数据
+        print(f"同步项目 {project_id} 的得分表和project_scores表数据")
+        try:
+            # 检查得分表中是否有该项目的数据
+            cursor.execute("SELECT COUNT(*) FROM [得分表] WHERE [项目ID] = ?", (project_id,))
+            score_count = cursor.fetchone()[0]
+            print(f"得分表中项目ID={project_id}的记录有 {score_count} 条")
+            
+            # 清空project_scores表中该项目的数据
+            cursor.execute("DELETE FROM project_scores WHERE project_id = ?", (project_id,))
+            deleted_count = cursor.rowcount
+            print(f"从project_scores表中删除项目ID={project_id}的 {deleted_count} 条记录")
+            
+            # 从得分表导入数据到project_scores表
+            cursor.execute("""
+                SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
+                FROM [得分表]
+                WHERE [项目ID] = ?
+            """, (project_id,))
+            scores = cursor.fetchall()
+            
+            # 导入数据到project_scores表
+            imported_count = 0
+            for score in scores:
+                project_id, level, specialty, clause_number, category, is_achieved, score_value, technical_measures = score
+                
+                # 尝试将得分转换为浮点数
+                try:
+                    if score_value and score_value.strip():
+                        score_float = float(score_value)
+                    else:
+                        score_float = 0
+                except (ValueError, TypeError):
+                    score_float = 0
+                
+                # 插入数据
+                cursor.execute("""
+                    INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (project_id, level, specialty, clause_number, category, is_achieved, score_float, technical_measures))
+                imported_count += 1
+            
+            # 提交事务
+            conn.commit()
+            print(f"成功从得分表导入 {imported_count} 条记录到project_scores表")
+        except Exception as e:
+            print(f"同步得分表和project_scores表数据时出错: {str(e)}")
+            print(traceback.format_exc())
+            # 继续执行，不影响后续操作
+
         # 尝试从缓存获取数据
         cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
         data = None
-        use_cache = request_data.get('use_cache', True)
+        use_cache = request_data.get('use_cache', False)  # 默认不使用缓存
         
         if use_cache and os.path.exists(cache_file):
             try:
@@ -465,6 +525,46 @@ def generate_dwg(request_data):
             for key, value in project_info.items():
                 attributes[key] = str(value)
         
+        # 添加项目详细信息（使用中文标签名）
+        attributes["项目名称"] = project_rows[0][0] or ''
+        attributes["设计单位"] = project_rows[0][1] or ''
+        attributes["建设单位"] = project_rows[0][2] or ''
+        attributes["总建筑面积"] = str(project_rows[0][3] or '')
+        attributes["建筑类型"] = project_rows[0][4] or ''
+        attributes["项目地点"] = project_rows[0][5] or ''
+        attributes["气候区划"] = project_rows[0][6] or ''
+        attributes["星级目标"] = project_rows[0][7] or ''
+        attributes["评价标准"] = project_rows[0][8] or ''
+        attributes["总用地面积"] = str(project_rows[0][9] or '')
+        attributes["绿化面积"] = str(project_rows[0][10] or '')
+        attributes["绿地率"] = str(project_rows[0][11] or '')
+        attributes["容积率"] = str(project_rows[0][12] or '')
+        attributes["建筑密度"] = str(project_rows[0][13] or '')
+        attributes["建筑层数"] = str(project_rows[0][14] or '')
+        attributes["建筑高度"] = str(project_rows[0][15] or '')
+        attributes["地上建筑面积"] = str(project_rows[0][16] or '')
+        attributes["地下建筑面积"] = str(project_rows[0][17] or '')
+        
+        # 添加评分数据（使用中文标签名）
+        attributes["建筑总分"] = str(project_rows[0][18] or '0')
+        attributes["结构总分"] = str(project_rows[0][19] or '0')
+        attributes["给排水总分"] = str(project_rows[0][20] or '0')
+        attributes["电气总分"] = str(project_rows[0][21] or '0')
+        attributes["暖通总分"] = str(project_rows[0][22] or '0')
+        attributes["景观总分"] = str(project_rows[0][23] or '0')
+        attributes["建筑创新总分"] = str(project_rows[0][24] or '0')
+        attributes["结构创新总分"] = str(project_rows[0][25] or '0')
+        attributes["暖通创新总分"] = str(project_rows[0][26] or '0')
+        attributes["景观创新总分"] = str(project_rows[0][27] or '0')
+        attributes["安全耐久总分"] = str(project_rows[0][28] or '0')
+        attributes["健康舒适总分"] = str(project_rows[0][29] or '0')
+        attributes["生活便利总分"] = str(project_rows[0][30] or '0')
+        attributes["资源节约总分"] = str(project_rows[0][31] or '0')
+        attributes["环境宜居总分"] = str(project_rows[0][32] or '0')
+        attributes["提高与创新总分"] = str(project_rows[0][33] or '0')
+        attributes["项目总分"] = str(project_rows[0][34] or '0')
+        attributes["评定结果"] = project_rows[0][35] or ''
+        
         # 添加得分数据
         for item in data[1:]:  # 跳过第一项（项目信息）
             条文号 = item.get("条文号", "")
@@ -475,7 +575,7 @@ def generate_dwg(request_data):
                 # 添加条文号对应的分值
                 attributes[条文号] = str(得分)
                 # 添加条文号对应的技术措施
-                attributes[f"{条文号}-措施"] = 技术措施
+                attributes[f"{条文号}措施"] = 技术措施
         
         # 生成输出文件路径
         from datetime import datetime
@@ -484,6 +584,7 @@ def generate_dwg(request_data):
         
         # 调用update_attribute_text更新DWG文件
         print(f"开始更新CAD文件，使用模板: {template_filename}...")
+        print(f"更新的属性数量: {len(attributes)}")
         update_attribute_text(template_path, output_path, attributes)
         
         # 检查生成的文件是否存在

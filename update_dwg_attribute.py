@@ -71,26 +71,52 @@ def update_attribute_text(template_path: str, output_path: str, attributes: dict
         try:
             # 打开DWG文件
             try:
+                print(f"正在打开DWG文件: {template_path}")
                 doc = acad.Documents.Open(template_path)
                 time.sleep(1)  # 等待文档完全加载
                 if not doc:
                     print("无法打开DWG文件")
                     return
+                print("DWG文件已成功打开")
             except Exception as e:
                 print(f"打开DWG文件时出错: {str(e)}")
                 return
                 
             # 获取所有块引用
             try:
+                print("正在访问模型空间...")
                 model_space = doc.ModelSpace
                 if not model_space:
                     print("无法访问模型空间")
                     return
-                    
+                
+                print("正在查找带有属性的块引用...")
                 block_refs = [item for item in model_space if item.ObjectName == "AcDbBlockReference" and item.HasAttributes]
+                print(f"找到 {len(block_refs)} 个带有属性的块引用")
                 
                 # 记录已更新的属性
                 updated_attributes = set()
+                
+                # 记录所有可用的属性标签
+                all_tags = set()
+                
+                # 首先收集所有可用的属性标签
+                for entity in block_refs:
+                    try:
+                        for attrib in entity.GetAttributes():
+                            tag_name = attrib.TagString
+                            all_tags.add(tag_name)
+                    except Exception as e:
+                        print(f"获取实体属性标签时出错: {str(e)}")
+                        continue
+                
+                print(f"DWG文件中找到的属性标签: {', '.join(sorted(all_tags))}")
+                print(f"需要更新的属性标签: {', '.join(sorted(attributes.keys()))}")
+                
+                # 检查哪些属性标签在DWG文件中不存在
+                missing_tags = set(attributes.keys()) - all_tags
+                if missing_tags:
+                    print(f"警告: 以下属性标签在DWG文件中不存在: {', '.join(sorted(missing_tags))}")
                 
                 for entity in block_refs:
                     try:
@@ -99,19 +125,28 @@ def update_attribute_text(template_path: str, output_path: str, attributes: dict
                             # 检查标签名称是否在需要更新的属性字典中
                             tag_name = attrib.TagString
                             if tag_name in attributes:
+                                # 获取属性值，确保不为None
+                                attr_value = attributes.get(tag_name, "")
+                                if attr_value is None:
+                                    attr_value = ""
+                                
                                 # 更新文字内容
-                                attrib.TextString = attributes[tag_name]
+                                attrib.TextString = attr_value
                                 updated_attributes.add(tag_name)
+                                print(f"已更新属性: {tag_name} = {attr_value[:30] + '...' if len(attr_value) > 30 else attr_value}")
                     except Exception as e:
                         print(f"处理实体属性时出错: {str(e)}")
                         continue
                 
                 # 检查是否所有属性都已更新
-                for tag_name in attributes:
-                    if tag_name not in updated_attributes:
-                        print(f"警告: 未找到属性标签 '{tag_name}'")
+                not_updated = set(attributes.keys()) - updated_attributes
+                if not_updated:
+                    print(f"警告: 以下属性未能更新: {', '.join(sorted(not_updated))}")
+                else:
+                    print("所有指定的属性都已成功更新")
                 
                 # 保存修改后的文件
+                print(f"正在保存DWG文件到: {output_path}")
                 doc.SaveAs(output_path)
                 print(f'已成功更新属性块文字，保存到: {output_path}')
                 
@@ -124,9 +159,11 @@ def update_attribute_text(template_path: str, output_path: str, attributes: dict
         # 确保文档被关闭和资源被释放
         try:
             if doc:
+                print("正在关闭DWG文件...")
                 doc.Close()
-        except:
-            pass
+                print("DWG文件已关闭")
+        except Exception as e:
+            print(f"关闭DWG文件时出错: {str(e)}")
         try:
             pythoncom.CoUninitialize()
         except:
