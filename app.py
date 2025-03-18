@@ -53,16 +53,12 @@ cache_config = {
 cache = Cache(app, config=cache_config)
 
 # 配置数据库连接
-# 从环境变量获取数据库配置
-server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
-database = os.environ.get('DATABASE', '绿色建筑')
-username = os.environ.get('USERNAME', 'test')
-password = os.environ.get('PASSWORD', '123456')
-driver = os.environ.get('DRIVER', 'ODBC Driver 17 for SQL Server')
-
-# 构建数据库连接字符串
-db_uri = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={urllib.parse.quote_plus(driver)}"
-app.logger.info("数据库配置已加载")
+# 优先使用环境变量中的数据库连接字符串
+db_uri = os.environ.get('DATABASE_URL')
+if not db_uri:
+    # 如果环境变量未设置，使用默认连接字符串
+    db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
+    app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 # 安全地获取数据库URL并打印
@@ -214,7 +210,8 @@ class StandardSichuan(db.Model):
     __tablename__ = '四川省标'
     
     # 使用中文字段名
-    条文号 = db.Column(db.String(20), primary_key=True)
+    序号 = db.Column(db.Integer, primary_key=True)
+    条文号 = db.Column(db.String(20))
     分类 = db.Column(db.String(50))
     专业 = db.Column(db.String(50))
     条文内容 = db.Column(db.Text)
@@ -226,7 +223,8 @@ class StandardNational(db.Model):
     __tablename__ = '国标'
     
     # 使用中文字段名
-    条文号 = db.Column(db.String(20), primary_key=True)
+    序号 = db.Column(db.Integer, primary_key=True)
+    条文号 = db.Column(db.String(20))
     分类 = db.Column(db.String(50))
     专业 = db.Column(db.String(50))
     条文内容 = db.Column(db.Text)
@@ -238,7 +236,8 @@ class Standard(db.Model):
     __tablename__ = '成都市标'
     
     # 使用中文字段名
-    条文号 = db.Column(db.String(20), primary_key=True)
+    序号 = db.Column(db.Integer, primary_key=True)
+    条文号 = db.Column(db.String(20))
     分类 = db.Column(db.String(50))
     专业 = db.Column(db.String(50))
     条文内容 = db.Column(db.Text)
@@ -1573,11 +1572,8 @@ def get_db_connection():
                 server = server_db[0]
                 database = server_db[1]
                 
-                # 从环境变量获取驱动程序
-                driver = os.environ.get('DRIVER', 'ODBC Driver 17 for SQL Server')
-                
                 # 构建连接字符串
-                conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
                 
                 # 创建连接
                 conn = pyodbc.connect(conn_str)
@@ -1784,83 +1780,6 @@ def get_score_summary(project_id, force_refresh=False):
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
         app.logger.error(traceback.format_exc())
-        return get_test_score_data()
-
-# 获取测试评分数据
-def get_test_score_data():
-    """返回测试用的评分数据"""
-    specialty_scores = {
-        '建筑专业': 25.5,
-        '结构专业': 18.2,
-        '给排水专业': 15.8,
-        '电气专业': 20.3,
-        '暖通专业': 22.7,
-        '景观专业': 16.9
-    }
-    
-    specialty_scores_by_category = {
-        '建筑专业': {
-            '安全耐久': 5.5,
-            '健康舒适': 6.0,
-            '生活便利': 4.0,
-            '资源节约': 5.0,
-            '环境宜居': 3.0,
-            '提高与创新': 2.0,
-            '总分': 25.5
-        },
-        '结构专业': {
-            '安全耐久': 8.2,
-            '健康舒适': 3.0,
-            '生活便利': 2.0,
-            '资源节约': 3.0,
-            '环境宜居': 1.0,
-            '提高与创新': 1.0,
-            '总分': 18.2
-        },
-        '给排水专业': {
-            '安全耐久': 2.8,
-            '健康舒适': 4.0,
-            '生活便利': 3.0,
-            '资源节约': 4.0,
-            '环境宜居': 1.0,
-            '提高与创新': 1.0,
-            '总分': 15.8
-        },
-        '电气专业': {
-            '安全耐久': 3.3,
-            '健康舒适': 5.0,
-            '生活便利': 4.0,
-            '资源节约': 5.0,
-            '环境宜居': 2.0,
-            '提高与创新': 1.0,
-            '总分': 20.3
-        },
-        '暖通专业': {
-            '安全耐久': 2.7,
-            '健康舒适': 7.0,
-            '生活便利': 3.0,
-            '资源节约': 6.0,
-            '环境宜居': 3.0,
-            '提高与创新': 1.0,
-            '总分': 22.7
-        },
-        '景观专业': {
-            '安全耐久': 1.9,
-            '健康舒适': 3.0,
-            '生活便利': 2.0,
-            '资源节约': 4.0,
-            '环境宜居': 5.0,
-            '提高与创新': 1.0,
-            '总分': 16.9
-        }
-    }
-    
-    return {
-        'specialty_scores': specialty_scores,
-        'specialty_scores_by_category': specialty_scores_by_category,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'is_test_data': True
-    }
 
 @app.route('/update_score', methods=['POST'])
 def update_score():
@@ -3509,4 +3428,4 @@ if __name__ == '__main__':
     # 根据环境变量决定是否开启调试模式
     debug_mode = not is_production
     app.logger.info(f"应用启动: 调试模式={debug_mode}")
-    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 

@@ -8,8 +8,7 @@
     <!-- 先加载Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.min.css') }}">
-    <!-- 使用Remix Icon图标库 -->
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet"/>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='greenscore.png') }}">
     
     <!-- 绿色建材计算所需的外部库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
@@ -17,7 +16,72 @@
     <script src="/static/js/green_building_score_calculator.js"></script>
     <!-- 在 head 部分添加对 db_updater.js 的引用 -->
     <script src="/static/js/db_updater.js"></script>
-    
+     <!-- 使用Font Awesome图标库 -->
+     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+     <style>
+     /* 图标样式兼容处理 */
+     [class^="ri-"], [class*=" ri-"] {
+         display: inline-block;
+         font-style: normal;
+         font-variant: normal;
+         text-rendering: auto;
+         line-height: 1;
+         font-family: "Font Awesome 5 Free";
+         font-weight: 900;
+     }
+ 
+     /* 定义图标映射关系 */
+     .ri-add-line:before { content: "\f067"; }                    /* fa-plus */
+     .ri-delete-bin-line:before { content: "\f2ed"; }            /* fa-trash-alt */
+     .ri-edit-line:before { content: "\f044"; }                  /* fa-edit */
+     .ri-search-line:before { content: "\f002"; }                /* fa-search */
+     .ri-menu-line:before { content: "\f0c9"; }                  /* fa-bars */
+     .ri-settings-line:before { content: "\f013"; }              /* fa-cog */
+     .ri-user-line:before { content: "\f007"; }                  /* fa-user */
+     .ri-home-line:before { content: "\f015"; }                  /* fa-home */
+     .ri-arrow-down-s-line:before { content: "\f107"; }          /* fa-angle-down */
+     .ri-arrow-up-s-line:before { content: "\f106"; }            /* fa-angle-up */
+     .ri-close-line:before { content: "\f00d"; }                 /* fa-times */
+     .ri-check-line:before { content: "\f00c"; }                 /* fa-check */
+     .ri-information-line:before { content: "\f129"; }           /* fa-info */
+     .ri-file-list-line:before { content: "\f15c"; }             /* fa-file-alt */
+     .ri-calendar-line:before { content: "\f133"; }              /* fa-calendar */
+     .ri-save-line:before { content: "\f0c7"; }                  /* fa-save */
+     .ri-upload-line:before { content: "\f093"; }                /* fa-cloud-upload-alt */
+     .ri-download-line:before { content: "\f019"; }              /* fa-download */
+     .ri-refresh-line:before { content: "\f2f1"; }               /* fa-sync */
+     .ri-loader-2-line:before { content: "\f110"; }             /* fa-spinner */
+     .ri-arrow-left-line:before { content: "\f060"; }           /* fa-arrow-left */
+     .ri-star-fill:before { content: "\f005"; }                  /* fa-star */
+     .ri-close-circle-fill:before { content: "\f057"; }          /* fa-times-circle */
+     .ri-bar-chart-line:before { content: "\f080"; }             /* fa-chart-bar */
+     .ri-file-download-line:before { content: "\f56d"; }         /* fa-file-download */
+     .ri-calculator-line:before { content: "\f1ec"; }            /* fa-calculator */
+     .ri-building-line:before { content: "\f1ad"; }              /* fa-building */
+     .ri-layout-2-line:before { content: "\f0db"; }              /* fa-columns */
+     .ri-drop-line:before { content: "\f043"; }                  /* fa-tint */
+     .ri-flashlight-line:before { content: "\f0eb"; }            /* fa-lightbulb */
+     .ri-temp-hot-line:before { content: "\f2c7"; }             /* fa-thermometer-full */
+     .ri-plant-line:before { content: "\f4d8"; }                 /* fa-seedling */
+     .ri-checkbox-line:before { content: "\f0c8"; }              /* fa-square */
+     .ri-checkbox-multiple-line:before { content: "\f14a"; }     /* fa-check-square */
+     .ri-leaf-line:before { content: "\f06c"; }                  /* fa-leaf */
+     .ri-file-list-3-line:before { content: "\f15c"; }          /* fa-file-alt */
+ 
+     /* 添加动画效果 */
+     .fa-spin {
+         animation: fa-spin 2s infinite linear;
+     }
+     @keyframes fa-spin {
+         0% { transform: rotate(0deg); }
+         100% { transform: rotate(360deg); }
+     }
+     
+     input[type="number"]::-webkit-inner-spin-button,
+     input[type="number"]::-webkit-outer-spin-button {
+         -webkit-appearance: none;
+         margin: 0;
+     }
     <style>
         .page-container {
             min-width: 1024px;

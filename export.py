@@ -16,10 +16,10 @@ def get_db_connection():
     try:
         # 获取数据库配置参数
         server = os.getenv('SQLSERVER_SERVER')
-        database = os.getenv('DATABASE')
-        username = os.getenv('USERNAME')
-        password = os.getenv('PASSWORD')
-        driver = os.getenv('DRIVER', 'ODBC Driver 17 for SQL Server')
+        database = os.getenv('SQLSERVER_DATABASE')
+        username = os.getenv('SQLSERVER_USERNAME')
+        password = os.getenv('SQLSERVER_PASSWORD')
+        driver = os.getenv('SQLSERVER_DRIVER', 'ODBC Driver 17 for SQL Server')
 
         # 检查必要的配置参数
         if not all([server, database, username, password]):

@@ -16,7 +16,7 @@ def create_tables():
     try:
         # 从环境变量获取数据库配置
         server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
-        database = os.environ.get('SQLSERVER_DATABASE', 'calculator_db')
+        database = os.environ.get('SQLSERVER_DATABASE', '绿色建筑')
         username = os.environ.get('SQLSERVER_USERNAME', 'test')
         password = os.environ.get('SQLSERVER_PASSWORD', '123456')
         driver = os.environ.get('SQLSERVER_DRIVER', '{SQL Server}')
