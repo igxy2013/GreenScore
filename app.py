@@ -55,10 +55,10 @@ cache = Cache(app, config=cache_config)
 # 配置数据库连接
 # 从环境变量获取数据库配置
 server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
-database = os.environ.get('SQLSERVER_DATABASE', 'calculator_db')
-username = os.environ.get('SQLSERVER_USERNAME', 'test')
-password = os.environ.get('SQLSERVER_PASSWORD', '123456')
-driver = os.environ.get('SQLSERVER_DRIVER', '{SQL Server}')
+database = os.environ.get('DATABASE', '绿色建筑')
+username = os.environ.get('USERNAME', 'test')
+password = os.environ.get('PASSWORD', '123456')
+driver = os.environ.get('DRIVER', 'ODBC Driver 17 for SQL Server')
 
 # 构建数据库连接字符串
 db_uri = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={urllib.parse.quote_plus(driver)}"
@@ -214,8 +214,7 @@ class StandardSichuan(db.Model):
     __tablename__ = '四川省标'
     
     # 使用中文字段名
-    序号 = db.Column(db.Integer, primary_key=True)
-    条文号 = db.Column(db.String(20))
+    条文号 = db.Column(db.String(20), primary_key=True)
     分类 = db.Column(db.String(50))
     专业 = db.Column(db.String(50))
     条文内容 = db.Column(db.Text)
@@ -227,8 +226,7 @@ class StandardNational(db.Model):
     __tablename__ = '国标'
     
     # 使用中文字段名
-    序号 = db.Column(db.Integer, primary_key=True)
-    条文号 = db.Column(db.String(20))
+    条文号 = db.Column(db.String(20), primary_key=True)
     分类 = db.Column(db.String(50))
     专业 = db.Column(db.String(50))
     条文内容 = db.Column(db.Text)
@@ -240,8 +238,7 @@ class Standard(db.Model):
     __tablename__ = '成都市标'
     
     # 使用中文字段名
-    序号 = db.Column(db.Integer, primary_key=True)
-    条文号 = db.Column(db.String(20))
+    条文号 = db.Column(db.String(20), primary_key=True)
     分类 = db.Column(db.String(50))
     专业 = db.Column(db.String(50))
     条文内容 = db.Column(db.Text)
@@ -1576,8 +1573,11 @@ def get_db_connection():
                 server = server_db[0]
                 database = server_db[1]
                 
+                # 从环境变量获取驱动程序
+                driver = os.environ.get('DRIVER', 'ODBC Driver 17 for SQL Server')
+                
                 # 构建连接字符串
-                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+                conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
                 
                 # 创建连接
                 conn = pyodbc.connect(conn_str)

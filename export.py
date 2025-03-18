@@ -27,7 +27,7 @@ def get_db_connection():
             raise ValueError("缺少必要的数据库配置参数")
 
         # 构建连接字符串
-        conn_str = f"DRIVER={{{driver}}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+        conn_str = f"DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}"
 
         # 尝试建立连接
         try:
