@@ -53,12 +53,16 @@ cache_config = {
 cache = Cache(app, config=cache_config)
 
 # 配置数据库连接
-# 优先使用环境变量中的数据库连接字符串
-db_uri = os.environ.get('DATABASE_URL')
-if not db_uri:
-    # 如果环境变量未设置，使用默认连接字符串
-    db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
-    app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
+# 从环境变量获取数据库配置
+server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
+database = os.environ.get('SQLSERVER_DATABASE', 'calculator_db')
+username = os.environ.get('SQLSERVER_USERNAME', 'test')
+password = os.environ.get('SQLSERVER_PASSWORD', '123456')
+driver = os.environ.get('SQLSERVER_DRIVER', '{SQL Server}')
+
+# 构建数据库连接字符串
+db_uri = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={urllib.parse.quote_plus(driver)}"
+app.logger.info("数据库配置已加载")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 # 安全地获取数据库URL并打印
@@ -3505,4 +3509,4 @@ if __name__ == '__main__':
     # 根据环境变量决定是否开启调试模式
     debug_mode = not is_production
     app.logger.info(f"应用启动: 调试模式={debug_mode}")
-    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

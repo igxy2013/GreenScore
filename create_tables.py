@@ -14,12 +14,16 @@ logger = logging.getLogger('greenscore')
 def create_tables():
     """创建数据库表"""
     try:
-        # 获取数据库连接字符串
-        db_uri = os.environ.get('DATABASE_URL')
-        if not db_uri:
-            # 如果环境变量未设置，使用默认连接字符串
-            db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
-            logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
+        # 从环境变量获取数据库配置
+        server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
+        database = os.environ.get('SQLSERVER_DATABASE', 'calculator_db')
+        username = os.environ.get('SQLSERVER_USERNAME', 'test')
+        password = os.environ.get('SQLSERVER_PASSWORD', '123456')
+        driver = os.environ.get('SQLSERVER_DRIVER', '{SQL Server}')
+
+        # 构建数据库连接字符串
+        db_uri = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver={urllib.parse.quote_plus(driver)}"
+        logger.info("数据库配置已加载")
         
         # 安全地获取数据库URL并打印
         masked_url = db_uri.replace(':' + db_uri.split(':')[2].split('@')[0] + '@', ':***@')
@@ -103,4 +107,4 @@ def create_tables():
         raise
 
 if __name__ == "__main__":
-    create_tables() 
+    create_tables()

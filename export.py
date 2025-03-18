@@ -14,25 +14,21 @@ load_dotenv()
 # 数据库连接配置
 def get_db_connection():
     try:
-        # 解析数据库连接字符串
-        db_url = os.getenv('DATABASE_URL')
-        if not db_url:
-            current_app.logger.error("数据库连接字符串未配置")
-            raise ValueError("数据库连接字符串未配置")
+        # 获取数据库配置参数
+        server = os.getenv('SQLSERVER_SERVER')
+        database = os.getenv('DATABASE')
+        username = os.getenv('USERNAME')
+        password = os.getenv('PASSWORD')
+        driver = os.getenv('DRIVER', 'ODBC Driver 17 for SQL Server')
 
-        # 使用正则表达式解析连接字符串
-        import re
-        pattern = r'mssql\+pyodbc://([^:]+):([^@]+)@([^/]+)/([^?]+)'
-        match = re.match(pattern, db_url)
-        if not match:
-            current_app.logger.error("数据库连接字符串格式错误")
-            raise ValueError("数据库连接字符串格式错误")
+        # 检查必要的配置参数
+        if not all([server, database, username, password]):
+            current_app.logger.error("缺少必要的数据库配置参数")
+            raise ValueError("缺少必要的数据库配置参数")
 
-        username, password, server, database = match.groups()
-        
-        # 构建pyodbc连接字符串
-        conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
-        
+        # 构建连接字符串
+        conn_str = f"DRIVER={{{driver}}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+
         # 尝试建立连接
         try:
             conn = pyodbc.connect(conn_str)
