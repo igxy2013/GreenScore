@@ -95,9 +95,18 @@ def generate_word(request_data):
             # 获取项目基本信息
             print(f"获取项目 {project_id} 的基本信息")
             cursor.execute("""
-                SELECT name, design_unit, construction_unit, total_building_area
-                FROM projects 
-                WHERE id = ?
+                SELECT p.name, p.design_unit, p.construction_unit, p.total_building_area,
+                       p.building_type, p.location, p.climate_zone, p.star_rating_target,
+                       p.architecture_score, p.structure_score, p.water_supply_score, 
+                       p.electrical_score, p.hvac_score, p.landscape_score,
+                       p.architecture_innovation_score, p.structure_innovation_score, 
+                       p.hvac_innovation_score, p.landscape_innovation_score,
+                       p.improvement_innovation_score, p.total_score,
+                       p.safety_durability_score, p.health_comfort_score,
+                       p.life_convenience_score, p.resource_saving_score,
+                       p.environment_livability_score
+                FROM projects p
+                WHERE p.id = ?
             """, [project_id])
             project_rows = cursor.fetchall()
 
@@ -106,6 +115,8 @@ def generate_word(request_data):
                 return jsonify({"error": "未找到项目数据"}), 404
 
             print(f"获取到项目数据: {project_rows[0]}")
+            print(f"total_building_area 字段值: {project_rows[0][3]}")
+            print(f"total_building_area 字段类型: {type(project_rows[0][3])}")
 
             # 获取得分数据
             print(f"获取项目 {project_id} 的得分数据")
@@ -126,8 +137,41 @@ def generate_word(request_data):
                 "项目名称": project_rows[0][0] or '',
                 "设计单位": project_rows[0][1] or '',
                 "建设单位": project_rows[0][2] or '',
-                "建筑面积": str(project_rows[0][3] or '')
+                "总建筑面积": str(project_rows[0][3] or '0'),  # 确保不为空，默认为0
+                "建筑面积": str(project_rows[0][3] or '0'),  # 确保不为空，默认为0
+                "建筑类型": project_rows[0][4] or '',
+                "项目地点": project_rows[0][5] or '',
+                "气候区划": project_rows[0][6] or '',
+                "星级目标": project_rows[0][7] or '',
+                "建筑总分": str(project_rows[0][8] or '0'),
+                "结构总分": str(project_rows[0][9] or '0'),
+                "给排水总分": str(project_rows[0][10] or '0'),
+                "电气总分": str(project_rows[0][11] or '0'),
+                "暖通总分": str(project_rows[0][12] or '0'),
+                "景观总分": str(project_rows[0][13] or '0'),
+                "建筑创新总分": str(project_rows[0][14] or '0'),
+                "结构创新总分": str(project_rows[0][15] or '0'),
+                "暖通创新总分": str(project_rows[0][16] or '0'),
+                "景观创新总分": str(project_rows[0][17] or '0'),
+                "提高与创新总分": str(project_rows[0][18] or '0'),
+                "项目总分": str(project_rows[0][19] or '0'),
+                "安全耐久总分": str(project_rows[0][20] or '0'),
+                "健康舒适总分": str(project_rows[0][21] or '0'),
+                "生活便利总分": str(project_rows[0][22] or '0'),
+                "资源节约总分": str(project_rows[0][23] or '0'),
+                "环境宜居总分": str(project_rows[0][24] or '0')
             })
+            
+            # 打印数据对象，用于调试
+            print("数据对象内容:")
+            print("数据对象中的所有字段名:")
+            for key in data[0].keys():
+                print(f"  {key}")
+            print("数据对象中的所有字段值:")
+            for key, value in data[0].items():
+                print(f"  {key}: {value}")
+            print("数据对象中的总建筑面积字段值:", data[0].get("总建筑面积", "未找到"))
+            print("数据对象中的建筑面积字段值:", data[0].get("建筑面积", "未找到"))
 
             # 添加得分数据
             for score_row in score_rows:
@@ -276,7 +320,29 @@ def save_project_info(project_data):
                     "项目名称": project_rows[0][0] or '',
                     "设计单位": project_rows[0][1] or '',
                     "建设单位": project_rows[0][2] or '',
-                    "建筑面积": str(project_rows[0][3] or '')
+                    "总建筑面积": str(project_rows[0][3] or '0'),  # 确保不为空，默认为0
+                    "建筑面积": str(project_rows[0][3] or '0'),  # 确保不为空，默认为0
+                    "建筑类型": project_rows[0][4] or '',
+                    "项目地点": project_rows[0][5] or '',
+                    "气候区划": project_rows[0][6] or '',
+                    "星级目标": project_rows[0][7] or '',
+                    "建筑总分": str(project_rows[0][8] or '0'),
+                    "结构总分": str(project_rows[0][9] or '0'),
+                    "给排水总分": str(project_rows[0][10] or '0'),
+                    "电气总分": str(project_rows[0][11] or '0'),
+                    "暖通总分": str(project_rows[0][12] or '0'),
+                    "景观总分": str(project_rows[0][13] or '0'),
+                    "建筑创新总分": str(project_rows[0][14] or '0'),
+                    "结构创新总分": str(project_rows[0][15] or '0'),
+                    "暖通创新总分": str(project_rows[0][16] or '0'),
+                    "景观创新总分": str(project_rows[0][17] or '0'),
+                    "提高与创新总分": str(project_rows[0][18] or '0'),
+                    "项目总分": str(project_rows[0][19] or '0'),
+                    "安全耐久总分": str(project_rows[0][20] or '0'),
+                    "健康舒适总分": str(project_rows[0][21] or '0'),
+                    "生活便利总分": str(project_rows[0][22] or '0'),
+                    "资源节约总分": str(project_rows[0][23] or '0'),
+                    "环境宜居总分": str(project_rows[0][24] or '0')
                 })
                 
                 # 添加得分数据
@@ -341,20 +407,18 @@ def generate_dwg(request_data):
         # 获取项目基本信息
         print(f"获取项目 {project_id} 的基本信息")
         cursor.execute("""
-            SELECT name, design_unit, construction_unit, total_building_area, 
-                   building_type, location, climate_zone, star_rating_target, standard,
-                   total_land_area, green_area, green_ratio, plot_ratio, building_density,
-                   building_floors, building_height, above_ground_area, underground_area,
-                   architecture_score, structure_score, water_supply_score, 
-                   electrical_score, hvac_score, landscape_score,
-                   architecture_innovation_score, structure_innovation_score, 
-                   hvac_innovation_score, landscape_innovation_score,
-                   safety_durability_score, health_comfort_score, 
-                   life_convenience_score, resource_saving_score, 
-                   environment_livability_score, improvement_innovation_score,
-                   total_score, evaluation_result
-            FROM projects 
-            WHERE id = ?
+            SELECT p.name, p.design_unit, p.construction_unit, p.total_building_area,
+                   p.building_type, p.location, p.climate_zone, p.star_rating_target,
+                   p.architecture_score, p.structure_score, p.water_supply_score, 
+                   p.electrical_score, p.hvac_score, p.landscape_score,
+                   p.architecture_innovation_score, p.structure_innovation_score, 
+                   p.hvac_innovation_score, p.landscape_innovation_score,
+                   p.improvement_innovation_score, p.total_score,
+                   p.safety_durability_score, p.health_comfort_score,
+                   p.life_convenience_score, p.resource_saving_score,
+                   p.environment_livability_score
+            FROM projects p
+            WHERE p.id = ?
         """, [project_id])
         project_rows = cursor.fetchall()
 
@@ -365,7 +429,7 @@ def generate_dwg(request_data):
         print(f"获取到项目数据: {project_rows[0]}")
         
         # 获取项目的评价标准和星级目标
-        standard = project_rows[0][8] or '成都市标'  # 默认为成都市标
+        standard = '成都市标'  # 默认为成都市标
         star_rating_target = project_rows[0][7] or ''  # 星级目标
         
         print(f"项目评价标准: {standard}, 星级目标: {star_rating_target}")
@@ -486,11 +550,29 @@ def generate_dwg(request_data):
                 "项目名称": project_rows[0][0] or '',
                 "设计单位": project_rows[0][1] or '',
                 "建设单位": project_rows[0][2] or '',
-                "建筑面积": str(project_rows[0][3] or ''),
+                "总建筑面积": str(project_rows[0][3] or '0'),  # 确保不为空，默认为0
+                "建筑面积": str(project_rows[0][3] or '0'),  # 确保不为空，默认为0
                 "建筑类型": project_rows[0][4] or '',
                 "项目地点": project_rows[0][5] or '',
                 "气候区划": project_rows[0][6] or '',
-                "星级目标": star_rating_target
+                "星级目标": project_rows[0][7] or '',
+                "建筑总分": str(project_rows[0][8] or '0'),
+                "结构总分": str(project_rows[0][9] or '0'),
+                "给排水总分": str(project_rows[0][10] or '0'),
+                "电气总分": str(project_rows[0][11] or '0'),
+                "暖通总分": str(project_rows[0][12] or '0'),
+                "景观总分": str(project_rows[0][13] or '0'),
+                "建筑创新总分": str(project_rows[0][14] or '0'),
+                "结构创新总分": str(project_rows[0][15] or '0'),
+                "暖通创新总分": str(project_rows[0][16] or '0'),
+                "景观创新总分": str(project_rows[0][17] or '0'),
+                "提高与创新总分": str(project_rows[0][18] or '0'),
+                "项目总分": str(project_rows[0][19] or '0'),
+                "安全耐久总分": str(project_rows[0][20] or '0'),
+                "健康舒适总分": str(project_rows[0][21] or '0'),
+                "生活便利总分": str(project_rows[0][22] or '0'),
+                "资源节约总分": str(project_rows[0][23] or '0'),
+                "环境宜居总分": str(project_rows[0][24] or '0')
             })
 
             # 添加得分数据
@@ -526,6 +608,7 @@ def generate_dwg(request_data):
         attributes["设计单位"] = project_rows[0][1] or ''
         attributes["建设单位"] = project_rows[0][2] or ''
         attributes["总建筑面积"] = str(project_rows[0][3] or '')
+        attributes["建筑面积"] = str(project_rows[0][3] or '')  # 添加建筑面积字段作为备用
         attributes["建筑类型"] = project_rows[0][4] or ''
         attributes["项目地点"] = project_rows[0][5] or ''
         attributes["气候区划"] = project_rows[0][6] or ''
@@ -542,24 +625,24 @@ def generate_dwg(request_data):
         attributes["地下建筑面积"] = str(project_rows[0][17] or '')
         
         # 添加评分数据（使用中文标签名）
-        attributes["建筑总分"] = str(project_rows[0][18] or '0')
-        attributes["结构总分"] = str(project_rows[0][19] or '0')
-        attributes["给排水总分"] = str(project_rows[0][20] or '0')
-        attributes["电气总分"] = str(project_rows[0][21] or '0')
-        attributes["暖通总分"] = str(project_rows[0][22] or '0')
-        attributes["景观总分"] = str(project_rows[0][23] or '0')
-        attributes["建筑创新总分"] = str(project_rows[0][24] or '0')
-        attributes["结构创新总分"] = str(project_rows[0][25] or '0')
-        attributes["暖通创新总分"] = str(project_rows[0][26] or '0')
-        attributes["景观创新总分"] = str(project_rows[0][27] or '0')
-        attributes["安全耐久总分"] = str(project_rows[0][28] or '0')
-        attributes["健康舒适总分"] = str(project_rows[0][29] or '0')
-        attributes["生活便利总分"] = str(project_rows[0][30] or '0')
-        attributes["资源节约总分"] = str(project_rows[0][31] or '0')
-        attributes["环境宜居总分"] = str(project_rows[0][32] or '0')
-        attributes["提高与创新总分"] = str(project_rows[0][33] or '0')
-        attributes["项目总分"] = str(project_rows[0][34] or '0')
-        attributes["评定结果"] = project_rows[0][35] or ''
+        attributes["建筑总分"] = str(project_rows[0][8] or '0')
+        attributes["结构总分"] = str(project_rows[0][9] or '0')
+        attributes["给排水总分"] = str(project_rows[0][10] or '0')
+        attributes["电气总分"] = str(project_rows[0][11] or '0')
+        attributes["暖通总分"] = str(project_rows[0][12] or '0')
+        attributes["景观总分"] = str(project_rows[0][13] or '0')
+        attributes["建筑创新总分"] = str(project_rows[0][14] or '0')
+        attributes["结构创新总分"] = str(project_rows[0][15] or '0')
+        attributes["暖通创新总分"] = str(project_rows[0][16] or '0')
+        attributes["景观创新总分"] = str(project_rows[0][17] or '0')
+        attributes["安全耐久总分"] = str(project_rows[0][20] or '0')
+        attributes["健康舒适总分"] = str(project_rows[0][21] or '0')
+        attributes["生活便利总分"] = str(project_rows[0][22] or '0')
+        attributes["资源节约总分"] = str(project_rows[0][23] or '0')
+        attributes["环境宜居总分"] = str(project_rows[0][24] or '0')
+        attributes["提高与创新总分"] = str(project_rows[0][18] or '0')
+        attributes["项目总分"] = str(project_rows[0][19] or '0')
+        attributes["评定结果"] = ""  # 这个字段在新的查询中没有
         
         # 添加得分数据
         for item in data[1:]:  # 跳过第一项（项目信息）
