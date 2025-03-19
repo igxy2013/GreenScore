@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报审表导出</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3176FF',
+                        secondary: '#6B7280'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '4px',
+                        DEFAULT: '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'xl': '20px',
+                        '2xl': '24px',
+                        '3xl': '32px',
+                        'full': '9999px',
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="bg-white rounded shadow-sm p-6">
+            <h1 class="text-lg font-medium text-gray-900 mb-6">报审表导出</h1>
+            
+            <div class="space-y-3">
+                <button class="w-full sm:w-[300px] h-10 bg-primary text-white font-medium !rounded-button hover:bg-primary/90 active:transform active:translate-y-px transition-all whitespace-nowrap">
+                    自评表
+                </button>
+                
+                <button class="w-full sm:w-[300px] h-10 bg-primary text-white font-medium !rounded-button hover:bg-primary/90 active:transform active:translate-y-px transition-all whitespace-nowrap">
+                    汇总表
+                </button>
+                
+                <button class="w-full sm:w-[300px] h-10 bg-primary text-white font-medium !rounded-button hover:bg-primary/90 active:transform active:translate-y-px transition-all whitespace-nowrap">
+                    专项报告一览表
+                </button>
+                
+                <button class="w-full sm:w-[300px] h-10 bg-primary text-white font-medium !rounded-button hover:bg-primary/90 active:transform active:translate-y-px transition-all whitespace-nowrap">
+                    水系统报审表
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('click', function() {
+                const fileName = this.textContent.trim();
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg transition-opacity duration-500';
+                notification.textContent = `${fileName}导出成功`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 500);
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
