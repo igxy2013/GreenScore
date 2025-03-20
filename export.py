@@ -104,7 +104,7 @@ def generate_word(request_data):
                        p.improvement_innovation_score, p.total_score,
                        p.safety_durability_score, p.health_comfort_score,
                        p.life_convenience_score, p.resource_saving_score,
-                       p.environment_livability_score
+                       p.environment_livability_score,p.total_land_area
                 FROM projects p
                 WHERE p.id = ?
             """, [project_id])
@@ -159,7 +159,8 @@ def generate_word(request_data):
                 "健康舒适总分": str(project_rows[0][21] or '0'),
                 "生活便利总分": str(project_rows[0][22] or '0'),
                 "资源节约总分": str(project_rows[0][23] or '0'),
-                "环境宜居总分": str(project_rows[0][24] or '0')
+                "环境宜居总分": str(project_rows[0][24] or '0'),
+                "总用地面积": str(project_rows[0][25] or '0')
             })
             
             # 打印数据对象，用于调试
@@ -342,7 +343,8 @@ def save_project_info(project_data):
                     "健康舒适总分": str(project_rows[0][21] or '0'),
                     "生活便利总分": str(project_rows[0][22] or '0'),
                     "资源节约总分": str(project_rows[0][23] or '0'),
-                    "环境宜居总分": str(project_rows[0][24] or '0')
+                    "环境宜居总分": str(project_rows[0][24] or '0'),
+                    "总建筑面积": str(project_rows[0][25] or '0')
                 })
                 
                 # 添加得分数据
@@ -416,7 +418,9 @@ def generate_dwg(request_data):
                    p.improvement_innovation_score, p.total_score,
                    p.safety_durability_score, p.health_comfort_score,
                    p.life_convenience_score, p.resource_saving_score,
-                   p.environment_livability_score
+                   p.environment_livability_score,p.total_land_area,p.green_area,p.green_ratio,
+                   p.plot_ratio,p.building_density,p.building_floors,p.building_height,
+                   p.above_ground_area,p.underground_area
             FROM projects p
             WHERE p.id = ?
         """, [project_id])
@@ -572,7 +576,16 @@ def generate_dwg(request_data):
                 "健康舒适总分": str(project_rows[0][21] or '0'),
                 "生活便利总分": str(project_rows[0][22] or '0'),
                 "资源节约总分": str(project_rows[0][23] or '0'),
-                "环境宜居总分": str(project_rows[0][24] or '0')
+                "环境宜居总分": str(project_rows[0][24] or '0'),
+                "总用地面积": str(project_rows[0][25] or '0'),
+                "绿化面积": str(project_rows[0][26] or '0'),
+                "绿化率": str(project_rows[0][27] or '0'),
+                "容积率": str(project_rows[0][28] or '0'),
+                "建筑密度": str(project_rows[0][29] or '0'),
+                "建筑层数": str(project_rows[0][30] or '0'),
+                "建筑高度": str(project_rows[0][31] or '0'),
+                "地上建筑面积": str(project_rows[0][32] or '0'),
+                "地下建筑面积": str(project_rows[0][33] or '0')
             })
 
             # 添加得分数据
@@ -613,17 +626,6 @@ def generate_dwg(request_data):
         attributes["项目地点"] = project_rows[0][5] or ''
         attributes["气候区划"] = project_rows[0][6] or ''
         attributes["星级目标"] = project_rows[0][7] or ''
-        attributes["评价标准"] = project_rows[0][8] or ''
-        attributes["总用地面积"] = str(project_rows[0][9] or '')
-        attributes["绿化面积"] = str(project_rows[0][10] or '')
-        attributes["绿地率"] = str(project_rows[0][11] or '')
-        attributes["容积率"] = str(project_rows[0][12] or '')
-        attributes["建筑密度"] = str(project_rows[0][13] or '')
-        attributes["建筑层数"] = str(project_rows[0][14] or '')
-        attributes["建筑高度"] = str(project_rows[0][15] or '')
-        attributes["地上建筑面积"] = str(project_rows[0][16] or '')
-        attributes["地下建筑面积"] = str(project_rows[0][17] or '')
-        
         # 添加评分数据（使用中文标签名）
         attributes["建筑总分"] = str(project_rows[0][8] or '0')
         attributes["结构总分"] = str(project_rows[0][9] or '0')
@@ -635,13 +637,23 @@ def generate_dwg(request_data):
         attributes["结构创新总分"] = str(project_rows[0][15] or '0')
         attributes["暖通创新总分"] = str(project_rows[0][16] or '0')
         attributes["景观创新总分"] = str(project_rows[0][17] or '0')
+        attributes["提高与创新总分"] = str(project_rows[0][18] or '0')
+        attributes["项目总分"] = str(project_rows[0][19] or '0')
         attributes["安全耐久总分"] = str(project_rows[0][20] or '0')
         attributes["健康舒适总分"] = str(project_rows[0][21] or '0')
         attributes["生活便利总分"] = str(project_rows[0][22] or '0')
         attributes["资源节约总分"] = str(project_rows[0][23] or '0')
         attributes["环境宜居总分"] = str(project_rows[0][24] or '0')
-        attributes["提高与创新总分"] = str(project_rows[0][18] or '0')
-        attributes["项目总分"] = str(project_rows[0][19] or '0')
+        attributes["总用地面积"] = str(project_rows[0][25] or '')
+        attributes["绿化面积"] = str(project_rows[0][26] or '')
+        attributes["绿地率"] = str(project_rows[0][27] or '')
+        attributes["容积率"] = str(project_rows[0][28] or '')
+        attributes["建筑密度"] = str(project_rows[0][29] or '')
+        attributes["建筑层数"] = str(project_rows[0][30] or '')
+        attributes["建筑高度"] = str(project_rows[0][31] or '')
+        attributes["地上建筑面积"] = str(project_rows[0][32] or '')
+        attributes["地下建筑面积"] = str(project_rows[0][33] or '')
+
         attributes["评定结果"] = ""  # 这个字段在新的查询中没有
         
         # 添加得分数据
