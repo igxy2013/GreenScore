@@ -104,7 +104,9 @@ def generate_word(request_data):
                        p.improvement_innovation_score, p.total_score,
                        p.safety_durability_score, p.health_comfort_score,
                        p.life_convenience_score, p.resource_saving_score,
-                       p.environment_livability_score,p.total_land_area
+                       p.environment_livability_score, p.total_land_area, p.standard,
+                       p.building_height, p.building_floors,p.location,p.env_health_energy_score,
+                       p.env_health_energy_innovation_score
                 FROM projects p
                 WHERE p.id = ?
             """, [project_id])
@@ -143,6 +145,7 @@ def generate_word(request_data):
                 "项目地点": project_rows[0][5] or '',
                 "气候区划": project_rows[0][6] or '',
                 "星级目标": project_rows[0][7] or '',
+
                 "建筑总分": str(project_rows[0][8] or '0'),
                 "结构总分": str(project_rows[0][9] or '0'),
                 "给排水总分": str(project_rows[0][10] or '0'),
@@ -160,7 +163,13 @@ def generate_word(request_data):
                 "生活便利总分": str(project_rows[0][22] or '0'),
                 "资源节约总分": str(project_rows[0][23] or '0'),
                 "环境宜居总分": str(project_rows[0][24] or '0'),
-                "总用地面积": str(project_rows[0][25] or '0')
+                "总用地面积": str(project_rows[0][25] or '0'),
+                "standard": project_rows[0][26] or '成都市标',  # 添加评价标准字段
+                "建筑高度": str(project_rows[0][27] or ''),  # 添加建筑高度字段
+                "建筑层数": str(project_rows[0][28] or ''),  # 添加建筑层数字段
+                "项目地点": str(project_rows[0][29] or ''),  # 添加项目地点字段
+                '环境健康与节能总分': str(project_rows[0][30] or '0'),  # 添加环境健康与节能总分字段
+                "环境健康与节能创新总分": str(project_rows[0][31] or '0'),
             })
             
             # 打印数据对象，用于调试
@@ -344,7 +353,9 @@ def save_project_info(project_data):
                     "生活便利总分": str(project_rows[0][22] or '0'),
                     "资源节约总分": str(project_rows[0][23] or '0'),
                     "环境宜居总分": str(project_rows[0][24] or '0'),
-                    "总建筑面积": str(project_rows[0][25] or '0')
+                    "总建筑面积": str(project_rows[0][25] or '0'),
+                    '环境健康与节能':str(project_rows[0][30] or '0'),
+                    "环境健康与节能创新总分": str(project_rows[0][31] or '0'),
                 })
                 
                 # 添加得分数据
@@ -420,7 +431,7 @@ def generate_dwg(request_data):
                    p.life_convenience_score, p.resource_saving_score,
                    p.environment_livability_score,p.total_land_area,p.green_area,p.green_ratio,
                    p.plot_ratio,p.building_density,p.building_floors,p.building_height,
-                   p.above_ground_area,p.underground_area
+                   p.above_ground_area,p.underground_area,p.env_health_energy_score,p.env_health_energy_innovation_score
             FROM projects p
             WHERE p.id = ?
         """, [project_id])
@@ -560,6 +571,9 @@ def generate_dwg(request_data):
                 "项目地点": project_rows[0][5] or '',
                 "气候区划": project_rows[0][6] or '',
                 "星级目标": project_rows[0][7] or '',
+                "standard": project_rows[0][26] or '成都市标',  # 添加评价标准字段
+                "建筑高度": str(project_rows[0][27] or ''),  # 添加建筑高度字段
+                "建筑层数": project_rows[0][28] or '',  # 添加建筑层数字段
                 "建筑总分": str(project_rows[0][8] or '0'),
                 "结构总分": str(project_rows[0][9] or '0'),
                 "给排水总分": str(project_rows[0][10] or '0'),
@@ -585,7 +599,10 @@ def generate_dwg(request_data):
                 "建筑层数": str(project_rows[0][30] or '0'),
                 "建筑高度": str(project_rows[0][31] or '0'),
                 "地上建筑面积": str(project_rows[0][32] or '0'),
-                "地下建筑面积": str(project_rows[0][33] or '0')
+                "地下建筑面积": str(project_rows[0][33] or '0'),
+                "环境健康与节能总分": str(project_rows[0][34] or '0'),
+                "环境健康与节能创新总分": str(project_rows[0][35] or '0'),
+
             })
 
             # 添加得分数据
@@ -653,7 +670,8 @@ def generate_dwg(request_data):
         attributes["建筑高度"] = str(project_rows[0][31] or '')
         attributes["地上建筑面积"] = str(project_rows[0][32] or '')
         attributes["地下建筑面积"] = str(project_rows[0][33] or '')
-
+        attributes["环境健康与节能总分"] = str(project_rows[0][34] or '0')
+        attributes["环境健康与节能创新总分"] = str(project_rows[0][35] or '0')
         attributes["评定结果"] = ""  # 这个字段在新的查询中没有
         
         # 添加得分数据

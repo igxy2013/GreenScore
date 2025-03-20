@@ -190,6 +190,12 @@
                                 <i class="ri-plant-line mr-3"></i>
                                 <span>景观</span>
                             </a>
+                            {% if project and project.standard == '四川省标' %}
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '环境健康与节能' %}active{% endif %}">
+                                <i class="ri-leaf-line mr-3"></i>
+                                <span>环境健康与节能</span>
+                            </a>
+                            {% endif %}
                         </div>
                         <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
                             <i class="ri-checkbox-multiple-line mr-3"></i>
@@ -221,6 +227,12 @@
                                 <i class="ri-plant-line mr-3"></i>
                                 <span>景观</span>
                             </a>
+                            {% if project and project.standard == '四川省标' %}
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '环境健康与节能' %}active{% endif %}">
+                                <i class="ri-leaf-line mr-3"></i>
+                                <span>环境健康与节能</span>
+                            </a>
+                            {% endif %}
                         </div>
                         <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}">
                             <i class="ri-bar-chart-line mr-3"></i>
@@ -318,6 +330,7 @@
                                         <th class="px-6 py-3 text-center">电气专业</th>
                                         <th class="px-6 py-3 text-center">暖通专业</th>
                                         <th class="px-6 py-3 text-center">景观专业</th>
+                                        <th class="px-6 py-3 text-center" id="env_health_energy_header">环境健康与节能专业</th>
                                         <th class="px-6 py-3 text-center">合计</th>
                                     </tr>
                                 </thead>
@@ -331,6 +344,7 @@
                                         <td class="px-6 py-4">0.0</td>
                                         <td class="px-6 py-4">0.0</td>
                                         <td class="px-6 py-4">0.0</td>
+                                        <td class="px-6 py-4" id="env_health_energy_column">0.0</td>
                                         <td class="px-6 py-4 font-bold">0.0</td>
                                     </tr>
                                 </tbody>
@@ -1649,6 +1663,14 @@
         const saveScoreBtn = document.getElementById('saveScoreBtn');
         const floatingSaveBtn = document.getElementById('floatingSaveBtn');
         
+        // 为保存按钮添加点击事件监听器
+        if (saveScoreBtn) {
+            saveScoreBtn.addEventListener('click', saveScoreData);
+        }
+        if (floatingSaveBtn) {
+            floatingSaveBtn.addEventListener('click', saveScoreData);
+        }
+
         // 定义保存评分的函数
         function saveScoreData() {
             // 显示保存中状态
@@ -2119,6 +2141,16 @@
         if (specialtyScoresRow && data.specialty_scores) {
             const specialtyScores = data.specialty_scores;
             
+            // 获取项目评价标准
+            const projectStandard = document.getElementById('current-project-standard')?.value || '';
+            // 显示或隐藏环境健康与节能专业列
+            const envHealthEnergyHeader = document.getElementById('env_health_energy_header');
+            const envHealthEnergyColumn = document.getElementById('env_health_energy_column');
+            if (envHealthEnergyHeader) {
+                envHealthEnergyHeader.style.display = projectStandard === '四川省标' ? '' : 'none';
+                envHealthEnergyColumn.style.display = projectStandard === '四川省标'? '' : 'none';
+            }
+            
             // 更新各专业得分
             updateCell(specialtyScoresRow, 1, specialtyScores['建筑专业'] || 0);
             updateCell(specialtyScoresRow, 2, specialtyScores['结构专业'] || 0);
@@ -2126,10 +2158,16 @@
             updateCell(specialtyScoresRow, 4, specialtyScores['电气专业'] || 0);
             updateCell(specialtyScoresRow, 5, specialtyScores['暖通专业'] || 0);
             updateCell(specialtyScoresRow, 6, specialtyScores['景观专业'] || 0);
+            updateCell(specialtyScoresRow, 7, specialtyScores['环境健康与节能专业'] || 0);
+            
+            // 如果是四川省标，更新环境健康与节能专业得分
+            if (projectStandard === '四川省标') {
+                updateCell(specialtyScoresRow, 7, specialtyScores['环境健康与节能专业'] || 0);
+            }
             
             // 更新总分
             const totalScore = Object.values(specialtyScores).reduce((sum, score) => sum + (parseFloat(score) || 0), 0);
-            updateCell(specialtyScoresRow, 7, totalScore);
+            updateCell(specialtyScoresRow, projectStandard === '四川省标' ? 8 : 7, totalScore);
         }
         
         // 更新分类得分行

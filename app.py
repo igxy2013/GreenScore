@@ -18,6 +18,92 @@ from flask_cors import CORS
 from word_template import process_template  # 添加这行导入
 # 从export.py中导入的generate_word函数
 from export import generate_word, generate_dwg
+
+def sync_score_tables(project_id):
+    """同步指定项目的得分表和project_scores表的数据"""
+    try:
+        # 获取数据库连接
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 检查project_scores表是否存在
+        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'project_scores'")
+        if cursor.fetchone()[0] == 0:
+            logger.info("project_scores表不存在，创建表")
+            # 创建project_scores表
+            cursor.execute("""
+                CREATE TABLE project_scores (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    project_id INT NOT NULL,
+                    level NVARCHAR(10) NOT NULL,
+                    specialty NVARCHAR(20) NOT NULL,
+                    clause_number NVARCHAR(20) NOT NULL,
+                    category NVARCHAR(20) NULL,
+                    is_achieved NVARCHAR(10) NOT NULL,
+                    score FLOAT NULL,
+                    technical_measures NVARCHAR(MAX) NULL,
+                    created_at DATETIME DEFAULT GETDATE(),
+                    updated_at DATETIME DEFAULT GETDATE()
+                )
+            """)
+            conn.commit()
+            logger.info("成功创建project_scores表")
+            
+            # 创建索引
+            cursor.execute("""
+                CREATE INDEX idx_project_scores_project_id ON project_scores (project_id)
+            """)
+            conn.commit()
+            logger.info("成功创建project_scores表索引")
+        
+        # 删除该项目在project_scores表中的数据
+        cursor.execute("DELETE FROM project_scores WHERE project_id = ?", (project_id,))
+        deleted_count = cursor.rowcount
+        conn.commit()
+        logger.info(f"删除项目 {project_id} 在project_scores表中的 {deleted_count} 条记录")
+        
+        # 从得分表导入数据到project_scores表
+        cursor.execute("""
+            SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
+            FROM [得分表]
+            WHERE [项目ID] = ?
+        """, (project_id,))
+        scores = cursor.fetchall()
+        
+        # 导入数据到project_scores表
+        imported_count = 0
+        for score in scores:
+            project_id, level, specialty, clause_number, category, is_achieved, score_value, technical_measures = score
+            
+            # 尝试将得分转换为浮点数
+            try:
+                if score_value and score_value.strip():
+                    score_float = float(score_value)
+                else:
+                    score_float = 0
+            except (ValueError, TypeError):
+                score_float = 0
+            
+            # 插入数据
+            cursor.execute("""
+                INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (project_id, level, specialty, clause_number, category, is_achieved, score_float, technical_measures))
+            imported_count += 1
+        
+        # 提交事务
+        conn.commit()
+        logger.info(f"项目 {project_id} 同步完成，导入了 {imported_count} 条记录")
+        
+        # 关闭连接
+        cursor.close()
+        conn.close()
+        
+        return True
+    except Exception as e:
+        logger.error(f"同步项目 {project_id} 数据时出错: {str(e)}")
+        logger.error(traceback.format_exc())
+        return False
 # 加载环境变量
 load_dotenv()
 
@@ -98,6 +184,8 @@ class Project(db.Model):
     total_building_area = db.Column(db.Float)  # 总建筑面积
     above_ground_area = db.Column(db.Float)  # 地上建筑面积
     underground_area = db.Column(db.Float)  # 地下建筑面积
+    building_height = db.Column(db.Float)  # 建筑高度
+    building_floors = db.Column(db.Integer)  # 建筑层数
     underground_floor_area = db.Column(db.Float)  # 地下一层建筑面积
     ground_parking_spaces = db.Column(db.Integer)  # 地面停车位数量
     plot_ratio = db.Column(db.Float)  # 容积率
@@ -126,6 +214,8 @@ class Project(db.Model):
     electrical_score = db.Column(db.Float)  # 电气总分
     hvac_score = db.Column(db.Float)  # 暖通总分
     landscape_score = db.Column(db.Float)  # 景观总分
+    env_health_energy_score = db.Column(db.Float)  # 环境健康与节能总分
+    env_health_energy_innovation_score = db.Column(db.Float)  # 环境健康与节能创新总分
     architecture_innovation_score = db.Column(db.Float)  # 建筑创新总分
     structure_innovation_score = db.Column(db.Float)  # 结构创新总分
     hvac_innovation_score = db.Column(db.Float)  # 暖通创新总分
@@ -191,6 +281,8 @@ class Project(db.Model):
             '电气总分': format_float(self.electrical_score),
             '暖通总分': format_float(self.hvac_score),
             '景观总分': format_float(self.landscape_score),
+            '环境健康与节能总分': format_float(self.env_health_energy_score),
+            '环境健康与节能创新总分': format_float(self.env_health_energy_innovation_score),
             '建筑创新总分': format_float(self.architecture_innovation_score),
             '结构创新总分': format_float(self.structure_innovation_score),
             '暖通创新总分': format_float(self.hvac_innovation_score),
@@ -976,7 +1068,9 @@ def get_project_info():
             'buildingType': project.building_type if project else '',  # 添加建筑类型
             'buildingNo': form_data.building_no if form_data else '',
             'designNo': form_data.design_no if form_data else '',
-            'standardSelection': form_data.standard_selection if form_data else 'municipal'
+            'standardSelection': form_data.standard_selection if form_data else 'municipal',
+            'buildingHeight': format_float(project.building_height) if project else '',
+            'buildingFloors': project.building_floors if project else ''
         }
         
         return jsonify(result)
@@ -1163,12 +1257,21 @@ def save_score():
                 
                 insert_count += 1
             
-            # 提交事务
-            conn.commit()
-            app.logger.info(f"成功插入 {insert_count} 条评分记录")
-            
-            # 关闭数据库连接
-            conn.close()
+            # 提交事务并确保正确关闭连接
+            try:
+                conn.commit()
+                app.logger.info(f"成功插入 {insert_count} 条评分记录")
+            except Exception as commit_error:
+                app.logger.error(f"提交事务失败: {str(commit_error)}")
+                conn.rollback()
+                raise
+            finally:
+                try:
+                    conn.close()
+                    app.logger.info("数据库连接已关闭")
+                except Exception as close_error:
+                    app.logger.error(f"关闭数据库连接时出错: {str(close_error)}")
+                    # 不抛出异常，因为主要操作已完成
             
             # 清除缓存
             cache_key = get_scores_cache_key(level, specialty, project_id, standard)
@@ -1636,6 +1739,10 @@ def get_score_summary(project_id, force_refresh=False):
                 # 获取所有专业的得分数据
                 specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
                 
+                # 如果是四川省标，添加环境健康与节能专业
+                if project_standard == '四川省标':
+                    specialties.append('环境健康与节能专业')
+                
                 # 专业名称映射，用于处理数据库中的专业名称与预定义专业名称的不完全匹配
                 specialty_mapping = {
                     '建筑': '建筑专业',
@@ -1644,6 +1751,7 @@ def get_score_summary(project_id, force_refresh=False):
                     '电气': '电气专业',
                     '暖通': '暖通专业',
                     '景观': '景观专业',
+                    '环境健康与节能': '环境健康与节能专业',
                     '建筑专业': '建筑专业',
                     '结构专业': '结构专业',
                     '给排水专业': '给排水专业',
@@ -3023,138 +3131,9 @@ def handle_generate_dwg():
                 WHERE ps.project_id = ?
             """, (project_id,))
             
-            scores = cursor.fetchall()
             
-            # 初始化各专业分数
-            专业分数 = {
-                '建筑': 0,
-                '结构': 0,
-                '给排水': 0,
-                '电气': 0,
-                '暖通': 0,
-                '景观': 0,
-                '建筑创新': 0,
-                '结构创新': 0,
-                '暖通创新': 0,
-                '景观创新': 0,
-            }
-            
-            # 初始化各章节分数
-            章节分数 = {
-                '安全耐久': 0,
-                '健康舒适': 0,
-                '生活便利': 0,
-                '资源节约': 0,
-                '环境宜居': 0,
-                '提高与创新': 0,
-            }
-            
-            # 计算各专业和章节的分数
-            for score in scores:
-                clause_number = score[0]  # 条文号
-                score_value = score[1] or 0  # 得分
-                分类 = score[2]  # 分类
-                专业 = score[3]  # 专业
-                属性 = score[4]  # 属性
-                
-                # 判断专业
-                if 专业 and '建' in 专业:
-                    if 属性 and '创新' in 属性:
-                        专业分数['建筑创新'] += score_value
-                    else:
-                        专业分数['建筑'] += score_value
-                elif 专业 and '结' in 专业:
-                    if 属性 and '创新' in 属性:
-                        专业分数['结构创新'] += score_value
-                    else:
-                        专业分数['结构'] += score_value
-                elif 专业 and ('给' in 专业 or '排' in 专业 or '水' in 专业):
-                    专业分数['给排水'] += score_value
-                elif 专业 and '电' in 专业:
-                    专业分数['电气'] += score_value
-                elif 专业 and ('暖' in 专业 or '通' in 专业 or '空调' in 专业):
-                    if 属性 and '创新' in 属性:
-                        专业分数['暖通创新'] += score_value
-                    else:
-                        专业分数['暖通'] += score_value
-                elif 专业 and ('景' in 专业 or '园' in 专业):
-                    if 属性 and '创新' in 属性:
-                        专业分数['景观创新'] += score_value
-                    else:
-                        专业分数['景观'] += score_value
-                
-                # 判断章节
-                if clause_number and clause_number.startswith('4') or (分类 and ('安全' in 分类 or '耐久' in 分类)):
-                    章节分数['安全耐久'] += score_value
-                elif clause_number and clause_number.startswith('5') or (分类 and ('健康' in 分类 or '舒适' in 分类)):
-                    章节分数['健康舒适'] += score_value
-                elif clause_number and clause_number.startswith('6') or (分类 and ('生活' in 分类 or '便利' in 分类)):
-                    章节分数['生活便利'] += score_value
-                elif clause_number and clause_number.startswith('7') or (分类 and ('资源' in 分类 or '节约' in 分类)):
-                    章节分数['资源节约'] += score_value
-                elif clause_number and clause_number.startswith('8') or (分类 and ('环境' in 分类 or '宜居' in 分类)):
-                    章节分数['环境宜居'] += score_value
-                elif clause_number and clause_number.startswith('9') or (分类 and ('提高' in 分类 or '创新' in 分类)):
-                    章节分数['提高与创新'] += score_value
-            
-            # 关闭数据库连接
-            cursor.close()
-            conn.close()
-            
-            # 更新项目的各项评分
-            project.architecture_score = 专业分数['建筑']
-            project.structure_score = 专业分数['结构']
-            project.water_supply_score = 专业分数['给排水']
-            project.electrical_score = 专业分数['电气']
-            project.hvac_score = 专业分数['暖通']
-            project.landscape_score = 专业分数['景观']
-            project.architecture_innovation_score = 专业分数['建筑创新']
-            project.structure_innovation_score = 专业分数['结构创新']
-            project.hvac_innovation_score = 专业分数['暖通创新']
-            project.landscape_innovation_score = 专业分数['景观创新']
-            
-            project.safety_durability_score = 章节分数['安全耐久']
-            project.health_comfort_score = 章节分数['健康舒适']
-            project.life_convenience_score = 章节分数['生活便利']
-            project.resource_saving_score = 章节分数['资源节约']
-            project.environment_livability_score = 章节分数['环境宜居']
-            project.improvement_innovation_score = 章节分数['提高与创新']
-            
-            # 计算项目总分
-            project.total_score = sum(专业分数.values())
-            
-            # 根据总分和评价标准确定评定结果
-            if project.standard == '成都市标':
-                if project.total_score >= 80:
-                    project.evaluation_result = '绿色建筑'
-                else:
-                    project.evaluation_result = '未达标'
-            elif project.standard == '四川省标':
-                if project.total_score >= 60 and project.total_score < 70:
-                    project.evaluation_result = '基本级'
-                elif project.total_score >= 70 and project.total_score < 80:
-                    project.evaluation_result = '一星级'
-                elif project.total_score >= 80 and project.total_score < 90:
-                    project.evaluation_result = '二星级'
-                elif project.total_score >= 90:
-                    project.evaluation_result = '三星级'
-                else:
-                    project.evaluation_result = '未达标'
-            elif project.standard == '国标':
-                if project.total_score >= 60 and project.total_score < 70:
-                    project.evaluation_result = '基本级'
-                elif project.total_score >= 70 and project.total_score < 80:
-                    project.evaluation_result = '一星级'
-                elif project.total_score >= 80 and project.total_score < 90:
-                    project.evaluation_result = '二星级'
-                elif project.total_score >= 90:
-                    project.evaluation_result = '三星级'
-                else:
-                    project.evaluation_result = '未达标'
-            else:
-                project.evaluation_result = '未知'
-            
-            # 保存更新
+            # 将更新后的项目添加到session并保存
+            db.session.add(project)
             db.session.commit()
             
             app.logger.info(f"项目 {project_id} 的评分数据已更新")
@@ -3172,72 +3151,6 @@ def handle_generate_dwg():
     except Exception as e:
         app.logger.error(f"处理生成DWG请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
-
-def sync_score_tables(project_id):
-    """同步得分表和project_scores表的数据"""
-    try:
-        # 获取数据库连接
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 检查得分表中是否有该项目的数据
-        cursor.execute("SELECT COUNT(*) FROM [得分表] WHERE [项目ID] = ?", (project_id,))
-        score_count = cursor.fetchone()[0]
-        logger.info(f"得分表中项目ID={project_id}的记录有 {score_count} 条")
-        
-        if score_count == 0:
-            logger.warning(f"项目ID={project_id}在得分表中没有记录，无需同步")
-            cursor.close()
-            conn.close()
-            return False
-        
-        # 清空project_scores表中该项目的数据
-        cursor.execute("DELETE FROM project_scores WHERE project_id = ?", (project_id,))
-        deleted_count = cursor.rowcount
-        logger.info(f"从project_scores表中删除项目ID={project_id}的 {deleted_count} 条记录")
-        
-        # 从得分表导入数据到project_scores表
-        cursor.execute("""
-            SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
-            FROM [得分表]
-            WHERE [项目ID] = ?
-        """, (project_id,))
-        scores = cursor.fetchall()
-        
-        # 导入数据到project_scores表
-        imported_count = 0
-        for score in scores:
-            project_id, level, specialty, clause_number, category, is_achieved, score_value, technical_measures = score
-            
-            # 尝试将得分转换为浮点数
-            try:
-                if score_value and score_value.strip():
-                    score_float = float(score_value)
-                else:
-                    score_float = 0
-            except (ValueError, TypeError):
-                score_float = 0
-            
-            # 插入数据
-            cursor.execute("""
-                INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (project_id, level, specialty, clause_number, category, is_achieved, score_float, technical_measures))
-            imported_count += 1
-        
-        # 提交事务
-        conn.commit()
-        logger.info(f"成功从得分表导入 {imported_count} 条记录到project_scores表")
-        
-        # 关闭连接
-        cursor.close()
-        conn.close()
-        
-        return True
-    except Exception as e:
-        logger.error(f"同步得分表和project_scores表数据时出错: {str(e)}")
-        logger.error(traceback.format_exc())
-        return False
 
 @app.route('/api/calculate_scores/<int:project_id>', methods=['POST'])
 def calculate_project_scores(project_id):
@@ -3282,6 +3195,8 @@ def calculate_project_scores(project_id):
             '电气': 0,
             '暖通': 0,
             '景观': 0,
+            '环境健康与节能': 0,
+            '环境健康与节能创新': 0,
             '建筑创新': 0,
             '结构创新': 0,
             '暖通创新': 0,
@@ -3331,6 +3246,11 @@ def calculate_project_scores(project_id):
                     专业分数['景观创新'] += score_value
                 else:
                     专业分数['景观'] += score_value
+            elif 专业 and ('环境' in 专业 or '健康' in 专业 or '节能' in 专业):
+                if 属性 and '创新' in 属性:
+                    专业分数['环境健康与节能创新'] += score_value
+                else:
+                    专业分数['环境健康与节能'] += score_value
             
             # 判断章节
             if clause_number and clause_number.startswith('4') or (分类 and ('安全' in 分类 or '耐久' in 分类)):
@@ -3346,31 +3266,29 @@ def calculate_project_scores(project_id):
             elif clause_number and clause_number.startswith('9') or (分类 and ('提高' in 分类 or '创新' in 分类)):
                 章节分数['提高与创新'] += score_value
         
-        # 关闭数据库连接
-        cursor.close()
-        conn.close()
-        
         # 更新项目的各项评分
-        project.architecture_score = 专业分数['建筑']
-        project.structure_score = 专业分数['结构']
-        project.water_supply_score = 专业分数['给排水']
-        project.electrical_score = 专业分数['电气']
-        project.hvac_score = 专业分数['暖通']
-        project.landscape_score = 专业分数['景观']
-        project.architecture_innovation_score = 专业分数['建筑创新']
-        project.structure_innovation_score = 专业分数['结构创新']
-        project.hvac_innovation_score = 专业分数['暖通创新']
-        project.landscape_innovation_score = 专业分数['景观创新']
+        project.architecture_score = round(专业分数['建筑'], 2)
+        project.structure_score = round(专业分数['结构'], 2)
+        project.water_supply_score = round(专业分数['给排水'], 2)
+        project.electrical_score = round(专业分数['电气'], 2)
+        project.hvac_score = round(专业分数['暖通'], 2)
+        project.landscape_score = round(专业分数['景观'], 2)
+        project.env_health_energy_score = round(专业分数['环境健康与节能'], 2)
+        project.env_health_energy_innovation_score = round(专业分数['环境健康与节能创新'], 2)
+        project.architecture_innovation_score = round(专业分数['建筑创新'], 2)
+        project.structure_innovation_score = round(专业分数['结构创新'], 2)
+        project.hvac_innovation_score = round(专业分数['暖通创新'], 2)
+        project.landscape_innovation_score = round(专业分数['景观创新'], 2)
         
-        project.safety_durability_score = 章节分数['安全耐久']
-        project.health_comfort_score = 章节分数['健康舒适']
-        project.life_convenience_score = 章节分数['生活便利']
-        project.resource_saving_score = 章节分数['资源节约']
-        project.environment_livability_score = 章节分数['环境宜居']
-        project.improvement_innovation_score = 章节分数['提高与创新']
+        project.safety_durability_score = round(章节分数['安全耐久'], 2)
+        project.health_comfort_score = round(章节分数['健康舒适'], 2)
+        project.life_convenience_score = round(章节分数['生活便利'], 2)
+        project.resource_saving_score = round(章节分数['资源节约'], 2)
+        project.environment_livability_score = round(章节分数['环境宜居'], 2)
+        project.improvement_innovation_score = round(章节分数['提高与创新'], 2)
         
         # 计算项目总分
-        project.total_score = sum(专业分数.values())
+        project.total_score = round(sum(专业分数.values()), 2)
         
         # 根据总分和评价标准确定评定结果
         if project.standard == '成都市标':
@@ -3403,8 +3321,24 @@ def calculate_project_scores(project_id):
         else:
             project.evaluation_result = '未知'
         
-        # 保存更新
-        db.session.commit()
+        # 将更新后的项目添加到session并保存
+        try:
+            db.session.add(project)
+            db.session.commit()
+            logger.info(f"项目 {project_id} 的评分已更新: 总分={project.total_score}, 评定结果={project.evaluation_result}")
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"更新项目评分时出错: {str(e)}")
+            raise
+        finally:
+            # 确保数据库连接正确关闭
+            try:
+                cursor.close()
+                conn.close()
+                logger.info(f"数据库连接已关闭")
+            except Exception as e:
+                logger.error(f"关闭数据库连接时出错: {str(e)}")
+                # 不抛出异常，因为主要操作已完成
         
         return jsonify({
             'success': True, 

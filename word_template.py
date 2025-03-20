@@ -13,8 +13,10 @@ def replace_placeholders(template_path, data):
         doc = Document(template_path)
         
         # 处理项目信息
-        project_fields = ['项目名称', '设计单位', '建设单位', '总建筑面积', '星级目标','建筑类型','建筑总分','结构总分','给排水总分','电气总分','暖通总分','景观总分'
-        ,'建筑创新总分','结构创新总分','给排水创新总分','电气创新总分','暖通创新总分','景观创新总分','项目总分','创新总分']
+        project_fields = ['项目名称', '设计单位', '建设单位', '总建筑面积', '星级目标', '建筑类型', '建筑总分', '结构总分', '给排水总分', '电气总分', '暖通总分', '景观总分', 
+        '建筑创新总分', '结构创新总分', '给排水创新总分', '电气创新总分', '暖通创新总分', '景观创新总分', '项目总分', '创新总分', '项目地点', '建筑高度', '建筑层数',
+        '安全耐久总分','生活便利总分','健康舒适总分','资源节约总分','环境宜居总分','提高与创新总分','设计日期','环境健康与节能总分','环境健康与节能创新总分',
+        ]
         
         # 添加占位符映射关系
         placeholder_mapping = {
@@ -22,8 +24,11 @@ def replace_placeholders(template_path, data):
             '结创总分': '结构创新总分',
             '暖创总分': '暖通创新总分',
             '电创总分': '电气创新总分',
+            '水创总分': '给排水创新总分',
             '景创总分': '景观创新总分',
-            '创新总分': '提高与创新总分'
+            '创新总分': '提高与创新总分',
+            '节能总分': '环境健康与节能总分',
+            '节创总分': '环境健康与节能创新总分'
         }
         
         # 获取文档中的所有书签
@@ -252,21 +257,26 @@ def replace_placeholders(template_path, data):
                 if parent is not None:
                     parent.replace(bookmark_range, new_run)
         
-        # 处理映射的简写书签
+        # 处理映射的简写书签（包括带数字后缀的）
         for short_name, full_name in placeholder_mapping.items():
-            if short_name in bookmarks_dict:
-                field_value = ''
-                if data and isinstance(data[0], dict):
-                    field_value = str(data[0].get(full_name, ''))
-                # 创建新的文本运行
-                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
-                
-                # 替换书签内容
-                bookmark_range = bookmarks_dict[short_name]
-                if bookmark_range is not None:
-                    parent = bookmark_range.getparent()
-                    if parent is not None:
-                        parent.replace(bookmark_range, new_run)
+            # 使用正则表达式匹配简写字段名及其带数字后缀的变体
+            short_name_pattern = re.compile(f"{short_name}[0-9]*$")
+            for bookmark_name in list(bookmarks_dict.keys()):
+                if short_name_pattern.match(bookmark_name):
+                    field_value = ''
+                    if data and isinstance(data[0], dict):
+                        field_value = str(data[0].get(full_name, ''))
+                        print(f"处理简写书签: {bookmark_name} -> {field_value}")
+                    # 创建新的文本运行
+                    new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                    
+                    # 替换书签内容
+                    bookmark_range = bookmarks_dict[bookmark_name]
+                    if bookmark_range is not None:
+                        parent = bookmark_range.getparent()
+                        if parent is not None:
+                            parent.replace(bookmark_range, new_run)
+                            print(f"替换简写书签: {bookmark_name} -> {field_value}")
         
         # 处理表格中的■字符，将其字体改为宋体
         for table in doc.tables:
@@ -303,8 +313,14 @@ def process_template(data):
         from flask import current_app
         import os
         
-        # 使用单个模板文件
-        template_file = 'chengdu_template.docx'
+        # 根据评价标准选择模板文件
+        standard = data[0].get('standard', '成都市标')  # 默认使用成都市标
+        
+        if standard == '国标':
+            return None  # 国标不进行任何操作
+        
+        # 根据评价标准选择模板文件
+        template_file = 'sichuan_template.docx' if standard == '四川省标' else 'chengdu_template.docx'
         
         # 获取模板文件的完整路径
         template_path = os.path.join(current_app.static_folder, 'templates', template_file)

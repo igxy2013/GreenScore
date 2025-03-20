@@ -49,6 +49,7 @@ def add_score_fields():
                 ("electrical_score", "电气总分"),
                 ("hvac_score", "暖通总分"),
                 ("landscape_score", "景观总分"),
+                ("env_health_energy_score", "环境健康与节能总分"),
                 ("architecture_innovation_score", "建筑创新总分"),
                 ("structure_innovation_score", "结构创新总分"),
                 ("hvac_innovation_score", "暖通创新总分"),
@@ -139,4 +140,4 @@ def add_score_fields():
         raise
 
 if __name__ == "__main__":
-    add_score_fields() 
+    add_score_fields()

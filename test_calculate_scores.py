@@ -16,7 +16,7 @@ def test_calculate_scores(project_id):
     """测试计算评分API"""
     try:
         # 构建API URL
-        api_url = f"http://localhost:8091/api/calculate_scores/{project_id}"
+        api_url = f"http://localhost:5000/api/calculate_scores/{project_id}"
         
         # 发送请求
         logger.info(f"调用计算评分API: {api_url}")
@@ -123,9 +123,14 @@ def check_project_in_db(project_id):
         else:
             logger.error(f"未找到项目ID为 {project_id} 的记录")
         
-        # 关闭连接
-        cursor.close()
-        conn.close()
+        # 确保正确关闭数据库连接
+        try:
+            cursor.close()
+            conn.close()
+            logger.info("数据库连接已关闭")
+        except Exception as close_error:
+            logger.error(f"关闭数据库连接时出错: {str(close_error)}")
+            # 不抛出异常，因为主要查询操作已完成
     
     except Exception as e:
         logger.error(f"检查数据库中的项目信息时出错: {str(e)}")
@@ -139,4 +144,4 @@ if __name__ == "__main__":
         project_id = 51  # 默认项目ID
     
     # 测试计算评分API
-    test_calculate_scores(project_id) 
+    test_calculate_scores(project_id)
