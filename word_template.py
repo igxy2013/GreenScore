@@ -4,102 +4,279 @@ from flask import jsonify
 import re
 import os
 from flask import current_app
+from docx.oxml import parse_xml
+from docx.oxml.ns import qn, nsmap
 
 def replace_placeholders(template_path, data):
     try:
         # 加载Word模板
         doc = Document(template_path)
         
-        # 遍历表格中的单元格
+        # 处理项目信息
+        project_fields = ['项目名称', '设计单位', '建设单位', '总建筑面积', '星级目标','建筑类型','建筑总分','结构总分','给排水总分','电气总分','暖通总分','景观总分'
+        ,'建筑创新总分','结构创新总分','给排水创新总分','电气创新总分','暖通创新总分','景观创新总分','项目总分','创新总分']
+        
+        # 添加占位符映射关系
+        placeholder_mapping = {
+            '建创总分': '建筑创新总分',
+            '结创总分': '结构创新总分',
+            '暖创总分': '暖通创新总分',
+            '电创总分': '电气创新总分',
+            '景创总分': '景观创新总分',
+            '创新总分': '提高与创新总分'
+        }
+        
+        # 获取文档中的所有书签
+        bookmarks_dict = {}
+        for bookmark_start in doc.element.xpath('//w:bookmarkStart'):
+            bookmark_name = bookmark_start.get(qn('w:name'))
+            if not bookmark_name:
+                continue
+            
+            # 获取书签的内容范围
+            bookmark_id = bookmark_start.get(qn('w:id'))
+            bookmark_end = doc.element.xpath(f'//w:bookmarkEnd[@w:id="{bookmark_id}"]')[0]
+            
+            # 创建一个范围对象来表示书签的内容
+            bookmark_range = bookmark_start.getnext()
+            while bookmark_range is not None and bookmark_range is not bookmark_end:
+                if bookmark_range.tag.endswith('}r') or bookmark_range.tag.endswith('}p'):
+                    break
+                bookmark_range = bookmark_range.getnext()
+            
+            if bookmark_range is not None:
+                bookmarks_dict[bookmark_name] = bookmark_range
+                print(f"找到书签: {bookmark_name}")
+            else:
+                print(f"跳过无效书签: {bookmark_name}")
+        
+        # 处理数字格式的书签（条文号对应的得分）
+        for bookmark_name, bookmark_range in bookmarks_dict.items():
+            if re.match(r'\d+(?:\.\d+)*?', bookmark_name) or bookmark_name.startswith('f'):
+                # 在数据中查找对应的得分
+                for item in data:
+                    # 将条文号转换为新的书签格式（去掉点号并添加f前缀）
+                    bookmark_format = 'f' + str(item.get('条文号')).replace('.', '')
+                    # 同时检查原始条文号格式和带f前缀的格式
+                    if bookmark_format == bookmark_name or str(item.get('条文号')) == bookmark_name:
+                        try:
+                            # 创建新的文本运行
+                            new_text = str(item.get('得分', ''))
+                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{new_text}</w:t></w:r>')
+                            
+                            # 替换书签内容
+                            if bookmark_range is not None:
+                                parent = bookmark_range.getparent()
+                                if parent is not None:
+                                    parent.replace(bookmark_range, new_run)
+                                    print(f"替换书签 {bookmark_name} 的值为: {new_text}")
+                        except Exception as e:
+                            print(f"替换书签 {bookmark_name} 时出错: {str(e)}")
+                        break
+        
+        # 处理设计日期书签（包括带数字后缀的）
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y年%m月%d日")
+        # 使用正则表达式匹配设计日期及其带数字后缀的变体
+        date_pattern = re.compile(r'^设计日期[0-9]*$')
+        for bookmark_name in list(bookmarks_dict.keys()):
+            if date_pattern.match(bookmark_name):
+                # 创建新的文本运行
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{current_date}</w:t></w:r>')
+                
+                # 替换书签内容
+                bookmark_range = bookmarks_dict[bookmark_name]
+                if bookmark_range is not None:
+                    parent = bookmark_range.getparent()
+                    if parent is not None:
+                        parent.replace(bookmark_range, new_run)
+                        print(f"处理设计日期书签: {bookmark_name} -> {current_date}")
+
+        
+        # 处理标准字段书签（包括带数字后缀的书签）
+        for field in project_fields:
+            # 特殊处理星级目标字段
+            field_pattern = re.compile(r'^星级目标[0-9]*$')
+            if field_pattern.match(field):
+                field_value = ''
+                if data and isinstance(data[0], dict):
+                    target = data[0].get('星级目标', '')
+                    field_value = f'基本级{"■" if target == "基本级" else "□"}一星级{"■" if target == "一星级" else "□"}二星级{"■" if target == "二星级" else "□"}三星级{"■" if target == "三星级" else "□"}'
+                    print(f"处理书签: {field} -> {field_value}")
+                # 创建新的文本运行
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                
+                # 替换书签内容
+                bookmark_range = bookmarks_dict[field]
+                if bookmark_range is not None:
+                    parent = bookmark_range.getparent()
+                    if parent is not None:
+                        parent.replace(bookmark_range, new_run)
+                # 处理所有带数字后缀的相同字段
+                for bookmark_name in list(bookmarks_dict.keys()):
+                    if field_pattern.match(bookmark_name):
+                        bookmark_range = bookmarks_dict[bookmark_name]
+                        if bookmark_range is not None:
+                            parent = bookmark_range.getparent()
+                            if parent is not None:
+                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                                parent.replace(bookmark_range, new_run)
+                                print(f"处理带数字后缀的书签: {bookmark_name} -> {field_value}")
+                continue
+            
+            # 特殊处理绿色星级字段
+            field_pattern = re.compile(r'^绿色星级[0-9]*$')
+            if field_pattern.match(field) or field == '绿色星级':
+                field_value = ''
+                if data and isinstance(data[0], dict):
+                    target = data[0].get('星级目标', '')
+                    if target == '基本级':
+                        field_value = '基本级'
+                    elif target == '一星级':
+                        field_value = '一星级'
+                    elif target == '二星级':
+                        field_value = '二星级'
+                    elif target == '三星级':
+                        field_value = '三星级'
+                    else:
+                        field_value = target
+                    print(f"处理书签: {field} -> {field_value}")
+                # 创建新的文本运行
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                
+                # 替换书签内容
+                bookmark_range = bookmarks_dict[field]
+                if bookmark_range is not None:
+                    parent = bookmark_range.getparent()
+                    if parent is not None:
+                        parent.replace(bookmark_range, new_run)
+                # 处理所有带数字后缀的相同字段
+                for bookmark_name in list(bookmarks_dict.keys()):
+                    if field_pattern.match(bookmark_name) or bookmark_name == '绿色星级':
+                        bookmark_range = bookmarks_dict[bookmark_name]
+                        if bookmark_range is not None:
+                            parent = bookmark_range.getparent()
+                            if parent is not None:
+                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                                parent.replace(bookmark_range, new_run)
+                                print(f"处理带数字后缀的书签: {bookmark_name} -> {field_value}")
+                continue
+            
+            # 特殊处理建筑类型字段
+            field_pattern = re.compile(r'^建筑类型[0-9]*$')
+            if field_pattern.match(field):
+                field_value = ''
+                if data and isinstance(data[0], dict):
+                    building_type = data[0].get('建筑类型', '')
+                    field_value = f'居住建筑{"■" if building_type == "居住建筑" else "□"} 公共建筑{"■" if building_type == "公共建筑" else "□"} 居住+公建{"■" if building_type == "居住+公建" else "□"}'
+                    print(f"处理书签: {field} -> {field_value}")
+                # 创建新的文本运行
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                
+                # 替换书签内容
+                bookmark_range = bookmarks_dict[field]
+                if bookmark_range is not None:
+                    parent = bookmark_range.getparent()
+                    if parent is not None:
+                        parent.replace(bookmark_range, new_run)
+                # 处理所有带数字后缀的相同字段
+                for bookmark_name in list(bookmarks_dict.keys()):
+                    if field_pattern.match(bookmark_name):
+                        bookmark_range = bookmarks_dict[bookmark_name]
+                        if bookmark_range is not None:
+                            parent = bookmark_range.getparent()
+                            if parent is not None:
+                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                                parent.replace(bookmark_range, new_run)
+                                print(f"处理带数字后缀的书签: {bookmark_name} -> {field_value}")
+                continue
+            # 使用正则表达式匹配字段名及其带数字后缀的变体
+            field_pattern = re.compile(f"{field}[0-9]*$")
+            for bookmark_name in list(bookmarks_dict.keys()):
+                if field_pattern.match(bookmark_name):
+                    field_value = ''
+                    if data and isinstance(data[0], dict):
+                        field_value = str(data[0].get(field, ''))
+                        print(f"处理书签: {bookmark_name} -> {field_value}")
+                    # 创建新的文本运行
+                    new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                    
+                    # 替换书签内容
+                    bookmark_range = bookmarks_dict[bookmark_name]
+                    if bookmark_range is not None:
+                        parent = bookmark_range.getparent()
+                        if parent is not None:
+                            parent.replace(bookmark_range, new_run)
+        
+        # 处理绿色星级书签
+        field_pattern = re.compile(r'^绿色星级[0-9]*$')
+        for bookmark_name in list(bookmarks_dict.keys()):
+            if field_pattern.match(bookmark_name):
+                field_value = ''
+                if data and isinstance(data[0], dict):
+                    target = data[0].get('星级目标', '')
+                    if target == '基本级':
+                        field_value = '基本级'
+                    elif target == '一星级':
+                        field_value = '一星级'
+                    elif target == '二星级':
+                        field_value = '二星级'
+                    elif target == '三星级':
+                        field_value = '三星级'
+                    else:
+                        field_value = target
+                    print(f"处理书签: {bookmark_name} -> {field_value}")
+                # 创建新的文本运行
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                
+                # 替换书签内容
+                bookmark_range = bookmarks_dict[bookmark_name]
+                if bookmark_range is not None:
+                    parent = bookmark_range.getparent()
+                    if parent is not None:
+                        parent.replace(bookmark_range, new_run)
+        
+        # 处理成都项目总分书签
+        if '成都项目总分' in bookmarks_dict:
+            field_value = ''
+            if data and isinstance(data[0], dict):
+                project_score = float(data[0].get('项目总分', '0'))
+                field_value = format((project_score + 400) / 10, '.1f')
+            # 创建新的文本运行
+            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+            
+            # 替换书签内容
+            bookmark_range = bookmarks_dict['成都项目总分']
+            if bookmark_range is not None:
+                parent = bookmark_range.getparent()
+                if parent is not None:
+                    parent.replace(bookmark_range, new_run)
+        
+        # 处理映射的简写书签
+        for short_name, full_name in placeholder_mapping.items():
+            if short_name in bookmarks_dict:
+                field_value = ''
+                if data and isinstance(data[0], dict):
+                    field_value = str(data[0].get(full_name, ''))
+                # 创建新的文本运行
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                
+                # 替换书签内容
+                bookmark_range = bookmarks_dict[short_name]
+                if bookmark_range is not None:
+                    parent = bookmark_range.getparent()
+                    if parent is not None:
+                        parent.replace(bookmark_range, new_run)
+        
+        # 处理表格中的■字符，将其字体改为宋体
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for paragraph in cell.paragraphs:
-                        if not paragraph.text:
-                            continue
-                            
-                        # 获取段落中的所有运行对象
-                        runs = paragraph.runs
-                        if not runs:
-                            continue
-                            
-                        # 合并所有运行的文本
-                        text = paragraph.text
-                        
-                        # 使用正则表达式查找{x.x.x.x}和{项目名称}格式的占位符
-                        modified = False
-                        # 处理数字格式的占位符
-                        for match in re.finditer(r'\{(\d+(?:\.\d+)*?)\}', text):
-                            article_num = match.group(1)
-                            placeholder = match.group(0)
-                            
-                            # 在数据中查找对应的得分
-                            for item in data:
-                                if str(item.get('条文号')) == article_num:
-                                    replacement = str(item.get('得分', ''))
-                                    # 在第一个运行对象中进行替换
-                                    if runs:
-                                        text = text.replace(placeholder, replacement)
-                                        runs[0].text = text
-                                        modified = True
-                                    break
-                        
-                        # 处理项目信息占位符
-                        project_fields = ['项目名称', '设计单位', '建设单位', '总建筑面积', '星级目标','建筑类型','建筑总分','结构总分','给排水总分','电气总分','暖通总分','景观总分'
-                        ,'建筑创新总分','结构创新总分','给排水创新总分','电气创新总分','暖通创新总分','景观创新总分','项目总分','创新总分']
-                        
-                        # 添加占位符映射关系
-                        placeholder_mapping = {
-                            '建创总分': '建筑创新总分',
-                            '结创总分': '结构创新总分',
-                            '暖创总分': '暖通创新总分',
-                            '电创总分': '电气创新总分',
-                            '景创总分': '景观创新总分',
-                            '创新总分': '提高与创新总分'
-                        }
-                        # 处理设计日期占位符
-                        date_match = re.search(r'\{设计日期\}', text)
-                        if date_match:
-                            from datetime import datetime
-                            current_date = datetime.now().strftime("%Y年%m月%d日")
-                            # 在所有运行对象中查找并替换占位符
-                            for run in runs:
-                                if date_match.group(0) in run.text:
-                                    run.text = run.text.replace(date_match.group(0), current_date)
-                                    modified = True
-                                    break
-                        # 处理标准字段
-                        for field in project_fields:
-                            field_match = re.search(r'\{' + field + r'\}', text)
-                            if field_match:
-                                # 添加调试信息
-                                print(f"找到字段: {field}")
-                                # 确保data不为空且包含项目信息
-                                field_value = ''
-                                if data and isinstance(data[0], dict):
-                                    field_value = str(data[0].get(field, ''))
-                                    print(f"字段 {field} 的值: {field_value}")
-                                # 在所有运行对象中查找并替换占位符
-                                for run in runs:
-                                    if field_match.group(0) in run.text:
-                                        run.text = run.text.replace(field_match.group(0), field_value)
-                                        modified = True
-                                        print(f"替换完成: {field} -> {field_value}")
-                                        break
-                        
-                        # 处理映射的简写占位符
-                        for short_name, full_name in placeholder_mapping.items():
-                            short_match = re.search(r'\{' + short_name + r'\}', text)
-                            if short_match:
-                                field_value = ''
-                                if data and isinstance(data[0], dict):
-                                    field_value = str(data[0].get(full_name, ''))
-                                # 在所有运行对象中查找并替换占位符
-                                for run in runs:
-                                    if short_match.group(0) in run.text:
-                                        run.text = run.text.replace(short_match.group(0), field_value)
-                                        modified = True
-                                        break
+                        for run in paragraph.runs:
+                            if '■' in run.text:
+                                run.font.name = '宋体'
+                                run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
                        
         # 确保temp目录存在
         os.makedirs('temp', exist_ok=True)
@@ -127,7 +304,7 @@ def process_template(data):
         import os
         
         # 使用单个模板文件
-        template_file = 'chengdu_template1.docx'
+        template_file = 'chengdu_template.docx'
         
         # 获取模板文件的完整路径
         template_path = os.path.join(current_app.static_folder, 'templates', template_file)

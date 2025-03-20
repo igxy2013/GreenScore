@@ -61,7 +61,7 @@ def generate_word(request_data):
             return jsonify({"error": "请提供项目ID"}), 400
 
         # 检查模板文件是否存在
-        template_path = os.path.join(current_app.static_folder, 'templates', 'chengdu_template1.docx')
+        template_path = os.path.join(current_app.static_folder, 'templates', 'chengdu_template.docx')
         if not os.path.exists(template_path):
             print(f"模板文件不存在: {template_path}")
             return jsonify({"error": "模板文件不存在"}), 404
