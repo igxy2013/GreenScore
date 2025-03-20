@@ -825,6 +825,8 @@ def filter_standards():
             if specialty:
                 query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
             
+            # 添加按序号排序
+            query = query.order_by(getattr(model_class, '序号'))
             standards = query.all()
             print(f"从 {standard_name} 获取标准数据: level={level}, specialty={specialty}, 找到{len(standards)}条记录")
         except Exception as e:
@@ -3428,4 +3430,4 @@ if __name__ == '__main__':
     # 根据环境变量决定是否开启调试模式
     debug_mode = not is_production
     app.logger.info(f"应用启动: 调试模式={debug_mode}")
-    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000))) 
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
