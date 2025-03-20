@@ -585,13 +585,6 @@
                             setTimeout(updateStarRating, 500);
                         });
                     </script>
-                    <!-- 添加调试按钮 -->
-                    <!-- <div class="mt-4 flex justify-center flex-col items-center">
-                        <button id="refreshScoreBtn" class="px-4 py-2 text-blue ">
-                            刷新评分数据
-                        </button>
-                        <div id="lastUpdateTime" class="text-sm text-gray-500 mt-2">最后更新时间: 加载中...</div>
-                    </div> -->
                     {% endif %}
                     {% block content %}
                     {% if current_page == 'project_info' %}
@@ -1394,7 +1387,7 @@
                 const originalText = saveProjectInfoBtn.textContent;
                 saveProjectInfoBtn.textContent = '保存中...';
                 saveProjectInfoBtn.disabled = true;
-                
+
                 // 获取表单元素
                 const form = saveProjectInfoBtn.closest('form');
                 if (!form) {
@@ -1407,6 +1400,7 @@
                 // 提交表单
                 console.log('提交项目信息表单');
                 form.submit();
+                calculateAndUpdateScores();
             });
         } else {
             console.log('未找到项目信息保存按钮');
