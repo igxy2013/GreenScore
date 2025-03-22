@@ -326,7 +326,19 @@
             </aside>
 
             <!-- 主内容区域 -->
-            <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-height: 100vh;">
+            <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-h-screen;">
+                <!-- 用户信息栏 -->
+                <div class="absolute top-0 right-0 p-4 flex items-center space-x-3">
+                    <div class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100">
+                        <i class="fas fa-user-circle text-primary text-xl"></i>
+                        <span class="ml-2 text-gray-700 font-medium">{{ session.get('username', '未登录') }}</span>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group">
+                        <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
+                        <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
+                    </a>
+                </div>
+                
                 <div class="max-w-7xl mx-auto">
                     <!-- 添加项目管理按钮 -->
                     {% if current_page == 'green_materials' %}
@@ -725,30 +737,12 @@
                             <div class="mb-4">
                                 <label for="standard_selection" class="block text-base font-medium text-primary mb-2">评价标准</label>
                                 <div class="mt-2">
-                                    {% if project and project.standard %}
-                                        {% if project.standard == '国标' %}
-                                            <div class="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                                                <span>绿色建筑评价标准 GB/T 50378-2019（2024版）</span>
-                                            </div>
-                                        {% elif project.standard == '四川省标' %}
-                                            <div class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                                                <span>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</span>
-                                            </div>
-                                        {% elif project.standard == '成都市标' %}
-                                            <div class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                                                <span>成都市绿色建筑施工图设计与审查技术要点（2024版）</span>
-                                            </div>
-                                        {% else %}
-                                            <div class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
-                                                <span>{{ project.standard }}</span>
-                                            </div>
-                                        {% endif %}
-                                        <input type="hidden" name="standard_selection" value="{{ project.standard }}">
-                                    {% else %}
-                                        <div class="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
-                                            <span>未设置</span>
-                                        </div>
-                                    {% endif %}
+                                    <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button">
+                                        <option value="">请选择评价标准</option>
+                                        <option value="国标" {% if project and project.standard == '国标' %}selected{% endif %}>绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
+                                        <option value="四川省标" {% if project and project.standard == '四川省标' %}selected{% endif %}>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
+                                        <option value="成都市标" {% if project and project.standard == '成都市标' %}selected{% endif %}>成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
+                                    </select>
                                 </div>
                             </div>
                             
@@ -2398,7 +2392,13 @@
     // 添加生成Word文档的函数
     function generateWord() {
         // 临时设置当前页面为report_table，以便高亮显示菜单项
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
         const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+        if (currentProjectStandard=='国标') {
+            alert('当前标准下暂无报审表模板!');
+            return;
+        }
         currentMenuItems.forEach(item => {
             item.classList.remove('active');
         });
@@ -2431,6 +2431,7 @@
 
         // 获取项目ID
         const projectId = document.getElementById('current-project-id').value;
+
         if (!projectId) {
             alert('请先选择项目');
             if (pageLoader) {
@@ -2467,7 +2468,13 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = '报审表.docx';
+            if (currentProjectStandard=='四川省标') {
+                a.download = '四川省绿色建筑报审表.docx';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '成都市绿色建筑报审表.docx';
+            } else {
+                a.download = '报审表.docx';
+            }
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);

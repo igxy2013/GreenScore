@@ -183,6 +183,7 @@ class Project(db.Model):
     __tablename__ = 'projects'
     
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)  # 添加用户ID字段
     name = db.Column(db.String(100), nullable=False)  # 项目名称
     code = db.Column(db.String(50))  # 项目编号
     construction_unit = db.Column(db.String(100))  # 建设单位
@@ -530,10 +531,13 @@ def save_project_info(form_data):
         is_detail_form = form_data.get('detail_form') == '1'
         print(f"表单类型: {'详细信息表单' if is_detail_form else '基本信息表单'}")
         
+        # 获取新的项目名称
+        new_project_name = form_data.get('project_name', '')
+        
         # 如果不是详细信息表单，则更新基本信息
         if not is_detail_form:
             # 更新项目属性 - 基本信息
-            project.name = form_data.get('project_name', '')
+            project.name = new_project_name
             project.code = form_data.get('project_code', '')
             project.construction_unit = form_data.get('construction_unit', '')
             project.design_unit = form_data.get('design_unit', '')
@@ -542,6 +546,28 @@ def save_project_info(form_data):
             project.standard = form_data.get('standard_selection', '')  # 保存评价标准
             project.climate_zone = form_data.get('climate_zone', '')
             project.star_rating_target = form_data.get('star_rating_target', '')
+            
+            # 如果项目名称发生变化，更新得分表中的项目名称
+            if project_id and new_project_name:
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    
+                    # 更新得分表中的项目名称
+                    update_query = """
+                    UPDATE [得分表]
+                    SET [项目名称] = ?
+                    WHERE [项目ID] = ?
+                    """
+                    cursor.execute(update_query, (new_project_name, project_id))
+                    conn.commit()
+                    print(f"更新得分表中项目 {project_id} 的项目名称为: {new_project_name}")
+                    
+                    cursor.close()
+                    conn.close()
+                except Exception as e:
+                    print(f"更新得分表项目名称时出错: {str(e)}")
+                    print(traceback.format_exc())
         
         # 处理数值字段 - 建筑面积相关（无论是哪种表单都处理这些字段）
         try_parse_float(form_data, 'building_area', project, 'building_area')
@@ -604,32 +630,6 @@ def save_project_info(form_data):
             print(f"清除项目缓存失败: {str(e)}")
             # 不影响项目保存，继续执行
         
-        # 自动保存基本级和提高级各专业的评分信息
-        try:
-            # 定义要保存的专业列表
-            specialties = ['建筑专业', '结构专业', '给排水专业', '暖通专业', '电气专业']
-            levels = ['基本级', '提高级']
-            
-            # 为每个等级和专业创建初始评分记录
-            for level in levels:
-                for specialty in specialties:
-                    # 创建空的评分数据
-                    score_data = {
-                        'level': level,
-                        'specialty': specialty,
-                        'project_id': project.id,
-                        'scores': [],
-                        'standard': project.standard
-                    }
-                    
-                    # 调用保存评分的函数
-                    save_score_for_new_project(score_data)
-            
-            print(f"已为项目 {project.id} 自动创建评分记录")
-        except Exception as e:
-            print(f"自动创建评分记录失败: {str(e)}")
-            # 不影响项目创建，继续执行
-        
         return project
     except Exception as e:
         db.session.rollback()
@@ -668,7 +668,8 @@ def try_parse_int(form_data, form_field, model_obj, model_field):
 @login_required
 def project_management():
     try:
-        return render_template('project_management.html')
+        username = session.get('username', '未登录')
+        return render_template('project_management.html', username=username)
     except Exception as e:
         print(f"项目管理页面出错: {str(e)}")
         print(traceback.format_exc())
@@ -676,166 +677,151 @@ def project_management():
 
 # 创建项目路由
 @app.route('/create_project', methods=['POST'])
+@login_required
 def create_project():
     try:
-        # 获取表单数据
-        project_name = request.form.get('project_name')
-        project_code = request.form.get('project_code')
-        construction_unit = request.form.get('construction_unit')
-        design_unit = request.form.get('design_unit')
-        project_location = request.form.get('project_location')
-        standard_selection = request.form.get('standard_selection')
-        building_type = request.form.get('building_type')  # 获取建筑类型
-        star_rating_target = request.form.get('star_rating_target')  # 获取目标星级
-        import_star_case = request.form.get('import_star_case') == 'on'  # 是否导入一星级案例数据
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': '用户未登录'}), 401
         
-        print(f"收到创建项目请求: 名称={project_name}, 标准={standard_selection}, 建筑类型={building_type}, 星级目标={star_rating_target}, 导入一星级案例={import_star_case}")
-        print(f"表单数据: {request.form}")
+        data = request.get_json()
+        project_name = data.get('name')
+        standard = data.get('standard')
+        star_rating_target = data.get('star_rating_target')
         
-        # 验证必填字段
         if not project_name:
-            raise ValueError("项目名称不能为空")
-        if not standard_selection:
-            raise ValueError("评价标准不能为空")
-        if not building_type:
-            raise ValueError("建筑类型不能为空")
+            return jsonify({'error': '项目名称不能为空'}), 400
+        
+        if not standard:
+            return jsonify({'error': '请选择评价标准'}), 400
         
         # 创建新项目
         project = Project(
             name=project_name,
-            code=project_code,
-            construction_unit=construction_unit,
-            design_unit=design_unit,
-            location=project_location,
-            standard=standard_selection,
-            building_type=building_type,  # 设置建筑类型
-            star_rating_target=star_rating_target  # 设置目标星级
+            user_id=user_id,
+            standard=standard,
+            building_type=data.get('building_type'),
+            star_rating_target=star_rating_target,
+            code=data.get('code'),
+            construction_unit=data.get('construction_unit'),
+            design_unit=data.get('design_unit'),
+            location=data.get('location')
         )
         
-        # 保存到数据库
         db.session.add(project)
         db.session.commit()
         
-        print(f"项目创建成功: ID={project.id}, 名称={project_name}, 标准={standard_selection}")
-        
-        # 自动导入星级案例数据
+        # 从星级案例表获取初始数据
         try:
-            print(f"开始自动导入星级案例数据到项目 {project.id}")
-            # 调用API导入星级案例数据，根据项目的评价标准和星级目标
-            import_url = f"/api/star_case_scores?target_project_id={project.id}"
-            with app.test_client() as client:
-                response = client.get(import_url)
-                result = response.get_json()
-                if result and result.get('success'):
-                    print(f"成功导入星级案例数据: {result.get('message')}")
-                else:
-                    error_msg = result.get('message') if result else "未知错误"
-                    print(f"导入星级案例数据失败: {error_msg}")
-                    # 如果导入失败，则使用默认方式创建评分记录
-                    print("使用默认方式创建评分记录...")
-                    # 直接使用SQL为新项目生成所有条文号的默认得分数据
-                    create_default_scores(project.id, project.name, standard_selection)
+            conn = get_db_connection()
+            cursor = conn.cursor()
             
-        except Exception as import_error:
-            print(f"导入星级案例数据出错: {str(import_error)}")
-            traceback.print_exc()
-            # 如果导入出错，则使用默认方式创建评分记录
-            print("使用默认方式创建评分记录...")
-            # 直接使用SQL为新项目生成所有条文号的默认得分数据
-            create_default_scores(project.id, project.name, standard_selection)
+            # 查询星级案例表中的数据
+            cursor.execute("""
+                SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+                FROM 星级案例表
+                WHERE 评价标准 = ? AND 星级目标 = ?
+            """, (standard, star_rating_target))
+            
+            case_data = cursor.fetchall()
+            
+            if case_data:
+                # 插入得分记录到得分表
+                for record in case_data:
+                    clause_number, category, is_achieved, score, technical_measures, specialty, level = record
+                    
+                    cursor.execute("""
+                        INSERT INTO 得分表 (
+                            项目ID, 项目名称, 专业, 评价等级, 条文号, 分类, 
+                            是否达标, 得分, 技术措施, 评价标准
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        project.id,  # 使用新创建的项目ID
+                        project_name,  # 使用新创建的项目名称
+                        specialty,
+                        level,
+                        clause_number,
+                        category,
+                        is_achieved,
+                        score,
+                        technical_measures,
+                        standard
+                    ))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            app.logger.info(f"成功从星级案例表导入数据到项目 {project.id}")
+            
+        except Exception as e:
+            app.logger.error(f"导入星级案例数据失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            # 不影响项目创建，继续执行
         
-        # 重定向到项目详情页面
-        return redirect(url_for('project_detail', project_id=project.id))
+        return jsonify({
+            'id': project.id,
+            'name': project.name,
+            'message': '项目创建成功'
+        })
+        
     except Exception as e:
         db.session.rollback()
-        print(f"创建项目出错: {str(e)}")
-        print(traceback.format_exc())
-        return render_template('error.html', error=str(e))
+        app.logger.error(f"创建项目失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': '创建项目失败'}), 500
 
-# 项目详情页面路由
+# 修改项目访问权限检查
+def check_project_access(project_id):
+    """检查当前用户是否有权限访问指定项目"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return False
+        
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        return project is not None
+    except Exception as e:
+        print(f"检查项目访问权限失败: {str(e)}")
+        return False
+
+# 修改项目详情页面访问
 @app.route('/project/<int:project_id>')
+@login_required
 def project_detail(project_id):
+    # 检查访问权限
+    if not check_project_access(project_id):
+        flash('您没有权限访问该项目', 'error')
+        return redirect(url_for('project_management'))
+    
     try:
-        # 获取页面参数
+        project = Project.query.get_or_404(project_id)
+        # 获取page参数，默认为project_info
         page = request.args.get('page', 'project_info')
-        
-        # 获取项目信息
-        project = get_project(project_id)
-        if not project:
-            print(f"项目不存在: ID={project_id}")
-            return render_template('error.html', error="项目不存在")
-        
-        # 获取项目对应标准的数据
-        standards = get_standards_by_name(project.standard)
-        
-        # 打印项目信息，确保建筑类型和标准正确传递
-        print(f"项目详情: ID={project.id}, 名称={project.name}, 建筑类型={project.building_type}, 评价标准={project.standard}, 页面={page}")
-        print(f"获取到标准数据: {len(standards)}条记录")
-        
-        # 如果是评分汇总页面，获取评分数据
-        score_summary = {}
-        if page == 'score_summary':
-            # 获取评分汇总数据，强制刷新确保获取最新数据
-            score_summary = get_score_summary(project_id, force_refresh=True)
-            print(f"获取评分汇总数据: {score_summary}")
-        
-        # 渲染项目详情页面
-        print(f"渲染页面: index.html, current_page={page}")
-        return render_template('index.html', 
-                              standards=standards, 
-                              current_page=page,
-                              project=project,
-                              score_summary=score_summary)
+        return render_template('index.html', project=project, current_page=page)
     except Exception as e:
-        print(f"项目详情页面出错: {str(e)}")
-        print(traceback.format_exc())
-        return render_template('error.html', error=str(e))
+        print(f"获取项目详情失败: {str(e)}")
+        return redirect(url_for('project_management'))
 
-# 获取项目列表API
-@app.route('/api/projects')
-def api_projects():
-    try:
-        projects = Project.query.order_by(Project.created_at.desc()).all()
-        return jsonify({
-            'success': True,
-            'projects': [project.to_dict() for project in projects]
-        })
-    except Exception as e:
-        print(f"获取项目列表API出错: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-# 删除项目API
-@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+# 修改项目删除函数
+@app.route('/delete_project/<int:project_id>', methods=['DELETE'])
+@login_required
 def delete_project(project_id):
     try:
-        # 查找项目
-        project = Project.query.get(project_id)
-        if not project:
-            return jsonify({
-                'success': False,
-                'error': '项目不存在'
-            }), 404
+        # 检查访问权限
+        if not check_project_access(project_id):
+            return jsonify({'error': '您没有权限删除该项目'}), 403
         
-        # 删除项目
+        project = Project.query.get_or_404(project_id)
         db.session.delete(project)
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': f'项目 {project.name} 已成功删除'
-        })
+        return jsonify({'message': '项目删除成功'})
     except Exception as e:
         db.session.rollback()
-        print(f"删除项目API出错: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        print(f"删除项目失败: {str(e)}")
+        return jsonify({'error': '删除项目失败'}), 500
 
 @app.route('/')
 def index():
@@ -1979,33 +1965,7 @@ def update_score():
 # 添加新的路由用于直接更新得分
 @app.route('/api/update_score_direct', methods=['POST'])
 def update_score_direct():
-    """
-    直接更新数据库中的得分
-    
-    请求参数:
-    {
-        "project_id": 1,                 // 项目ID
-        "clause_number": "3.1.2.14",     // 条文号
-        "score": 12,                     // 得分值
-        "standard": "成都市标",           // 评价标准
-        "specialty": "建筑专业",          // 专业，可选
-        "level": "提高级",               // 评价等级，可选
-        "category": "资源节约",           // 分类，可选
-        "is_achieved": "true"            // 是否达标，可选
-    }
-    
-    响应:
-    {
-        "success": true,                 // 是否成功
-        "message": "更新成功",            // 消息
-        "data": {                        // 更新后的数据
-            "project_id": 1,
-            "clause_number": "3.1.2.14",
-            "score": 12,
-            "standard": "成都市标"
-        }
-    }
-    """
+
     try:
         # 获取请求数据
         data = request.get_json()
@@ -2708,23 +2668,7 @@ def save_score_for_new_project(data):
 
 @app.route('/api/star_case_scores', methods=['GET'])
 def get_star_case_scores():
-    """
-    从"星级案例"表获取项目的得分数据
-    
-    请求参数:
-    - target_project_id: 目标项目ID（可选，如果提供则直接导入数据到该项目）
-    
-    响应:
-    {
-        "success": true,             // 是否成功
-        "message": "获取成功",        // 消息
-        "data": {                    // 数据
-            "standard": "评价标准",
-            "star_rating_target": "星级目标",
-            "scores": [...]          // 得分数据列表
-        }
-    }
-    """
+
     try:
         # 获取目标项目ID（可选）
         target_project_id = request.args.get('target_project_id')
@@ -3397,6 +3341,7 @@ def login():
         
         if user and user.check_password(password):
             session['user_id'] = user.id
+            session['username'] = user.email  # 添加用户邮箱到 session
             return jsonify({'success': True, 'redirect': '/project_management'})
         else:
             return jsonify({'error': '邮箱或密码错误'}), 401
@@ -3528,6 +3473,164 @@ def login_required(f):
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated_function
+
+# 添加更新数据库表结构的函数
+def update_database_structure():
+    """更新数据库表结构，添加 user_id 字段"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 检查 user_id 列是否存在
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'projects'
+            AND COLUMN_NAME = 'user_id'
+        """)
+        
+        if cursor.fetchone()[0] == 0:
+            # 添加 user_id 列
+            cursor.execute("""
+                ALTER TABLE projects
+                ADD user_id INT NOT NULL DEFAULT 1
+            """)
+            
+            # 添加外键约束
+            cursor.execute("""
+                ALTER TABLE projects
+                ADD CONSTRAINT FK_Projects_Users
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            """)
+            
+            conn.commit()
+            print("成功添加 user_id 列和外键约束")
+        
+        cursor.close()
+        conn.close()
+        print("数据库表结构更新完成")
+        
+    except Exception as e:
+        print(f"更新数据库表结构失败: {str(e)}")
+        raise
+
+# 在应用启动时更新数据库结构
+with app.app_context():
+    update_database_structure()
+
+@app.route('/api/projects', methods=['GET'])
+@login_required
+def get_projects():
+    try:
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': '用户未登录'}), 401
+        
+        # 获取该用户的所有项目
+        projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
+        
+        # 将项目数据转换为JSON格式
+        projects_data = []
+        for project in projects:
+            projects_data.append({
+                'id': project.id,
+                'name': project.name,
+                'standard': project.standard,
+                'code': project.code,
+                'construction_unit': project.construction_unit,
+                'design_unit': project.design_unit,
+                'location': project.location,
+                'building_area': project.building_area,
+                'building_type': project.building_type,
+                'created_at': project.created_at.strftime('%Y-%m-%d %H:%M:%S') if project.created_at else None,
+                # 新增字段
+                'climate_zone': project.climate_zone,
+                'star_rating_target': project.star_rating_target,
+                'total_land_area': project.total_land_area,
+                'total_building_area': project.total_building_area,
+                'above_ground_area': project.above_ground_area,
+                'underground_area': project.underground_area,
+                'underground_floor_area': project.underground_floor_area,
+                'ground_parking_spaces': project.ground_parking_spaces,
+                'plot_ratio': project.plot_ratio,
+                'building_base_area': project.building_base_area,
+                'building_density': project.building_density,
+                'green_area': project.green_area,
+                'green_ratio': project.green_ratio,
+                'residential_units': project.residential_units,
+                'building_floors': project.building_floors,
+                'building_height': project.building_height,
+                'air_conditioning_type': project.air_conditioning_type,
+                'average_floors': project.average_floors,
+                'has_garbage_room': project.has_garbage_room,
+                'has_elevator': project.has_elevator,
+                'has_underground_garage': project.has_underground_garage,
+                'construction_type': project.construction_type,
+                'has_water_landscape': project.has_water_landscape,
+                'is_fully_decorated': project.is_fully_decorated,
+                'public_building_type': project.public_building_type,
+                'public_green_space': project.public_green_space,
+                # 新增评分字段（使用中文键名以保持前端兼容性）
+                '建筑总分': project.architecture_score,
+                '结构总分': project.structure_score,
+                '给排水总分': project.water_supply_score,
+                '电气总分': project.electrical_score,
+                '暖通总分': project.hvac_score,
+                '景观总分': project.landscape_score,
+                '环境健康与节能总分': project.env_health_energy_score,
+                '环境健康与节能创新总分': project.env_health_energy_innovation_score,
+                '建筑创新总分': project.architecture_innovation_score,
+                '结构创新总分': project.structure_innovation_score,
+                '暖通创新总分': project.hvac_innovation_score,
+                '景观创新总分': project.landscape_innovation_score,
+                '安全耐久总分': project.safety_durability_score,
+                '健康舒适总分': project.health_comfort_score,
+                '生活便利总分': project.life_convenience_score,
+                '资源节约总分': project.resource_saving_score,
+                '环境宜居总分': project.environment_livability_score,
+                '提高与创新总分': project.improvement_innovation_score,
+                '项目总分': project.total_score,
+                '评定结果': project.evaluation_result,
+            })
+        
+        return jsonify({
+            'success': True,
+            'projects': projects_data
+        })
+    except Exception as e:
+        app.logger.error(f"获取项目列表时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': '获取项目列表失败'}), 500
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+@login_required
+def delete_project_api(project_id):
+    try:
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': '用户未登录'}), 401
+        
+        # 检查项目是否存在且属于当前用户
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        if not project:
+            return jsonify({'error': '项目不存在或无权限删除'}), 404
+        
+        # 删除项目
+        db.session.delete(project)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '项目删除成功'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"删除项目失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': '删除项目失败'}), 500
 
 if __name__ == '__main__':
     # 初始化数据库

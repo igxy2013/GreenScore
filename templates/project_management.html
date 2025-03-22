@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
     <title>智慧绿建评价系统</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='greenscore.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.min.css') }}">
         <!-- 使用Font Awesome图标库 -->
     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+
     <script>
     tailwind.config = {
         theme: {
@@ -100,161 +102,174 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="max-w-7xl mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-primary mb-2">智慧绿建评价系统</h1>
-        <h2 class="text-lg text-gray-600 mb-8">项目管理中心</h2>
-        
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-semibold">现有项目</h3>
-                <!-- 添加新建项目按钮 -->
-                <button id="openCreateProjectModal" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors flex items-center">
-                    <i class="fas fa-plus mr-2"></i>
-                    <span>新建项目</span>
-                </button>
+    <div class="min-h-screen bg-gray-100">
+        <!-- 修改用户信息栏样式 -->
+        <div class="absolute top-0 right-0 p-4 flex items-center space-x-3">
+            <div class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100">
+                <i class="fas fa-user-circle text-primary text-xl"></i>
+                <span class="ml-2 text-gray-700 font-medium">{{ session.get('username', '未登录') }}</span>
             </div>
-            
-            <!-- 添加搜索框 -->
-            <div class="mb-4">
-                <div class="relative">
-                    <input type="text" id="projectSearchInput" 
-                        class="w-full px-4 py-2 pl-10 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
-                        placeholder="搜索项目名称...">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <i class="fas fa-search text-gray-400"></i>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="relative w-full overflow-x-auto">
-                <table class="w-full table-auto divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">项目名称</th>
-                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">目标星级</th>
-                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">建筑类型</th>
-                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">评价标准</th>
-                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">创建时间</th>
-                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider relative">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200" id="projectList">
-                        <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
-                                正在加载项目列表...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- 添加分页控件 -->
-            <div class="mt-4 flex justify-between items-center">
-                <div class="text-sm text-gray-500">
-                    显示 <span id="pageStart">1</span> 到 <span id="pageEnd">10</span> 条，共 <span id="totalRecords">0</span> 条记录
-                </div>
-                <div class="flex space-x-2">
-                    <button id="prevPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                        上一页
-                    </button>
-                    <div id="pageNumbers" class="flex space-x-1">
-                        <!-- 页码将通过JavaScript动态生成 -->
-                    </div>
-                    <button id="nextPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
-                        下一页
-                    </button>
-                </div>
-            </div>
+            <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group">
+                <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
+                <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
+            </a>
         </div>
-        
-        <!-- 创建新项目模态窗口 -->
-        <div id="createProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 relative">
-                <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-                <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">创建新项目</h3>
+        <div class="max-w-7xl mx-auto px-4 py-8">
+            <h1 class="text-3xl font-bold text-primary mb-2">智慧绿建评价系统</h1>
+            <h2 class="text-lg text-gray-600 mb-8">项目管理中心</h2>
+            
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-semibold">现有项目</h3>
+                    <!-- 添加新建项目按钮 -->
+                    <button id="openCreateProjectModal" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors flex items-center">
+                        <i class="fas fa-plus mr-2"></i>
+                        <span>新建项目</span>
+                    </button>
+                </div>
                 
-                <form id="modalProjectForm" action="/create_project" method="POST" class="space-y-6">
-                    <div class="grid grid-cols-2 gap-6">
-                        <div>
-                            <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称 <span class="text-red-500">*</span></label>
-                            <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目名称" required>
-                        </div>
-                        
-                        <div>
-                            <label for="project_code" class="block text-base font-medium text-gray-700 mb-1">项目编号</label>
-                            <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目编号">
-                        </div>
-                        
-                        <div>
-                            <label for="construction_unit" class="block text-base font-medium text-gray-700 mb-1">建设单位</label>
-                            <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建设单位名称">
-                        </div>
-                        
-                        <div>
-                            <label for="design_unit" class="block text-base font-medium text-gray-700 mb-1">设计单位</label>
-                            <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入设计单位名称">
-                        </div>
-                        
-                        <div>
-                            <label for="project_location" class="block text-base font-medium text-gray-700 mb-1">项目地点</label>
-                            <input type="text" id="project_location" name="project_location" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目地点">
-                        </div>
-                        
-                        <div>
-                            <label for="standard_selection" class="block text-base font-medium text-gray-700 mb-1">评价标准 <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
-                                    <option value="">请选择评价标准</option>
-                                    <option value="国标">绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
-                                    <option value="四川省标">四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
-                                    <option value="成都市标">成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
-                                </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                    <i class="fas fa-chevron-down text-gray-400"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label for="building_type" class="block text-base font-medium text-gray-700 mb-1">建筑类型 <span class="text-red-500">*</span></label>
-                            <div class="relative">
-                                <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
-                                    <option value="">请选择建筑类型</option>
-                                    <option value="居住建筑">居住建筑</option>
-                                    <option value="公共建筑">公共建筑</option>
-                                    <option value="居住+公共建筑">居住+公共建筑</option>
-                                </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                    <i class="fas fa-chevron-down text-gray-400"></i>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label for="target_star_level" class="block text-base font-medium text-gray-700 mb-1">目标星级</label>
-                            <div class="relative">
-                                <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
-                                    <option value="">请选择目标星级</option>
-                                    <option value="基本级">基本级</option>
-                                    <option value="一星级">一星级</option>
-                                    <option value="二星级">二星级</option>
-                                    <option value="三星级">三星级</option>
-                                </select>
-                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                    <i class="fas fa-chevron-down text-gray-400"></i>
-                                </div>
-                            </div>
+                <!-- 添加搜索框 -->
+                <div class="mb-4">
+                    <div class="relative">
+                        <input type="text" id="projectSearchInput" 
+                            class="w-full px-4 py-2 pl-10 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary"
+                            placeholder="搜索项目名称...">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
                         </div>
                     </div>
-                    
-                    <div class="mt-6 flex justify-center">
-                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
-                            创建项目
+                </div>
+                
+                <div class="relative w-full overflow-x-auto">
+                    <table class="w-full table-auto divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">项目名称</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">目标星级</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">建筑类型</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">评价标准</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">创建时间</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider relative">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="projectList">
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                    正在加载项目列表...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 添加分页控件 -->
+                <div class="mt-4 flex justify-between items-center">
+                    <div class="text-sm text-gray-500">
+                        显示 <span id="pageStart">1</span> 到 <span id="pageEnd">10</span> 条，共 <span id="totalRecords">0</span> 条记录
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prevPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            上一页
+                        </button>
+                        <div id="pageNumbers" class="flex space-x-1">
+                            <!-- 页码将通过JavaScript动态生成 -->
+                        </div>
+                        <button id="nextPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            下一页
                         </button>
                     </div>
-                </form>
+                </div>
+            </div>
+            
+            <!-- 创建新项目模态窗口 -->
+            <div id="createProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 relative">
+                    <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">创建新项目</h3>
+                    
+                    <form id="modalProjectForm" action="/create_project" method="POST" class="space-y-6">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称 <span class="text-red-500">*</span></label>
+                                <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目名称" required>
+                            </div>
+                            
+                            <div>
+                                <label for="project_code" class="block text-base font-medium text-gray-700 mb-1">项目编号</label>
+                                <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目编号">
+                            </div>
+                            
+                            <div>
+                                <label for="construction_unit" class="block text-base font-medium text-gray-700 mb-1">建设单位</label>
+                                <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建设单位名称">
+                            </div>
+                            
+                            <div>
+                                <label for="design_unit" class="block text-base font-medium text-gray-700 mb-1">设计单位</label>
+                                <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入设计单位名称">
+                            </div>
+                            
+                            <div>
+                                <label for="project_location" class="block text-base font-medium text-gray-700 mb-1">项目地点</label>
+                                <input type="text" id="project_location" name="project_location" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目地点">
+                            </div>
+                            
+                            <div>
+                                <label for="standard_selection" class="block text-base font-medium text-gray-700 mb-1">评价标准 <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                        <option value="">请选择评价标准</option>
+                                        <option value="国标">绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
+                                        <option value="四川省标">四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
+                                        <option value="成都市标">成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                        <i class="fas fa-chevron-down text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="building_type" class="block text-base font-medium text-gray-700 mb-1">建筑类型 <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                        <option value="">请选择建筑类型</option>
+                                        <option value="居住建筑">居住建筑</option>
+                                        <option value="公共建筑">公共建筑</option>
+                                        <option value="居住+公共建筑">居住+公共建筑</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                        <i class="fas fa-chevron-down text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="target_star_level" class="block text-base font-medium text-gray-700 mb-1">目标星级</label>
+                                <div class="relative">
+                                    <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
+                                        <option value="">请选择目标星级</option>
+                                        <option value="基本级">基本级</option>
+                                        <option value="一星级">一星级</option>
+                                        <option value="二星级">二星级</option>
+                                        <option value="三星级">三星级</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                        <i class="fas fa-chevron-down text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 flex justify-center">
+                            <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                                创建项目
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -624,15 +639,57 @@
             });
             
             // 模态窗口表单提交
-            modalForm.addEventListener('submit', function(e) {
-                // 不阻止表单提交，确保数据正常发送到后端
+            modalForm.addEventListener('submit', async function(e) {
+                e.preventDefault(); // 阻止表单默认提交
                 
-                // 关闭模态窗口
-                modal.classList.add('hidden');
-                document.body.style.overflow = '';
+                const projectName = document.getElementById('project_name').value;
+                const standardSelection = document.getElementById('standard_selection').value;
+                const buildingType = document.getElementById('building_type').value;
+                const starRatingTarget = document.getElementById('star_rating_target').value;
+                const projectCode = document.getElementById('project_code').value;
+                const constructionUnit = document.getElementById('construction_unit').value;
+                const designUnit = document.getElementById('design_unit').value;
+                const projectLocation = document.getElementById('project_location').value;
                 
-                // 显示成功通知
-                showNotification('项目创建成功！');
+                try {
+                    const response = await fetch('/create_project', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            name: projectName,
+                            standard: standardSelection,
+                            building_type: buildingType,
+                            star_rating_target: starRatingTarget,
+                            code: projectCode,
+                            construction_unit: constructionUnit,
+                            design_unit: designUnit,
+                            location: projectLocation
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        // 关闭模态窗口
+                        modal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        
+                        // 显示成功通知
+                        showNotification('项目创建成功！正在进入项目...');
+                        
+                        // 直接跳转到新创建的项目页面
+                        setTimeout(() => {
+                            window.location.href = `/project/${data.id}`;
+                        }, 1000);
+                    } else {
+                        showNotification(data.error || '创建项目失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showNotification('创建项目失败，请稍后重试', 'error');
+                }
             });
         });
     </script>

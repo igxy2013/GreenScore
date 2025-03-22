@@ -80,27 +80,57 @@ def create_tables():
             except Exception as e:
                 print(f"检查或添加列时出错: {str(e)}")
             
-            # 创建项目得分表
+            # 创建得分表
             conn.execute(text('''
-            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'project_scores')
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '得分表')
             BEGIN
-                CREATE TABLE project_scores (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
-                    project_id INT NOT NULL,
-                    standard NVARCHAR(50) NOT NULL,
-                    clause_number NVARCHAR(50) NOT NULL,
-                    score FLOAT NOT NULL,
-                    page NVARCHAR(50),
-                    level NVARCHAR(50),
-                    created_at DATETIME DEFAULT GETDATE(),
-                    updated_at DATETIME DEFAULT GETDATE(),
-                    CONSTRAINT FK_ProjectScores_Projects FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
-                    CONSTRAINT UQ_ProjectScores UNIQUE (project_id, standard, clause_number)
+                CREATE TABLE [得分表] (
+                    [ID] INT IDENTITY(1,1) PRIMARY KEY,
+                    [项目ID] INT NOT NULL,
+                    [项目名称] NVARCHAR(100),
+                    [专业] NVARCHAR(50),
+                    [评价等级] NVARCHAR(20),
+                    [条文号] NVARCHAR(50),
+                    [分类] NVARCHAR(50),
+                    [是否达标] NVARCHAR(10),
+                    [得分] NVARCHAR(10),
+                    [技术措施] NVARCHAR(MAX),
+                    [评价标准] NVARCHAR(50),
+                    [创建时间] DATETIME DEFAULT GETDATE(),
+                    [更新时间] DATETIME DEFAULT GETDATE(),
+                    CONSTRAINT FK_得分表_Projects FOREIGN KEY ([项目ID]) 
+                        REFERENCES projects (id) ON DELETE CASCADE ON UPDATE CASCADE
                 )
             END
             '''))
             
-            print("项目得分表创建成功")
+            print("得分表创建成功")
+            
+            # 创建星级案例表
+            conn.execute(text('''
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = '星级案例表')
+            BEGIN
+                CREATE TABLE 星级案例表 (
+                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    项目ID INT,
+                    星级目标 NVARCHAR(20),
+                    条文号 NVARCHAR(20),
+                    分类 NVARCHAR(20),
+                    是否达标 NVARCHAR(10),
+                    得分 NVARCHAR(10),
+                    技术措施 NVARCHAR(MAX),
+                    专业 NVARCHAR(20),
+                    评价等级 NVARCHAR(20),
+                    评价标准 NVARCHAR(50),
+                    创建时间 DATETIME DEFAULT GETDATE(),
+                    更新时间 DATETIME DEFAULT GETDATE(),
+                    CONSTRAINT FK_星级案例表_Projects FOREIGN KEY (项目ID) 
+                        REFERENCES projects (id) ON DELETE CASCADE ON UPDATE CASCADE
+                )
+            END
+            '''))
+            
+            print("星级案例表创建成功")
             
     except Exception as e:
         logger.error(f"创建表时出错: {str(e)}")
