@@ -127,6 +127,10 @@ def delete_user(user_id):
         return jsonify({'success': False, 'message': '不能删除当前登录的用户'}), 400
     
     try:
+        # 先处理邀请码表中的关联
+        InvitationCode.query.filter_by(used_by=user.id).update({'used_by': None})
+        
+        # 删除用户
         db.session.delete(user)
         db.session.commit()
         return jsonify({'success': True, 'message': '用户删除成功'})

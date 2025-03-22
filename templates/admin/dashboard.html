@@ -95,6 +95,8 @@
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邀请码</th>
                         <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用次数</th>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">剩余次数</th>
                         <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
                         <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用时间</th>
                         <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
@@ -112,6 +114,21 @@
                                     bg-green-100 text-green-800
                                 {% endif %}">
                                 {{ '已使用' if code.used_at else '未使用' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ code.usage_count }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                {% if code.max_usage - code.usage_count <= 0 %}
+                                    bg-red-100 text-red-800
+                                {% elif code.max_usage - code.usage_count <= 10 %}
+                                    bg-yellow-100 text-yellow-800
+                                {% else %}
+                                    bg-green-100 text-green-800
+                                {% endif %}">
+                                {{ code.max_usage - code.usage_count }}
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -179,6 +196,30 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // 转换UTC时间为本地时间
+        function convertUTCToLocal() {
+            document.querySelectorAll('td').forEach(td => {
+                const text = td.textContent.trim();
+                if (text.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+                    const utcDate = new Date(text + ' UTC');
+                    if (!isNaN(utcDate.getTime())) {
+                        td.textContent = utcDate.toLocaleString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                        });
+                    }
+                }
+            });
+        }
+
+        // 初始化时转换时间
+        convertUTCToLocal();
+
         // 添加用户按钮点击事件
         document.getElementById('addUserBtn').addEventListener('click', function() {
             openUserModal();
@@ -246,7 +287,7 @@
             passwordHint.classList.remove('hidden');
             passwordInput.required = false;
             // 获取用户数据
-            fetch(`/api/users/${userId}`)
+            fetch(`/admin/api/users/${userId}`)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('userId').value = data.id;
@@ -275,7 +316,7 @@
             role: document.getElementById('role').value
         };
 
-        fetch('/api/users', {
+        fetch('/admin/api/users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -304,7 +345,7 @@
             role: document.getElementById('role').value
         };
 
-        fetch(`/api/users/${userId}`, {
+        fetch(`/admin/api/users/${userId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -327,10 +368,20 @@
 
     // 删除用户
     function deleteUser(userId) {
-        fetch(`/api/users/${userId}`, {
-            method: 'DELETE'
+        fetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 alert('用户删除成功');
@@ -340,13 +391,14 @@
             }
         })
         .catch(error => {
+            console.error('删除用户时出错:', error);
             alert('删除失败: ' + error.message);
         });
     }
 
     // 生成邀请码
     function generateInviteCode() {
-        fetch('/api/invite-codes', {
+        fetch('/admin/api/invite-codes', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -375,10 +427,20 @@
 
     // 删除邀请码
     function deleteInviteCode(codeId) {
-        fetch(`/api/invite-codes/${codeId}`, {
-            method: 'DELETE'
+        fetch(`/admin/api/invite-codes/${codeId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 alert('邀请码删除成功');
@@ -388,6 +450,7 @@
             }
         })
         .catch(error => {
+            console.error('删除邀请码时出错:', error);
             alert('删除失败: ' + error.message);
         });
     }
