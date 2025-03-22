@@ -22,8 +22,8 @@ from models import db, User  # 导入共享的模型
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
-    '基本级': 'basic_score',
-    '提高级': 'advanced_score'
+    '基本级': '控制项',
+    '提高级': '评分项'
 }
 
 # 加载环境变量
@@ -418,6 +418,8 @@ def get_filtered_standards(level, specialty):
     if attribute and specialty:
         try:
             query1 = model_class.query.filter(getattr(model_class, '属性') == attribute).filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            # 添加按序号排序
+            query1 = query1.order_by(getattr(model_class, '序号'))
             standards1 = query1.all()
             print(f"方法1 (属性精确匹配): 找到 {len(standards1)} 条记录")
             if standards1:
@@ -432,6 +434,8 @@ def get_filtered_standards(level, specialty):
             query2 = query2.filter(getattr(model_class, '属性').like(f'%{attribute}%'))
             if specialty:
                 query2 = query2.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            # 添加按序号排序
+            query2 = query2.order_by(getattr(model_class, '序号'))
             standards2 = query2.all()
             print(f"方法2 (属性模糊匹配): 找到 {len(standards2)} 条记录")
             if standards2:
@@ -443,6 +447,8 @@ def get_filtered_standards(level, specialty):
     if not standards and specialty:
         try:
             query3 = model_class.query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            # 添加按序号排序
+            query3 = query3.order_by(getattr(model_class, '序号'))
             standards3 = query3.all()
             print(f"方法3 (仅按专业): 找到 {len(standards3)} 条记录")
             if standards3:
@@ -463,6 +469,9 @@ def get_filtered_standards(level, specialty):
             if conditions:
                 sql += " WHERE " + " AND ".join(conditions)
             
+            # 添加按序号排序
+            sql += " ORDER BY 序号"
+            
             print(f"执行SQL: {sql}")
             result = db.session.execute(text(sql))
             standards = [dict(zip(result.keys(), row)) for row in result]
@@ -470,10 +479,10 @@ def get_filtered_standards(level, specialty):
         except Exception as e:
             print(f"方法4查询错误: {str(e)}")
     
-    # 如果所有方法都失败，返回所有记录
+    # 如果所有方法都失败，返回所有记录（同样按序号排序）
     if not standards:
         try:
-            standards = model_class.query.all()
+            standards = model_class.query.order_by(getattr(model_class, '序号')).all()
             print(f"所有筛选方法都失败，返回所有 {len(standards)} 条记录")
         except Exception as e:
             print(f"获取所有记录错误: {str(e)}")
@@ -967,7 +976,7 @@ def filter_standards():
             # 默认使用成都市标
             model_class = Standard
             standard_name = '成都市标'
-            # 定义等级到属性的映射
+        
         # 获取属性值
         attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
         
@@ -980,7 +989,7 @@ def filter_standards():
                 query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
             
             # 添加按序号排序
-            query = query.order_by(getattr(model_class, '序号'))
+            query = query.order_by(getattr(model_class, '序号').asc())
             standards = query.all()
             print(f"从 {standard_name} 获取标准数据: level={level}, specialty={specialty}, 找到{len(standards)}条记录")
         except Exception as e:
@@ -994,6 +1003,8 @@ def filter_standards():
                 if specialty:
                     query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
                 
+                # 添加按序号排序
+                query = query.order_by(getattr(model_class, '序号').asc())
                 standards = query.all()
                 print(f"使用宽松条件从 {standard_name} 获取标准数据: specialty={specialty}, 找到{len(standards)}条记录")
             except Exception as e:
