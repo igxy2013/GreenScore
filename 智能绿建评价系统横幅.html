@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能绿建评价系统</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+primary: '#3176FF',
+secondary: '#75A4FF'
+},
+borderRadius: {
+'none': '0px',
+'sm': '4px',
+DEFAULT: '8px',
+'md': '12px',
+'lg': '16px',
+'xl': '20px',
+'2xl': '24px',
+'3xl': '32px',
+'full': '9999px',
+'button': '8px'
+}
+}
+}
+}
+</script>
+<style>
+:where([class^="ri-"])::before { content: "\f3c2"; }
+.gradient-bg {
+background: linear-gradient(135deg, #E8F0FF 0%, #FFFFFF 100%);
+}
+.banner-gradient {
+background: linear-gradient(90deg, #3176FF 0%, #75A4FF 100%);
+}
+@keyframes float {
+0% { transform: translateY(0px); }
+50% { transform: translateY(-10px); }
+100% { transform: translateY(0px); }
+}
+.floating {
+animation: float 3s ease-in-out infinite;
+}
+.text-shadow {
+text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+<div class="w-full max-w-4xl">
+<div class="banner-gradient rounded-lg p-6 mb-8 text-white text-center floating">
+<div class="flex justify-center gap-8 mb-6">
+<div class="flex flex-col items-center">
+<div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+<i class="ri-ai-generate-line text-2xl"></i>
+</div>
+<span class="text-sm">AI驱动</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+<i class="ri-lightbulb-line text-2xl"></i>
+</div>
+<span class="text-sm">创新科技</span>
+</div>
+<div class="flex flex-col items-center">
+<div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+<i class="ri-gift-line text-2xl"></i>
+</div>
+<span class="text-sm">完全免费</span>
+</div>
+</div>
+<h1 class="text-2xl font-bold mb-4 text-shadow">国内首个完全基于AI自主开发的智能绿建评价系统</h1>
+<p class="text-lg opacity-90">拥抱AI，驱动创新，完全免费！</p>
+</div>
+<div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-md mx-auto">
+<div class="text-center mb-8">
+<h2 class="text-2xl font-bold text-gray-800 mb-2">智能绿建评价系统</h2>
+<p class="text-gray-600">请输入账号密码登录您的账户</p>
+</div>
+<form class="space-y-6">
+<div>
+<div class="relative">
+<i class="ri-user-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+<input type="email" placeholder="请输入邮箱" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded focus:outline-none focus:border-primary" value="sc.bim@qq.com">
+</div>
+</div>
+<div>
+<div class="relative">
+<i class="ri-lock-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+<input type="password" placeholder="请输入密码" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded focus:outline-none focus:border-primary">
+<i class="ri-eye-line absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer"></i>
+</div>
+</div>
+<div class="flex items-center justify-between text-sm">
+<label class="flex items-center">
+<input type="checkbox" class="mr-2">
+<span class="text-gray-600">记住我</span>
+</label>
+<a href="#" class="text-primary hover:text-primary/80">忘记密码？</a>
+</div>
+<button type="submit" class="w-full bg-primary text-white py-2 rounded-button hover:bg-primary/90 transition-colors">
+登录
+</button>
+<div class="text-center text-sm">
+<span class="text-gray-600">还没有账号？</span>
+<a href="#" class="text-primary hover:text-primary/80 ml-1">立即注册</a>
+</div>
+</form>
+</div>
+</div>
+<script>
+document.querySelector('.ri-eye-line').addEventListener('click', function() {
+const input = this.parentElement.querySelector('input');
+if (input.type === 'password') {
+input.type = 'text';
+this.classList.replace('ri-eye-line', 'ri-eye-off-line');
+} else {
+input.type = 'password';
+this.classList.replace('ri-eye-off-line', 'ri-eye-line');
+}
+});
+</script>
+</body>
+</html>

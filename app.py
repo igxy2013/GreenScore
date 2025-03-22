@@ -689,6 +689,7 @@ def create_project():
         project_name = data.get('name')
         standard = data.get('standard')
         star_rating_target = data.get('star_rating_target')
+        building_type = data.get('building_type')
         
         if not project_name:
             return jsonify({'error': '项目名称不能为空'}), 400
@@ -701,12 +702,33 @@ def create_project():
             name=project_name,
             user_id=user_id,
             standard=standard,
-            building_type=data.get('building_type'),
+            building_type=building_type,
             star_rating_target=star_rating_target,
             code=data.get('code'),
             construction_unit=data.get('construction_unit'),
             design_unit=data.get('design_unit'),
-            location=data.get('location')
+            location=data.get('location'),
+            climate_zone=data.get('climate_zone'),
+            total_land_area=data.get('total_land_area'),
+            total_building_area=data.get('total_building_area'),
+            above_ground_area=data.get('above_ground_area'),
+            underground_area=data.get('underground_area'),
+            plot_ratio=data.get('plot_ratio'),
+            building_base_area=data.get('building_base_area'),
+            building_density=data.get('building_density'),
+            green_area=data.get('green_area'),
+            green_ratio=data.get('green_ratio'),
+            building_height=data.get('building_height'),
+            building_floors=data.get('building_floors'),
+            air_conditioning_type=data.get('air_conditioning_type'),
+            has_garbage_room=data.get('has_garbage_room'),
+            has_elevator=data.get('has_elevator'),
+            has_underground_garage=data.get('has_underground_garage'),
+            construction_type=data.get('construction_type'),
+            has_water_landscape=data.get('has_water_landscape'),
+            is_fully_decorated=data.get('is_fully_decorated'),
+            public_building_type=data.get('public_building_type'),
+            public_green_space=data.get('public_green_space')
         )
         
         db.session.add(project)
@@ -717,16 +739,33 @@ def create_project():
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # 查询星级案例表中的数据
-            cursor.execute("""
+            # 构建查询条件
+            query_conditions = ["评价标准 = ?"]
+            query_params = [standard]
+            
+            # 添加星级目标条件
+            if star_rating_target:
+                query_conditions.append("星级目标 = ?")
+                query_params.append(star_rating_target)
+            
+            # 添加建筑类型条件
+            if building_type:
+                query_conditions.append("建筑类型 = ?")
+                query_params.append(building_type)
+            
+            # 构建完整的查询语句
+            query = f"""
                 SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
                 FROM 星级案例表
-                WHERE 评价标准 = ? AND 星级目标 = ?
-            """, (standard, star_rating_target))
+                WHERE {' AND '.join(query_conditions)}
+            """
             
+            app.logger.info(f"执行查询: {query} 参数: {query_params}")
+            cursor.execute(query, query_params)
             case_data = cursor.fetchall()
             
             if case_data:
+                app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
                 # 插入得分记录到得分表
                 for record in case_data:
                     clause_number, category, is_achieved, score, technical_measures, specialty, level = record
@@ -737,8 +776,8 @@ def create_project():
                             是否达标, 得分, 技术措施, 评价标准
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (
-                        project.id,  # 使用新创建的项目ID
-                        project_name,  # 使用新创建的项目名称
+                        project.id,
+                        project_name,
                         specialty,
                         level,
                         clause_number,
@@ -748,12 +787,16 @@ def create_project():
                         technical_measures,
                         standard
                     ))
+                
+                conn.commit()
+                app.logger.info(f"成功导入 {len(case_data)} 条星级案例数据到项目 {project.id}")
+            else:
+                app.logger.warning(f"未找到匹配的星级案例数据，使用默认评分数据")
+                # 如果没有找到匹配的星级案例数据，则创建默认评分数据
+                create_default_scores(project.id, project_name, standard)
             
-            conn.commit()
             cursor.close()
             conn.close()
-            
-            app.logger.info(f"成功从星级案例表导入数据到项目 {project.id}")
             
         except Exception as e:
             app.logger.error(f"导入星级案例数据失败: {str(e)}")
@@ -2668,173 +2711,140 @@ def save_score_for_new_project(data):
 
 @app.route('/api/star_case_scores', methods=['GET'])
 def get_star_case_scores():
-
     try:
-        # 获取目标项目ID（可选）
+        # 获取目标项目ID
         target_project_id = request.args.get('target_project_id')
-        
-        # 连接数据库
+        if not target_project_id:
+            return jsonify({
+                'success': False,
+                'message': '请提供目标项目ID'
+            }), 400
+
+        # 获取项目信息
+        target_project = Project.query.get(target_project_id)
+        if not target_project:
+            return jsonify({
+                'success': False,
+                'message': f'目标项目(ID={target_project_id})不存在'
+            }), 404
+
+        # 获取项目的评价标准和星级目标
+        standard = target_project.standard or '成都市标'
+        star_rating_target = target_project.star_rating_target or '一星级'
+        building_type = target_project.building_type
+
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            print("数据库连接成功")
-        except Exception as e:
-            print(f"数据库连接失败: {str(e)}")
-            return jsonify({
-                'success': False,
-                'message': f'数据库连接失败: {str(e)}'
-            }), 500
-        
-        try:
-            # 如果提供了目标项目ID，获取项目信息和评价标准
-            standard = '成都市标'  # 默认标准
-            star_rating_target = '一星级'  # 默认星级目标
-            
-            if target_project_id:
-                target_project = get_project(target_project_id)
-                if not target_project:
-                    return jsonify({
-                        'success': False,
-                        'message': f'目标项目(ID={target_project_id})不存在'
-                    }), 404
-                standard = target_project.standard
-                star_rating_target = target_project.star_rating_target or '一星级'
-                print(f"目标项目评价标准: {standard}, 星级目标: {star_rating_target}")
-            
-            # 从"星级案例"表获取数据，同时匹配评价标准和星级目标
-            scores_query = """
-            SELECT [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
-            FROM [星级案例]
-            WHERE [评价标准] = ? AND [星级目标] = ?
+
+            # 构建查询条件
+            query_conditions = ["评价标准 = ?"]
+            query_params = [standard]
+
+            # 添加星级目标条件
+            if star_rating_target:
+                query_conditions.append("星级目标 = ?")
+                query_params.append(star_rating_target)
+
+            # 添加建筑类型条件
+            if building_type:
+                query_conditions.append("建筑类型 = ?")
+                query_params.append(building_type)
+
+            # 从星级案例表获取数据
+            query = f"""
+                SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+                FROM 星级案例
+                WHERE {' AND '.join(query_conditions)}
             """
-            cursor.execute(scores_query, (standard, star_rating_target))
-            scores = cursor.fetchall()
-            
-            # 如果没有找到完全匹配的数据，则只匹配评价标准
-            if not scores:
-                print(f"未找到评价标准为\"{standard}\"且星级目标为\"{star_rating_target}\"的星级案例数据，尝试只匹配评价标准")
-                scores_query = """
-                SELECT [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
-                FROM [星级案例]
-                WHERE [评价标准] = ?
-                """
-                cursor.execute(scores_query, (standard,))
-                scores = cursor.fetchall()
-                
-                if not scores:
-                    return jsonify({
-                        'success': False,
-                        'message': f'未找到评价标准为"{standard}"的星级案例数据'
-                    }), 404
-                
-                print(f"获取到评价标准为\"{standard}\"的 {len(scores)} 条星级案例数据")
-            else:
-                print(f"获取到评价标准为\"{standard}\"且星级目标为\"{star_rating_target}\"的 {len(scores)} 条星级案例数据")
-            
-            # 如果提供了目标项目ID，则导入数据
-            if target_project_id:
-                # 开始事务
-                conn.autocommit = False
-                
+
+            app.logger.info(f"执行查询: {query} 参数: {query_params}")
+            cursor.execute(query, query_params)
+            case_data = cursor.fetchall()
+
+            if case_data:
+                app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
                 # 先删除目标项目的所有得分数据
                 delete_query = """
-                DELETE FROM [得分表]
-                WHERE [项目ID] = ?
+                DELETE FROM 得分表
+                WHERE 项目ID = ?
                 """
                 cursor.execute(delete_query, (target_project_id,))
                 deleted_count = cursor.rowcount
-                print(f"删除目标项目的 {deleted_count} 条得分数据")
-                
+                app.logger.info(f"删除目标项目的 {deleted_count} 条得分数据")
+
                 # 插入新的得分数据
                 inserted_count = 0
-                for score in scores:
-                    specialty, level, clause_number, category, is_achieved, score_value, technical_measures, standard = score
-                    
+                for record in case_data:
+                    clause_number, category, is_achieved, score, technical_measures, specialty, level = record
+
                     insert_query = """
-                    INSERT INTO [得分表] (
-                        [项目ID], [项目名称], [专业], [评价等级], [条文号], 
-                        [分类], [是否达标], [得分], [技术措施], [评价标准]
+                    INSERT INTO 得分表 (
+                        项目ID, 项目名称, 专业, 评价等级, 条文号, 
+                        分类, 是否达标, 得分, 技术措施, 评价标准
                     )
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """
                     cursor.execute(
                         insert_query,
                         (target_project_id, target_project.name, specialty, level, clause_number,
-                         category, is_achieved, score_value, technical_measures, standard)
+                         category, is_achieved, score, technical_measures, standard)
                     )
                     inserted_count += 1
-                    
+
                     # 每100条提交一次，避免事务过大
                     if inserted_count % 100 == 0:
                         conn.commit()
-                        print(f"已提交 {inserted_count} 条记录")
-                
+                        app.logger.info(f"已提交 {inserted_count} 条记录")
+
                 # 提交事务
                 conn.commit()
-                print(f"事务提交成功，共导入 {inserted_count} 条记录")
-                
+                app.logger.info(f"事务提交成功，共导入 {inserted_count} 条记录")
+
                 # 清除目标项目的缓存
-                cache_key = f"score_summary_{target_project_id}_{target_project.standard}"
+                cache_key = f"score_summary_{target_project_id}_{standard}"
                 if cache.has(cache_key):
                     cache.delete(cache_key)
-                    print(f"清除目标项目的评分汇总缓存: {cache_key}")
-                
+                    app.logger.info(f"清除目标项目的评分汇总缓存: {cache_key}")
+
                 return jsonify({
                     'success': True,
-                    'message': f'成功导入 {inserted_count} 条得分数据到项目"{target_project.name}"',
+                    'message': f'成功导入 {inserted_count} 条星级案例数据',
                     'data': {
                         'standard': standard,
                         'star_rating_target': star_rating_target,
                         'imported_count': inserted_count
                     }
                 })
-            
-            # 如果没有提供目标项目ID，则只返回数据
-            scores_data = []
-            for score in scores:
-                specialty, level, clause_number, category, is_achieved, score_value, technical_measures, standard = score
-                scores_data.append({
-                    'specialty': specialty,
-                    'level': level,
-                    'clause_number': clause_number,
-                    'category': category,
-                    'is_achieved': is_achieved,
-                    'score': score_value,
-                    'technical_measures': technical_measures,
-                    'standard': standard
-                })
-            
-            return jsonify({
-                'success': True,
-                'message': '获取成功',
-                'data': {
-                    'standard': standard,
-                    'star_rating_target': star_rating_target,
-                    'scores_count': len(scores),
-                    'scores': scores_data[:10]  # 只返回前10条数据作为示例
-                }
-            })
-        
+            else:
+                app.logger.warning(f"未找到匹配的星级案例数据")
+                return jsonify({
+                    'success': False,
+                    'message': f'未找到匹配的星级案例数据'
+                }), 404
+
         except Exception as e:
             # 回滚事务
-            if target_project_id:
+            if 'conn' in locals():
                 conn.rollback()
-            print(f"数据库操作失败: {str(e)}")
-            traceback.print_exc()
+            app.logger.error(f"数据库操作失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
             return jsonify({
                 'success': False,
                 'message': f'数据库操作失败: {str(e)}'
             }), 500
-        
+
         finally:
             # 关闭数据库连接
-            cursor.close()
-            conn.close()
-            print("数据库连接已关闭")
-    
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
+            app.logger.info("数据库连接已关闭")
+
     except Exception as e:
-        print(f"处理请求失败: {str(e)}")
-        traceback.print_exc()
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'message': f'处理请求失败: {str(e)}'
@@ -3631,6 +3641,143 @@ def delete_project_api(project_id):
         app.logger.error(f"删除项目失败: {str(e)}")
         app.logger.error(traceback.format_exc())
         return jsonify({'error': '删除项目失败'}), 500
+
+@app.route('/api/save_star_case', methods=['POST'])
+def save_star_case():
+    """保存项目数据到星级案例表"""
+    try:
+        # 获取项目ID
+        project_id = request.args.get('project_id')
+        if not project_id:
+            return jsonify({
+                'success': False,
+                'message': '请提供项目ID'
+            }), 400
+
+        # 获取项目信息
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({
+                'success': False,
+                'message': f'项目(ID={project_id})不存在'
+            }), 404
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # 获取项目的得分数据
+            query = """
+                SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+                FROM 得分表
+                WHERE 项目ID = ?
+            """
+            cursor.execute(query, (project_id,))
+            score_data = cursor.fetchall()
+
+            if not score_data:
+                return jsonify({
+                    'success': False,
+                    'message': '未找到项目得分数据'
+                }), 404
+
+            # 获取当前最大序号
+            cursor.execute("SELECT MAX(序号) FROM 星级案例")
+            result = cursor.fetchone()
+            max_seq = result[0] if result[0] is not None else 0
+
+            # 插入数据到星级案例表
+            inserted_count = 0
+            for record in score_data:
+                clause_number, category, is_achieved, score, technical_measures, specialty, level = record
+
+                # 检查记录是否已存在
+                check_query = """
+                SELECT 序号
+                FROM 星级案例
+                WHERE 条文号 = ? AND 评价标准 = ? AND 星级目标 = ? AND 建筑类型 = ?
+                """
+                cursor.execute(check_query, (
+                    clause_number,
+                    project.standard,
+                    project.star_rating_target,
+                    project.building_type
+                ))
+                existing_record = cursor.fetchone()
+
+                if existing_record:
+                    # 更新现有记录
+                    update_query = """
+                    UPDATE 星级案例
+                    SET 分类 = ?, 是否达标 = ?, 得分 = ?, 技术措施 = ?, 专业 = ?, 评价等级 = ?
+                    WHERE 序号 = ?
+                    """
+                    cursor.execute(update_query, (
+                        category, is_achieved, score, technical_measures, specialty, level,
+                        existing_record[0]
+                    ))
+                else:
+                    # 插入新记录，使用自增序号
+                    max_seq += 1
+                    insert_query = """
+                    INSERT INTO 星级案例 (
+                        序号, 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级,
+                        评价标准, 星级目标, 建筑类型
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(insert_query, (
+                        max_seq, clause_number, category, is_achieved, score, technical_measures, specialty, level,
+                        project.standard, project.star_rating_target, project.building_type
+                    ))
+
+                inserted_count += 1
+
+                # 每100条提交一次，避免事务过大
+                if inserted_count % 100 == 0:
+                    conn.commit()
+                    app.logger.info(f"已提交 {inserted_count} 条记录")
+
+            # 提交事务
+            conn.commit()
+            app.logger.info(f"事务提交成功，共处理 {inserted_count} 条记录")
+
+            return jsonify({
+                'success': True,
+                'message': f'成功保存 {inserted_count} 条星级案例数据',
+                'data': {
+                    'standard': project.standard,
+                    'star_rating_target': project.star_rating_target,
+                    'building_type': project.building_type,
+                    'processed_count': inserted_count
+                }
+            })
+
+        except Exception as e:
+            # 回滚事务
+            if 'conn' in locals():
+                conn.rollback()
+            app.logger.error(f"数据库操作失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({
+                'success': False,
+                'message': f'数据库操作失败: {str(e)}'
+            }), 500
+
+        finally:
+            # 关闭数据库连接
+            if 'cursor' in locals():
+                cursor.close()
+            if 'conn' in locals():
+                conn.close()
+            app.logger.info("数据库连接已关闭")
+
+    except Exception as e:
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     # 初始化数据库

@@ -113,6 +113,7 @@ def create_tables():
                 CREATE TABLE 星级案例表 (
                     id INT IDENTITY(1,1) PRIMARY KEY,
                     项目ID INT,
+                    序号 INT,
                     星级目标 NVARCHAR(20),
                     条文号 NVARCHAR(20),
                     分类 NVARCHAR(20),
