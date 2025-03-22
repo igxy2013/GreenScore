@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>绿色建筑评价系统</title>
+    <title>智慧绿建评价系统</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='greenscore.png') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tailwind.min.css') }}">
+        <!-- 使用Font Awesome图标库 -->
+    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
     <script>
     tailwind.config = {
         theme: {
@@ -30,8 +32,7 @@
         }
     }
     </script>
-    <!-- 使用Font Awesome图标库 -->
-    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+
     <style>
     /* 图标样式兼容处理 */
     [class^="ri-"], [class*=" ri-"] {
@@ -100,7 +101,7 @@
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-primary mb-2">绿色建筑评价系统</h1>
+        <h1 class="text-3xl font-bold text-primary mb-2">智慧绿建评价系统</h1>
         <h2 class="text-lg text-gray-600 mb-8">项目管理中心</h2>
         
         <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
@@ -125,16 +126,16 @@
                 </div>
             </div>
             
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+            <div class="relative w-full overflow-x-auto">
+                <table class="w-full table-auto divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">目标星级</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">建筑类型</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">评价标准</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
-                            <th class="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">项目名称</th>
+                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">目标星级</th>
+                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">建筑类型</th>
+                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">评价标准</th>
+                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">创建时间</th>
+                            <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider relative">操作</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200" id="projectList">
@@ -326,6 +327,30 @@
                     }
                 }
             });
+            
+            // 处理下拉菜单的显示和隐藏
+            document.addEventListener('click', function(e) {
+                const dropdownTrigger = e.target.closest('.dropdown-trigger');
+                const dropdownContainer = e.target.closest('[data-dropdown-container]');
+                
+                // 关闭所有其他打开的下拉菜单
+                document.querySelectorAll('.dropdown-menu:not(.hidden)').forEach(menu => {
+                    if (!menu.parentElement.contains(e.target)) {
+                        menu.classList.add('hidden');
+                    }
+                });
+                
+                if (dropdownTrigger) {
+                    const dropdownMenu = dropdownTrigger.parentElement.querySelector('.dropdown-menu');
+                    dropdownMenu.classList.toggle('hidden');
+                    e.stopPropagation();
+                } else if (!dropdownContainer) {
+                    // 点击其他地方时关闭所有下拉菜单
+                    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                        menu.classList.add('hidden');
+                    });
+                }
+            });
         });
         
         // 分页变量
@@ -468,15 +493,25 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${buildingType}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.standard || '未设置'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at || '未知'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm flex space-x-2">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm flex space-x-2 relative">
                             <a href="/project/${project.id}" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
                                 进入项目
                             </a>
-                            <button type="button" 
-                                class="px-4 py-2 bg-red-500 text-white rounded-button hover:bg-red-600 transition-colors cursor-pointer delete-project-btn"
-                                data-project-id="${project.id}" data-project-name="${project.name || ''}">
-                                删除
-                            </button>
+                            <div class="relative" data-dropdown-container>
+                                <button type="button" 
+                                    class="px-6 py-2 text-gray-500 hover:bg-gray-100 rounded-button transition-colors cursor-pointer dropdown-trigger"
+                                    data-project-id="${project.id}">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div class="hidden absolute left-full ml-2 top-0 w-48 bg-white rounded-lg shadow-lg z-10 py-1 dropdown-menu">
+                                    <button type="button" 
+                                        class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 delete-project-btn"
+                                        data-project-id="${project.id}" 
+                                        data-project-name="${project.name || ''}">
+                                        <i class="fas fa-trash-alt mr-2"></i>删除项目
+                                    </button>
+                                </div>
+                            </div>
                         </td>
                     `;
                     

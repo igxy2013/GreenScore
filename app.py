@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
 from flask_migrate import Migrate
+from functools import wraps
 import os
 from dotenv import load_dotenv
 import urllib.parse
@@ -11,13 +12,86 @@ import sqlite3
 import pyodbc
 from sqlalchemy import text
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_cors import CORS
-from word_template import process_template  # 添加这行导入
-# 从export.py中导入的generate_word函数
+from werkzeug.security import generate_password_hash, check_password_hash
+from word_template import process_template
 from export import generate_word, generate_dwg
+
+# 加载环境变量
+load_dotenv()
+
+# 定义级别到属性的映射关系
+LEVEL_TO_ATTRIBUTE = {
+    '基本级': '控制项',
+    '提高级': '评分项'
+}
+
+# 创建日志目录
+os.makedirs('logs', exist_ok=True)
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('greenscore')
+handler = RotatingFileHandler('logs/app.log', maxBytes=10000000, backupCount=5)
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
+
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.logger = logger
+
+# 配置 session
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_123')  # 添加一个默认的密钥
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# 配置CORS
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# 判断是否为生产环境
+is_production = os.environ.get('FLASK_ENV') == 'production'
+
+# 配置缓存
+cache_config = {
+    "DEBUG": not is_production,
+    "CACHE_TYPE": "FileSystemCache" if is_production else "SimpleCache",
+    "CACHE_DIR": "cache" if is_production else None,
+    "CACHE_DEFAULT_TIMEOUT": 3600  # 缓存过期时间，单位秒（1小时）
+}
+cache = Cache(app, config=cache_config)
+
+# 配置数据库连接
+# 优先使用环境变量中的数据库连接字符串
+db_uri = os.environ.get('DATABASE_URL')
+if not db_uri:
+    # 如果环境变量未设置，使用默认连接字符串
+    db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
+    app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+# 安全地获取数据库URL并打印
+masked_url = db_uri.replace(':' + db_uri.split(':')[2].split('@')[0] + '@', ':***@')
+app.logger.info(f"使用SQL Server数据库: {masked_url}")
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = not is_production  # 仅在非生产环境打印SQL语句
+
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# 添加登录要求装饰器
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def sync_score_tables(project_id):
     """同步指定项目的得分表和project_scores表的数据"""
@@ -104,64 +178,6 @@ def sync_score_tables(project_id):
         logger.error(f"同步项目 {project_id} 数据时出错: {str(e)}")
         logger.error(traceback.format_exc())
         return False
-# 加载环境变量
-load_dotenv()
-
-# 创建日志目录
-os.makedirs('logs', exist_ok=True)
-
-# 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('greenscore')
-handler = RotatingFileHandler('logs/app.log', maxBytes=10000000, backupCount=5)
-handler.setFormatter(logging.Formatter(
-    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-))
-handler.setLevel(logging.INFO)
-logger.addHandler(handler)
-
-app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.logger = logger
-
-# 配置CORS
-CORS(app, resources={r"/api/*": {"origins": "*"}})
-
-# 判断是否为生产环境
-is_production = os.environ.get('FLASK_ENV') == 'production'
-
-# 配置缓存
-cache_config = {
-    "DEBUG": not is_production,
-    "CACHE_TYPE": "FileSystemCache" if is_production else "SimpleCache",
-    "CACHE_DIR": "cache" if is_production else None,
-    "CACHE_DEFAULT_TIMEOUT": 3600  # 缓存过期时间，单位秒（1小时）
-}
-cache = Cache(app, config=cache_config)
-
-# 配置数据库连接
-# 优先使用环境变量中的数据库连接字符串
-db_uri = os.environ.get('DATABASE_URL')
-if not db_uri:
-    # 如果环境变量未设置，使用默认连接字符串
-    db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
-    app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
-
-app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-# 安全地获取数据库URL并打印
-masked_url = db_uri.replace(':' + db_uri.split(':')[2].split('@')[0] + '@', ':***@')
-app.logger.info(f"使用SQL Server数据库: {masked_url}")
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = not is_production  # 仅在非生产环境打印SQL语句
-
-# 定义级别与属性的映射关系
-LEVEL_TO_ATTRIBUTE = {
-    '基本级': '控制项',
-    '提高级': '评分项'
-}
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
 class Project(db.Model):
     __tablename__ = 'projects'
@@ -648,6 +664,8 @@ def try_parse_int(form_data, form_field, model_obj, model_field):
 
 # 项目管理页面路由
 @app.route('/projects')
+@app.route('/project_management')
+@login_required
 def project_management():
     try:
         return render_template('project_management.html')
@@ -821,13 +839,23 @@ def delete_project(project_id):
 
 @app.route('/')
 def index():
+    return render_template('login.html')
+
+@app.route('/reset_password')
+def reset_password_page():
+    """处理密码重置页面路由"""
     try:
-        # 重定向到项目管理页面
-        return redirect(url_for('project_management'))
+        return render_template('reset_password.html')
     except Exception as e:
-        print(f"发生错误: {str(e)}")
-        print(traceback.format_exc())
-        return render_template('error.html', error=str(e))
+        app.logger.error(f"渲染密码重置页面错误: {str(e)}")
+        return "页面加载失败", 500
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/register')
+def register_page():
+    return render_template('register.html')
 
 @app.route('/', methods=['POST'])
 def handle_form():
@@ -956,13 +984,9 @@ def filter_standards():
         return render_template('error.html', error=str(e))
 
 @app.route('/calculator')
+@login_required
 def calculator():
-    try:
-        return redirect('/static/calculator.html')
-    except Exception as e:
-        print(f"加载计算器页面时发生错误: {str(e)}")
-        print(traceback.format_exc())
-        return render_template('error.html', error=str(e))
+    return render_template('calculator.html')
 
 # 添加清除缓存的路由（可选，用于管理员手动刷新缓存）
 @app.route('/clear_cache')
@@ -1730,12 +1754,6 @@ def get_score_summary(project_id, force_refresh=False):
                 project_count = cursor.fetchone()[0]
                 app.logger.info(f"得分表中项目ID={project_id}的记录有 {project_count} 条")
                 
-                # 如果项目没有记录，则返回硬编码的测试数据
-                if project_count == 0:
-                    app.logger.warning(f"项目ID={project_id}在得分表中没有记录，返回测试数据")
-                    conn.close()
-                    return get_test_score_data()
-                
                 # 获取所有专业的得分数据
                 specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
                 
@@ -1779,9 +1797,8 @@ def get_score_summary(project_id, force_refresh=False):
                     }
                 
                 # 使用更直接的SQL查询获取数据
-                # 不使用参数化查询，直接构建SQL语句
                 sql_query = f"""
-                SELECT [专业], [分类], [是否达标], [得分]
+                SELECT [专业], [分类], [是否达标], [得分], [评价等级]
                 FROM [得分表]
                 WHERE [项目ID] = {project_id}
                 """
@@ -1793,29 +1810,15 @@ def get_score_summary(project_id, force_refresh=False):
                 
                 app.logger.info(f"查询结果: {len(rows)} 行")
                 
-                # 如果没有结果，尝试不带条件查询
-                if len(rows) == 0:
-                    sql_query = """
-                    SELECT TOP 100 [专业], [分类], [是否达标], [得分], [项目ID]
-                    FROM [得分表]
-                    """
-                    
-                    app.logger.info(f"执行无条件SQL查询: {sql_query}")
-                    
-                    cursor.execute(sql_query)
-                    rows = cursor.fetchall()
-                    
-                    app.logger.info(f"无条件查询结果: {len(rows)} 行")
-                    app.logger.info(f"查询到的项目ID: {[row[4] for row in rows]}")
-                
                 # 处理查询结果
                 for row in rows:
                     specialty = row[0]
                     category = row[1]
                     is_achieved = row[2]
                     score = row[3]
+                    level = row[4]
                     
-                    app.logger.info(f"处理记录: 专业={specialty}, 分类={category}, 是否达标={is_achieved}, 得分={score}")
+                    app.logger.info(f"处理记录: 专业={specialty}, 分类={category}, 是否达标={is_achieved}, 得分={score}, 级别={level}")
                     
                     # 映射专业名称
                     mapped_specialty = specialty_mapping.get(specialty)
@@ -1848,8 +1851,8 @@ def get_score_summary(project_id, force_refresh=False):
                     
                     app.logger.info(f"映射后: 专业={mapped_specialty}, 是否达标={is_achieved_flag}, 得分={score_value}")
                     
-                    # 如果达标且得分大于0，累加得分
-                    if is_achieved_flag and score_value > 0:
+                    # 基本级条文必须达标才计分，提高级条文有得分就计分
+                    if (level == '基本级' and is_achieved_flag) or (level == '提高级' and score_value > 0):
                         specialty_scores[mapped_specialty] += score_value
                         
                         # 按分类累加得分
@@ -1860,8 +1863,14 @@ def get_score_summary(project_id, force_refresh=False):
                 # 计算各专业的总分
                 for specialty in specialties:
                     category_scores = specialty_scores_by_category[specialty]
-                    category_scores['总分'] = sum(score for category, score in category_scores.items() if category != '总分')
-                    app.logger.info(f"专业总分: {specialty}={category_scores['总分']}")
+                    total_score = sum(score for category, score in category_scores.items() if category != '总分')
+                    category_scores['总分'] = total_score
+                    specialty_scores[specialty] = total_score  # 更新专业总分
+                    app.logger.info(f"专业总分: {specialty}={total_score}")
+                
+                # 计算总分（所有专业分数之和）
+                total_score = sum(specialty_scores.values())
+                app.logger.info(f"项目总分: {total_score}")
                 
                 # 关闭数据库连接
                 conn.close()
@@ -1870,7 +1879,8 @@ def get_score_summary(project_id, force_refresh=False):
                 summary_data = {
                     'specialty_scores': specialty_scores,
                     'specialty_scores_by_category': specialty_scores_by_category,
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'total_score': total_score
                 }
                 
                 # 缓存结果
@@ -3356,6 +3366,168 @@ def calculate_project_scores(project_id):
         logger.error(f"计算项目评分时出错: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({'success': False, 'message': f'计算评分失败: {str(e)}'}), 500
+
+# 添加 User 模型
+class User(db.Model):
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+        
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+# 添加登录相关路由
+@app.route('/api/login', methods=['POST'])
+def login():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({'error': '请输入邮箱和密码'}), 400
+            
+        user = User.query.filter_by(email=email).first()
+        
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            return jsonify({'success': True, 'redirect': '/project_management'})
+        else:
+            return jsonify({'error': '邮箱或密码错误'}), 401
+            
+    except Exception as e:
+        app.logger.error(f"登录错误: {str(e)}")
+        return jsonify({'error': '登录失败，请稍后重试'}), 500
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        if not data:
+            app.logger.warning("注册失败：未收到JSON数据")
+            return jsonify({'error': '请求数据无效'}), 400
+            
+        email = data.get('email')
+        password = data.get('password')
+        
+        app.logger.info(f"收到注册请求: email={email}")
+        
+        # 基本验证
+        if not email or not password:
+            app.logger.warning("注册失败：邮箱或密码为空")
+            return jsonify({'error': '请输入邮箱和密码'}), 400
+            
+        # 邮箱格式验证
+        if not '@' in email or not '.' in email:
+            app.logger.warning(f"注册失败：邮箱格式不正确 - {email}")
+            return jsonify({'error': '请输入有效的邮箱地址'}), 400
+            
+        # 密码长度验证
+        if len(password) < 8:
+            app.logger.warning("注册失败：密码长度不足8位")
+            return jsonify({'error': '密码长度不能少于8位'}), 400
+            
+        try:
+            # 检查邮箱是否已被注册
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                app.logger.warning(f"注册失败：邮箱已被注册 - {email}")
+                return jsonify({'error': '该邮箱已被注册'}), 400
+                
+            # 创建新用户
+            user = User()
+            user.email = email
+            user.set_password(password)
+            
+            # 保存到数据库
+            db.session.add(user)
+            db.session.commit()
+            
+            app.logger.info(f"用户注册成功: {email}")
+            return jsonify({
+                'success': True,
+                'message': '注册成功！正在跳转到登录页面...'
+            })
+            
+        except Exception as db_error:
+            db.session.rollback()
+            app.logger.error(f"数据库操作失败: {str(db_error)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({'error': '注册失败，请稍后重试'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"注册过程出现未知错误: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': '服务器错误，请稍后重试'}), 500
+
+@app.route('/api/check_user', methods=['POST'])
+def check_user():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        
+        app.logger.info(f"检查用户是否存在: username={username}")
+        
+        if not username:
+            return jsonify({'error': '请输入用户名'}), 400
+            
+        user = User.query.filter_by(email=username).first()
+        return jsonify({'exists': bool(user)})
+        
+    except Exception as e:
+        app.logger.error(f"检查用户错误: {str(e)}")
+        return jsonify({'error': '服务器错误'}), 500
+
+@app.route('/api/reset_password', methods=['POST'])
+def reset_password():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        app.logger.info(f"收到重置密码请求: username={username}")
+        
+        if not username or not password:
+            return jsonify({'error': '请输入用户名和新密码'}), 400
+            
+        user = User.query.filter_by(email=username).first()
+        if not user:
+            return jsonify({'error': '用户不存在'}), 404
+            
+        # 更新密码
+        try:
+            user.set_password(password)
+            db.session.commit()
+            app.logger.info(f"密码重置成功: username={username}")
+            return jsonify({'success': True})
+        except Exception as db_error:
+            db.session.rollback()
+            app.logger.error(f"数据库操作失败: {str(db_error)}")
+            return jsonify({'error': '重置密码失败，请稍后重试'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"重置密码错误: {str(e)}")
+        return jsonify({'error': '重置密码失败，请稍后重试'}), 500
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('login_page'))
+
+# 添加登录要求装饰器
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 if __name__ == '__main__':
     # 初始化数据库

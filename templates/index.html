@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>绿色建筑评价系统</title>
+    <title>智慧绿建评价系统</title>
     
     <!-- 先加载Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -140,6 +140,38 @@
             position: relative;
             z-index: 1;
         }
+        
+        /* 评分汇总菜单进度条样式 */
+        .menu-item.loading {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .menu-item.loading .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: rgba(79, 209, 197, 0.2);
+            transition: width 0.1s linear;
+            z-index: 0;
+        }
+        
+        .menu-item.loading > * {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 添加图标旋转动画 */
+        .menu-item.loading .ri-bar-chart-line {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
     <script>
     function filterTableByClause(query) {
@@ -179,7 +211,7 @@
             <!-- 侧边导航栏 -->
             <aside class="w-64 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
                 <div class="p-6 border-b">
-                    <h1 class="text-3xl font-bold text-primary">绿色建筑评价系统</h1>
+                    <h1 class="text-3xl font-bold text-primary">智慧绿建评价系统</h1>
                 </div>
                 <nav class="p-4">
                     <div class="space-y-3">
@@ -261,10 +293,13 @@
                             </a>
                             {% endif %}
                         </div>
-                        <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}">
-                            <i class="ri-bar-chart-line mr-3"></i>
-                            <span>评分汇总</span>
-                        </a>
+                        <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" 
+                        class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}"
+                        id="scoreSummaryMenuItem">
+                         <div class="progress-bar"></div>
+                         <i class="ri-bar-chart-line mr-3"></i>
+                         <span>评分汇总</span>
+                     </a>
                         <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="reportMenuToggle">
                             <i class="ri-file-download-line mr-3"></i>
                             <span>报告导出</span>
@@ -372,7 +407,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- 专业得分行 - 将由JavaScript动态更新 -->
+                                    <!-- 专业得分行 -->
                                     <tr id="specialty-scores-row" class="border-b text-center">
                                         <td class="px-6 py-4">得分</td>
                                         <td class="px-6 py-4">0.0</td>
@@ -382,7 +417,7 @@
                                         <td class="px-6 py-4">0.0</td>
                                         <td class="px-6 py-4">0.0</td>
                                         <td class="px-6 py-4" id="env_health_energy_column">0.0</td>
-                                        <td class="px-6 py-4 font-bold">0.0</td>
+                                        <td class="px-6 py-4 font-bold total-score">0.0</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1168,7 +1203,7 @@
                                     {% elif current_level == '提高级' %}
                                     <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
                                         {% if standard.分值 == '—' %}
-                                        <span class="text-gray-500">0</span>
+                                        <span class="text-gray-500">—</span>
                                         {% else %}
                                         <input type="text" name="score" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary" placeholder="得分">
                                         {% endif %}
@@ -1599,67 +1634,97 @@
         });
 
         // 为评分汇总菜单添加点击事件
-        const scoreSummaryMenuItem = document.querySelector('a[href*="score_summary"]');
+        const scoreSummaryMenuItem = document.getElementById('scoreSummaryMenuItem');
         if (scoreSummaryMenuItem) {
-            console.log('找到评分汇总菜单项，添加点击事件');
-            scoreSummaryMenuItem.addEventListener('click', function(e) {
-                console.log('评分汇总菜单被点击');
-                
-                // 获取项目ID
-                let projectId = null;
-                const projectIdField = document.getElementById('project_id');
-                if (projectIdField) {
-                    projectId = projectIdField.value;
-                } else {
-                    // 尝试从URL中获取项目ID
-                    const urlParams = new URLSearchParams(window.location.search);
-                    projectId = urlParams.get('project_id');
-                }
-                
-                // 如果没有项目ID，则无法保存评分
-                if (!projectId) {
-                    console.warn('未找到项目ID，无法保存评分');
-                    return;
-                }
+            scoreSummaryMenuItem.addEventListener('click', async function(e) {
+                e.preventDefault();
                 
                 // 添加加载效果
                 this.classList.add('loading');
+                const progressBar = this.querySelector('.progress-bar');
                 
-                // 先调用计算评分的API
-                fetch(`/api/calculate_scores/${projectId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
+                // 创建进度条动画
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 1; // 降低进度增加速度
+                    if (progress > 85) { // 保留更多空间给实际操作
+                        clearInterval(progressInterval);
                     }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('计算评分结果:', data);
-                    
-                    // 移除加载效果
+                    if (progressBar) {
+                        progressBar.style.width = `${progress}%`;
+                    }
+                }, 50);
+                
+                // 获取项目ID
+                const projectId = document.getElementById('current-project-id').value;
+                if (!projectId) {
+                    alert('请先选择项目');
+                    clearInterval(progressInterval);
                     this.classList.remove('loading');
+                    if (progressBar) {
+                        progressBar.style.width = '0%';
+                    }
+                    return;
+                }
+                
+                try {
+                    // 先调用计算评分的API
+                    progress = 40;
+                    if (progressBar) {
+                        progressBar.style.width = `${progress}%`;
+                    }
                     
-                    // 不阻止默认行为，让页面正常跳转
-                    // 但在跳转后获取最新数据，强制刷新
-                    setTimeout(function() {
-                        fetchScoreSummary(true); // 强制刷新
-                    }, 500); // 延迟500毫秒，确保页面已加载
-                })
-                .catch(error => {
-                    console.error('计算评分失败:', error);
+                    const calcResponse = await fetch(`/api/calculate_scores/${projectId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    const calcData = await calcResponse.json();
+                    console.log('计算评分结果:', calcData);
                     
-                    // 移除加载效果
+                    // 更新进度
+                    progress = 60;
+                    if (progressBar) {
+                        progressBar.style.width = `${progress}%`;
+                    }
+                    
+                    // 获取评分汇总数据
+                    const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
+                    const summaryData = await summaryResponse.json();
+                    console.log('获取评分汇总数据:', summaryData);
+                    
+                    // 更新进度
+                    progress = 85;
+                    if (progressBar) {
+                        progressBar.style.width = `${progress}%`;
+                    }
+                    
+                    // 将数据存储到 sessionStorage
+                    sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
+                    
+                    // 完成进度条并立即跳转
+                    if (progressBar) {
+                        progressBar.style.width = '100%';
+                        // 使用 requestAnimationFrame 确保进度条动画完成
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                window.location.href = this.getAttribute('href');
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error('获取评分数据失败:', error);
+                    alert(`获取评分数据失败: ${error.message}`);
+                    
+                    // 重置进度条
+                    clearInterval(progressInterval);
                     this.classList.remove('loading');
-                    
-                    // 仍然允许页面跳转
-                    // 但在跳转后获取最新数据，强制刷新
-                    setTimeout(function() {
-                        fetchScoreSummary(true); // 强制刷新
-                    }, 500); // 延迟500毫秒，确保页面已加载
-                });
+                    if (progressBar) {
+                        progressBar.style.width = '0%';
+                    }
+                }
             });
-        } else {
-            console.log('未找到评分汇总菜单项');
         }
         
         // 为刷新按钮添加点击事件
@@ -1692,6 +1757,28 @@
             }, 60000);
         } else {
             console.log('当前页面不是评分汇总页面，current_page =', '{{ current_page }}');
+        }
+    });
+
+    // 在页面加载时检查是否有预加载的数据
+    document.addEventListener('DOMContentLoaded', function() {
+        if ('{{ current_page }}' === 'score_summary') {
+            const preloadedData = sessionStorage.getItem('score_summary_data');
+            if (preloadedData) {
+                // 使用预加载的数据更新页面
+                const data = JSON.parse(preloadedData);
+                updateScoreSummaryTables(data);
+                // 清除预加载数据
+                sessionStorage.removeItem('score_summary_data');
+                
+                // 启动自动刷新
+                setInterval(function() {
+                    fetchScoreSummary(false);
+                }, 60000);
+            } else {
+                // 如果没有预加载数据，则立即获取
+                fetchScoreSummary(true);
+            }
         }
     });
 
@@ -2180,12 +2267,15 @@
             
             // 获取项目评价标准
             const projectStandard = document.getElementById('current-project-standard')?.value || '';
+            
             // 显示或隐藏环境健康与节能专业列
             const envHealthEnergyHeader = document.getElementById('env_health_energy_header');
             const envHealthEnergyColumn = document.getElementById('env_health_energy_column');
             if (envHealthEnergyHeader) {
                 envHealthEnergyHeader.style.display = projectStandard === '四川省标' ? '' : 'none';
-                envHealthEnergyColumn.style.display = projectStandard === '四川省标'? '' : 'none';
+                if (envHealthEnergyColumn) {
+                    envHealthEnergyColumn.style.display = projectStandard === '四川省标' ? '' : 'none';
+                }
             }
             
             // 更新各专业得分
@@ -2195,7 +2285,6 @@
             updateCell(specialtyScoresRow, 4, specialtyScores['电气专业'] || 0);
             updateCell(specialtyScoresRow, 5, specialtyScores['暖通专业'] || 0);
             updateCell(specialtyScoresRow, 6, specialtyScores['景观专业'] || 0);
-            updateCell(specialtyScoresRow, 7, specialtyScores['环境健康与节能专业'] || 0);
             
             // 如果是四川省标，更新环境健康与节能专业得分
             if (projectStandard === '四川省标') {
@@ -2203,8 +2292,11 @@
             }
             
             // 更新总分
-            const totalScore = Object.values(specialtyScores).reduce((sum, score) => sum + (parseFloat(score) || 0), 0);
-            updateCell(specialtyScoresRow, projectStandard === '四川省标' ? 8 : 7, totalScore);
+            const totalScore = data.total_score || 0;
+            const totalScoreCell = specialtyScoresRow.querySelector('.total-score');
+            if (totalScoreCell) {
+                totalScoreCell.textContent = totalScore.toFixed(1);
+            }
         }
         
         // 更新分类得分行

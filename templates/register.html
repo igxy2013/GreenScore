@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用户注册</title>
+
+ <!-- 修改为本地样式 -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+<style>
+/*
+* Remix Icon v4.5.0 (Simplified)
+*/
+[class^="ri-"], [class*=" ri-"] {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  vertical-align: middle;
+}
+
+
+
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button {-webkit-appearance: none;}
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.logo-text {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-weight: 600;
+}
+</style>
+<script>
+// 预加载其他页面
+window.addEventListener('load', () => {
+    const links = ['/login', '/reset_password', '/calculator'];
+    links.forEach(link => {
+        const prefetchLink = document.createElement('link');
+        prefetchLink.rel = 'prefetch';
+        prefetchLink.href = link;
+        document.head.appendChild(prefetchLink);
+    });
+});
+
+// 添加 Tailwind 配置
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                primary: '#3176FF',
+                secondary: '#10b981'
+            },
+            borderRadius: {
+                'none': '0px',
+                'sm': '4px',
+                DEFAULT: '8px',
+                'md': '12px',
+                'lg': '16px',
+                'xl': '20px',
+                '2xl': '24px',
+                '3xl': '32px',
+                'full': '9999px',
+                'button': '8px'
+            }
+        }
+    }
+}
+</script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+<div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8">
+    <div class="text-center mb-8">
+        <h1 class="logo-text text-4xl text-primary mb-2">智慧绿建评价系统</h1>
+        <h2 class="text-2xl font-semibold text-gray-900">创建账号</h2>
+        <p class="mt-2 text-sm text-gray-600">请输入您的邮箱和密码注册账号</p>
+    </div>
+
+    <form id="registerForm" class="space-y-6">
+        <div>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-user text-gray-400"></i>
+                </div>
+                <input type="email" id="email" required
+                    class="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 
+                    focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                    placeholder="请输入邮箱">
+            </div>
+            <p class="mt-1 text-sm text-red-500 hidden" id="emailError"></p>
+        </div>
+
+        <div>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-lock text-gray-400"></i>
+                </div>
+                <input type="password" id="password" required
+                    class="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 
+                    focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                    placeholder="请输入密码">
+            </div>
+            <div class="mt-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div id="passwordStrength" class="h-full w-0 transition-all duration-300"></div>
+            </div>
+            <p class="mt-1 text-sm text-gray-500" id="passwordTip">密码至少包含 8 个字符</p>
+        </div>
+
+        <div>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-lock text-gray-400"></i>
+                </div>
+                <input type="password" id="confirmPassword" required
+                    class="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 
+                    focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                    placeholder="请再次输入密码">
+            </div>
+            <p class="mt-1 text-sm text-red-500 hidden" id="confirmPasswordError"></p>
+        </div>
+
+        <div class="flex items-start">
+            <div class="flex items-center h-5">
+                <input id="agreement" type="checkbox" required
+                    class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+            </div>
+            <label for="agreement" class="ml-2 block text-sm text-gray-600">
+                我已阅读并同意
+                <a href="#" class="text-primary hover:text-primary/90">《用户协议》</a>
+                和
+                <a href="#" class="text-primary hover:text-primary/90">《隐私政策》</a>
+            </label>
+        </div>
+
+        <button type="submit" id="submitBtn"
+            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-button text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            注册
+        </button>
+    </form>
+
+    <p class="mt-8 text-center text-sm text-gray-600">
+        已有账号？
+        <a href="/login" class="font-medium text-primary hover:text-primary/80">立即登录</a>
+    </p>
+</div>
+
+<div id="toast" class="fixed top-4 right-4 flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow translate-x-full transition-transform duration-300" role="alert">
+    <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-lg">
+        <i id="toastIcon" class="ri-error-warning-line"></i>
+    </div>
+    <div id="toastMessage" class="ml-3 text-sm font-normal"></div>
+</div>
+
+<script>
+const form = document.getElementById('registerForm');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const confirmPasswordInput = document.getElementById('confirmPassword');
+
+const submitBtn = document.getElementById('submitBtn');
+const passwordStrength = document.getElementById('passwordStrength');
+const passwordTip = document.getElementById('passwordTip');
+const toast = document.getElementById('toast');
+const toastIcon = document.getElementById('toastIcon');
+const toastMessage = document.getElementById('toastMessage');
+
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    // 设置图标和颜色
+    if (type === 'success') {
+        toastIcon.className = 'fas fa-check-circle text-green-500';
+        toast.querySelector('.w-8').className = 'inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg';
+    } else {
+        toastIcon.className = 'fas fa-exclamation-circle text-red-500';
+        toast.querySelector('.w-8').className = 'inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-red-100 rounded-lg';
+    }
+    
+    toastMessage.textContent = message;
+    toast.classList.remove('translate-x-full');
+    
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+    }, 3000);
+}
+
+function validateEmail(email) {
+return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function checkPasswordStrength(password) {
+const hasLower = /[a-z]/.test(password);
+const hasUpper = /[A-Z]/.test(password);
+const hasNumber = /\d/.test(password);
+const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+const length = password.length;
+let strength = 0;
+if (length >= 8) strength++;
+if (hasLower && hasUpper) strength++;
+if (hasNumber) strength++;
+if (hasSpecial) strength++;
+const colors = ['bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-green-600'];
+const tips = [
+'密码强度：弱',
+'密码强度：中',
+'密码强度：强',
+'密码强度：非常强'
+];
+passwordStrength.className = `h-full transition-all duration-300 ${colors[strength - 1]}`;
+passwordStrength.style.width = `${strength * 25}%`;
+passwordTip.textContent = strength > 0 ? tips[strength - 1] : '密码至少包含 8 个字符';
+}
+
+emailInput.addEventListener('input', () => {
+const emailError = document.getElementById('emailError');
+if (!validateEmail(emailInput.value) && emailInput.value) {
+emailError.textContent = '请输入有效的邮箱地址';
+emailError.classList.remove('hidden');
+} else {
+emailError.classList.add('hidden');
+}
+});
+passwordInput.addEventListener('input', () => {
+checkPasswordStrength(passwordInput.value);
+});
+confirmPasswordInput.addEventListener('input', () => {
+const confirmPasswordError = document.getElementById('confirmPasswordError');
+if (confirmPasswordInput.value && confirmPasswordInput.value !== passwordInput.value) {
+confirmPasswordError.textContent = '两次输入的密码不一致';
+confirmPasswordError.classList.remove('hidden');
+} else {
+confirmPasswordError.classList.add('hidden');
+}
+});
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // 表单验证
+    if (!validateEmail(emailInput.value)) {
+        showToast('请输入有效的邮箱地址', 'error');
+        return;
+    }
+    if (passwordInput.value.length < 8) {
+        showToast('密码长度不能少于8个字符', 'error');
+        return;
+    }
+    if (passwordInput.value !== confirmPasswordInput.value) {
+        showToast('两次输入的密码不一致', 'error');
+        return;
+    }
+    if (!document.getElementById('agreement').checked) {
+        showToast('请阅读并同意用户协议和隐私政策', 'error');
+        return;
+    }
+
+    // 设置按钮加载状态
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>注册中...';
+
+    try {
+        const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: emailInput.value,
+                password: passwordInput.value
+            })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast('注册成功！正在跳转到登录页面...', 'success');
+            // 清空表单
+            form.reset();
+            // 延迟2秒后跳转
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        } else {
+            throw new Error(data.error || '注册失败，请稍后重试');
+        }
+    } catch (error) {
+        console.error('注册错误:', error);
+        showToast(error.message || '注册失败，请稍后重试', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '注册';
+    }
+});
+</script>
+</body>
+</html>

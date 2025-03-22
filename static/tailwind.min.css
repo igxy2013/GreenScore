@@ -30,6 +30,8 @@
 .bg-gray-900 { background-color: #111827; }
 .bg-red-500 { background-color: #ef4444; }
 .bg-green-100 { background-color: #dcfce7; }
+.bg-gradient-to-br { background-image: linear-gradient(to bottom right, #eff6ff, #ffffff); }
+
 
 .text-primary { color: var(--color-primary); }
 .text-primary-dark { color: var(--color-primary-dark); }

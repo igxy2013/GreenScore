@@ -23,10 +23,10 @@ if __name__ == '__main__':
     os.environ['FLASK_ENV'] = 'production'
     
     # 获取端口，默认为5000
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5050))
     
     # 输出启动信息
     logger.info(f"启动生产服务器 - 端口: {port}")
     
     # 使用Waitress服务器
-    serve(app, host='0.0.0.0', port=port, threads=4) 
+    serve(app, host='0.0.0.0', port=port, threads=4)
