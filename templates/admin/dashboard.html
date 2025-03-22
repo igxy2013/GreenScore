@@ -81,9 +81,7 @@
                 </table>
             </div>
         </div>
-    </div>
-
-    <!-- 邀请码管理卡片 -->
+            <!-- 邀请码管理卡片 -->
     <div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
         <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
             <h3 class="text-lg leading-6 font-medium text-gray-900">邀请码管理</h3>
@@ -108,16 +106,20 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.code }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                {% if code.used %}
+                                {% if code.used_at %}
                                     bg-gray-100 text-gray-800
                                 {% else %}
                                     bg-green-100 text-green-800
                                 {% endif %}">
-                                {{ code.used ? '已使用' : '未使用' }}
+                                {{ '已使用' if code.used_at else '未使用' }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ code.created_at.strftime('%Y-%m-%d %H:%M:%S') if code.created_at else '-' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}">
                                 <i class="fas fa-trash-alt"></i>
@@ -129,6 +131,9 @@
             </table>
         </div>
     </div>
+    </div>
+
+
 
     <!-- 用户表单模态框 -->
     <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -161,12 +166,10 @@
                     </select>
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
-                    <button type="button" onclick="closeUserModal()"
-                        class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    <button type="button" onclick="closeUserModal()"class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
                         取消
                     </button>
-                    <button type="submit"
-                        class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
                         确定
                     </button>
                 </div>
@@ -349,7 +352,13 @@
                 'Content-Type': 'application/json',
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('服务器返回了非JSON格式的响应');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 alert('邀请码生成成功');
@@ -359,7 +368,8 @@
             }
         })
         .catch(error => {
-            alert('生成失败: ' + error.message);
+            console.error('生成邀请码错误:', error);
+            alert('生成失败: ' + (error.message || '服务器响应格式错误'));
         });
     }
 

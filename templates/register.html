@@ -123,6 +123,19 @@ tailwind.config = {
             <p class="mt-1 text-sm text-red-500 hidden" id="confirmPasswordError"></p>
         </div>
 
+        <div>
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-key text-gray-400"></i>
+                </div>
+                <input type="text" id="inviteCode" required
+                    class="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 
+                    focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm"
+                    placeholder="请输入邀请码">
+            </div>
+            <p class="mt-1 text-sm text-red-500 hidden" id="inviteCodeError"></p>
+        </div>
+
         <div class="flex items-start">
             <div class="flex items-center h-5">
                 <input id="agreement" type="checkbox" required
@@ -160,6 +173,8 @@ const form = document.getElementById('registerForm');
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
 const confirmPasswordInput = document.getElementById('confirmPassword');
+const inviteCodeInput = document.getElementById('inviteCode');
+const inviteCodeError = document.getElementById('inviteCodeError');
 
 const submitBtn = document.getElementById('submitBtn');
 const passwordStrength = document.getElementById('passwordStrength');
@@ -191,7 +206,101 @@ function showToast(message, type = 'success') {
 }
 
 function validateEmail(email) {
-return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateInviteCode(inviteCode) {
+    return fetch('/api/validate-invite-code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: inviteCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.valid) {
+            throw new Error(data.message || '无效的邀请码');
+        }
+        return true;
+    });
+}
+
+form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // 重置错误提示
+    emailError.classList.add('hidden');
+    confirmPasswordError.classList.add('hidden');
+    inviteCodeError.classList.add('hidden');
+    
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    const confirmPassword = confirmPasswordInput.value;
+    const inviteCode = inviteCodeInput.value;
+    
+    // 验证邮箱格式
+    if (!validateEmail(email)) {
+        emailError.textContent = '请输入有效的邮箱地址';
+        emailError.classList.remove('hidden');
+        return;
+    }
+    
+    // 验证密码一致性
+    if (password !== confirmPassword) {
+        confirmPasswordError.textContent = '两次输入的密码不一致';
+        confirmPasswordError.classList.remove('hidden');
+        return;
+    }
+    
+    try {
+        // 验证邀请码
+        await validateInviteCode(inviteCode);
+        
+        // 提交注册请求
+        const response = await fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email,
+                password,
+                invite_code: inviteCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('注册成功！即将跳转到登录页面...', 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        } else {
+            showToast(data.message || '注册失败，请重试', 'error');
+        }
+    } catch (error) {
+        inviteCodeError.textContent = error.message;
+        inviteCodeError.classList.remove('hidden');
+    }
+});
+
+function validateInviteCode(inviteCode) {
+    return fetch('/api/validate-invite-code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: inviteCode })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.valid) {
+            throw new Error(data.message || '无效的邀请码');
+        }
+        return true;
+    });
 }
 
 function checkPasswordStrength(password) {

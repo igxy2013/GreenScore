@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import login_required, current_user, login_user, logout_user
-from models import User, db
+from models import User, InvitationCode, db
 from functools import wraps
 
 # 创建管理后台蓝图
@@ -43,7 +43,8 @@ def admin_login_post():
 @admin_required
 def dashboard():
     users = User.query.all()
-    return render_template('admin/dashboard.html', users=users)
+    invite_codes = InvitationCode.query.all()
+    return render_template('admin/dashboard.html', users=users, invite_codes=invite_codes)
 
 @admin_app.route('/api/users', methods=['POST'])
 @login_required
@@ -141,4 +142,4 @@ def admin_logout():
     return redirect(url_for('.admin_login'))
 
 if __name__ == '__main__':
-    admin_app.run(host='0.0.0.0', port=5001, debug=True) 
+    admin_app.run(host='0.0.0.0', port=5001, debug=True)

@@ -22,4 +22,15 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
     
     def is_admin(self):
-        return self.role == 'admin' 
+        return self.role == 'admin'
+
+class InvitationCode(db.Model):
+    __tablename__ = 'invitation_codes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    usage_count = db.Column(db.Integer, default=0)
+    max_usage = db.Column(db.Integer, default=30)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    used_at = db.Column(db.DateTime)
+    used_by = db.Column(db.Integer, db.ForeignKey('users.id'))

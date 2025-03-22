@@ -18,7 +18,9 @@ from flask_cors import CORS
 from word_template import process_template
 from export import generate_word, generate_dwg
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from models import db, User  # 导入共享的模型
+from models import db, User, InvitationCode  # 导入共享的模型
+import random
+import string
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
@@ -90,6 +92,54 @@ def load_user(user_id):
 # 导入和注册蓝图（在数据库初始化之后）
 from admin import admin_app
 app.register_blueprint(admin_app, url_prefix='/admin')
+
+# 邀请码相关API路由
+@app.route('/api/invite-codes', methods=['POST'])
+# @login_required
+def generate_invite_code():
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': '只有管理员可以生成邀请码'}), 403
+    
+    try:
+        # 生成随机邀请码
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        # 创建新的邀请码记录
+        new_code = InvitationCode(code=code)
+        db.session.add(new_code)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请码生成成功',
+            'code': code
+            
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'生成邀请码失败: {str(e)}')
+        return jsonify({'success': False, 'message': '生成邀请码失败'}), 500
+
+@app.route('/api/invite-codes/<int:code_id>', methods=['DELETE'])
+@login_required
+def delete_invite_code(code_id):
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': '只有管理员可以删除邀请码'}), 403
+    
+    try:
+        code = InvitationCode.query.get_or_404(code_id)
+        db.session.delete(code)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请码删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'删除邀请码失败: {str(e)}')
+        return jsonify({'success': False, 'message': '删除邀请码失败'}), 500
+
 # 添加登录要求装饰器
 def login_required(f):
     @wraps(f)
@@ -3389,7 +3439,23 @@ def register():
             app.logger.warning("注册失败：密码长度不足8位")
             return jsonify({'error': '密码长度不能少于8位'}), 400
             
+        # 验证邀请码
+        invitation_code = data.get('invitation_code')
+        if not invitation_code:
+            app.logger.warning("注册失败：未提供邀请码")
+            return jsonify({'error': '请输入邀请码'}), 400
+
         try:
+            # 检查邀请码是否有效且未超过使用次数限制
+            invite = InvitationCode.query.filter_by(code=invitation_code).first()
+            if not invite:
+                app.logger.warning(f"注册失败：无效的邀请码 - {invitation_code}")
+                return jsonify({'error': '无效的邀请码'}), 400
+
+            if invite.usage_count >= invite.max_usage:
+                app.logger.warning(f"注册失败：邀请码已达到最大使用次数 - {invitation_code}")
+                return jsonify({'error': '邀请码已达到最大使用次数'}), 400
+
             # 检查邮箱是否已被注册
             existing_user = User.query.filter_by(email=email).first()
             if existing_user:
@@ -3401,8 +3467,12 @@ def register():
             user.email = email
             user.set_password(password)
             
-            # 保存到数据库
+            # 更新邀请码使用次数并保存到数据库
+            invite.usage_count += 1
+            invite.used_at = datetime.utcnow()
+            invite.used_by = user.id
             db.session.add(user)
+            db.session.add(invite)
             db.session.commit()
             
             app.logger.info(f"用户注册成功: {email}")
