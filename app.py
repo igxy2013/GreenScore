@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash
-from flask_sqlalchemy import SQLAlchemy
 from flask_caching import Cache
 from flask_migrate import Migrate
 from functools import wraps
@@ -16,21 +15,16 @@ from datetime import datetime, timedelta
 import logging
 from logging.handlers import RotatingFileHandler
 from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
 from word_template import process_template
 from export import generate_word, generate_dwg
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from models import db, User  # 导入共享的模型
 
 # 加载环境变量
 load_dotenv()
 
-# 定义级别到属性的映射关系
-LEVEL_TO_ATTRIBUTE = {
-    '基本级': '控制项',
-    '提高级': '评分项'
-}
-
-# 创建日志目录
-os.makedirs('logs', exist_ok=True)
+# 创建应用
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -41,8 +35,6 @@ handler.setFormatter(logging.Formatter(
 ))
 handler.setLevel(logging.INFO)
 logger.addHandler(handler)
-
-app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.logger = logger
 
 # 配置 session
@@ -66,23 +58,32 @@ cache_config = {
 cache = Cache(app, config=cache_config)
 
 # 配置数据库连接
-# 优先使用环境变量中的数据库连接字符串
 db_uri = os.environ.get('DATABASE_URL')
 if not db_uri:
-    # 如果环境变量未设置，使用默认连接字符串
     db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
     app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-# 安全地获取数据库URL并打印
-masked_url = db_uri.replace(':' + db_uri.split(':')[2].split('@')[0] + '@', ':***@')
-app.logger.info(f"使用SQL Server数据库: {masked_url}")
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = not is_production  # 仅在非生产环境打印SQL语句
+app.config['SQLALCHEMY_ECHO'] = not is_production
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+# 初始化数据库
+db.init_app(app)
+
+# 初始化login manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'admin.admin_login'  # 修改这里，指向管理员登录页面
+login_manager.login_message = '请先登录'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# 导入和注册蓝图（在数据库初始化之后）
+from admin import admin_app
+app.register_blueprint(admin_app, url_prefix='/admin')
 
 # 添加登录要求装饰器
 def login_required(f):
@@ -3321,22 +3322,6 @@ def calculate_project_scores(project_id):
         logger.error(traceback.format_exc())
         return jsonify({'success': False, 'message': f'计算评分失败: {str(e)}'}), 500
 
-# 添加 User 模型
-class User(db.Model):
-    __tablename__ = 'users'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-        
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-# 添加登录相关路由
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
@@ -3352,6 +3337,7 @@ def login():
         if user and user.check_password(password):
             session['user_id'] = user.id
             session['username'] = user.email  # 添加用户邮箱到 session
+            session['role'] = user.role  # 添加用户角色到 session
             return jsonify({'success': True, 'redirect': '/project_management'})
         else:
             return jsonify({'error': '邮箱或密码错误'}), 401
@@ -3486,7 +3472,7 @@ def login_required(f):
 
 # 添加更新数据库表结构的函数
 def update_database_structure():
-    """更新数据库表结构，添加 user_id 字段"""
+    """更新数据库表结构，添加 user_id 字段和 role 字段"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -3515,6 +3501,24 @@ def update_database_structure():
             
             conn.commit()
             print("成功添加 user_id 列和外键约束")
+        
+        # 检查 role 列是否存在
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = 'users'
+            AND COLUMN_NAME = 'role'
+        """)
+        
+        if cursor.fetchone()[0] == 0:
+            # 添加 role 列
+            cursor.execute("""
+                ALTER TABLE users
+                ADD role NVARCHAR(20) NOT NULL DEFAULT 'user'
+            """)
+            
+            conn.commit()
+            print("成功添加 role 列")
         
         cursor.close()
         conn.close()
@@ -3778,6 +3782,126 @@ def save_star_case():
             'success': False,
             'message': f'处理请求失败: {str(e)}'
         }), 500
+
+@app.route('/user_management')
+@login_required
+def user_management():
+    # 检查当前用户是否为管理员
+    if not session.get('role') == 'admin':
+        flash('只有管理员可以访问用户管理页面')
+        return redirect(url_for('index'))
+    
+    # 获取所有用户
+    users = User.query.all()
+    return render_template('user_management.html', users=users)
+
+@app.route('/api/users', methods=['POST'])
+@login_required
+def create_user():
+    # 检查权限
+    if not session.get('role') == 'admin':
+        return jsonify({'success': False, 'message': '只有管理员可以创建用户'}), 403
+    
+    data = request.get_json()
+    
+    # 验证必填字段
+    if not all(key in data for key in ['email', 'password', 'role']):
+        return jsonify({'success': False, 'message': '缺少必要字段'}), 400
+    
+    # 检查邮箱是否已存在
+    if User.query.filter_by(email=data['email']).first():
+        return jsonify({'success': False, 'message': '该邮箱已被注册'}), 400
+    
+    # 创建新用户
+    try:
+        new_user = User()
+        new_user.email = data['email']
+        new_user.set_password(data['password'])
+        new_user.role = data['role']
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '用户创建成功',
+            'user': {
+                'id': new_user.id,
+                'email': new_user.email,
+                'role': new_user.role
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+@login_required
+def get_user(user_id):
+    # 检查权限
+    if not session.get('role') == 'admin':
+        return jsonify({'success': False, 'message': '只有管理员可以查看用户信息'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    return jsonify({
+        'id': user.id,
+        'email': user.email,
+        'role': user.role,
+        'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
+    })
+
+@app.route('/api/users/<int:user_id>', methods=['PUT'])
+@login_required
+def update_user(user_id):
+    # 检查权限
+    if not session.get('role') == 'admin':
+        return jsonify({'success': False, 'message': '只有管理员可以更新用户信息'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    
+    try:
+        # 更新邮箱
+        if 'email' in data and data['email'] != user.email:
+            # 检查新邮箱是否已存在
+            if User.query.filter_by(email=data['email']).first():
+                return jsonify({'success': False, 'message': '该邮箱已被使用'}), 400
+            user.email = data['email']
+        
+        # 更新密码（如果提供了新密码）
+        if 'password' in data and data['password']:
+            user.set_password(data['password'])
+        
+        # 更新角色
+        if 'role' in data:
+            user.role = data['role']
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': '用户信息更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/users/<int:user_id>', methods=['DELETE'])
+@login_required
+def delete_user(user_id):
+    # 检查权限
+    if not session.get('role') == 'admin':
+        return jsonify({'success': False, 'message': '只有管理员可以删除用户'}), 403
+    
+    user = User.query.get_or_404(user_id)
+    
+    # 防止删除自己
+    if user.id == session.get('user_id'):
+        return jsonify({'success': False, 'message': '不能删除当前登录的用户'}), 400
+    
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '用户删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
     # 初始化数据库

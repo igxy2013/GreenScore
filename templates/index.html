@@ -329,10 +329,14 @@
             <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-h-screen;">
                 <!-- 用户信息栏 -->
                 <div class="absolute top-0 right-0 p-4 flex items-center space-x-3">
+                    <!-- 用户信息 -->
                     <div class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100">
                         <i class="fas fa-user-circle text-primary text-xl"></i>
-                        <span class="ml-2 text-gray-700 font-medium">{{ session.get('username', '未登录') }}</span>
+                        <span class="ml-2 text-gray-700 font-medium">
+                            {{ session.get('username', '未登录').split('@')[0] }}
+                        </span>
                     </div>
+                    <!-- 退出按钮 -->
                     <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group">
                         <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
                         <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
@@ -515,12 +519,14 @@
                                 </tbody>
                             </table>
                             
-                            <!-- 添加保存星级案例按钮 -->
+                            <!-- 添加保存星级案例按钮，仅管理员可见 -->
+                            {% if session.get('role') == 'admin' %}
                             <div class="mt-6 flex justify-center">
                                 <button id="saveStarCaseBtn" class="px-6 py-3 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                                     <i class="ri-save-line mr-2"></i>保存星级案例
                                 </button>
                             </div>
+                            {% endif %}
                         </div>
                         
                         <!-- 星级标准说明 -->

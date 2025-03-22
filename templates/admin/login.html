@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='greenscore.png') }}">
+    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+    <style>
+    .gradient-bg {
+        background: linear-gradient(135deg, #E8F0FF 0%, #FFFFFF 100%);
+    }
+    .banner-gradient {
+        background: linear-gradient(90deg, #3176FF 0%, #75A4FF 100%);
+    }
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+    .floating {
+        animation: float 3s ease-in-out infinite;
+    }
+    .text-shadow {
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .logo-text {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-weight: 600;
+    }
+    </style>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#3176FF',
+                    secondary: '#6B7280'
+                },
+                borderRadius: {
+                    'none': '0px',
+                    'sm': '4px',
+                    DEFAULT: '8px',
+                    'md': '12px',
+                    'lg': '16px',
+                    'xl': '20px',
+                    '2xl': '24px',
+                    '3xl': '32px',
+                    'full': '9999px',
+                    'button': '8px'
+                }
+            }
+        }
+    }
+    </script>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl">
+        <div class="banner-gradient rounded-lg p-6 mb-8 text-white text-center floating">
+            <div class="flex justify-center gap-8 mb-6">
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-shield-alt text-2xl"></i>
+                    </div>
+                    <span class="text-sm">安全管理</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-users-cog text-2xl"></i>
+                    </div>
+                    <span class="text-sm">用户管理</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-chart-line text-2xl"></i>
+                    </div>
+                    <span class="text-sm">数据分析</span>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold mb-4 text-shadow">智能绿建评价系统管理后台</h1>
+            <p class="text-lg opacity-90">专业、安全、高效的后台管理系统</p>
+        </div>
+        <div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8 mx-auto">
+            <div class="text-center mb-8">
+                <h1 class="logo-text text-4xl text-primary mb-2">管理后台</h1>
+                <h2 class="text-2xl font-semibold text-gray-900">管理员登录</h2>
+                <p class="mt-2 text-sm text-gray-600">请输入管理员账号和密码</p>
+            </div>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                            <span class="block sm:inline">{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('.admin_login_post') }}" method="POST" class="space-y-6">
+                <div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="email" name="email" required
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                            placeholder="请输入管理员邮箱">
+                    </div>
+                </div>
+                <div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" name="password" required
+                            class="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                            placeholder="请输入密码">
+                        <button type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer toggle-password">
+                            <i class="fas fa-eye-slash text-gray-400"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-button text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    登录管理后台
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', function() {
+            const input = this.parentElement.querySelector('input');
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye text-gray-400';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye-slash text-gray-400';
+            }
+        });
+    });
+    </script>
+</body>
+</html> 
