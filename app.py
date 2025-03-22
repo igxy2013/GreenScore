@@ -20,6 +20,12 @@ from export import generate_word, generate_dwg
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from models import db, User  # 导入共享的模型
 
+# 定义等级到属性的映射
+LEVEL_TO_ATTRIBUTE = {
+    '基本级': 'basic_score',
+    '提高级': 'advanced_score'
+}
+
 # 加载环境变量
 load_dotenv()
 
@@ -84,7 +90,6 @@ def load_user(user_id):
 # 导入和注册蓝图（在数据库初始化之后）
 from admin import admin_app
 app.register_blueprint(admin_app, url_prefix='/admin')
-
 # 添加登录要求装饰器
 def login_required(f):
     @wraps(f)
@@ -246,7 +251,7 @@ class Project(db.Model):
     improvement_innovation_score = db.Column(db.Float)  # 提高与创新总分
     total_score = db.Column(db.Float)  # 项目总分
     evaluation_result = db.Column(db.String(20))  # 评定结果
-    
+
     def to_dict(self):
         # 辅助函数：格式化浮点数，保留2位小数
         def format_float(value):
@@ -386,7 +391,6 @@ def get_all_standards():
 def get_filtered_standards(level, specialty):
     print(f"从数据库获取筛选数据: 级别={level}, 专业={specialty}")
     start_time = time.time()
-    
     # 将级别转换为对应的属性值
     attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
     if attribute:
@@ -963,7 +967,7 @@ def filter_standards():
             # 默认使用成都市标
             model_class = Standard
             standard_name = '成都市标'
-        
+            # 定义等级到属性的映射
         # 获取属性值
         attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
         

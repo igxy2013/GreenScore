@@ -7,6 +7,7 @@ from waitress import serve
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 if __name__ == '__main__':
     with application.app_context():
         try:
@@ -31,4 +32,10 @@ if __name__ == '__main__':
             raise
     
     logger.info("正在启动Waitress服务器...")
-    serve(application, host='0.0.0.0', port=5000)
+    serve(application, 
+          host='0.0.0.0', 
+          port=5000,
+          threads=8,  # 增加线程数
+          connection_limit=1000,  # 增加连接限制
+          channel_timeout=300,  # 增加通道超时时间（秒）
+          )
