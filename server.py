@@ -35,7 +35,7 @@ if __name__ == '__main__':
     serve(application, 
           host='0.0.0.0', 
           port=5000,
-          threads=2,  # 增加线程数
+          threads=12,  # 增加线程数
           connection_limit=1000,  # 增加连接限制
           channel_timeout=300,  # 增加通道超时时间（秒）
           )
