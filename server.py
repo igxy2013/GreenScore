@@ -1,6 +1,7 @@
 from app import app as application
 from models import db
 import logging
+from waitress import serve
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +19,7 @@ if __name__ == '__main__':
             admin = User.query.filter_by(role='admin').first()
             if not admin:
                 admin = User()
+                admin.username = 'admin'
                 admin.email = 'admin@example.com'
                 admin.set_password('admin123')
                 admin.role = 'admin'
@@ -28,4 +30,5 @@ if __name__ == '__main__':
             logger.error(f"初始化数据库时出错: {str(e)}")
             raise
     
-    application.run(host='0.0.0.0', port=5000, debug=True)
+    logger.info("正在启动Waitress服务器...")
+    serve(application, host='0.0.0.0', port=5000)

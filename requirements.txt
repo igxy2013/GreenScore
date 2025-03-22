@@ -7,7 +7,12 @@ Werkzeug==2.0.3
 SQLAlchemy==1.4.46
 Flask-Caching==2.0.2
 waitress==2.1.2 
-flask_migrate
-flask_cors
+flask_migrate==4.0.4
+flask_cors==4.0.0
 python-docx>=0.8.11
-pywin32
+pywin32>=310
+bcrypt==4.0.1
+loguru==0.7.2
+urllib3==2.0.7
+python-dateutil==2.8.2
+flask_login==0.6.3

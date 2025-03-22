@@ -3,7 +3,6 @@
 /database.db
 /output.txt
 /schema.sql
-/tailwind.min.css
 /设计工作说明页面.html
 /.env
 /logs/
@@ -28,6 +27,11 @@ htmlcov/
 /temp/*.docx
 temp/*.dwg
 __pycache__/*.pyc
-static/templates/绿色建筑设计专篇(市标2024).dwl2
-
-static/templates/acad.err
+/static/templates/绿色建筑设计专篇(市标2024).dwl2
+/test_calculate_scores.py
+/test_dwg_export.py
+/static/templates/acad.err
+/list_projects.py
+/check_db_structure.py
+/check_score_table.py
+/check_tables.py
