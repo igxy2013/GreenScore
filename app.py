@@ -924,7 +924,10 @@ def delete_project(project_id):
         db.session.delete(project)
         db.session.commit()
         
-        return jsonify({'message': '项目删除成功'})
+        return jsonify({
+            'success': True,
+            'message': '项目删除成功'
+        })
     except Exception as e:
         db.session.rollback()
         print(f"删除项目失败: {str(e)}")
@@ -3413,84 +3416,69 @@ def login():
 
 @app.route('/api/register', methods=['POST'])
 def register():
+    """用户注册处理"""
     try:
         data = request.get_json()
         if not data:
-            app.logger.warning("注册失败：未收到JSON数据")
-            return jsonify({'error': '请求数据无效'}), 400
+            return jsonify({'message': '请求数据无效'}), 400
             
         email = data.get('email')
         password = data.get('password')
+        invitation_code = data.get('invitation_code')
         
         app.logger.info(f"收到注册请求: email={email}")
         
         # 基本验证
-        if not email or not password:
-            app.logger.warning("注册失败：邮箱或密码为空")
-            return jsonify({'error': '请输入邮箱和密码'}), 400
+        if not email or not password or not invitation_code:
+            return jsonify({'message': '请输入邮箱、密码和邀请码'}), 400
             
         # 邮箱格式验证
         if not '@' in email or not '.' in email:
-            app.logger.warning(f"注册失败：邮箱格式不正确 - {email}")
-            return jsonify({'error': '请输入有效的邮箱地址'}), 400
+            return jsonify({'message': '请输入有效的邮箱地址'}), 400
             
         # 密码长度验证
         if len(password) < 8:
-            app.logger.warning("注册失败：密码长度不足8位")
-            return jsonify({'error': '密码长度不能少于8位'}), 400
+            return jsonify({'message': '密码长度不能少于8位'}), 400
             
+        # 检查邮箱是否已存在
+        if User.query.filter_by(email=email).first():
+            return jsonify({'message': '该邮箱已被注册'}), 400
+
         # 验证邀请码
-        invitation_code = data.get('invitation_code')
-        if not invitation_code:
-            app.logger.warning("注册失败：未提供邀请码")
-            return jsonify({'error': '请输入邀请码'}), 400
+        invite = InvitationCode.query.filter_by(code=invitation_code).first()
+        if not invite:
+            return jsonify({'message': '无效的邀请码'}), 400
+            
+        if invite.usage_count >= invite.max_usage:
+            return jsonify({'message': '邀请码已达到使用上限'}), 400
 
         try:
-            # 检查邀请码是否有效且未超过使用次数限制
-            invite = InvitationCode.query.filter_by(code=invitation_code).first()
-            if not invite:
-                app.logger.warning(f"注册失败：无效的邀请码 - {invitation_code}")
-                return jsonify({'error': '无效的邀请码'}), 400
-
-            if invite.usage_count >= invite.max_usage:
-                app.logger.warning(f"注册失败：邀请码已达到最大使用次数 - {invitation_code}")
-                return jsonify({'error': '邀请码已达到最大使用次数'}), 400
-
-            # 检查邮箱是否已被注册
-            existing_user = User.query.filter_by(email=email).first()
-            if existing_user:
-                app.logger.warning(f"注册失败：邮箱已被注册 - {email}")
-                return jsonify({'error': '该邮箱已被注册'}), 400
-                
             # 创建新用户
-            user = User()
-            user.email = email
-            user.set_password(password)
+            new_user = User(
+                email=email,
+                role='user'
+            )
+            new_user.set_password(password)
+            db.session.add(new_user)
+            db.session.flush()  # 获取新用户的ID
             
-            # 更新邀请码使用次数并保存到数据库
+            # 更新邀请码使用情况
             invite.usage_count += 1
             invite.used_at = datetime.utcnow()
-            invite.used_by = user.id
-            db.session.add(user)
-            db.session.add(invite)
+            invite.used_by = new_user.id
+            
             db.session.commit()
-            
             app.logger.info(f"用户注册成功: {email}")
-            return jsonify({
-                'success': True,
-                'message': '注册成功！正在跳转到登录页面...'
-            })
+            return jsonify({'success': True, 'message': '注册成功'}), 201
             
-        except Exception as db_error:
+        except Exception as e:
             db.session.rollback()
-            app.logger.error(f"数据库操作失败: {str(db_error)}")
-            app.logger.error(traceback.format_exc())
-            return jsonify({'error': '注册失败，请稍后重试'}), 500
+            app.logger.error(f"数据库操作失败: {str(e)}")
+            return jsonify({'message': '注册失败，请稍后重试'}), 500
             
     except Exception as e:
-        app.logger.error(f"注册过程出现未知错误: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        return jsonify({'error': '服务器错误，请稍后重试'}), 500
+        app.logger.error(f"注册过程出错: {str(e)}")
+        return jsonify({'message': '注册失败，请稍后重试'}), 500
 
 @app.route('/api/check_user', methods=['POST'])
 def check_user():
@@ -3987,6 +3975,45 @@ def delete_user(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/validate-invite-code', methods=['POST'])
+def validate_invite_code():
+    """验证邀请码"""
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        
+        if not code:
+            return jsonify({
+                'valid': False,
+                'message': '请输入邀请码'
+            }), 400
+            
+        # 检查邀请码是否有效
+        invite = InvitationCode.query.filter_by(code=code).first()
+        if not invite:
+            return jsonify({
+                'valid': False,
+                'message': '无效的邀请码'
+            }), 400
+            
+        if invite.usage_count >= invite.max_usage:
+            return jsonify({
+                'valid': False,
+                'message': '邀请码已达到使用上限'
+            }), 400
+            
+        return jsonify({
+            'valid': True,
+            'message': '邀请码验证成功'
+        }), 200
+            
+    except Exception as e:
+        app.logger.error(f"邀请码验证失败: {str(e)}")
+        return jsonify({
+            'valid': False,
+            'message': '验证失败，请稍后重试'
+        }), 500
 
 if __name__ == '__main__':
     # 初始化数据库
