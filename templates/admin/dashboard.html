@@ -83,6 +83,53 @@
         </div>
     </div>
 
+    <!-- 邀请码管理卡片 -->
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+        <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">邀请码管理</h3>
+            <button id="generateInviteCodeBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="fas fa-plus mr-2"></i>生成邀请码
+            </button>
+        </div>
+        <div class="border-t border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邀请码</th>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用时间</th>
+                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for code in invite_codes %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.code }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                {% if code.used %}
+                                    bg-gray-100 text-gray-800
+                                {% else %}
+                                    bg-green-100 text-green-800
+                                {% endif %}">
+                                {{ code.used ? '已使用' : '未使用' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- 用户表单模态框 -->
     <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
@@ -148,6 +195,21 @@
                 const userId = this.dataset.userId;
                 if (confirm('确定要删除此用户吗？')) {
                     deleteUser(userId);
+                }
+            });
+        });
+
+        // 生成邀请码按钮点击事件
+        document.getElementById('generateInviteCodeBtn').addEventListener('click', function() {
+            generateInviteCode();
+        });
+
+        // 删除邀请码按钮点击事件
+        document.querySelectorAll('.delete-code-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const codeId = this.dataset.codeId;
+                if (confirm('确定要删除此邀请码吗？')) {
+                    deleteInviteCode(codeId);
                 }
             });
         });
@@ -278,6 +340,47 @@
             alert('删除失败: ' + error.message);
         });
     }
+
+    // 生成邀请码
+    function generateInviteCode() {
+        fetch('/api/invite-codes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('邀请码生成成功');
+                location.reload();
+            } else {
+                alert(data.message || '生成失败');
+            }
+        })
+        .catch(error => {
+            alert('生成失败: ' + error.message);
+        });
+    }
+
+    // 删除邀请码
+    function deleteInviteCode(codeId) {
+        fetch(`/api/invite-codes/${codeId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('邀请码删除成功');
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            alert('删除失败: ' + error.message);
+        });
+    }
     </script>
 </body>
-</html> 
+</html>
