@@ -2622,6 +2622,7 @@
     // 添加生成DWG文档的函数
     function generateDWG() {
         // 临时设置当前页面为dwg_export，以便高亮显示菜单项
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
         const currentMenuItems = document.querySelectorAll('.submenu-item.active');
         currentMenuItems.forEach(item => {
             item.classList.remove('active');
@@ -2690,7 +2691,13 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = '绿色建筑设计专篇.dwg';
+            if (currentProjectStandard=='四川省标') {
+                a.download = '绿色建筑设计专篇（四川省标）.dwg';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '绿色建筑设计专篇（成都市标）.dwg';
+            } else {
+                a.download = '绿色建筑设计专篇.dwg';
+            }
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);

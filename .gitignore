@@ -27,7 +27,7 @@ htmlcov/
 /temp/*.docx
 temp/*.dwg
 __pycache__/*.pyc
-/static/templates/绿色建筑设计专篇(市标2024).dwl2
+/static/templates/*.dwl2
 /test_calculate_scores.py
 /test_dwg_export.py
 /static/templates/acad.err
@@ -35,3 +35,4 @@ __pycache__/*.pyc
 /check_db_structure.py
 /check_score_table.py
 /check_tables.py
+static/templates/*.dwl
