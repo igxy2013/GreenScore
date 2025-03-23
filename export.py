@@ -122,38 +122,63 @@ def generate_word(request_data):
             data = []
             # 添加项目信息作为第一条数据
             data.append({
-                "项目名称": project_rows[0][0] or '',
-                "设计单位": project_rows[0][1] or '',
-                "建设单位": project_rows[0][2] or '',
-                "总建筑面积": str(project_rows[0][3] or '0'),
-                "建筑类型": project_rows[0][4] or '',
-                "项目地点": project_rows[0][5] or '',
-                "气候区划": project_rows[0][6] or '',
-                "星级目标": project_rows[0][7] or '',
-                "建筑总分": str(project_rows[0][8] or '0'),
-                "结构总分": str(project_rows[0][9] or '0'),
-                "给排水总分": str(project_rows[0][10] or '0'),
-                "电气总分": str(project_rows[0][11] or '0'),
-                "暖通总分": str(project_rows[0][12] or '0'),
-                "景观总分": str(project_rows[0][13] or '0'),
-                "建筑创新总分": str(project_rows[0][14] or '0'),
-                "结构创新总分": str(project_rows[0][15] or '0'),
-                "暖通创新总分": str(project_rows[0][16] or '0'),
-                "景观创新总分": str(project_rows[0][17] or '0'),
-                "提高与创新总分": str(project_rows[0][18] or '0'),
-                "项目总分": str(project_rows[0][19] or '0'),
-                "安全耐久总分": str(project_rows[0][20] or '0'),
-                "健康舒适总分": str(project_rows[0][21] or '0'),
-                "生活便利总分": str(project_rows[0][22] or '0'),
-                "资源节约总分": str(project_rows[0][23] or '0'),
-                "环境宜居总分": str(project_rows[0][24] or '0'),
-                "总用地面积": str(project_rows[0][25] or '0'),
-                "评价标准": project_rows[0][26] or '成都市标',
-                "建筑高度": str(project_rows[0][27] or '0'),
-                "建筑层数": project_rows[0][28] or '',
-                "环境健康与节能总分": str(project_rows[0][29] or '0'),
-                "环境健康与节能创新总分": str(project_rows[0][30] or '0'),
-                "评定结果": project_rows[0][31] or ''
+                "项目ID": str(project_rows[0][0] or ''),
+                "用户ID": str(project_rows[0][1] or ''),
+                "项目名称": project_rows[0][2] or '',
+                "项目编号": project_rows[0][3] or '',
+                "建设单位": project_rows[0][4] or '',
+                "设计单位": project_rows[0][5] or '',
+                "项目地点": project_rows[0][6] or '',
+                "建筑面积": str(project_rows[0][7] or '0'),
+                "评价标准": project_rows[0][8] or '成都市标',
+                "建筑类型": project_rows[0][9] or '',
+                "创建时间": project_rows[0][10].strftime('%Y-%m-%d %H:%M:%S') if project_rows[0][10] else '',
+                "气候区划": project_rows[0][11] or '',
+                "星级目标": project_rows[0][12] or '',
+                "总用地面积": str(project_rows[0][13] or '0'),
+                "总建筑面积": str(project_rows[0][14] or '0'),
+                "地上建筑面积": str(project_rows[0][15] or '0'),
+                "地下建筑面积": str(project_rows[0][16] or '0'),
+                "建筑高度": str(project_rows[0][17] or '0'),
+                "建筑层数": project_rows[0][18] or '',
+                "地下一层建筑面积": str(project_rows[0][19] or '0'),
+                "地面停车位数量": str(project_rows[0][20] or '0'),
+                "容积率": str(project_rows[0][21] or '0'),
+                "建筑基底面积": str(project_rows[0][22] or '0'),
+                "建筑密度": str(project_rows[0][23] or '0'),
+                "绿地面积": str(project_rows[0][24] or '0'),
+                "绿地率": str(project_rows[0][25] or '0'),
+                "住宅户数": str(project_rows[0][26] or '0'),
+                "空调类型": project_rows[0][27] or '',
+                "平均层数": project_rows[0][28] or '',
+                "有无垃圾用房": project_rows[0][29] or '',
+                "有无电梯": project_rows[0][30] or '',
+                "有无地下车库": project_rows[0][31] or '',
+                "建设情况": project_rows[0][32] or '',
+                "有无景观水体": project_rows[0][33] or '',
+                "是否全装修": project_rows[0][34] or '',
+                "公建类型": project_rows[0][35] or '',
+                "绿地向公众开放": project_rows[0][36] or '',
+                "建筑总分": str(project_rows[0][37] or '0'),
+                "结构总分": str(project_rows[0][38] or '0'),
+                "给排水总分": str(project_rows[0][39] or '0'),
+                "电气总分": str(project_rows[0][40] or '0'),
+                "暖通总分": str(project_rows[0][41] or '0'),
+                "景观总分": str(project_rows[0][42] or '0'),
+                "环境健康与节能总分": str(project_rows[0][43] or '0'),
+                "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
+                "建筑创新总分": str(project_rows[0][45] or '0'),
+                "结构创新总分": str(project_rows[0][46] or '0'),
+                "暖通创新总分": str(project_rows[0][47] or '0'),
+                "景观创新总分": str(project_rows[0][48] or '0'),
+                "安全耐久总分": str(project_rows[0][49] or '0'),
+                "健康舒适总分": str(project_rows[0][50] or '0'),
+                "生活便利总分": str(project_rows[0][51] or '0'),
+                "资源节约总分": str(project_rows[0][52] or '0'),
+                "环境宜居总分": str(project_rows[0][53] or '0'),
+                "提高与创新总分": str(project_rows[0][54] or '0'),
+                "项目总分": str(project_rows[0][55] or '0'),
+                "评定结果": project_rows[0][56] or ''
             })
             
             # 打印数据对象，用于调试
@@ -323,38 +348,63 @@ def save_project_info(project_data):
                 data = []
                 # 添加项目信息作为第一条数据
                 data.append({
-                    "项目名称": project_rows[0][0] or '',
-                    "设计单位": project_rows[0][1] or '',
-                    "建设单位": project_rows[0][2] or '',
-                    "总建筑面积": str(project_rows[0][3] or '0'),
-                    "建筑类型": project_rows[0][4] or '',
-                    "项目地点": project_rows[0][5] or '',
-                    "气候区划": project_rows[0][6] or '',
-                    "星级目标": project_rows[0][7] or '',
-                    "建筑总分": str(project_rows[0][8] or '0'),
-                    "结构总分": str(project_rows[0][9] or '0'),
-                    "给排水总分": str(project_rows[0][10] or '0'),
-                    "电气总分": str(project_rows[0][11] or '0'),
-                    "暖通总分": str(project_rows[0][12] or '0'),
-                    "景观总分": str(project_rows[0][13] or '0'),
-                    "建筑创新总分": str(project_rows[0][14] or '0'),
-                    "结构创新总分": str(project_rows[0][15] or '0'),
-                    "暖通创新总分": str(project_rows[0][16] or '0'),
-                    "景观创新总分": str(project_rows[0][17] or '0'),
-                    "提高与创新总分": str(project_rows[0][18] or '0'),
-                    "项目总分": str(project_rows[0][19] or '0'),
-                    "安全耐久总分": str(project_rows[0][20] or '0'),
-                    "健康舒适总分": str(project_rows[0][21] or '0'),
-                    "生活便利总分": str(project_rows[0][22] or '0'),
-                    "资源节约总分": str(project_rows[0][23] or '0'),
-                    "环境宜居总分": str(project_rows[0][24] or '0'),
-                    "总用地面积": str(project_rows[0][25] or '0'),
-                    "评价标准": project_rows[0][26] or '成都市标',
-                    "建筑高度": str(project_rows[0][27] or '0'),
-                    "建筑层数": project_rows[0][28] or '',
-                    "环境健康与节能总分": str(project_rows[0][29] or '0'),
-                    "环境健康与节能创新总分": str(project_rows[0][30] or '0'),
-                    "评定结果": project_rows[0][31] or ''
+                    "项目ID": str(project_rows[0][0] or ''),
+                    "用户ID": str(project_rows[0][1] or ''),
+                    "项目名称": project_rows[0][2] or '',
+                    "项目编号": project_rows[0][3] or '',
+                    "建设单位": project_rows[0][4] or '',
+                    "设计单位": project_rows[0][5] or '',
+                    "项目地点": project_rows[0][6] or '',
+                    "建筑面积": str(project_rows[0][7] or '0'),
+                    "评价标准": project_rows[0][8] or '成都市标',
+                    "建筑类型": project_rows[0][9] or '',
+                    "创建时间": project_rows[0][10].strftime('%Y-%m-%d %H:%M:%S') if project_rows[0][10] else '',
+                    "气候区划": project_rows[0][11] or '',
+                    "星级目标": project_rows[0][12] or '',
+                    "总用地面积": str(project_rows[0][13] or '0'),
+                    "总建筑面积": str(project_rows[0][14] or '0'),
+                    "地上建筑面积": str(project_rows[0][15] or '0'),
+                    "地下建筑面积": str(project_rows[0][16] or '0'),
+                    "建筑高度": str(project_rows[0][17] or '0'),
+                    "建筑层数": project_rows[0][18] or '',
+                    "地下一层建筑面积": str(project_rows[0][19] or '0'),
+                    "地面停车位数量": str(project_rows[0][20] or '0'),
+                    "容积率": str(project_rows[0][21] or '0'),
+                    "建筑基底面积": str(project_rows[0][22] or '0'),
+                    "建筑密度": str(project_rows[0][23] or '0'),
+                    "绿地面积": str(project_rows[0][24] or '0'),
+                    "绿地率": str(project_rows[0][25] or '0'),
+                    "住宅户数": str(project_rows[0][26] or '0'),
+                    "空调类型": project_rows[0][27] or '',
+                    "平均层数": project_rows[0][28] or '',
+                    "有无垃圾用房": project_rows[0][29] or '',
+                    "有无电梯": project_rows[0][30] or '',
+                    "有无地下车库": project_rows[0][31] or '',
+                    "建设情况": project_rows[0][32] or '',
+                    "有无景观水体": project_rows[0][33] or '',
+                    "是否全装修": project_rows[0][34] or '',
+                    "公建类型": project_rows[0][35] or '',
+                    "绿地向公众开放": project_rows[0][36] or '',
+                    "建筑总分": str(project_rows[0][37] or '0'),
+                    "结构总分": str(project_rows[0][38] or '0'),
+                    "给排水总分": str(project_rows[0][39] or '0'),
+                    "电气总分": str(project_rows[0][40] or '0'),
+                    "暖通总分": str(project_rows[0][41] or '0'),
+                    "景观总分": str(project_rows[0][42] or '0'),
+                    "环境健康与节能总分": str(project_rows[0][43] or '0'),
+                    "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
+                    "建筑创新总分": str(project_rows[0][45] or '0'),
+                    "结构创新总分": str(project_rows[0][46] or '0'),
+                    "暖通创新总分": str(project_rows[0][47] or '0'),
+                    "景观创新总分": str(project_rows[0][48] or '0'),
+                    "安全耐久总分": str(project_rows[0][49] or '0'),
+                    "健康舒适总分": str(project_rows[0][50] or '0'),
+                    "生活便利总分": str(project_rows[0][51] or '0'),
+                    "资源节约总分": str(project_rows[0][52] or '0'),
+                    "环境宜居总分": str(project_rows[0][53] or '0'),
+                    "提高与创新总分": str(project_rows[0][54] or '0'),
+                    "项目总分": str(project_rows[0][55] or '0'),
+                    "评定结果": project_rows[0][56] or ''
                 })
                 
                 # 添加得分数据
@@ -599,38 +649,63 @@ def generate_dwg(request_data):
             data = []
             # 添加项目信息作为第一条数据
             data.append({
+                "项目ID": str(project_rows[0][0] or ''),
+                "用户ID": str(project_rows[0][1] or ''),
                 "项目名称": project_rows[0][2] or '',
-                "设计单位": project_rows[0][3] or '',
+                "项目编号": project_rows[0][3] or '',
                 "建设单位": project_rows[0][4] or '',
-                "总建筑面积": str(project_rows[0][5] or '0'),
-                "建筑类型": project_rows[0][6] or '',
-                "项目地点": project_rows[0][7] or '',
-                "气候区划": project_rows[0][8] or '',
-                "星级目标": project_rows[0][9] or '',
-                "建筑总分": str(project_rows[0][10] or '0'),
-                "结构总分": str(project_rows[0][11] or '0'),
-                "给排水总分": str(project_rows[0][12] or '0'),
-                "电气总分": str(project_rows[0][13] or '0'),
-                "暖通总分": str(project_rows[0][14] or '0'),
-                "景观总分": str(project_rows[0][15] or '0'),
-                "建筑创新总分": str(project_rows[0][16] or '0'),
-                "结构创新总分": str(project_rows[0][17] or '0'),
-                "暖通创新总分": str(project_rows[0][18] or '0'),
-                "景观创新总分": str(project_rows[0][19] or '0'),
-                "提高与创新总分": str(project_rows[0][20] or '0'),
-                "项目总分": str(project_rows[0][21] or '0'),
-                "安全耐久总分": str(project_rows[0][22] or '0'),
-                "健康舒适总分": str(project_rows[0][23] or '0'),
-                "生活便利总分": str(project_rows[0][24] or '0'),
-                "资源节约总分": str(project_rows[0][25] or '0'),
-                "环境宜居总分": str(project_rows[0][26] or '0'),
-                "总用地面积": str(project_rows[0][27] or '0'),
-                "评价标准": project_rows[0][28] or '成都市标',
-                "建筑高度": str(project_rows[0][29] or '0'),
-                "建筑层数": project_rows[0][30] or '',
-                "环境健康与节能总分": str(project_rows[0][31] or '0'),
-                "环境健康与节能创新总分": str(project_rows[0][32] or '0'),
-                "评定结果": project_rows[0][33] or ''
+                "设计单位": project_rows[0][5] or '',
+                "项目地点": project_rows[0][6] or '',
+                "建筑面积": str(project_rows[0][7] or '0'),
+                "评价标准": project_rows[0][8] or '成都市标',
+                "建筑类型": project_rows[0][9] or '',
+                "创建时间": project_rows[0][10].strftime('%Y-%m-%d %H:%M:%S') if project_rows[0][10] else '',
+                "气候区划": project_rows[0][11] or '',
+                "星级目标": project_rows[0][12] or '',
+                "总用地面积": str(project_rows[0][13] or '0'),
+                "总建筑面积": str(project_rows[0][14] or '0'),
+                "地上建筑面积": str(project_rows[0][15] or '0'),
+                "地下建筑面积": str(project_rows[0][16] or '0'),
+                "建筑高度": str(project_rows[0][17] or '0'),
+                "建筑层数": project_rows[0][18] or '',
+                "地下一层建筑面积": str(project_rows[0][19] or '0'),
+                "地面停车位数量": str(project_rows[0][20] or '0'),
+                "容积率": str(project_rows[0][21] or '0'),
+                "建筑基底面积": str(project_rows[0][22] or '0'),
+                "建筑密度": str(project_rows[0][23] or '0'),
+                "绿地面积": str(project_rows[0][24] or '0'),
+                "绿地率": str(project_rows[0][25] or '0'),
+                "住宅户数": str(project_rows[0][26] or '0'),
+                "空调类型": project_rows[0][27] or '',
+                "平均层数": project_rows[0][28] or '',
+                "有无垃圾用房": project_rows[0][29] or '',
+                "有无电梯": project_rows[0][30] or '',
+                "有无地下车库": project_rows[0][31] or '',
+                "建设情况": project_rows[0][32] or '',
+                "有无景观水体": project_rows[0][33] or '',
+                "是否全装修": project_rows[0][34] or '',
+                "公建类型": project_rows[0][35] or '',
+                "绿地向公众开放": project_rows[0][36] or '',
+                "建筑总分": str(project_rows[0][37] or '0'),
+                "结构总分": str(project_rows[0][38] or '0'),
+                "给排水总分": str(project_rows[0][39] or '0'),
+                "电气总分": str(project_rows[0][40] or '0'),
+                "暖通总分": str(project_rows[0][41] or '0'),
+                "景观总分": str(project_rows[0][42] or '0'),
+                "环境健康与节能总分": str(project_rows[0][43] or '0'),
+                "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
+                "建筑创新总分": str(project_rows[0][45] or '0'),
+                "结构创新总分": str(project_rows[0][46] or '0'),
+                "暖通创新总分": str(project_rows[0][47] or '0'),
+                "景观创新总分": str(project_rows[0][48] or '0'),
+                "安全耐久总分": str(project_rows[0][49] or '0'),
+                "健康舒适总分": str(project_rows[0][50] or '0'),
+                "生活便利总分": str(project_rows[0][51] or '0'),
+                "资源节约总分": str(project_rows[0][52] or '0'),
+                "环境宜居总分": str(project_rows[0][53] or '0'),
+                "提高与创新总分": str(project_rows[0][54] or '0'),
+                "项目总分": str(project_rows[0][55] or '0'),
+                "评定结果": project_rows[0][56] or ''
             })
 
             # 添加得分数据
@@ -695,26 +770,26 @@ def generate_dwg(request_data):
         attributes["绿地向公众开放"] = project_rows[0][36] or ''
         
         # 添加评分数据
-        attributes["建筑总分"] = str(project_rows[0][10] or '0')
-        attributes["结构总分"] = str(project_rows[0][11] or '0')
-        attributes["给排水总分"] = str(project_rows[0][12] or '0')
-        attributes["电气总分"] = str(project_rows[0][13] or '0')
-        attributes["暖通总分"] = str(project_rows[0][14] or '0')
-        attributes["景观总分"] = str(project_rows[0][15] or '0')
-        attributes["环境健康与节能总分"] = str(project_rows[0][16] or '0')
-        attributes["环境健康与节能创新总分"] = str(project_rows[0][17] or '0')
-        attributes["建筑创新总分"] = str(project_rows[0][18] or '0')
-        attributes["结构创新总分"] = str(project_rows[0][19] or '0')
-        attributes["暖通创新总分"] = str(project_rows[0][20] or '0')
-        attributes["景观创新总分"] = str(project_rows[0][21] or '0')
-        attributes["安全耐久总分"] = str(project_rows[0][22] or '0')
-        attributes["健康舒适总分"] = str(project_rows[0][23] or '0')
-        attributes["生活便利总分"] = str(project_rows[0][24] or '0')
-        attributes["资源节约总分"] = str(project_rows[0][25] or '0')
-        attributes["环境宜居总分"] = str(project_rows[0][26] or '0')
-        attributes["提高与创新总分"] = str(project_rows[0][27] or '0')
-        attributes["项目总分"] = str(project_rows[0][28] or '0')
-        attributes["评定结果"] = project_rows[0][29] or ''
+        attributes["建筑总分"] = str(project_rows[0][37] or '0')
+        attributes["结构总分"] = str(project_rows[0][38] or '0')
+        attributes["给排水总分"] = str(project_rows[0][39] or '0')
+        attributes["电气总分"] = str(project_rows[0][40] or '0')
+        attributes["暖通总分"] = str(project_rows[0][41] or '0')
+        attributes["景观总分"] = str(project_rows[0][42] or '0')
+        attributes["环境健康与节能总分"] = str(project_rows[0][43] or '0')
+        attributes["环境健康与节能创新总分"] = str(project_rows[0][44] or '0')
+        attributes["建筑创新总分"] = str(project_rows[0][45] or '0')
+        attributes["结构创新总分"] = str(project_rows[0][46] or '0')
+        attributes["暖通创新总分"] = str(project_rows[0][47] or '0')
+        attributes["景观创新总分"] = str(project_rows[0][48] or '0')
+        attributes["安全耐久总分"] = str(project_rows[0][49] or '0')
+        attributes["健康舒适总分"] = str(project_rows[0][50] or '0')
+        attributes["生活便利总分"] = str(project_rows[0][51] or '0')
+        attributes["资源节约总分"] = str(project_rows[0][52] or '0')
+        attributes["环境宜居总分"] = str(project_rows[0][53] or '0')
+        attributes["提高与创新总分"] = str(project_rows[0][54] or '0')
+        attributes["项目总分"] = str(project_rows[0][55] or '0')
+        attributes["评定结果"] = project_rows[0][56] or ''
         
         # 添加得分数据
         for item in data[1:]:  # 跳过第一项（项目信息）
