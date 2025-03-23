@@ -1696,76 +1696,64 @@ def get_min_scores():
 
 # 在应用启动时检查并添加缺失的列
 def check_and_add_missing_columns():
-    """检查并添加缺失的列到projects表中"""
+    """检查并添加缺失的字段"""
     try:
         # 获取数据库连接
-        conn = db.engine.connect()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        logger.info("开始检查缺失的字段...")
+
+        # 检查并添加项目地点字段到星级案例表
+        try:
+            cursor.execute("""
+            IF NOT EXISTS (
+                SELECT * FROM sys.columns 
+                WHERE name = '项目地点' AND object_id = OBJECT_ID('星级案例')
+            )
+            BEGIN
+                ALTER TABLE 星级案例 ADD 项目地点 NVARCHAR(200)
+            END
+            """)
+            conn.commit()
+            logger.info("检查或添加星级案例表的项目地点字段成功")
+        except Exception as e:
+            logger.error(f"检查或添加星级案例表的项目地点字段时出错: {str(e)}")
+
+        # 检查并添加唯一索引，防止数据重复
+        try:
+            cursor.execute("""
+            IF NOT EXISTS (
+                SELECT * FROM sys.indexes 
+                WHERE name = 'IX_星级案例_Unique' AND object_id = OBJECT_ID('星级案例')
+            )
+            BEGIN
+                CREATE UNIQUE INDEX IX_星级案例_Unique ON 星级案例(评价标准, 星级目标, 条文号, 建筑类型)
+            END
+            """)
+            conn.commit()
+            logger.info("检查或添加星级案例表的唯一索引成功")
+        except Exception as e:
+            logger.error(f"检查或添加星级案例表的唯一索引时出错: {str(e)}")
+
+        # 其他字段检查...
         
-        # 获取当前表结构
-        result = conn.execute(text("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'projects'"))
-        existing_columns = [row[0] for row in result]
-        
-        # 定义需要添加的列及其类型
-        columns_to_add = {
-            'climate_zone': 'NVARCHAR(10)',
-            'star_rating_target': 'NVARCHAR(10)',
-            'total_land_area': 'FLOAT',
-            'total_building_area': 'FLOAT',
-            'above_ground_area': 'FLOAT',
-            'underground_area': 'FLOAT',
-            'underground_floor_area': 'FLOAT',
-            'ground_parking_spaces': 'INT',
-            'plot_ratio': 'FLOAT',
-            'building_base_area': 'FLOAT',
-            'building_density': 'FLOAT',
-            'green_area': 'FLOAT',
-            'green_ratio': 'FLOAT',
-            'residential_units': 'INT',
-            'building_floors': 'NVARCHAR(20)',
-            'building_height': 'FLOAT',
-            'air_conditioning_type': 'NVARCHAR(50)',
-            'average_floors': 'NVARCHAR(50)',
-            'has_garbage_room': 'NVARCHAR(10)',
-            'has_elevator': 'NVARCHAR(10)',
-            'has_underground_garage': 'NVARCHAR(10)',
-            'construction_type': 'NVARCHAR(50)',
-            'has_water_landscape': 'NVARCHAR(10)',
-            'is_fully_decorated': 'NVARCHAR(10)',
-            'public_building_type': 'NVARCHAR(50)',
-            'public_green_space': 'NVARCHAR(10)',
-        }
-        
-        # 检查并添加缺失的列
-        for column_name, column_type in columns_to_add.items():
-            if column_name.lower() not in [col.lower() for col in existing_columns]:
-                print(f"添加列: {column_name} ({column_type})")
-                conn.execute(text(f"ALTER TABLE projects ADD {column_name} {column_type}"))
-        
-        # 使用事务提交更改
-        db.session.commit()
-        print("数据库表结构更新完成")
+        cursor.close()
+        conn.close()
         
     except Exception as e:
-        print(f"更新数据库表结构时出错: {str(e)}")
-        print(traceback.format_exc())
-    finally:
-        if 'conn' in locals():
-            conn.close()
+        logger.error(f"检查和添加缺失字段时出错: {str(e)}")
+        logger.error(traceback.format_exc())
 
-# 在应用启动时检查并添加缺失的列
-with app.app_context():
-    try:
-        check_and_add_missing_columns()
-    except Exception as e:
-        print(f"初始化数据库结构时出错: {str(e)}")
-        print(traceback.format_exc())
-
-# 初始化数据库
+# 在init_db函数中调用此函数
 def init_db():
-    with app.app_context():
-        # 创建所有表
+    """初始化数据库"""
+    try:
         db.create_all()
-        print("数据库表已创建")
+        check_and_add_missing_columns()  # 添加这一行
+        return True
+    except Exception as e:
+        logger.error(f"初始化数据库失败: {str(e)}")
+        return False
 
 # 获取数据库连接
 def get_db_connection():
@@ -2801,12 +2789,22 @@ def get_star_case_scores():
         standard = target_project.standard or '成都市标'
         star_rating_target = target_project.star_rating_target or '一星级'
         building_type = target_project.building_type
+        project_location = target_project.location  # 获取项目地点
 
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            
+            # 首先获取当前项目适用的条文号列表
+            app.logger.info(f"获取项目 {target_project_id} 适用的条文列表")
+            cursor.execute(f"""
+                SELECT 条文号 
+                FROM {standard}
+            """)
+            valid_clauses = set([row[0] for row in cursor.fetchall()])
+            app.logger.info(f"找到 {len(valid_clauses)} 条适用的条文")
 
-            # 构建查询条件
+            # 构建基本查询条件
             query_conditions = ["评价标准 = ?"]
             query_params = [standard]
 
@@ -2819,20 +2817,59 @@ def get_star_case_scores():
             if building_type:
                 query_conditions.append("建筑类型 = ?")
                 query_params.append(building_type)
-
-            # 从星级案例表获取数据
-            query = f"""
-                SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
-                FROM 星级案例
-                WHERE {' AND '.join(query_conditions)}
-            """
-
-            app.logger.info(f"执行查询: {query} 参数: {query_params}")
-            cursor.execute(query, query_params)
-            case_data = cursor.fetchall()
+            
+            # 首先尝试使用项目地点进行匹配
+            location_matched_case_data = None
+            if project_location:
+                app.logger.info(f"尝试使用项目地点进行模糊匹配: {project_location}")
+                
+                # 构建模糊匹配查询
+                location_query = f"""
+                    SELECT DISTINCT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+                    FROM 星级案例
+                    WHERE {' AND '.join(query_conditions)} 
+                    AND (项目地点 LIKE ? OR ? LIKE 项目地点 + '%')
+                """
+                # 第一个参数匹配"项目地点包含当前地点"，第二个参数匹配"当前地点包含项目地点"
+                location_params = query_params + [f'%{project_location}%', project_location]
+                
+                app.logger.info(f"执行项目地点匹配查询: {location_query} 参数: {location_params}")
+                cursor.execute(location_query, location_params)
+                location_matched_case_data = cursor.fetchall()
+                
+                if location_matched_case_data:
+                    app.logger.info(f"基于项目地点找到 {len(location_matched_case_data)} 条匹配的星级案例数据")
+            
+            # 如果没有通过地点匹配到数据，则使用基本条件查询
+            if not location_matched_case_data:
+                # 标准查询
+                query = f"""
+                    SELECT DISTINCT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+                    FROM 星级案例
+                    WHERE {' AND '.join(query_conditions)}
+                """
+                
+                app.logger.info(f"执行标准查询: {query} 参数: {query_params}")
+                cursor.execute(query, query_params)
+                case_data = cursor.fetchall()
+            else:
+                # 使用基于地点匹配的数据
+                case_data = location_matched_case_data
+                app.logger.info("使用基于项目地点匹配的星级案例数据")
 
             if case_data:
                 app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
+                
+                # 过滤出当前标准中有效的条文
+                filtered_case_data = []
+                for record in case_data:
+                    if record[0] in valid_clauses:
+                        filtered_case_data.append(record)
+                    else:
+                        app.logger.info(f"过滤掉不适用的条文: {record[0]}")
+                
+                app.logger.info(f"过滤后剩余 {len(filtered_case_data)} 条有效的星级案例数据")
+                
                 # 先删除目标项目的所有得分数据
                 delete_query = """
                 DELETE FROM 得分表
@@ -2844,8 +2881,18 @@ def get_star_case_scores():
 
                 # 插入新的得分数据
                 inserted_count = 0
-                for record in case_data:
+                # 用于跟踪已插入的条文号，防止重复
+                inserted_clauses = set()
+                
+                for record in filtered_case_data:
                     clause_number, category, is_achieved, score, technical_measures, specialty, level = record
+                    
+                    # 跳过已经插入过的条文号
+                    if clause_number in inserted_clauses:
+                        app.logger.info(f"跳过重复条文: {clause_number}")
+                        continue
+                    
+                    inserted_clauses.add(clause_number)
 
                     insert_query = """
                     INSERT INTO 得分表 (
@@ -2882,7 +2929,8 @@ def get_star_case_scores():
                     'data': {
                         'standard': standard,
                         'star_rating_target': star_rating_target,
-                        'imported_count': inserted_count
+                        'imported_count': inserted_count,
+                        'location_matched': bool(location_matched_case_data)
                     }
                 })
             else:
@@ -3786,11 +3834,12 @@ def save_star_case():
                     # 更新现有记录
                     update_query = """
                     UPDATE 星级案例
-                    SET 分类 = ?, 是否达标 = ?, 得分 = ?, 技术措施 = ?, 专业 = ?, 评价等级 = ?
+                    SET 分类 = ?, 是否达标 = ?, 得分 = ?, 技术措施 = ?, 专业 = ?, 评价等级 = ?, 项目地点 = ?
                     WHERE 序号 = ?
                     """
                     cursor.execute(update_query, (
                         category, is_achieved, score, technical_measures, specialty, level,
+                        project.location,  # 添加项目地点信息
                         existing_record[0]
                     ))
                 else:
@@ -3799,12 +3848,12 @@ def save_star_case():
                     insert_query = """
                     INSERT INTO 星级案例 (
                         序号, 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级,
-                        评价标准, 星级目标, 建筑类型
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        评价标准, 星级目标, 建筑类型, 项目地点
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """
                     cursor.execute(insert_query, (
                         max_seq, clause_number, category, is_achieved, score, technical_measures, specialty, level,
-                        project.standard, project.star_rating_target, project.building_type
+                        project.standard, project.star_rating_target, project.building_type, project.location
                     ))
 
                 inserted_count += 1
@@ -3825,6 +3874,7 @@ def save_star_case():
                     'standard': project.standard,
                     'star_rating_target': project.star_rating_target,
                     'building_type': project.building_type,
+                    'location': project.location,  # 添加项目地点信息
                     'processed_count': inserted_count
                 }
             })
