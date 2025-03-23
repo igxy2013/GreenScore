@@ -1654,26 +1654,34 @@ def api_get_score_summary():
         # 记录请求信息
         app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
         
-        # 清除相关缓存
+        # 清除缓存键
+        cache_key = f"score_summary_{project_id}_{project_standard}"
+        if cache.has(cache_key) and force_refresh:
+            cache.delete(cache_key)
+            app.logger.info(f"清除评分汇总缓存: {cache_key}")
+        
         # 清除专业得分缓存
         for specialty in ['建筑', '结构', '给排水', '电气', '暖通', '景观']:
-            cache_key = get_scores_cache_key('提高级', specialty, project_id, project_standard)
-            if cache.has(cache_key):
-                cache.delete(cache_key)
-                app.logger.info(f"清除缓存: {cache_key}")
+            specialty_cache_key = get_scores_cache_key('提高级', specialty, project_id, project_standard)
+            if cache.has(specialty_cache_key):
+                cache.delete(specialty_cache_key)
+                app.logger.info(f"清除专业得分缓存: {specialty_cache_key}")
         
         # 获取评分汇总数据
-        score_summary = get_score_summary(project_id, force_refresh=True)
+        score_summary = get_score_summary(project_id, force_refresh=force_refresh)
         
-        # 添加项目评价标准信息到返回结果
-        score_summary['project_standard'] = project_standard
+        # 检查返回的评分汇总数据评价标准是否与项目标准一致
+        if score_summary.get('project_standard') != project_standard:
+            app.logger.warning(f"评分汇总数据的评价标准({score_summary.get('project_standard')})与项目评价标准({project_standard})不一致，重新获取")
+            cache.delete(cache_key)
+            score_summary = get_score_summary(project_id, force_refresh=True)
         
         # 返回评分汇总数据
         return jsonify(score_summary)
     
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
-        traceback.print_exc()
+        app.logger.error(traceback.format_exc())
         return jsonify({'error': f'获取评分汇总数据失败: {str(e)}'}), 500
 
 # 移除缓存装饰器，确保每次都从数据库获取最新数据
@@ -1835,10 +1843,10 @@ def get_score_summary(project_id, force_refresh=False):
                 count = cursor.fetchone()[0]
                 app.logger.info(f"得分表中共有 {count} 条记录")
                 
-                # 获取得分表中项目ID为当前项目的记录数
-                cursor.execute("SELECT COUNT(*) FROM [得分表] WHERE [项目ID] = ?", [project_id])
+                # 获取得分表中项目ID为当前项目且评价标准匹配的记录数
+                cursor.execute("SELECT COUNT(*) FROM [得分表] WHERE [项目ID] = ? AND [评价标准] = ?", [project_id, project_standard])
                 project_count = cursor.fetchone()[0]
-                app.logger.info(f"得分表中项目ID={project_id}的记录有 {project_count} 条")
+                app.logger.info(f"得分表中项目ID={project_id}，评价标准={project_standard}的记录有 {project_count} 条")
                 
                 # 获取所有专业的得分数据
                 specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
@@ -1882,16 +1890,16 @@ def get_score_summary(project_id, force_refresh=False):
                         '总分': 0
                     }
                 
-                # 使用更直接的SQL查询获取数据
-                sql_query = f"""
+                # 使用参数化查询，包含评价标准的筛选条件
+                sql_query = """
                 SELECT [专业], [分类], [是否达标], [得分], [评价等级]
                 FROM [得分表]
-                WHERE [项目ID] = {project_id}
+                WHERE [项目ID] = ? AND [评价标准] = ?
                 """
                 
-                app.logger.info(f"执行SQL查询: {sql_query}")
+                app.logger.info(f"执行SQL查询: {sql_query} 参数: [项目ID={project_id}, 评价标准={project_standard}]")
                 
-                cursor.execute(sql_query)
+                cursor.execute(sql_query, (project_id, project_standard))
                 rows = cursor.fetchall()
                 
                 app.logger.info(f"查询结果: {len(rows)} 行")
@@ -1966,7 +1974,8 @@ def get_score_summary(project_id, force_refresh=False):
                     'specialty_scores': specialty_scores,
                     'specialty_scores_by_category': specialty_scores_by_category,
                     'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'total_score': total_score
+                    'total_score': total_score,
+                    'project_standard': project_standard
                 }
                 
                 # 缓存结果
@@ -2153,6 +2162,18 @@ def update_score_direct():
             # 提交事务
             conn.commit()
             app.logger.info("事务提交成功")
+            
+            # 清除评分汇总缓存
+            cache_key = f"score_summary_{project_id}_{standard}"
+            if cache.has(cache_key):
+                cache.delete(cache_key)
+                app.logger.info(f"清除评分汇总缓存: {cache_key}")
+            
+            # 清除专业得分缓存
+            specialty_cache_key = get_scores_cache_key('提高级', specialty.split('专业')[0], project_id, standard)
+            if cache.has(specialty_cache_key):
+                cache.delete(specialty_cache_key)
+                app.logger.info(f"清除专业得分缓存: {specialty_cache_key}")
             
             # 验证更新是否成功
             verify_query = """
@@ -3242,6 +3263,10 @@ def calculate_project_scores(project_id):
         if not project:
             return jsonify({'success': False, 'message': '项目不存在'}), 404
         
+        # 获取项目评价标准
+        project_standard = project.standard if project and project.standard else '成都市标'
+        logger.info(f"计算项目评分: 项目ID={project_id}, 评价标准={project_standard}")
+        
         # 同步得分表和project_scores表的数据
         sync_result = sync_score_tables(project_id)
         if not sync_result:
@@ -3251,7 +3276,7 @@ def calculate_project_scores(project_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询项目的所有评分记录
+        # 查询项目的所有评分记录，使用项目评价标准
         cursor.execute("""
             SELECT ps.clause_number, ps.score, s.分类, s.专业, s.属性
             FROM project_scores ps
@@ -3263,8 +3288,8 @@ def calculate_project_scores(project_id):
                 UNION ALL
                 SELECT 条文号, 分类, 专业, 属性 FROM [国标]
             ) s ON ps.clause_number = s.条文号
-            WHERE ps.project_id = ?
-        """, (project_id,))
+            WHERE ps.project_id = ? AND ps.standard = ?
+        """, (project_id, project_standard))
         
         scores = cursor.fetchall()
         
@@ -3407,6 +3432,19 @@ def calculate_project_scores(project_id):
             db.session.add(project)
             db.session.commit()
             logger.info(f"项目 {project_id} 的评分已更新: 总分={project.total_score}, 评定结果={project.evaluation_result}")
+            
+            # 清除评分汇总缓存
+            cache_key = f"score_summary_{project_id}_{project_standard}"
+            if cache.has(cache_key):
+                cache.delete(cache_key)
+                logger.info(f"清除评分汇总缓存: {cache_key}")
+            
+            # 清除专业得分缓存
+            for specialty in ['建筑', '结构', '给排水', '电气', '暖通', '景观', '环境健康与节能']:
+                specialty_cache_key = get_scores_cache_key('提高级', specialty, project_id, project_standard)
+                if cache.has(specialty_cache_key):
+                    cache.delete(specialty_cache_key)
+                    logger.info(f"清除专业得分缓存: {specialty_cache_key}")
         except Exception as e:
             db.session.rollback()
             logger.error(f"更新项目评分时出错: {str(e)}")

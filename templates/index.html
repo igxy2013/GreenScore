@@ -401,15 +401,29 @@
                     <input type="hidden" id="project_id" value="{{ project.id if project else '' }}">
 
                     {% if current_page == 'score_summary' %}
-
-                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+                    <input type="hidden" id="current-project-standard" value="{{ project.standard if project and project.standard else '成都市标' }}">
+                    <div id="current-standard-info" class="text-sm text-gray-600">
+                        <span>当前评价标准:</span> 
+                        <span class="text-primary">{{ project.standard if project and project.standard else "成都市标" }}</span>
+                    </div>
+                    <div id="lastUpdateTime" class="text-xs text-gray-500 mb-3"></div>
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">    
+                        <!-- 页面标题和工具栏 -->
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-medium">各专业得分汇总</h3>
-                            <button id="calculateScoresBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
-                                <i class="ri-refresh-line mr-1"></i>计算评分
-                            </button>
+                            <div class="flex items-center">
+                                <h3 class="text-lg font-medium mr-4">各专业得分汇总</h3>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="refresh-score-summary" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                                    <i class="ri-refresh-line mr-1"></i>刷新数据
+                                </button>
+                                <button id="calculateScoresBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                                    <i class="ri-calculator-line mr-1"></i>计算评分
+                                </button>
+                            </div>
                         </div>
-                        <div class="overflow-x-auto">
+
+                        <div class="overflow-x-auto score-summary-container">
                             <table class="w-full">
                                 <thead>
                                     <tr class="bg-blue-500 text-white">
@@ -1424,8 +1438,14 @@
             summaryContainer.classList.add('opacity-50');
         }
         
+        // 显示加载标识
+        const standardInfoEl = document.getElementById('current-standard-info');
+        if (standardInfoEl) {
+            standardInfoEl.innerHTML = `<span class="animate-pulse">加载中...</span>`;
+        }
+        
         // 构建API URL
-        const apiUrl = `/api/get_score_summary?project_id=${encodeURIComponent(projectId)}&force_refresh=${forceRefresh}&standard=${encodeURIComponent(projectStandard)}`;
+        const apiUrl = `/api/get_score_summary?project_id=${encodeURIComponent(projectId)}&force_refresh=${forceRefresh}`;
         
         // 发送请求
         fetch(apiUrl)
@@ -1438,12 +1458,12 @@
             .then(data => {
                 console.log('获取评分汇总数据成功:', data);
                 
-                // 检查返回的评价标准是否与当前项目一致
-                if (data.project_standard && data.project_standard !== projectStandard) {
-                    console.warn(`评价标准不匹配: 当前=${projectStandard}, 返回=${data.project_standard}`);
-                    // 强制刷新数据
-                    fetchScoreSummary(true);
-                    return;
+                // 显示评价标准信息
+                if (standardInfoEl && data.project_standard) {
+                    standardInfoEl.innerHTML = `
+                        <span class="font-semibold">当前评价标准:</span> 
+                        <span class="text-primary">${data.project_standard}</span>
+                    `;
                 }
                 
                 // 更新评分汇总表格
@@ -1460,6 +1480,11 @@
                 // 移除加载状态
                 if (summaryContainer) {
                     summaryContainer.classList.remove('opacity-50');
+                }
+                
+                // 显示错误消息
+                if (standardInfoEl) {
+                    standardInfoEl.innerHTML = `<span class="text-red-500">数据加载失败</span>`;
                 }
                 
                 // 显示错误消息
@@ -2816,11 +2841,12 @@
             calculateBtn.addEventListener('click', calculateProjectScores);
         }
         
-        // 添加刷新评分按钮的事件监听器
-        const refreshBtn = document.getElementById('refreshScoreBtn');
+        // 添加刷新数据按钮的事件监听器
+        const refreshBtn = document.getElementById('refresh-score-summary');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', function() {
-                fetchScoreSummary(true);
+                console.log('手动刷新评分数据');
+                fetchScoreSummary(true); // 强制刷新
             });
         }
     });
