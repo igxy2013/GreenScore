@@ -282,10 +282,12 @@
                                 <i class="ri-temp-hot-line mr-3"></i>
                                 <span>暖通</span>
                             </a>
+                            {% if project and project.standard == '成都市标' or project and project.standard == '四川省标' %}
                             <a href="{{ url_for('filter_standards', level='提高级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
                                 <i class="ri-plant-line mr-3"></i>
                                 <span>景观</span>
                             </a>
+                            {% endif %}
                             {% if project and project.standard == '四川省标' %}
                             <a href="{{ url_for('filter_standards', level='提高级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '环境健康与节能' %}active{% endif %}">
                                 <i class="ri-leaf-line mr-3"></i>
