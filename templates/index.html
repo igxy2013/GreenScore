@@ -221,6 +221,14 @@
             to { transform: rotate(360deg); }
         }
     </style>
+    <style>
+        /* 省市选择器加载平滑过渡 */
+        .province-city-container select {
+            min-width: 100px; /* 确保最小宽度 */
+            transition: all 0.2s ease; /* 平滑过渡效果 */
+            height: 42px; /* 固定高度 */
+        }
+    </style>
     <script>
     function filterTableByClause(query) {
         // 获取所有表格行
@@ -479,7 +487,7 @@
                         <span class="text-primary">{{ project.standard if project and project.standard else "成都市标" }}</span>
                     </div>
                     <div id="lastUpdateTime" class="text-xs text-gray-500 mb-3"></div>
-                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">    
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
                         <!-- 页面标题和工具栏 -->
                         <div class="flex justify-between items-center mb-4">
                             <div class="flex items-center">
@@ -489,10 +497,10 @@
                                 <button id="refresh-score-summary" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
                                     <i class="ri-refresh-line mr-1"></i>刷新数据
                                 </button>
-                                <button id="calculateScoresBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                            <button id="calculateScoresBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
                                     <i class="ri-calculator-line mr-1"></i>计算评分
-                                </button>
-                            </div>
+                            </button>
+                        </div>
                         </div>
 
                         <div class="overflow-x-auto score-summary-container">
@@ -820,7 +828,15 @@
                             
                             <div class="mb-4">
                                 <label for="project_location" class="block text-base font-medium text-primary mb-2">项目地点</label>
-                                <input type="text" id="project_location" name="project_location" class="w-full px-4 py-2 border border-gray-300 rounded-button " placeholder="请输入项目地点" value="{{ project.location if project else '' }}">
+                                <div class="flex space-x-2 province-city-container">
+                                    <select id="province" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()">
+                                        <option value="">正在加载...</option>
+                                    </select>
+                                    <select id="city" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()">
+                                        <option value="">请选择城市</option>
+                                    </select>
+                                    <input type="hidden" id="project_location" name="project_location" value="{{ project.location if project else '' }}">
+                                </div>
                             </div>
                             
                             <div class="mb-4">
@@ -2973,6 +2989,122 @@
     }
     
     // 初始化标签页系统
+    </script>
+    
+    
+    <!-- 添加脚本：省市二级联动 -->
+    <script>
+        // 省市联动功能
+        let provinceData = {};
+        let cityData = {};
+        
+        // 初始化省市数据
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeProvinceCitySelectors();
+        });
+
+        // 初始化省市选择器
+        function initializeProvinceCitySelectors() {
+            const provinceSelect = document.getElementById('province');
+            const citySelect = document.getElementById('city');
+            const projectLocationInput = document.getElementById('project_location');
+            
+            // 只在项目表单页面初始化
+            if (provinceSelect && citySelect && projectLocationInput) {
+                // 设置loading状态，防止抖动
+                provinceSelect.innerHTML = '<option value="">加载中...</option>';
+                citySelect.innerHTML = '<option value="">请选择城市</option>';
+                
+                // 加载省市数据
+                fetch('/static/json/province_city.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        provinceData = data['86']; // 所有省份
+                        cityData = data; // 所有城市数据
+                        
+                        // 添加省份选项
+                        let provinceOptions = '<option value="">请选择省份</option>';
+                        for (let code in provinceData) {
+                            provinceOptions += `<option value="${code}">${provinceData[code]}</option>`;
+                        }
+                        provinceSelect.innerHTML = provinceOptions;
+                        
+                        // 如果有已保存的地址，尝试初始化选择框
+                        if (projectLocationInput.value) {
+                            const parts = projectLocationInput.value.split(' ');
+                            if (parts.length > 0) {
+                                const provinceName = parts[0];
+                                let provinceCode = null;
+                                
+                                // 查找省份代码
+                                for (let code in provinceData) {
+                                    if (provinceData[code] === provinceName) {
+                                        provinceCode = code;
+                                        provinceSelect.value = code;
+                                        
+                                        // 加载城市选项
+                                        const cities = cityData[code] || {};
+                                        let cityOptions = '<option value="">请选择城市</option>';
+                                        for (let cityCode in cities) {
+                                            cityOptions += `<option value="${cityCode}">${cities[cityCode]}</option>`;
+                                        }
+                                        citySelect.innerHTML = cityOptions;
+                                        
+                                        // 如果有城市数据，设置选中状态
+                                        if (parts.length > 1) {
+                                            const cityName = parts[1];
+                                            for (let cityCode in cities) {
+                                                if (cities[cityCode] === cityName) {
+                                                    citySelect.value = cityCode;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载省市数据失败:', error);
+                        provinceSelect.innerHTML = '<option value="">请选择省份</option>';
+                    });
+            }
+        }
+        
+        // 更新省市选择
+        function updateProvinceCity() {
+            const provinceSelect = document.getElementById('province');
+            const citySelect = document.getElementById('city');
+            const projectLocationInput = document.getElementById('project_location');
+            
+            if (!provinceSelect || !citySelect || !projectLocationInput) return;
+            
+            // 如果切换了省份，加载对应的城市
+            if (provinceSelect.value && provinceSelect.value !== citySelect.dataset.provinceCode) {
+                citySelect.dataset.provinceCode = provinceSelect.value;
+                
+                // 构建城市选项
+                const cities = cityData[provinceSelect.value] || {};
+                let cityOptions = '<option value="">请选择城市</option>';
+                for (let cityCode in cities) {
+                    cityOptions += `<option value="${cityCode}">${cities[cityCode]}</option>`;
+                }
+                citySelect.innerHTML = cityOptions;
+                citySelect.value = "";
+            }
+            
+            // 更新地址输入框
+            const provinceName = provinceSelect.options[provinceSelect.selectedIndex]?.text || '';
+            const cityName = citySelect.options[citySelect.selectedIndex]?.text || '';
+            
+            let location = [];
+            if (provinceName && provinceName !== '请选择省份' && provinceName !== '加载中...') location.push(provinceName);
+            if (cityName && cityName !== '请选择城市') location.push(cityName);
+            
+            projectLocationInput.value = location.join(' ');
+        }
     </script>
 </body>
 </html>
