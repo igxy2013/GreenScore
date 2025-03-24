@@ -88,7 +88,11 @@
         <div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8 mx-auto">
             <div class="text-center mb-8">
                 <h1 class="logo-text text-4xl text-primary mb-2">
-                    <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-12 w-12 mr-2">
+                    <picture class="inline-block">
+                        <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                        <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-12 w-12 mr-2">
+                    </picture>
                     管理后台</h1>
                 <h2 class="text-2xl font-semibold text-gray-900">管理员登录</h2>
                 <p class="mt-2 text-sm text-gray-600">请输入管理员账号和密码</p>

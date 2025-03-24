@@ -186,8 +186,13 @@
 
         <div class="max-w-7xl mx-auto px-4 py-8">
             <h1 class="text-3xl font-bold text-primary mb-2">    
-                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-12 w-12 mr-2">
-                智能绿建评价系统</h1>
+                <picture>
+                    <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                    <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                    <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-10 w-10 mr-2">
+                </picture>
+                <span>智能绿建评价系统</span>
+            </h1>
             <h2 class="text-2xl text-primary mb-8">项目管理中心</h2>
             
             <div class="bg-white rounded-lg shadow-sm p-6 mb-8">

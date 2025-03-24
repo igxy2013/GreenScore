@@ -260,7 +260,11 @@
             <aside class="w-72 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
                 <div class="p-6 border-b">
                     <h1 class="text-2xl font-bold text-primary flex items-center">                
-                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+                        <picture>
+                            <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                            <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                            <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+                        </picture>
                         <span>智能绿建评价系统</span>
                     </h1>
                 </div>
