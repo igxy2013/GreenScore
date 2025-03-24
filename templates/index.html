@@ -8,7 +8,10 @@
     <!-- 先加载Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='greenscore.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
     
     <!-- 绿色建材计算所需的外部库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
@@ -82,6 +85,7 @@
          -webkit-appearance: none;
          margin: 0;
      }
+    </style>
     <style>
         .page-container {
             min-width: 1024px;
@@ -328,7 +332,7 @@
             </aside>
 
             <!-- 主内容区域 -->
-            <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-h-screen;">
+            <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-height: 100vh;">
                 <!-- 用户信息栏 -->
                 <div class="absolute top-0 right-0 p-4 flex items-center space-x-3">
                     <!-- 用户信息 -->

@@ -36,3 +36,5 @@ __pycache__/*.pyc
 /check_score_table.py
 /check_tables.py
 static/templates/*.dwl
+__pycache__/*.pyc
+/.env

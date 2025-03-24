@@ -46,7 +46,7 @@ echo Updating pip...
 python -m pip install --user --upgrade pip
 
 echo 正在安装依赖...
-pip install --user -r requirements.txt
+python -m pip install -r requirements.txt
 if %ERRORLEVEL% neq 0 (
     echo 安装依赖失败，请检查网络连接和requirements.txt文件
     pause
