@@ -17,17 +17,29 @@
 <body class="bg-gray-100">
     <!-- 顶部导航栏 -->
     <nav class="bg-primary shadow-lg">
+
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
                 <div class="flex">
                     <div class="flex-shrink-0 flex items-center">
+                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-12 w-12 mr-3">
                         <span class="text-white text-xl font-bold">管理后台</span>
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <a href="{{ url_for('admin.admin_logout') }}" class="text-white hover:text-gray-200">
-                        <i class="fas fa-sign-out-alt mr-2"></i>退出登录
-                    </a>
+                    <!-- 用户信息按钮 -->
+                    <div class="relative">
+                        <div id="userInfoBtn" class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100 w-auto cursor-pointer hover:bg-gray-50 transition-all duration-200">
+                            <i class="fas fa-user-circle text-primary text-xl"></i>
+                            <span class="ml-2 text-gray-700 font-medium">管理员</span>
+                        </div>
+                        
+                        <!-- 退出按钮，默认隐藏 -->
+                        <a href="{{ url_for('admin.admin_logout') }}" id="logoutBtn" class="hidden absolute right-0 top-full mt-2 flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group w-auto">
+                            <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
+                            <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -271,6 +283,25 @@
                 createUser();
             }
         });
+
+        // 用户信息点击显示/隐藏退出按钮
+        const userInfoBtn = document.getElementById('userInfoBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (userInfoBtn && logoutBtn) {
+            // 点击用户信息显示退出按钮
+            userInfoBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                logoutBtn.classList.toggle('hidden');
+            });
+            
+            // 点击页面其他区域隐藏退出按钮
+            document.addEventListener('click', function(e) {
+                if (!userInfoBtn.contains(e.target) && !logoutBtn.contains(e.target)) {
+                    logoutBtn.classList.add('hidden');
+                }
+            });
+        }
     });
 
     // 打开用户模态框

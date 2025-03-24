@@ -92,8 +92,8 @@
             overflow-x: auto;
         }
         .main-content {
-            margin-left: 16rem; /* 与左侧导航栏宽度一致 */
-            width: calc(100% - 16rem);
+            margin-left: 18rem; /* 与左侧导航栏宽度一致 */
+            width: calc(100% - 18rem);
             min-width: 768px;
         }
         /* 添加输入框和选择框的边框样式 */
@@ -213,9 +213,12 @@
     <div class="page-container">
         <div class="flex min-h-screen">
             <!-- 侧边导航栏 -->
-            <aside class="w-64 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
+            <aside class="w-72 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
                 <div class="p-6 border-b">
-                    <h1 class="text-3xl font-bold text-primary">智能绿建评价系统</h1>
+                    <h1 class="text-2xl font-bold text-primary flex items-center">                
+                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+                        <span>智能绿建评价系统</span>
+                    </h1>
                 </div>
                 <nav class="p-4">
                     <div class="space-y-3">
@@ -334,19 +337,23 @@
             <!-- 主内容区域 -->
             <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-height: 100vh;">
                 <!-- 用户信息栏 -->
-                <div class="absolute top-0 right-0 p-4 flex items-center space-x-3">
-                    <!-- 用户信息 -->
-                    <div class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100">
-                        <i class="fas fa-user-circle text-primary text-xl"></i>
-                        <span class="ml-2 text-gray-700 font-medium">
-                            {{ session.get('username', '未登录').split('@')[0] }}
-                        </span>
+                <div class="absolute top-0 right-0 p-4">
+                    <!-- 用户信息容器 -->
+                    <div class="relative">
+                        <!-- 用户信息按钮 -->
+                        <div id="userInfoBtn" class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100 w-auto cursor-pointer hover:bg-gray-50 transition-all duration-200">
+                            <i class="fas fa-user-circle text-primary text-xl"></i>
+                            <span class="ml-2 text-gray-700 font-medium">
+                                {{ session.get('username', '未登录').split('@')[0] }}
+                            </span>
+                        </div>
+                        
+                        <!-- 退出按钮，默认隐藏 -->
+                        <a href="{{ url_for('logout') }}" id="logoutBtn" class="hidden absolute right-0 top-full mt-2 flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group w-auto">
+                            <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
+                            <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
+                        </a>
                     </div>
-                    <!-- 退出按钮 -->
-                    <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group">
-                        <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
-                        <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
-                    </a>
                 </div>
                 
                 <div class="max-w-7xl mx-auto">
@@ -2851,6 +2858,25 @@
             refreshBtn.addEventListener('click', function() {
                 console.log('手动刷新评分数据');
                 fetchScoreSummary(true); // 强制刷新
+            });
+        }
+        
+        // 用户信息点击显示/隐藏退出按钮
+        const userInfoBtn = document.getElementById('userInfoBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (userInfoBtn && logoutBtn) {
+            // 点击用户信息显示退出按钮
+            userInfoBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                logoutBtn.classList.toggle('hidden');
+            });
+            
+            // 点击页面其他区域隐藏退出按钮
+            document.addEventListener('click', function(e) {
+                if (!userInfoBtn.contains(e.target) && !logoutBtn.contains(e.target)) {
+                    logoutBtn.classList.add('hidden');
+                }
             });
         }
     });
