@@ -1238,7 +1238,7 @@
                         <!-- 使用iframe嵌入绿色建材计算器，添加preload提前加载 -->
                         <iframe src="{{ url_for('static', filename='calculator.html') }}" 
                             style="width:100%; height:3000px; border:none;"
-                            title="绿色建材比例计算" loading="eager"></iframe>
+                            title="绿色建材比例计算" loading="eager" scrolling="no"></iframe>
                     </div>
                     {% elif current_page == 'specialty' %}
                     <!-- 标准列表内容 -->
@@ -2643,7 +2643,8 @@
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                project_id: projectId
+                project_id: projectId,
+                standard: currentProjectStandard
             })
         })
         .then(response => {
@@ -2774,7 +2775,8 @@
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                project_id: projectId
+                project_id: projectId,
+                standard: currentProjectStandard
             })
         })
         .then(response => {

@@ -29,6 +29,7 @@ def replace_placeholders(template_path, data):
             '创新总分': '提高与创新总分',
             '节能总分': '环境健康与节能总分',
             '节创总分': '环境健康与节能创新总分'
+            
         }
         
         # 获取文档中的所有书签
@@ -173,7 +174,7 @@ def replace_placeholders(template_path, data):
                 field_value = ''
                 if data and isinstance(data[0], dict):
                     building_type = data[0].get('建筑类型', '')
-                    field_value = f'居住建筑{"■" if building_type == "居住建筑" else "□"} 公共建筑{"■" if building_type == "公共建筑" else "□"} 居住+公建{"■" if building_type == "居住+公建" else "□"}'
+                    field_value = f'居住建筑{"■" if building_type == "居住建筑" else "□"} 公共建筑{"■" if building_type == "公共建筑" else "□"} 居住+公建{"■" if building_type == "居住+公共建筑" else "□"}'
                     print(f"处理书签: {field} -> {field_value}")
                 # 创建新的文本运行
                 new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
@@ -314,7 +315,7 @@ def process_template(data):
         import os
         
         # 根据评价标准选择模板文件
-        standard = data[0].get('standard', '成都市标')  # 默认使用成都市标
+        standard = data[0].get('评价标准', '成都市标')  # 默认使用成都市标
         
         if standard == '国标':
             return None  # 国标不进行任何操作
@@ -324,7 +325,7 @@ def process_template(data):
         
         # 获取模板文件的完整路径
         template_path = os.path.join(current_app.static_folder, 'templates', template_file)
-        print(f"处理模板文件: {template_path}")
+        print(f"处理模板文件: {template_path}, 评价标准: {standard}")
         
         # 检查模板文件是否存在
         if not os.path.exists(template_path):

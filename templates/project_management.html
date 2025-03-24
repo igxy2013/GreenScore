@@ -185,7 +185,7 @@
         </div>
 
         <div class="max-w-7xl mx-auto px-4 py-8">
-            <h1 class="text-3xl font-bold text-primary mb-2">    
+            <h1 class="text-3xl font-bold text-primary mb-6">    
                 <picture>
                     <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
                     <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
@@ -193,8 +193,7 @@
                 </picture>
                 <span>智能绿建评价系统</span>
             </h1>
-            <h2 class="text-2xl text-primary mb-8">项目管理中心</h2>
-            
+            <h2 class="text-2xl text-primary mb-8 font-bold">项目管理中心</h2>
             <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-semibold">现有项目</h3>
@@ -324,9 +323,9 @@
                             </div>
                             
                             <div>
-                                <label for="target_star_level" class="block text-base font-medium text-gray-700 mb-1">目标星级</label>
+                                <label for="target_star_level" class="block text-base font-medium text-gray-700 mb-1">目标星级<span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8">
+                                    <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
                                         <option value="">请选择目标星级</option>
                                         <option value="基本级">基本级</option>
                                         <option value="一星级">一星级</option>

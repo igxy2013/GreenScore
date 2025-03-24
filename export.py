@@ -14,21 +14,24 @@ load_dotenv()
 # 数据库连接配置
 def get_db_connection():
     try:
-        # 获取数据库配置参数
-        server = os.getenv('SQLSERVER_SERVER')
-        database = os.getenv('SQLSERVER_DATABASE')
-        username = os.getenv('SQLSERVER_USERNAME')
-        password = os.getenv('SQLSERVER_PASSWORD')
-        driver = os.getenv('SQLSERVER_DRIVER', 'ODBC Driver 17 for SQL Server')
+        # 解析数据库连接字符串
+        db_url = os.getenv('DATABASE_URL')
+        if not db_url:
+            print("数据库连接字符串未配置")
+            raise ValueError("数据库连接字符串未配置")
 
-        # 检查必要的配置参数
-        if not all([server, database, username, password]):
-            current_app.logger.error("缺少必要的数据库配置参数")
-            raise ValueError("缺少必要的数据库配置参数")
+        # 使用正则表达式解析连接字符串
+        import re
+        pattern = r'mssql\+pyodbc://([^:]+):([^@]+)@([^/]+)/([^?]+)'
+        match = re.match(pattern, db_url)
+        if not match:
+            print("数据库连接字符串格式错误")
+            raise ValueError("数据库连接字符串格式错误")
+
+        username, password, server, database = match.groups()
 
         # 构建连接字符串
-        conn_str = f"DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}"
-
+        conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
         # 尝试建立连接
         try:
             conn = pyodbc.connect(conn_str)
@@ -46,7 +49,7 @@ def generate_word(request_data):
     生成Word文档的函数
     
     参数:
-    - request_data: 包含project_id的字典
+    - request_data: 包含project_id和standard的字典
     
     返回:
     - tuple: (response, status_code)
@@ -59,15 +62,21 @@ def generate_word(request_data):
         if not project_id:
             print("未提供项目ID")
             return jsonify({"error": "请提供项目ID"}), 400
+            
+        # 获取评价标准参数，默认为成都市标
+        standard = request_data.get('standard', '成都市标')
+        print(f"使用评价标准: {standard}")
 
         # 检查模板文件是否存在
-        template_path = os.path.join(current_app.static_folder, 'templates', 'chengdu_template.docx')
+        template_file = 'sichuan_template.docx' if standard == '四川省标' else 'chengdu_template.docx'
+        template_path = os.path.join(current_app.static_folder, 'templates', template_file)
+        
         if not os.path.exists(template_path):
             print(f"模板文件不存在: {template_path}")
-            return jsonify({"error": "模板文件不存在"}), 404
+            return jsonify({"error": f"模板文件不存在: {template_file}"}), 404
 
         # 尝试从缓存获取数据
-        cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
+        cache_file = os.path.join('temp', f'project_{project_id}_{standard}_cache.json')
         data = None
         use_cache = request_data.get('use_cache', True)
         
@@ -95,18 +104,21 @@ def generate_word(request_data):
             # 获取项目基本信息
             print(f"获取项目 {project_id} 的基本信息")
             cursor.execute("""
-                SELECT p.name, p.design_unit, p.construction_unit, p.total_building_area,
-                       p.building_type, p.location, p.climate_zone, p.star_rating_target,
-                       p.architecture_score, p.structure_score, p.water_supply_score, 
-                       p.electrical_score, p.hvac_score, p.landscape_score,
-                       p.architecture_innovation_score, p.structure_innovation_score, 
-                       p.hvac_innovation_score, p.landscape_innovation_score,
-                       p.improvement_innovation_score, p.total_score,
-                       p.safety_durability_score, p.health_comfort_score,
-                       p.life_convenience_score, p.resource_saving_score,
-                       p.environment_livability_score, p.total_land_area, p.standard,
-                       p.building_height, p.building_floors, p.env_health_energy_score,
-                       p.env_health_energy_innovation_score, p.evaluation_result
+                SELECT p.id, p.user_id, p.name, p.code, p.construction_unit, p.design_unit, p.location, 
+                       p.building_area, p.standard, p.building_type, p.created_at, p.climate_zone, 
+                       p.star_rating_target, p.total_land_area, p.total_building_area, p.above_ground_area, 
+                       p.underground_area, p.building_height, p.building_floors, p.underground_floor_area, 
+                       p.ground_parking_spaces, p.plot_ratio, p.building_base_area, p.building_density, 
+                       p.green_area, p.green_ratio, p.residential_units, p.air_conditioning_type,
+                       p.average_floors, p.has_garbage_room, p.has_elevator, p.has_underground_garage,
+                       p.construction_type, p.has_water_landscape, p.is_fully_decorated, p.public_building_type,
+                       p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
+                       p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
+                       p.env_health_energy_innovation_score, p.architecture_innovation_score, 
+                       p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
+                       p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
+                       p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
+                       p.total_score, p.evaluation_result
                 FROM projects p
                 WHERE p.id = ?
             """, [project_id])

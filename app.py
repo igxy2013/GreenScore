@@ -3176,11 +3176,23 @@ def handle_generate_word():
         if not data:
             return jsonify({"error": "请求数据为空"}), 400
 
+        # 提取必要参数
+        project_id = data.get('project_id')
+        if not project_id:
+            return jsonify({"error": "缺少项目ID参数"}), 400
+            
+        # 获取标准参数，默认为成都市标
+        standard = data.get('standard', '成都市标')
+        
         # 添加use_cache参数，默认为False，强制从数据库获取最新数据
-        data['use_cache'] = False
+        request_data = {
+            'project_id': project_id,
+            'standard': standard,
+            'use_cache': False
+        }
         
         # 调用generate_word函数
-        return generate_word(data)
+        return generate_word(request_data)
     except Exception as e:
         app.logger.error(f"处理生成Word请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
