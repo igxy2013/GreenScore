@@ -102,29 +102,88 @@
         -webkit-appearance: none;
         margin: 0;
     }
+
+    /* 用户菜单样式修改 */
+    .user-icon {
+        position: fixed;
+        left: 20px;
+        bottom: 20px;
+        z-index: 60;
+        width: 42px;
+        height: 42px;
+        background-color: white;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .user-icon:hover {
+        transform: scale(1.05);
+    }
+    
+    .user-menu {
+        position: fixed;
+        left: 20px;
+        bottom: 72px;
+        z-index: 50;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        width: 170px;
+        transition: all 0.3s ease;
+        transform-origin: bottom left;
+        opacity: 0;
+        transform: scale(0.95);
+        pointer-events: none;
+    }
+    
+    .user-menu.active {
+        opacity: 1;
+        transform: scale(1);
+        pointer-events: auto;
+    }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="min-h-screen bg-gray-100">
-        <!-- 修改用户信息栏样式 -->
-        <div class="absolute top-0 right-0 p-4">
-            <!-- 用户信息容器 -->
-            <div class="relative">
-                <!-- 用户信息按钮 -->
-                <div id="userInfoBtn" class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100 w-auto cursor-pointer hover:bg-gray-50 transition-all duration-200">
-                    <i class="fas fa-user-circle text-primary text-xl"></i>
-                    <span class="ml-2 text-gray-700 font-medium">
-                        {{ session.get('username', '未登录').split('@')[0] }}
-                    </span>
-                </div>
-                
-                <!-- 退出按钮，默认隐藏 -->
-                <a href="{{ url_for('logout') }}" id="logoutBtn" class="hidden absolute right-0 top-full mt-2 flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group w-auto">
-                    <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
-                    <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
-                </a>
-            </div>
+        <!-- 用户图标 -->
+        <div class="user-icon" id="userIcon">
+            <i class="fas fa-user-circle text-primary text-xl"></i>
         </div>
+        
+        <!-- 用户菜单，默认隐藏 -->
+        <div class="user-menu" id="userMenu">
+            <!-- 用户信息 -->
+            <div class="flex items-center px-4 py-3 border-b border-gray-100">
+                <i class="fas fa-user-circle text-primary text-xl"></i>
+                <span class="ml-2 text-gray-700 font-medium">
+                    {{ session.get('username', '未登录').split('@')[0] }}@勇
+                </span>
+            </div>
+            
+            <!-- 系统设置选项 -->
+            <div class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                <i class="fas fa-cog text-gray-500"></i>
+                <span class="ml-2 text-gray-700">系统设置</span>
+            </div>
+            
+            <!-- 联系我们选项 -->
+            <div class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                <i class="fas fa-paper-plane text-gray-500"></i>
+                <span class="ml-2 text-gray-700">联系我们</span>
+            </div>
+            
+            <!-- 退出登录选项 -->
+            <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer group">
+                <i class="fas fa-sign-out-alt text-gray-500 group-hover:text-red-500"></i>
+                <span class="ml-2 text-gray-700 group-hover:text-red-500">退出登录</span>
+            </a>
+        </div>
+
         <div class="max-w-7xl mx-auto px-4 py-8">
             <h1 class="text-3xl font-bold text-primary mb-2">    
                 <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-12 w-12 mr-2">
@@ -291,6 +350,23 @@
         // 页面加载完成后获取项目列表
         document.addEventListener('DOMContentLoaded', function() {
             fetchProjects();
+            
+            // 添加用户菜单点击事件
+            const userIcon = document.getElementById('userIcon');
+            const userMenu = document.getElementById('userMenu');
+            
+            // 点击用户图标显示或隐藏菜单
+            userIcon.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userMenu.classList.toggle('active');
+            });
+            
+            // 点击页面其他区域关闭菜单
+            document.addEventListener('click', function(e) {
+                if (!userMenu.contains(e.target) && !userIcon.contains(e.target)) {
+                    userMenu.classList.remove('active');
+                }
+            });
             
             // 添加搜索框事件监听
             const searchInput = document.getElementById('projectSearchInput');
@@ -648,23 +724,6 @@
                 if (e.target === modal) {
                     modal.classList.add('hidden');
                     document.body.style.overflow = '';
-                }
-            });
-            
-            // 用户信息点击显示/隐藏退出按钮
-            const userInfoBtn = document.getElementById('userInfoBtn');
-            const logoutBtn = document.getElementById('logoutBtn');
-            
-            // 点击用户信息显示退出按钮
-            userInfoBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                logoutBtn.classList.toggle('hidden');
-            });
-            
-            // 点击页面其他区域隐藏退出按钮
-            document.addEventListener('click', function(e) {
-                if (!userInfoBtn.contains(e.target) && !logoutBtn.contains(e.target)) {
-                    logoutBtn.classList.add('hidden');
                 }
             });
             
