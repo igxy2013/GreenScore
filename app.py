@@ -95,7 +95,7 @@ app.register_blueprint(admin_app, url_prefix='/admin')
 
 # 邀请码相关API路由
 @app.route('/api/invite-codes', methods=['POST'])
-# @login_required
+@login_required
 def generate_invite_code():
     if not current_user.is_admin():
         return jsonify({'success': False, 'message': '只有管理员可以生成邀请码'}), 403
@@ -1796,7 +1796,7 @@ def get_db_connection():
                 database = server_db[1]
                 
                 # 构建连接字符串
-                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER=192.168.0.35;DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes'
+                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER=aibim.xyz;DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes'
                 
                 # 创建连接
                 conn = pyodbc.connect(conn_str)

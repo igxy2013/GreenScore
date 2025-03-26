@@ -2,6 +2,8 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from flask_login import login_required, current_user, login_user, logout_user
 from models import User, InvitationCode, db
 from functools import wraps
+import random
+import string
 
 # 创建管理后台蓝图
 admin_app = Blueprint('admin', __name__, 
@@ -144,6 +146,45 @@ def admin_logout():
     logout_user()
     session.clear()
     return redirect(url_for('.admin_login'))
+
+@admin_app.route('/api/invite-codes', methods=['POST'])
+@login_required
+@admin_required
+def generate_invite_code():
+    try:
+        # 生成随机邀请码
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        # 创建新的邀请码记录
+        new_code = InvitationCode(code=code)
+        db.session.add(new_code)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请码生成成功',
+            'code': code
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': '生成邀请码失败'}), 500
+
+@admin_app.route('/api/invite-codes/<int:code_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_invite_code(code_id):
+    try:
+        code = InvitationCode.query.get_or_404(code_id)
+        db.session.delete(code)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请码删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': '删除邀请码失败'}), 500
 
 if __name__ == '__main__':
     admin_app.run(host='0.0.0.0', port=5001, debug=True)
