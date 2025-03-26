@@ -2,14 +2,14 @@ import os
 import urllib.parse
 
 # 基础配置
-SECRET_KEY = 'your-secret-key'  # 请更改为随机的密钥
+SECRET_KEY = '5c72fbbfc4e446aa7bc28c81348b35a6c264b83b47768a9dec768d7a26b2ea85'  # 请更改为随机的密钥
 DEBUG = True
 
 # 数据库配置
 DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     # 默认数据库连接配置
-    server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
+    server = os.environ.get('SQLSERVER_SERVER', '192.168.0.35')
     database = os.environ.get('SQLSERVER_DATABASE', '绿色建筑')
     username = os.environ.get('SQLSERVER_USERNAME', 'test')
     password = os.environ.get('SQLSERVER_PASSWORD', '123456')
