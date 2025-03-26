@@ -1796,7 +1796,7 @@ def get_db_connection():
                 database = server_db[1]
                 
                 # 构建连接字符串
-                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER=192.168.0.35;DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes'
                 
                 # 创建连接
                 conn = pyodbc.connect(conn_str)

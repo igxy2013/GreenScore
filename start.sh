@@ -1,27 +1,25 @@
 #!/bin/bash
 
-# 确保脚本在项目根目录下运行
 cd "$(dirname "$0")"
 
-# 创建日志目录（如果不存在）
 mkdir -p logs
 
-# 设置环境变量
 export FLASK_APP=app.py
 export FLASK_ENV=development
 
-# 如果存在.env文件，加载环境变量
 if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ ! "$line" =~ ^#.*$ ]] && [ -n "$line" ]; then
+            export "$line"
+        fi
+    done < .env
 fi
 
-# 如果存在虚拟环境，则激活它
 if [ -d "venv" ]; then
     source venv/bin/activate
 fi
 
-# 启动Gunicorn服务器
-echo "正在启动Gunicorn服务器..."
+echo "Starting Gunicorn..."
 exec gunicorn \
     --bind 0.0.0.0:5010 \
     --workers 3 \
