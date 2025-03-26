@@ -39,11 +39,40 @@ def update_dwg_attribute(template_path, output_path, data):
         doc = acad.Documents.Open(template_path)
         logger.info(f"成功打开模板文件: {template_path}")
         
+        # 确保data是字典类型
+        if isinstance(data, list):
+            # 转换数据格式
+            data_dict = {}
+            for item in data:
+                if isinstance(item, dict) and 'field' in item and 'value' in item:
+                    data_dict[item['field']] = item['value']
+                elif isinstance(item, str):
+                    # 如果是字符串，尝试解析为JSON
+                    try:
+                        item_dict = json.loads(item)
+                        if isinstance(item_dict, dict) and 'field' in item_dict and 'value' in item_dict:
+                            data_dict[item_dict['field']] = item_dict['value']
+                    except:
+                        logger.warning(f"无法解析数据项: {item}")
+            data = data_dict
+        elif not isinstance(data, dict):
+            # 如果不是字典或列表，尝试转换为字典
+            try:
+                data = dict(data)
+            except:
+                logger.error(f"无法将数据转换为字典: {type(data)}")
+                data = {}
+                
+        logger.info(f"处理数据: {data}")
+        
         # 更新文本对象属性
-        for item in data:
-            field_name = item.get('field')
-            field_value = item.get('value', '')
-            
+        for field_name, field_value in data.items():
+            # 将field_value转换为字符串
+            if field_value is None:
+                field_value = ""
+            elif not isinstance(field_value, str):
+                field_value = str(field_value)
+                
             # 查找对应文本对象
             for obj in doc.ModelSpace:
                 if obj.ObjectName == 'AcDbText':
@@ -80,7 +109,15 @@ def api_update_dwg():
             return jsonify({'error': '没有上传文件'}), 400
         
         file = request.files['file']
-        data = json.loads(request.form.get('data', '[]'))
+        
+        # 解析JSON数据
+        data_str = request.form.get('data', '{}')
+        try:
+            data = json.loads(data_str)
+            logger.info(f"接收到的数据类型: {type(data)}")
+        except Exception as e:
+            logger.error(f"解析JSON数据失败: {str(e)}")
+            return jsonify({'error': f'无效的JSON数据: {str(e)}'}), 400
         
         if file.filename == '':
             return jsonify({'error': '未选择文件'}), 400

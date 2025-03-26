@@ -837,10 +837,18 @@ def generate_dwg(request_data):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         output_path = os.path.join('temp', f'green_building_{timestamp}.dwg')
         
+        # 将字典转换为列表格式，以适应DWG服务的API
+        attribute_list = []
+        for key, value in attributes.items():
+            attribute_list.append({
+                'field': key,
+                'value': value
+            })
+        
         # 调用DWG服务客户端
         print(f"开始更新CAD文件，使用模板: {template_filename}...")
         print(f"更新的属性数量: {len(attributes)}")
-        success, result = dwg_client.update_dwg_attributes(template_path, attributes)
+        success, result = dwg_client.update_dwg_attributes(template_path, attribute_list)
         
         if success:
             # 将返回的文件数据保存到本地
