@@ -21,7 +21,7 @@ fi
 
 echo "Starting Gunicorn..."
 exec gunicorn \
-    --bind 0.0.0.0:5010 \
+    --bind 0.0.0.0:5050 \
     --workers 3 \
     --worker-class sync \
     --threads 4 \

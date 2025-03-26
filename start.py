@@ -17,7 +17,7 @@ def start_server():
         from waitress import serve
         from app import app
         print("在Windows环境下使用Waitress服务器启动...")
-        serve(app, host='0.0.0.0', port=5010)
+        serve(app, host='0.0.0.0', port=5050)
     else:
         # WSL或其他Linux环境使用gunicorn
         if is_wsl():
@@ -50,7 +50,7 @@ def start_server():
         from app import app
         
         options = {
-            'bind': '0.0.0.0:5010',
+            'bind': '0.0.0.0:5050',
             'workers': 3,
             'worker_class': 'sync',
             'threads': 4,
