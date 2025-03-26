@@ -4,6 +4,7 @@ from models import User, InvitationCode, db
 from functools import wraps
 import random
 import string
+from datetime import datetime
 
 # 创建管理后台蓝图
 admin_app = Blueprint('admin', __name__, 
@@ -33,6 +34,10 @@ def admin_login_post():
     
     user = User.query.filter_by(email=email).first()
     if user and user.check_password(password) and user.role == 'admin':
+        # 更新最后在线时间
+        user.last_seen = datetime.utcnow()
+        db.session.commit()
+        
         login_user(user)
         session['role'] = user.role
         return redirect(url_for('.dashboard'))
@@ -46,7 +51,16 @@ def admin_login_post():
 def dashboard():
     users = User.query.all()
     invite_codes = InvitationCode.query.all()
-    return render_template('admin/dashboard.html', users=users, invite_codes=invite_codes)
+    
+    # 计算用户统计数据
+    stats = {
+        'total_users': len(users),
+        'online_users': sum(1 for user in users if user.is_online()),
+        'offline_users': sum(1 for user in users if not user.is_online()),
+        'admin_users': sum(1 for user in users if user.role == 'admin')
+    }
+    
+    return render_template('admin/dashboard.html', users=users, invite_codes=invite_codes, stats=stats)
 
 @admin_app.route('/api/users', methods=['POST'])
 @login_required

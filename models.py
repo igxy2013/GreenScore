@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')  # 用户角色：admin或user
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime)  # 最后在线时间
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -23,6 +24,12 @@ class User(UserMixin, db.Model):
     
     def is_admin(self):
         return self.role == 'admin'
+        
+    def is_online(self):
+        """检查用户是否在线（15分钟内有活动）"""
+        if not self.last_seen:
+            return False
+        return (datetime.utcnow() - self.last_seen).total_seconds() < 900  # 15分钟 = 900秒
 
 class InvitationCode(db.Model):
     __tablename__ = 'invitation_codes'

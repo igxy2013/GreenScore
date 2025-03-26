@@ -17,12 +17,15 @@
 <body class="bg-gray-100 flex">
     <!-- 左侧导航栏 -->
     <nav class="w-64 bg-white shadow-lg h-screen fixed left-0 flex flex-col" id="sideNav">
-        <div class="p-4 border-b border-gray-200">
-            <picture class="flex items-center justify-center">
-                <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
-                <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
-                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="h-12 w-12">
-            </picture>
+        <div class="p-6 border-b">
+            <h1 class="text-2xl font-bold text-primary flex items-center">                
+                <picture>
+                    <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                    <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                    <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+                </picture>
+                <span>智能管理后台</span>
+            </h1>
         </div>
         <div class="flex-1 overflow-y-auto py-4">
             <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="project-management">
@@ -98,6 +101,9 @@
                             this.classList.add('bg-gray-100', 'text-primary');
                             this.querySelector('i').classList.remove('text-gray-400');
                             
+                            // 保存当前激活的菜单项
+                            localStorage.setItem('activeMenuItem', this.getAttribute('data-target'));
+                            
                             // 根据data-target属性显示对应内容
                             const target = this.getAttribute('data-target');
                             // 隐藏所有内容区域
@@ -112,8 +118,16 @@
                         });
                     });
 
-                    // 默认激活第一个菜单项
-                    if (menuItems.length > 0) {
+                    // 恢复上次激活的菜单项，如果没有则激活第一个
+                    const activeMenuItem = localStorage.getItem('activeMenuItem');
+                    if (activeMenuItem) {
+                        const menuItem = document.querySelector(`[data-target="${activeMenuItem}"]`);
+                        if (menuItem) {
+                            menuItem.click();
+                        } else {
+                            menuItems[0].click();
+                        }
+                    } else {
                         menuItems[0].click();
                     }
                 });
@@ -121,51 +135,153 @@
             </script>
         <!-- 用户管理卡片 -->
         <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
-            <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">用户管理</h3>
-                <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                    <i class="fas fa-plus mr-2"></i>添加用户
-                </button>
+            <!-- 用户统计面板 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- 总用户数 -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">总用户数</p>
+                            <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 在线用户 -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <i class="fas fa-user-clock text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">在线用户</p>
+                            <p class="text-2xl font-semibold text-gray-900">{{ stats.online_users }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 离线用户 -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-gray-100 text-gray-600">
+                            <i class="fas fa-user-slash text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">离线用户</p>
+                            <p class="text-2xl font-semibold text-gray-900">{{ stats.offline_users }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 管理员数量 -->
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                            <i class="fas fa-user-shield text-xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">管理员数量</p>
+                            <p class="text-2xl font-semibold text-gray-900">{{ stats.admin_users }}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="border-t border-gray-200">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-lg font-medium  uppercase tracking-wider">ID</th>
-                            <th scope="col" class="px-6 py-3 text-left text-lg font-medium  uppercase tracking-wider">邮箱</th>
-                            <th scope="col" class="px-6 py-3 text-left text-lg font-medium  uppercase tracking-wider">角色</th>
-                            <th scope="col" class="px-6 py-3 text-left text-lg font-medium  uppercase tracking-wider">创建时间</th>
-                            <th scope="col" class="px-6 py-3 text-left text-lg font-medium  uppercase tracking-wider">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for user in users %}
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.email }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                    {% if user.role == 'admin' %}
-                                        bg-green-100 text-green-800
-                                    {% else %}
-                                        bg-blue-100 text-blue-800
-                                    {% endif %}">
-                                    {{ user.role }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+            <!-- 搜索和操作栏 -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex-1 max-w-sm">
+                        <div class="relative">
+                            <input type="text" id="userSearchInput" 
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                   placeholder="搜索用户邮箱...">
+                            <div class="absolute left-3 top-2.5 text-gray-400">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>添加用户
+                    </button>
+                </div>
+            </div>
+
+            <!-- 用户列表表格 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邮箱</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">角色</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="userTableBody">
+                            {% for user in users %}
+                            <tr class="user-row">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 user-email">{{ user.email }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                        {% if user.role == 'admin' %}
+                                            bg-green-100 text-green-800
+                                        {% else %}
+                                            bg-blue-100 text-blue-800
+                                        {% endif %}">
+                                        {{ user.role }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                        {% if user.is_online() %}
+                                            bg-green-100 text-green-800
+                                        {% else %}
+                                            bg-red-100 text-red-800
+                                        {% endif %}">
+                                        {{ '在线' if user.is_online() else '离线' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                    <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- 分页控件 -->
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <div class="text-sm text-gray-700">
+                            显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
+                            <span class="ml-4">
+                                第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页
+                            </span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                上一页
+                            </button>
+                            <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                下一页
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
             <!-- 邀请码管理卡片 -->
@@ -374,6 +490,142 @@
                 }
             });
         }
+
+        // 分页和搜索功能
+        const itemsPerPage = 15;
+        let currentPage = parseInt(localStorage.getItem('currentUserPage')) || 1;
+        const userRows = document.querySelectorAll('.user-row');
+        const totalPages = Math.ceil(userRows.length / itemsPerPage);
+        
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const startIndexSpan = document.getElementById('startIndex');
+        const endIndexSpan = document.getElementById('endIndex');
+        const totalCountSpan = document.getElementById('totalCount');
+        const currentPageSpan = document.getElementById('currentPage');
+        const totalPagesSpan = document.getElementById('totalPages');
+        const searchInput = document.getElementById('userSearchInput');
+        
+        // 恢复搜索条件
+        const savedSearch = localStorage.getItem('userSearchTerm') || '';
+        searchInput.value = savedSearch;
+        
+        function updatePagination() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const filteredRows = Array.from(userRows).filter(row => {
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                return email.includes(searchTerm) || id.includes(searchTerm);
+            });
+            
+            const totalFilteredItems = filteredRows.length;
+            const totalFilteredPages = Math.ceil(totalFilteredItems / itemsPerPage);
+            
+            // 确保当前页不超过总页数
+            if (currentPage > totalFilteredPages) {
+                currentPage = totalFilteredPages || 1;
+            }
+            
+            // 更新按钮状态
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalFilteredPages || totalFilteredItems === 0;
+            
+            // 更新显示范围
+            const start = totalFilteredItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+            const end = Math.min(currentPage * itemsPerPage, totalFilteredItems);
+            startIndexSpan.textContent = start;
+            endIndexSpan.textContent = end;
+            totalCountSpan.textContent = totalFilteredItems;
+            
+            // 更新页码显示
+            currentPageSpan.textContent = currentPage;
+            totalPagesSpan.textContent = totalFilteredPages || 1;
+            
+            // 保存当前页码和搜索条件
+            localStorage.setItem('currentUserPage', currentPage);
+            localStorage.setItem('userSearchTerm', searchTerm);
+            
+            // 显示当前页的数据
+            userRows.forEach(row => {
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                const matchesSearch = email.includes(searchTerm) || id.includes(searchTerm);
+                const index = Array.from(userRows).indexOf(row);
+                const isInCurrentPage = index >= (currentPage - 1) * itemsPerPage && index < currentPage * itemsPerPage;
+                
+                row.style.display = matchesSearch && isInCurrentPage ? '' : 'none';
+            });
+        }
+        
+        // 搜索功能
+        searchInput.addEventListener('input', function() {
+            currentPage = 1;
+            updatePagination();
+        });
+        
+        // 上一页
+        prevPageBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                updatePagination();
+            }
+        });
+        
+        // 下一页
+        nextPageBtn.addEventListener('click', function() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const filteredRows = Array.from(userRows).filter(row => {
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                return email.includes(searchTerm) || id.includes(searchTerm);
+            });
+            const totalFilteredPages = Math.ceil(filteredRows.length / itemsPerPage);
+            
+            if (currentPage < totalFilteredPages) {
+                currentPage++;
+                updatePagination();
+            }
+        });
+        
+        // 初始化分页
+        updatePagination();
+
+        // 使用AJAX异步刷新用户状态
+        function refreshUserStatus() {
+            fetch('/admin/dashboard', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // 更新用户统计数据
+                const stats = doc.querySelectorAll('.content-section .text-2xl');
+                const currentStats = document.querySelectorAll('.content-section .text-2xl');
+                stats.forEach((stat, index) => {
+                    if (currentStats[index]) {
+                        currentStats[index].textContent = stat.textContent;
+                    }
+                });
+                
+                // 更新用户状态
+                const newRows = doc.querySelectorAll('.user-row');
+                const currentRows = document.querySelectorAll('.user-row');
+                newRows.forEach((newRow, index) => {
+                    if (currentRows[index]) {
+                        const newStatus = newRow.querySelector('td:nth-child(4)').innerHTML;
+                        currentRows[index].querySelector('td:nth-child(4)').innerHTML = newStatus;
+                    }
+                });
+            })
+            .catch(error => console.error('刷新用户状态失败:', error));
+        }
+
+        // 每30秒刷新一次用户状态
+        setInterval(refreshUserStatus, 30000);
     });
 
     // 打开用户模态框

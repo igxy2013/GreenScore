@@ -78,6 +78,9 @@ app.config['SQLALCHEMY_ECHO'] = not is_production
 # 初始化数据库
 db.init_app(app)
 
+# 初始化数据库迁移
+migrate = Migrate(app, db)
+
 # 初始化login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -88,6 +91,13 @@ login_manager.login_message_category = 'info'
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# 添加请求处理器来更新用户的last_seen时间
+@app.before_request
+def update_last_seen():
+    if current_user.is_authenticated:
+        current_user.last_seen = datetime.utcnow()
+        db.session.commit()
 
 # 导入和注册蓝图（在数据库初始化之后）
 from admin import admin_app
@@ -3501,6 +3511,10 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if user and user.check_password(password):
+            # 更新最后在线时间
+            user.last_seen = datetime.utcnow()
+            db.session.commit()
+            
             session['user_id'] = user.id
             session['username'] = user.email  # 添加用户邮箱到 session
             session['role'] = user.role  # 添加用户角色到 session
