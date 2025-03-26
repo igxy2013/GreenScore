@@ -6,7 +6,20 @@ from docx import Document
 from word_template import process_template
 import json
 import traceback
-from update_dwg_attribute import update_attribute_text
+import platform
+
+# 检查运行环境
+IS_WINDOWS = platform.system() == 'Windows'
+if IS_WINDOWS:
+    try:
+        from update_dwg_attribute import update_attribute_text
+    except ImportError:
+        print("警告: win32com模块未安装，DWG导出功能将不可用")
+        print("请在Windows环境下运行 'pip install pywin32' 安装所需模块")
+        update_attribute_text = None
+else:
+    update_attribute_text = None
+
 # 加载环境变量
 load_dotenv()
 

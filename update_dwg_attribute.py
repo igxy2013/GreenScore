@@ -1,10 +1,23 @@
-import win32com.client
 import os
 import time
 from typing import Optional
-import pythoncom
+import platform
+
+# 仅在Windows环境下导入win32com相关模块
+IS_WINDOWS = platform.system() == 'Windows'
+if IS_WINDOWS:
+    try:
+        import win32com.client
+        import pythoncom
+    except ImportError:
+        print("警告: win32com模块未安装，DWG导出功能将不可用")
+        print("请在Windows环境下运行 'pip install pywin32' 安装所需模块")
 
 def get_acad_application(max_retries: int = 3, retry_delay: float = 2.0) -> Optional[object]:
+    if not IS_WINDOWS:
+        print("错误: DWG导出功能仅支持Windows环境")
+        print("当前环境:", platform.system())
+        return None
     # 初始化COM安全设置
     try:
         pythoncom.CoInitialize()
