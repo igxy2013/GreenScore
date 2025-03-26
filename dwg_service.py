@@ -66,6 +66,7 @@ def update_dwg_attribute(template_path, output_path, data):
         logger.info(f"处理数据: {data}")
         
         # 更新文本对象属性
+        updated_count = 0
         for field_name, field_value in data.items():
             # 将field_value转换为字符串
             if field_value is None:
@@ -76,23 +77,56 @@ def update_dwg_attribute(template_path, output_path, data):
             # 查找对应文本对象
             for obj in doc.ModelSpace:
                 if obj.ObjectName == 'AcDbText':
-                    if obj.TextString.strip() == field_name:
-                        obj.TextString = field_value
-                        logger.info(f"已更新字段: {field_name} -> {field_value}")
+                    try:
+                        text_string = obj.TextString.strip()
+                        if text_string == field_name:
+                            obj.TextString = field_value
+                            updated_count += 1
+                            logger.info(f"已更新字段: {field_name} -> {field_value}")
+                    except Exception as e:
+                        logger.error(f"处理文本对象时出错: {str(e)}")
+        
+        logger.info(f"共更新了 {updated_count} 个字段")
         
         # 保存为新文件
-        doc.SaveAs(output_path)
-        logger.info(f"文件已保存至: {output_path}")
+        logger.info(f"开始保存DWG文件到: {output_path}")
+        try:
+            doc.SaveAs(output_path)
+            logger.info(f"文件已成功保存至: {output_path}")
+        except Exception as e:
+            logger.error(f"保存文件时出错: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
         
         # 关闭文档但不退出AutoCAD
-        doc.Close()
-        pythoncom.CoUninitialize()
+        try:
+            doc.Close()
+            logger.info("文档已成功关闭")
+        except Exception as e:
+            logger.error(f"关闭文档时出错: {str(e)}")
+            logger.error(traceback.format_exc())
         
+        try:
+            pythoncom.CoUninitialize()
+            logger.info("COM接口已释放")
+        except Exception as e:
+            logger.error(f"释放COM接口时出错: {str(e)}")
+        
+        # 检查文件是否存在
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            logger.info(f"输出文件存在，大小为: {file_size} 字节")
+        else:
+            logger.error(f"输出文件不存在: {output_path}")
+            
         return True, "操作成功"
     except Exception as e:
         logger.error(f"更新DWG文件属性出错: {str(e)}")
         logger.error(traceback.format_exc())
-        pythoncom.CoUninitialize()
+        try:
+            pythoncom.CoUninitialize()
+        except:
+            pass
         return False, str(e)
 
 @app.route('/api/dwg/update', methods=['POST'])
@@ -126,10 +160,12 @@ def api_update_dwg():
         temp_filename = f"{uuid.uuid4()}.dwg"
         template_path = os.path.join(UPLOAD_FOLDER, temp_filename)
         file.save(template_path)
+        logger.info(f"上传的文件已保存到: {template_path}")
         
         # 设置输出路径
         output_filename = f"output_{uuid.uuid4()}.dwg"
         output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+        logger.info(f"设置输出路径: {output_path}")
         
         # 更新DWG文件
         success, message = update_dwg_attribute(
@@ -141,23 +177,51 @@ def api_update_dwg():
         # 返回结果
         if success:
             # 读取生成的文件并以base64编码返回
-            with open(output_path, 'rb') as f:
-                file_data = base64.b64encode(f.read()).decode('utf-8')
-            
-            # 清理临时文件
             try:
-                os.remove(template_path)
-                os.remove(output_path)
-            except:
-                pass
+                if not os.path.exists(output_path):
+                    logger.error(f"输出文件不存在: {output_path}")
+                    return jsonify({'success': False, 'message': '文件生成失败：无法找到输出文件'}), 500
                 
-            return jsonify({
-                'success': True,
-                'message': '更新成功',
-                'filename': output_filename,
-                'file_data': file_data
-            })
+                file_size = os.path.getsize(output_path)
+                logger.info(f"准备读取输出文件，大小: {file_size} 字节")
+                
+                with open(output_path, 'rb') as f:
+                    file_data = base64.b64encode(f.read()).decode('utf-8')
+                logger.info(f"文件已读取并编码，编码后长度: {len(file_data)} 字符")
+                
+                # 检查编码后的数据是否为空
+                if not file_data:
+                    logger.error("文件编码后为空")
+                    return jsonify({'success': False, 'message': '文件编码后为空'}), 500
+                
+                # 清理临时文件
+                try:
+                    os.remove(template_path)
+                    logger.info(f"已删除模板文件: {template_path}")
+                except Exception as e:
+                    logger.warning(f"删除模板文件失败: {str(e)}")
+                
+                # 暂时保留输出文件用于调试
+                # try:
+                #     os.remove(output_path)
+                #     logger.info(f"已删除输出文件: {output_path}")
+                # except Exception as e:
+                #     logger.warning(f"删除输出文件失败: {str(e)}")
+                
+                logger.info("API调用成功完成，准备返回数据")
+                
+                return jsonify({
+                    'success': True,
+                    'message': '更新成功',
+                    'filename': output_filename,
+                    'file_data': file_data
+                })
+            except Exception as e:
+                logger.error(f"读取或编码文件时出错: {str(e)}")
+                logger.error(traceback.format_exc())
+                return jsonify({'success': False, 'message': f'文件处理出错: {str(e)}'}), 500
         else:
+            logger.error(f"更新DWG属性失败: {message}")
             return jsonify({
                 'success': False,
                 'message': f'更新失败: {message}'

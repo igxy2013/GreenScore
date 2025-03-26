@@ -851,37 +851,79 @@ def generate_dwg(request_data):
         success, result = dwg_client.update_dwg_attributes(template_path, attribute_list)
         
         if success:
-            # 将返回的文件数据保存到本地
-            output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
-            os.makedirs(output_dir, exist_ok=True)
-            
-            output_filename = f"绿建设计专篇_{data[0]['项目名称']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.dwg"
-            output_path = os.path.join(output_dir, output_filename)
-            
-            with open(output_path, 'wb') as f:
-                f.write(result['file_data'])
+            try:
+                # 检查result中是否包含file_data
+                if 'file_data' not in result:
+                    print(f"DWG服务返回的结果中缺少file_data字段: {result}")
+                    return jsonify({"error": "DWG服务未返回文件数据"}), 500
                 
-            # 获取文件名
-            standard_short = {
-                '成都市标': '市标',
-                '四川省标': '省标',
-                '国标': '国标'
-            }.get(standard, '市标')
-            
-            download_name = f"{data[0]['项目名称']}_{standard_short}_{star_rating_target}_绿色建筑设计专篇.dwg"
-            if not download_name:
-                download_name = "green_building.dwg"
-            
-            print(f"准备下载CAD文件: {download_name}")
-            return send_file(
-                output_path,
-                as_attachment=True,
-                download_name=download_name,
-                mimetype='application/acad'
-            )
+                # 检查file_data是否为空
+                file_data = result['file_data']
+                if not file_data or len(file_data) == 0:
+                    print("DWG服务返回的文件数据为空")
+                    return jsonify({"error": "DWG服务返回的文件数据为空"}), 500
+                
+                print(f"收到DWG服务返回的文件数据，大小: {len(file_data)} 字节")
+                
+                # 将返回的文件数据保存到本地
+                output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
+                os.makedirs(output_dir, exist_ok=True)
+                
+                output_filename = f"绿建设计专篇_{data[0]['项目名称']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.dwg"
+                output_path = os.path.join(output_dir, output_filename)
+                
+                try:
+                    with open(output_path, 'wb') as f:
+                        f.write(file_data)
+                    
+                    # 检查文件是否成功写入
+                    if not os.path.exists(output_path):
+                        print(f"文件未成功写入: {output_path}")
+                        return jsonify({"error": "文件保存失败"}), 500
+                    
+                    file_size = os.path.getsize(output_path)
+                    if file_size == 0:
+                        print("保存的文件大小为0")
+                        return jsonify({"error": "保存的文件大小为0"}), 500
+                    
+                    print(f"文件已成功保存到: {output_path}, 大小: {file_size} 字节")
+                except Exception as file_write_error:
+                    print(f"写入文件时出错: {str(file_write_error)}")
+                    print(traceback.format_exc())
+                    return jsonify({"error": f"写入文件时出错: {str(file_write_error)}"}), 500
+                
+                # 获取文件名
+                standard_short = {
+                    '成都市标': '市标',
+                    '四川省标': '省标',
+                    '国标': '国标'
+                }.get(standard, '市标')
+                
+                download_name = f"{data[0]['项目名称']}_{standard_short}_{star_rating_target}_绿色建筑设计专篇.dwg"
+                if not download_name:
+                    download_name = "green_building.dwg"
+                
+                print(f"准备下载CAD文件: {download_name}")
+                
+                try:
+                    return send_file(
+                        output_path,
+                        as_attachment=True,
+                        download_name=download_name,
+                        mimetype='application/acad'
+                    )
+                except Exception as send_error:
+                    print(f"发送文件时出错: {str(send_error)}")
+                    print(traceback.format_exc())
+                    return jsonify({"error": f"发送文件时出错: {str(send_error)}"}), 500
+            except Exception as e:
+                print(f"处理DWG服务返回数据时出错: {str(e)}")
+                print(traceback.format_exc())
+                return jsonify({"error": f"处理DWG服务返回数据时出错: {str(e)}"}), 500
         else:
-            print(f"DWG服务返回错误: {result['message']}")
-            return jsonify({"error": f"生成失败: {result['message']}"}), 500
+            error_message = result.get('message', '未知错误')
+            print(f"DWG服务返回错误: {error_message}")
+            return jsonify({"error": f"生成失败: {error_message}"}), 500
 
     except Exception as e:
         print(f"生成CAD文件失败: {str(e)}")
