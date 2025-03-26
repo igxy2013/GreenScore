@@ -50,14 +50,14 @@
             </a>
         </div>
         <div class="p-4 border-t border-gray-200">
-            <div class="relative">
-                <div id="userInfoBtn" class="flex items-center justify-center px-4 py-2 text-gray-600 hover:text-primary transition-colors cursor-pointer">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-gray-600">
                     <i class="fas fa-user-circle text-primary text-xl"></i>
                     <span class="ml-2">管理员</span>
                 </div>
-                <a href="{{ url_for('admin.admin_logout') }}" id="logoutBtn" class="hidden absolute left-1/2 -translate-x-1/2 top-full mt-2 flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group w-auto">
-                    <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
-                    <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
+                <a href="{{ url_for('admin.admin_logout') }}" class="flex items-center px-3 py-1 text-gray-600 hover:text-red-500 transition-colors">
+                    <i class="fas fa-sign-out-alt mr-1"></i>
+                    <span>退出</span>
                 </a>
             </div>
         </div>
@@ -66,194 +66,215 @@
     <!-- 主要内容区域 -->
     <div class="ml-64 flex-1 p-6 transition-all duration-300" id="mainContent">
         <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    const userInfoBtn = document.getElementById('userInfoBtn');
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    const menuItems = document.querySelectorAll('.menu-item');
-                    const mainContent = document.getElementById('mainContent');
-
-                    // 用户信息按钮点击事件
-                    userInfoBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        logoutBtn.classList.toggle('hidden');
-                    });
-
-                    // 点击页面其他地方时隐藏退出按钮
-                    document.addEventListener('click', function(event) {
-                        if (!userInfoBtn.contains(event.target) && !logoutBtn.contains(event.target)) {
-                            logoutBtn.classList.add('hidden');
-                        }
-                    });
-
-                    // 菜单切换功能
-                    menuItems.forEach(item => {
-                        item.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            
-                            // 移除所有菜单项的激活状态
-                            menuItems.forEach(mi => {
-                                mi.classList.remove('bg-gray-100', 'text-primary');
-                                mi.querySelector('i').classList.add('text-gray-400');
-                            });
-                            
-                            // 添加当前菜单项的激活状态
-                            this.classList.add('bg-gray-100', 'text-primary');
-                            this.querySelector('i').classList.remove('text-gray-400');
-                            
-                            // 保存当前激活的菜单项
-                            localStorage.setItem('activeMenuItem', this.getAttribute('data-target'));
-                            
-                            // 根据data-target属性显示对应内容
-                            const target = this.getAttribute('data-target');
-                            // 隐藏所有内容区域
-                            document.querySelectorAll('.content-section').forEach(section => {
-                                section.classList.add('hidden');
-                            });
-                            // 显示目标内容区域
-                            const targetSection = document.querySelector(`#${target}-section`);
-                            if (targetSection) {
-                                targetSection.classList.remove('hidden');
-                            }
-                        });
-                    });
-
-                    // 恢复上次激活的菜单项，如果没有则激活第一个
-                    const activeMenuItem = localStorage.getItem('activeMenuItem');
-                    if (activeMenuItem) {
-                        const menuItem = document.querySelector(`[data-target="${activeMenuItem}"]`);
-                        if (menuItem) {
-                            menuItem.click();
-                        } else {
-                            menuItems[0].click();
-                        }
-                    } else {
-                        menuItems[0].click();
-                    }
-                });
-            </script>
-            </script>
-        <!-- 用户管理卡片 -->
-        <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
-            <!-- 用户统计面板 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <!-- 总用户数 -->
-                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                    <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                            <i class="fas fa-users text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">总用户数</p>
-                            <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 在线用户 -->
-                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                    <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-green-100 text-green-600">
-                            <i class="fas fa-user-clock text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">在线用户</p>
-                            <p class="text-2xl font-semibold text-gray-900">{{ stats.online_users }}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 离线用户 -->
-                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                    <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-gray-100 text-gray-600">
-                            <i class="fas fa-user-slash text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">离线用户</p>
-                            <p class="text-2xl font-semibold text-gray-900">{{ stats.offline_users }}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 管理员数量 -->
-                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                    <div class="flex items-center">
-                        <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                            <i class="fas fa-user-shield text-xl"></i>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">管理员数量</p>
-                            <p class="text-2xl font-semibold text-gray-900">{{ stats.admin_users }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 搜索和操作栏 -->
-            <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                <div class="flex justify-between items-center">
-                    <div class="flex-1 max-w-sm">
-                        <div class="relative">
-                            <input type="text" id="userSearchInput" 
-                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                   placeholder="搜索用户邮箱...">
-                            <div class="absolute left-3 top-2.5 text-gray-400">
-                                <i class="fas fa-search"></i>
+            <!-- 用户管理卡片 -->
+            <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 用户统计面板 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- 总用户数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">总用户数</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
                             </div>
                         </div>
                     </div>
-                    <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                        <i class="fas fa-plus mr-2"></i>添加用户
-                    </button>
+                    
+                    <!-- 在线用户 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-user-clock text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">在线用户</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.online_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 离线用户 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-gray-100 text-gray-600">
+                                <i class="fas fa-user-slash text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">离线用户</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.offline_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 管理员数量 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-user-shield text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">管理员数量</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.admin_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1 max-w-sm">
+                            <div class="relative">
+                                <input type="text" id="userSearchInput" 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索用户邮箱...">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>添加用户
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 用户列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邮箱</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">角色</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="userTableBody">
+                                {% for user in users %}
+                                <tr class="user-row">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 user-email">{{ user.email }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if user.role == 'admin' %}
+                                                bg-green-100 text-green-800
+                                            {% else %}
+                                                bg-blue-100 text-blue-800
+                                            {% endif %}">
+                                            {{ user.role }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if user.is_online() %}
+                                                bg-green-100 text-green-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ '在线' if user.is_online() else '离线' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
+                                <span class="ml-4">
+                                    第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <!-- 用户列表表格 -->
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
+            <!-- 邀请码管理卡片 -->
+            <div id="invite-code-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+                <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">邀请码管理</h3>
+                    <button id="generateInviteCodeBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        <i class="fas fa-plus mr-2"></i>生成邀请码
+                    </button>
+                </div>
+                <div class="border-t border-gray-200">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
-                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邮箱</th>
-                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">角色</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邀请码</th>
                                 <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用次数</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">剩余次数</th>
                                 <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用时间</th>
                                 <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200" id="userTableBody">
-                            {% for user in users %}
-                            <tr class="user-row">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 user-email">{{ user.email }}</td>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for code in invite_codes %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.code }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                        {% if user.role == 'admin' %}
-                                            bg-green-100 text-green-800
+                                        {% if code.used_at %}
+                                            bg-gray-100 text-gray-800
                                         {% else %}
-                                            bg-blue-100 text-blue-800
+                                            bg-green-100 text-green-800
                                         {% endif %}">
-                                        {{ user.role }}
+                                        {{ '已使用' if code.used_at else '未使用' }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ code.usage_count }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                        {% if user.is_online() %}
-                                            bg-green-100 text-green-800
-                                        {% else %}
+                                        {% if code.max_usage - code.usage_count <= 0 %}
                                             bg-red-100 text-red-800
+                                        {% elif code.max_usage - code.usage_count <= 10 %}
+                                            bg-yellow-100 text-yellow-800
+                                        {% else %}
+                                            bg-green-100 text-green-800
                                         {% endif %}">
-                                        {{ '在线' if user.is_online() else '离线' }}
+                                        {{ code.max_usage - code.usage_count }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                    <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ code.created_at.strftime('%Y-%m-%d %H:%M:%S') if code.created_at else '-' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </td>
@@ -262,98 +283,9 @@
                         </tbody>
                     </table>
                 </div>
-                
-                <!-- 分页控件 -->
-                <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <div class="text-sm text-gray-700">
-                            显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
-                            <span class="ml-4">
-                                第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页
-                            </span>
-                        </div>
-                        <div class="flex space-x-2">
-                            <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                上一页
-                            </button>
-                            <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                下一页
-                            </button>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
-            <!-- 邀请码管理卡片 -->
-    <div id="invite-code-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden mt-6">
-        <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">邀请码管理</h3>
-            <button id="generateInviteCodeBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                <i class="fas fa-plus mr-2"></i>生成邀请码
-            </button>
-        </div>
-        <div class="border-t border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邀请码</th>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用次数</th>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">剩余次数</th>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用时间</th>
-                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for code in invite_codes %}
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.code }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                {% if code.used_at %}
-                                    bg-gray-100 text-gray-800
-                                {% else %}
-                                    bg-green-100 text-green-800
-                                {% endif %}">
-                                {{ '已使用' if code.used_at else '未使用' }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ code.usage_count }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                {% if code.max_usage - code.usage_count <= 0 %}
-                                    bg-red-100 text-red-800
-                                {% elif code.max_usage - code.usage_count <= 10 %}
-                                    bg-yellow-100 text-yellow-800
-                                {% else %}
-                                    bg-green-100 text-green-800
-                                {% endif %}">
-                                {{ code.max_usage - code.usage_count }}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ code.created_at.strftime('%Y-%m-%d %H:%M:%S') if code.created_at else '-' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
     </div>
-    </div>
-
-
 
     <!-- 用户表单模态框 -->
     <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -399,6 +331,52 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // 菜单切换功能
+        const menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // 移除所有菜单项的激活状态
+                menuItems.forEach(mi => {
+                    mi.classList.remove('bg-gray-100', 'text-primary');
+                    mi.querySelector('i').classList.add('text-gray-400');
+                });
+                
+                // 添加当前菜单项的激活状态
+                this.classList.add('bg-gray-100', 'text-primary');
+                this.querySelector('i').classList.remove('text-gray-400');
+                
+                // 保存当前激活的菜单项
+                localStorage.setItem('activeMenuItem', this.getAttribute('data-target'));
+                
+                // 根据data-target属性显示对应内容
+                const target = this.getAttribute('data-target');
+                // 隐藏所有内容区域
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.add('hidden');
+                });
+                // 显示目标内容区域
+                const targetSection = document.querySelector(`#${target}-section`);
+                if (targetSection) {
+                    targetSection.classList.remove('hidden');
+                }
+            });
+        });
+
+        // 恢复上次激活的菜单项，如果没有则激活第一个
+        const activeMenuItem = localStorage.getItem('activeMenuItem');
+        if (activeMenuItem) {
+            const menuItem = document.querySelector(`[data-target="${activeMenuItem}"]`);
+            if (menuItem) {
+                menuItem.click();
+            } else {
+                menuItems[0].click();
+            }
+        } else {
+            menuItems[0].click();
+        }
+
         // 转换UTC时间为本地时间
         function convertUTCToLocal() {
             document.querySelectorAll('td').forEach(td => {
@@ -471,25 +449,6 @@
                 createUser();
             }
         });
-
-        // 用户信息点击显示/隐藏退出按钮
-        const userInfoBtn = document.getElementById('userInfoBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        
-        if (userInfoBtn && logoutBtn) {
-            // 点击用户信息显示退出按钮
-            userInfoBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                logoutBtn.classList.toggle('hidden');
-            });
-            
-            // 点击页面其他区域隐藏退出按钮
-            document.addEventListener('click', function(e) {
-                if (!userInfoBtn.contains(e.target) && !logoutBtn.contains(e.target)) {
-                    logoutBtn.classList.add('hidden');
-                }
-            });
-        }
 
         // 分页和搜索功能
         const itemsPerPage = 15;
@@ -811,7 +770,6 @@
             alert('生成失败: ' + (error.message || '服务器响应格式错误'));
         });
     }
-
 
     // 删除邀请码
     function deleteInviteCode(codeId) {
