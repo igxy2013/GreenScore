@@ -1,7 +1,7 @@
 import multiprocessing
 
 # 绑定的IP和端口
-bind = '0.0.0.0:5000'
+bind = '0.0.0.0:5010'
 
 # 工作进程数
 workers = multiprocessing.cpu_count() * 2 + 1
