@@ -43,8 +43,8 @@ def get_db_connection():
 
         username, password, server, database = match.groups()
 
-        # 构建连接字符串
-        conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+        # 构建连接字符串，添加超时和TLS配置
+        conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes"
         # 尝试建立连接
         try:
             conn = pyodbc.connect(conn_str)
