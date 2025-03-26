@@ -7,6 +7,7 @@ from word_template import process_template
 import json
 import traceback
 import platform
+from dwg_client import dwg_client
 
 # 检查运行环境
 IS_WINDOWS = platform.system() == 'Windows'
@@ -836,38 +837,48 @@ def generate_dwg(request_data):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         output_path = os.path.join('temp', f'green_building_{timestamp}.dwg')
         
-        # 调用update_attribute_text更新DWG文件
+        # 调用DWG服务客户端
         print(f"开始更新CAD文件，使用模板: {template_filename}...")
         print(f"更新的属性数量: {len(attributes)}")
-        update_attribute_text(template_path, output_path, attributes)
+        success, result = dwg_client.update_dwg_attributes(template_path, attributes)
         
-        # 检查生成的文件是否存在
-        if not os.path.exists(output_path):
-            print(f"生成的CAD文件不存在: {output_path}")
-            return jsonify({"error": "生成的CAD文件不存在"}), 500
+        if success:
+            # 将返回的文件数据保存到本地
+            output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
+            os.makedirs(output_dir, exist_ok=True)
             
-        # 获取文件名
-        standard_short = {
-            '成都市标': '市标',
-            '四川省标': '省标',
-            '国标': '国标'
-        }.get(standard, '市标')
-        
-        download_name = f"{data[0]['项目名称']}_{standard_short}_{star_rating_target}_绿色建筑设计专篇.dwg"
-        if not download_name:
-            download_name = "green_building.dwg"
-        
-        print(f"准备下载CAD文件: {download_name}")
-        return send_file(
-            output_path,
-            as_attachment=True,
-            download_name=download_name,
-            mimetype='application/acad'
-        )
+            output_filename = f"绿建设计专篇_{data[0]['项目名称']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.dwg"
+            output_path = os.path.join(output_dir, output_filename)
+            
+            with open(output_path, 'wb') as f:
+                f.write(result['file_data'])
+                
+            # 获取文件名
+            standard_short = {
+                '成都市标': '市标',
+                '四川省标': '省标',
+                '国标': '国标'
+            }.get(standard, '市标')
+            
+            download_name = f"{data[0]['项目名称']}_{standard_short}_{star_rating_target}_绿色建筑设计专篇.dwg"
+            if not download_name:
+                download_name = "green_building.dwg"
+            
+            print(f"准备下载CAD文件: {download_name}")
+            return send_file(
+                output_path,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype='application/acad'
+            )
+        else:
+            print(f"DWG服务返回错误: {result['message']}")
+            return jsonify({"error": f"生成失败: {result['message']}"}), 500
+
     except Exception as e:
         print(f"生成CAD文件失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
-        return jsonify({"error": f"生成CAD文件失败: {str(e)}"}), 500
+        return jsonify({"error": f"生成失败: {str(e)}"}), 500
         
     finally:
         if cursor:
