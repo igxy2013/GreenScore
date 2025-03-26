@@ -84,53 +84,49 @@ class DwgServiceClient:
                     logger.info("已关闭模板文件")
                 
             # 处理响应
-            if response.status_code == 200:
-                try:
-                    result = response.json()
-                    logger.info(f"服务器返回JSON数据，成功状态: {result.get('success', False)}")
-                except ValueError:
-                    logger.error("响应不是有效的JSON格式")
-                    return False, {'message': "服务器返回的数据不是有效的JSON格式"}
+            try:
+                result = response.json()
+                logger.info(f"服务器返回JSON数据，状态码: {response.status_code}")
                 
-                if result.get('success'):
-                    # 检查文件数据是否存在
-                    if 'file_data' not in result:
-                        logger.error("响应中缺少文件数据")
-                        return False, {'message': "服务器响应中缺少文件数据"}
-                        
-                    # 解码文件数据
-                    try:
-                        file_data_str = result.get('file_data', '')
-                        logger.info(f"收到编码后的文件数据，长度: {len(file_data_str)}")
-                        
-                        if not file_data_str:
-                            logger.error("收到的文件数据为空")
-                            return False, {'message': "收到的文件数据为空"}
-                            
-                        file_data = base64.b64decode(file_data_str)
-                        logger.info(f"文件数据解码成功，大小: {len(file_data)} 字节")
-                        
-                        return True, {
-                            'message': result.get('message', '更新成功'),
-                            'filename': result.get('filename', ''),
-                            'file_data': file_data
-                        }
-                    except Exception as e:
-                        logger.error(f"解码文件数据失败: {str(e)}")
-                        return False, {'message': f"解码文件数据失败: {str(e)}"}
-                else:
-                    error_msg = result.get('message', '服务端处理失败')
+                # 即使是错误状态码，也尝试从JSON中获取有用信息
+                success = result.get('success', False) if response.status_code == 200 else False
+                message = result.get('message', f"请求失败，状态码: {response.status_code}") 
+                
+                if not success:
+                    error_msg = result.get('error', message)
                     logger.error(f"DWG服务返回错误: {error_msg}")
                     return False, {'message': error_msg}
-            else:
-                try:
-                    error_response = response.json()
-                    error_msg = error_response.get('message', f"请求失败: HTTP {response.status_code}")
-                except:
-                    error_msg = f"请求失败: HTTP {response.status_code}, {response.text}"
                     
-                logger.error(f"DWG服务请求失败: {error_msg}")
-                return False, {'message': error_msg}
+                # 如果是成功状态，检查文件数据
+                if 'file_data' not in result:
+                    logger.error("响应中缺少文件数据")
+                    return False, {'message': "服务器响应中缺少文件数据"}
+                    
+                # 解码文件数据
+                try:
+                    file_data_str = result.get('file_data', '')
+                    logger.info(f"收到编码后的文件数据，长度: {len(file_data_str)}")
+                    
+                    if not file_data_str:
+                        logger.error("收到的文件数据为空")
+                        return False, {'message': "收到的文件数据为空"}
+                        
+                    file_data = base64.b64decode(file_data_str)
+                    logger.info(f"文件数据解码成功，大小: {len(file_data)} 字节")
+                    
+                    return True, {
+                        'message': result.get('message', '更新成功'),
+                        'filename': result.get('filename', ''),
+                        'file_data': file_data
+                    }
+                except Exception as e:
+                    logger.error(f"解码文件数据失败: {str(e)}")
+                    return False, {'message': f"解码文件数据失败: {str(e)}"}
+                
+            except ValueError:
+                # 如果不是JSON格式，尝试获取文本内容
+                logger.error(f"响应不是有效的JSON格式: {response.text[:200]}")
+                return False, {'message': f"服务器返回的数据不是有效的JSON格式: {response.text[:200]}..."}
                 
         except Exception as e:
             logger.error(f"调用DWG服务出错: {str(e)}")

@@ -869,10 +869,19 @@ def generate_dwg(request_data):
                 output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
                 os.makedirs(output_dir, exist_ok=True)
                 
-                output_filename = f"绿建设计专篇_{data[0]['项目名称']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.dwg"
+                # 生成文件名，使用项目名称和时间戳
+                from datetime import datetime
+                now = datetime.now().strftime('%Y%m%d_%H%M%S')
+                project_name = data[0]['项目名称'] if data and len(data) > 0 and '项目名称' in data[0] else 'unknown'
+                output_filename = f"绿建设计专篇_{project_name}_{now}.dwg"
                 output_path = os.path.join(output_dir, output_filename)
                 
                 try:
+                    print(f"尝试将文件保存到: {output_path}")
+                    # 确保目录存在
+                    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                    
+                    # 写入文件
                     with open(output_path, 'wb') as f:
                         f.write(file_data)
                     
