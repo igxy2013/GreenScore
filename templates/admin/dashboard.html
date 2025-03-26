@@ -14,45 +14,113 @@
         <!-- 使用Font Awesome图标库 -->
     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
 </head>
-<body class="bg-gray-100">
-    <!-- 顶部导航栏 -->
-    <nav class="bg-primary shadow-lg">
-
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between h-16">
-                <div class="flex">
-                    <div class="flex-shrink-0 flex items-center">
-                        <picture class="inline-block">
-                            <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
-                            <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
-                            <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-12 w-12 mr-3">
-                        </picture>
-                        <span class="text-white text-xl font-bold">管理后台</span>
-                    </div>
+<body class="bg-gray-100 flex">
+    <!-- 左侧导航栏 -->
+    <nav class="w-64 bg-white shadow-lg h-screen fixed left-0 flex flex-col" id="sideNav">
+        <div class="p-4 border-b border-gray-200">
+            <picture class="flex items-center justify-center">
+                <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="h-12 w-12">
+            </picture>
+        </div>
+        <div class="flex-1 overflow-y-auto py-4">
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="project-management">
+                <i class="fas fa-project-diagram w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">项目管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="user-management">
+                <i class="fas fa-users w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">用户管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="standard-management">
+                <i class="fas fa-book w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">标准管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="invite-code-management">
+                <i class="fas fa-ticket-alt w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">邀请码管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="log-management">
+                <i class="fas fa-history w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">日志管理</span>
+            </a>
+        </div>
+        <div class="p-4 border-t border-gray-200">
+            <div class="relative">
+                <div id="userInfoBtn" class="flex items-center justify-center px-4 py-2 text-gray-600 hover:text-primary transition-colors cursor-pointer">
+                    <i class="fas fa-user-circle text-primary text-xl"></i>
+                    <span class="ml-2">管理员</span>
                 </div>
-                <div class="flex items-center">
-                    <!-- 用户信息按钮 -->
-                    <div class="relative">
-                        <div id="userInfoBtn" class="flex items-center bg-white rounded-full shadow-sm px-4 py-2 border border-gray-100 w-auto cursor-pointer hover:bg-gray-50 transition-all duration-200">
-                            <i class="fas fa-user-circle text-primary text-xl"></i>
-                            <span class="ml-2 text-gray-700 font-medium">管理员</span>
-                        </div>
-                        
-                        <!-- 退出按钮，默认隐藏 -->
-                        <a href="{{ url_for('admin.admin_logout') }}" id="logoutBtn" class="hidden absolute right-0 top-full mt-2 flex items-center px-4 py-2 bg-white text-gray-700 rounded-full shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group w-auto">
-                            <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
-                            <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
-                        </a>
-                    </div>
-                </div>
+                <a href="{{ url_for('admin.admin_logout') }}" id="logoutBtn" class="hidden absolute left-1/2 -translate-x-1/2 top-full mt-2 flex items-center px-4 py-2 bg-white text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition-all duration-200 border border-gray-100 group w-auto">
+                    <i class="fas fa-sign-out-alt text-gray-400 group-hover:text-red-500 transition-colors"></i>
+                    <span class="ml-2 font-medium group-hover:text-red-500 transition-colors">退出</span>
+                </a>
             </div>
         </div>
     </nav>
 
     <!-- 主要内容区域 -->
-    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="ml-64 flex-1 p-6 transition-all duration-300" id="mainContent">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const userInfoBtn = document.getElementById('userInfoBtn');
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    const menuItems = document.querySelectorAll('.menu-item');
+                    const mainContent = document.getElementById('mainContent');
+
+                    // 用户信息按钮点击事件
+                    userInfoBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        logoutBtn.classList.toggle('hidden');
+                    });
+
+                    // 点击页面其他地方时隐藏退出按钮
+                    document.addEventListener('click', function(event) {
+                        if (!userInfoBtn.contains(event.target) && !logoutBtn.contains(event.target)) {
+                            logoutBtn.classList.add('hidden');
+                        }
+                    });
+
+                    // 菜单切换功能
+                    menuItems.forEach(item => {
+                        item.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            
+                            // 移除所有菜单项的激活状态
+                            menuItems.forEach(mi => {
+                                mi.classList.remove('bg-gray-100', 'text-primary');
+                                mi.querySelector('i').classList.add('text-gray-400');
+                            });
+                            
+                            // 添加当前菜单项的激活状态
+                            this.classList.add('bg-gray-100', 'text-primary');
+                            this.querySelector('i').classList.remove('text-gray-400');
+                            
+                            // 根据data-target属性显示对应内容
+                            const target = this.getAttribute('data-target');
+                            // 隐藏所有内容区域
+                            document.querySelectorAll('.content-section').forEach(section => {
+                                section.classList.add('hidden');
+                            });
+                            // 显示目标内容区域
+                            const targetSection = document.querySelector(`#${target}-section`);
+                            if (targetSection) {
+                                targetSection.classList.remove('hidden');
+                            }
+                        });
+                    });
+
+                    // 默认激活第一个菜单项
+                    if (menuItems.length > 0) {
+                        menuItems[0].click();
+                    }
+                });
+            </script>
+            </script>
         <!-- 用户管理卡片 -->
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
                 <h3 class="text-lg leading-6 font-medium text-gray-900">用户管理</h3>
                 <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
@@ -101,7 +169,7 @@
             </div>
         </div>
             <!-- 邀请码管理卡片 -->
-    <div class="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+    <div id="invite-code-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden mt-6">
         <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
             <h3 class="text-lg leading-6 font-medium text-gray-900">邀请码管理</h3>
             <button id="generateInviteCodeBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
@@ -452,7 +520,36 @@
         .then(data => {
             if (data.success) {
                 alert('邀请码生成成功');
-                location.reload();
+                // 创建新的表格行
+                const tbody = document.querySelector('#invite-code-management-section table tbody');
+                const tr = document.createElement('tr');
+                const now = new Date().toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${data.code}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">未使用</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">10</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${now}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="${data.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.insertBefore(tr, tbody.firstChild);
             } else {
                 alert(data.message || '生成失败');
             }
@@ -462,6 +559,7 @@
             alert('生成失败: ' + (error.message || '服务器响应格式错误'));
         });
     }
+
 
     // 删除邀请码
     function deleteInviteCode(codeId) {
