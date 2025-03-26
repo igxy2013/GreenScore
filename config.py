@@ -9,16 +9,17 @@ DEBUG = True
 DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     # 默认数据库连接配置
-    server = 'acbim.fun'
-    database = '绿色建筑'
-    username = 'test'
-    password = 'test'
+    server = os.environ.get('SQLSERVER_SERVER', 'acbim.fun')
+    database = os.environ.get('SQLSERVER_DATABASE', '绿色建筑')
+    username = os.environ.get('SQLSERVER_USERNAME', 'test')
+    password = os.environ.get('SQLSERVER_PASSWORD', '123456')
+    driver = os.environ.get('SQLSERVER_DRIVER', '{SQL Server}')
     
-    # 对密码进行URL编码
-    encoded_password = urllib.parse.quote_plus(password)
+    # 对驱动进行URL编码
+    encoded_driver = urllib.parse.quote_plus(driver)
     
     # 构建连接字符串
-    DATABASE_URL = f'mssql+pyodbc://{username}:{encoded_password}@{server}/{database}?driver=ODBC+Driver+17+for+SQL+Server'
+    DATABASE_URL = f'mssql+pyodbc://{username}:{password}@{server}/{database}?driver={encoded_driver}'
 
 SQLALCHEMY_DATABASE_URI = DATABASE_URL
 SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -29,4 +30,4 @@ PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
 
 # 上传文件配置
 UPLOAD_FOLDER = 'uploads'
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB 
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
