@@ -38,3 +38,5 @@ __pycache__/*.pyc
 static/templates/*.dwl
 __pycache__/*.pyc
 /migrations/
+.env
+/.env
