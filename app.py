@@ -1,3 +1,7 @@
+# 在文件顶部添加以下代码
+import pymysql
+pymysql.install_as_MySQLdb()
+
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash
 from flask_caching import Cache
 from flask_migrate import Migrate

@@ -37,5 +37,4 @@ __pycache__/*.pyc
 /check_tables.py
 static/templates/*.dwl
 __pycache__/*.pyc
-/.env
 /migrations/
