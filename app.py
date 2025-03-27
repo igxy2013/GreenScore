@@ -649,21 +649,13 @@ def save_project_info(form_data):
             # 如果项目名称发生变化，更新得分表中的项目名称
             if project_id and new_project_name:
                 try:
-                    conn = get_db_connection()
-                    cursor = conn.cursor()
-                    
-                    # 更新得分表中的项目名称
-                    update_query = """
-                    UPDATE [得分表]
-                    SET [项目名称] = ?
-                    WHERE [项目ID] = ?
-                    """
-                    cursor.execute(update_query, (new_project_name, project_id))
-                    conn.commit()
+                    # 使用SQLAlchemy执行更新操作
+                    result = db.session.execute(
+                        text("UPDATE `得分表` SET `项目名称` = :project_name WHERE `项目ID` = :project_id"),
+                        {"project_name": new_project_name, "project_id": project_id}
+                    )
+                    db.session.commit()
                     print(f"更新得分表中项目 {project_id} 的项目名称为: {new_project_name}")
-                    
-                    cursor.close()
-                    conn.close()
                 except Exception as e:
                     print(f"更新得分表项目名称时出错: {str(e)}")
                     print(traceback.format_exc())
@@ -835,22 +827,23 @@ def create_project():
         
         # 从星级案例表获取初始数据
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
             # 构建查询条件
-            query_conditions = ["评价标准 = ?"]
-            query_params = [standard]
+            query_conditions = []
+            query_params = {}
+            
+            # 添加评价标准条件
+            query_conditions.append("评价标准 = :standard")
+            query_params["standard"] = standard
             
             # 添加星级目标条件
             if star_rating_target:
-                query_conditions.append("星级目标 = ?")
-                query_params.append(star_rating_target)
+                query_conditions.append("星级目标 = :star_rating_target")
+                query_params["star_rating_target"] = star_rating_target
             
             # 添加建筑类型条件
             if building_type:
-                query_conditions.append("建筑类型 = ?")
-                query_params.append(building_type)
+                query_conditions.append("建筑类型 = :building_type")
+                query_params["building_type"] = building_type
             
             # 构建完整的查询语句
             query = f"""
@@ -860,8 +853,10 @@ def create_project():
             """
             
             app.logger.info(f"执行查询: {query} 参数: {query_params}")
-            cursor.execute(query, query_params)
-            case_data = cursor.fetchall()
+            
+            # 使用SQLAlchemy执行查询
+            result = db.session.execute(text(query), query_params)
+            case_data = result.fetchall()
             
             if case_data:
                 app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
@@ -869,33 +864,37 @@ def create_project():
                 for record in case_data:
                     clause_number, category, is_achieved, score, technical_measures, specialty, level = record
                     
-                    cursor.execute("""
+                    # 使用SQLAlchemy执行插入
+                    insert_query = """
                         INSERT INTO 得分表 (
                             项目ID, 项目名称, 专业, 评价等级, 条文号, 分类, 
                             是否达标, 得分, 技术措施, 评价标准
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        project.id,
-                        project_name,
-                        specialty,
-                        level,
-                        clause_number,
-                        category,
-                        is_achieved,
-                        score,
-                        technical_measures,
-                        standard
-                    ))
+                        ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category,
+                                :is_achieved, :score, :technical_measures, :standard)
+                    """
+                    
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "project_id": project.id,
+                            "project_name": project_name,
+                            "specialty": specialty,
+                            "level": level,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "standard": standard
+                        }
+                    )
                 
-                conn.commit()
+                db.session.commit()
                 app.logger.info(f"成功导入 {len(case_data)} 条星级案例数据到项目 {project.id}")
             else:
                 app.logger.warning(f"未找到匹配的星级案例数据，使用默认评分数据")
                 # 如果没有找到匹配的星级案例数据，则创建默认评分数据
                 create_default_scores(project.id, project_name, standard)
-            
-            cursor.close()
-            conn.close()
             
         except Exception as e:
             app.logger.error(f"导入星级案例数据失败: {str(e)}")
@@ -1306,14 +1305,6 @@ def save_score():
         # 记录请求信息
         app.logger.info(f"保存评分数据: 级别={level}, 专业={specialty}, 项目ID={project_id}, 项目名称={project_name}, 评价标准={standard}, 评分数量={len(scores)}")
         
-        # 连接数据库
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-        except Exception as db_error:
-            app.logger.error(f"数据库连接失败: {str(db_error)}")
-            return jsonify({'error': f'数据库连接失败: {str(db_error)}'}), 500
-        
         # 如果提供了项目ID，获取项目信息
         if project_id:
             try:
@@ -1327,35 +1318,42 @@ def save_score():
             except Exception as e:
                 app.logger.error(f"获取项目信息失败: {str(e)}")
         
-        # 开始事务
-        conn.autocommit = False
-        
         try:
+            # 开始数据库事务
             # 如果提供了项目ID，先删除该项目该专业该级别的所有评分记录
             if project_id:
                 delete_query = """
                 DELETE FROM `得分表`
-                WHERE `项目ID` = %s AND `专业` = %s AND `评价等级` = %s
+                WHERE `项目ID` = :project_id AND `专业` = :specialty AND `评价等级` = :level
                 """
-                cursor.execute(delete_query, (project_id, specialty, level))
-                app.logger.info(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                result = db.session.execute(
+                    text(delete_query), 
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
                 
                 # 同时删除project_scores表中的记录
                 delete_ps_query = """
                 DELETE FROM project_scores
-                WHERE project_id = %s AND specialty = %s AND level = %s
+                WHERE project_id = :project_id AND specialty = :specialty AND level = :level
                 """
-                cursor.execute(delete_ps_query, (project_id, specialty, level))
-                app.logger.info(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                result = db.session.execute(
+                    text(delete_ps_query), 
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
             
             # 如果提供了项目名称但没有项目ID，先删除该项目名称该专业该级别的所有评分记录
             elif project_name:
                 delete_query = """
-                DELETE FROM [得分表]
-                WHERE [项目名称] = ? AND [专业] = ? AND [评价等级] = ?
+                DELETE FROM `得分表`
+                WHERE `项目名称` = :project_name AND `专业` = :specialty AND `评价等级` = :level
                 """
-                cursor.execute(delete_query, (project_name, specialty, level))
-                app.logger.info(f"删除项目 '{project_name}' 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                result = db.session.execute(
+                    text(delete_query), 
+                    {"project_name": project_name, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除项目 '{project_name}' 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
             
             # 插入新的评分记录
             insert_count = 0
@@ -1375,16 +1373,24 @@ def save_score():
                 insert_query = """
                 INSERT INTO `得分表` (
                     `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category, 
+                         :is_achieved, :score, :technical_measures, :standard)
                 """
                 
-                cursor.execute(
-                    insert_query,
-                    (
-                        project_id, project_name, specialty, level,
-                        clause_number, category, is_achieved, score,
-                        technical_measures, standard
-                    )
+                db.session.execute(
+                    text(insert_query),
+                    {
+                        "project_id": project_id,
+                        "project_name": project_name,
+                        "specialty": specialty,
+                        "level": level,
+                        "clause_number": clause_number,
+                        "category": category,
+                        "is_achieved": is_achieved,
+                        "score": score,
+                        "technical_measures": technical_measures,
+                        "standard": standard
+                    }
                 )
                 
                 # 同时插入到project_scores表
@@ -1401,34 +1407,28 @@ def save_score():
                     insert_ps_query = """
                     INSERT INTO project_scores (
                         project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
                     """
                     
-                    cursor.execute(
-                        insert_ps_query,
-                        (
-                            project_id, level, specialty, clause_number,
-                            category, is_achieved, score_float, technical_measures
-                        )
+                    db.session.execute(
+                        text(insert_ps_query),
+                        {
+                            "project_id": project_id,
+                            "level": level,
+                            "specialty": specialty,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score_float": score_float,
+                            "technical_measures": technical_measures
+                        }
                     )
                 
                 insert_count += 1
             
-            # 提交事务并确保正确关闭连接
-            try:
-                conn.commit()
-                app.logger.info(f"成功插入 {insert_count} 条评分记录")
-            except Exception as commit_error:
-                app.logger.error(f"提交事务失败: {str(commit_error)}")
-                conn.rollback()
-                raise
-            finally:
-                try:
-                    conn.close()
-                    app.logger.info("数据库连接已关闭")
-                except Exception as close_error:
-                    app.logger.error(f"关闭数据库连接时出错: {str(close_error)}")
-                    # 不抛出异常，因为主要操作已完成
+            # 提交事务
+            db.session.commit()
+            app.logger.info(f"成功插入 {insert_count} 条评分记录")
             
             # 清除缓存
             cache_key = get_scores_cache_key(level, specialty, project_id, standard)
@@ -1443,12 +1443,9 @@ def save_score():
         
         except Exception as e:
             # 回滚事务
-            conn.rollback()
+            db.session.rollback()
             app.logger.error(f"保存评分数据失败: {str(e)}")
             app.logger.error(traceback.format_exc())
-            
-            # 关闭数据库连接
-            conn.close()
             
             return jsonify({'error': f'保存评分数据失败: {str(e)}'}), 500
     
@@ -1497,125 +1494,128 @@ def load_scores():
             app.logger.info(f"从缓存获取评分数据: {cache_key}")
             return jsonify(cached_data)
         
-        # 连接数据库
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-        except Exception as db_error:
-            app.logger.error(f"数据库连接失败: {str(db_error)}")
-            return jsonify({'error': f'数据库连接失败: {str(db_error)}'}), 500
-        
         # 构建查询条件
-        query_conditions = ["[评价等级] = ?", "[专业] = ?"]
-        query_params = [level, specialty]
+        query_conditions = []
+        query_params = {}
+        
+        # 添加必要条件
+        query_conditions.append("`评价等级` = :level")
+        query_params["level"] = level
+        
+        query_conditions.append("`专业` = :specialty")
+        query_params["specialty"] = specialty
         
         # 如果指定了项目ID，添加到查询条件
         if project_id:
-            query_conditions.append("[项目ID] = ?")
-            query_params.append(project_id)
+            query_conditions.append("`项目ID` = :project_id")
+            query_params["project_id"] = project_id
             
             # 如果项目有评价标准，添加到查询条件
             if standard:
-                query_conditions.append("[评价标准] = ?")
-                query_params.append(standard)
+                query_conditions.append("`评价标准` = :standard")
+                query_params["standard"] = standard
         # 如果指定了项目名称，添加到查询条件
         elif project_name:
-            query_conditions.append("[项目名称] = ?")
-            query_params.append(project_name)
+            query_conditions.append("`项目名称` = :project_name")
+            query_params["project_name"] = project_name
             
             # 如果项目有评价标准，添加到查询条件
             if standard:
-                query_conditions.append("[评价标准] = ?")
-                query_params.append(standard)
+                query_conditions.append("`评价标准` = :standard")
+                query_params["standard"] = standard
         # 如果没有指定项目ID和项目名称，但指定了评价标准，添加到查询条件
         elif standard:
-            query_conditions.append("[评价标准] = ?")
-            query_params.append(standard)
+            query_conditions.append("`评价标准` = :standard")
+            query_params["standard"] = standard
         
         # 构建查询语句
         query = f"""
-        SELECT [条文号], [分类], [是否达标], [得分], [技术措施]
-        FROM [得分表]
+        SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+        FROM `得分表`
         WHERE {' AND '.join(query_conditions)}
-        ORDER BY [条文号]
+        ORDER BY `条文号`
         """
         
         # 打印查询语句和参数，用于调试
         app.logger.info(f"执行查询1 (所有条件): {query}")
         app.logger.info(f"查询参数: {query_params}")
         
-        # 执行查询
-        cursor.execute(query, query_params)
-        rows = cursor.fetchall()
-        
-        # 打印查询结果的行数，用于调试
-        app.logger.info(f"查询结果1: {len(rows)} 行")
-        
-        # 如果没有结果，尝试只按项目ID查询
-        if len(rows) == 0 and project_id:
-            query_conditions = ["[项目ID] = ?"]
-            query_params = [project_id]
+        try:
+            # 执行查询
+            result = db.session.execute(text(query), query_params)
+            rows = result.fetchall()
             
-            query = f"""
-            SELECT [条文号], [分类], [是否达标], [得分], [技术措施]
-            FROM [得分表]
-            WHERE {' AND '.join(query_conditions)}
-            ORDER BY [条文号]
-            """
+            # 打印查询结果的行数，用于调试
+            app.logger.info(f"查询结果1: {len(rows)} 行")
             
-            app.logger.info(f"执行查询2 (只按项目ID): {query}")
-            app.logger.info(f"查询参数: {query_params}")
+            # 如果没有结果，尝试只按项目ID查询
+            if len(rows) == 0 and project_id:
+                query_conditions = ["`项目ID` = :project_id"]
+                query_params = {"project_id": project_id}
+                
+                query = f"""
+                SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                WHERE {' AND '.join(query_conditions)}
+                ORDER BY `条文号`
+                """
+                
+                app.logger.info(f"执行查询2 (只按项目ID): {query}")
+                app.logger.info(f"查询参数: {query_params}")
+                
+                result = db.session.execute(text(query), query_params)
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果2: {len(rows)} 行")
             
-            cursor.execute(query, query_params)
-            rows = cursor.fetchall()
+            # 如果仍然没有结果，尝试不加任何条件查询
+            if len(rows) == 0:
+                query = """
+                SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                LIMIT 10
+                """
+                
+                app.logger.info(f"执行查询3 (不加条件): {query}")
+                
+                result = db.session.execute(text(query))
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果3: {len(rows)} 行")
             
-            app.logger.info(f"查询结果2: {len(rows)} 行")
-        
-        # 如果仍然没有结果，尝试不加任何条件查询
-        if len(rows) == 0:
-            query = """
-            SELECT TOP 10 [条文号], [分类], [是否达标], [得分], [技术措施]
-            FROM [得分表]
-            """
+            # 处理查询结果
+            scores = []
+            for row in rows:
+                scores.append({
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'is_achieved': row[2],
+                    'score': row[3],
+                    'technical_measures': row[4]
+                })
             
-            app.logger.info(f"执行查询3 (不加条件): {query}")
+            # 构建响应数据
+            response_data = {
+                'success': True,
+                'scores': scores,
+                'count': len(scores),
+                'level': level,
+                'specialty': specialty,
+                'project_id': project_id,
+                'standard': standard
+            }
             
-            cursor.execute(query)
-            rows = cursor.fetchall()
+            # 缓存响应数据
+            cache.set(cache_key, response_data)
+            app.logger.info(f"缓存评分数据: {cache_key}, 记录数: {len(scores)}")
             
-            app.logger.info(f"查询结果3: {len(rows)} 行")
+            return jsonify(response_data)
         
-        # 处理查询结果
-        scores = []
-        for row in rows:
-            scores.append({
-                'clause_number': row[0],
-                'category': row[1],
-                'is_achieved': row[2],
-                'score': row[3],
-                'technical_measures': row[4]
-            })
+        except Exception as db_error:
+            app.logger.error(f"数据库查询失败: {str(db_error)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({'error': f'数据库查询失败: {str(db_error)}'}), 500
         
-        # 关闭数据库连接
-        conn.close()
-        
-        # 构建响应数据
-        response_data = {
-            'success': True,
-            'scores': scores,
-            'count': len(scores),
-            'level': level,
-            'specialty': specialty,
-            'project_id': project_id,
-            'standard': standard
-        }
-        
-        # 缓存响应数据
-        cache.set(cache_key, response_data)
-        app.logger.info(f"缓存评分数据: {cache_key}, 记录数: {len(scores)}")
-        
-        return jsonify(response_data)
-    
     except Exception as e:
         app.logger.error(f"加载评分数据失败: {str(e)}")
         traceback.print_exc()
@@ -1741,47 +1741,41 @@ def get_min_scores():
 def check_and_add_missing_columns():
     """检查并添加缺失的字段"""
     try:
-        # 获取数据库连接
-        conn = get_db_connection()
-        cursor = conn.cursor()
         logger.info("开始检查缺失的字段...")
 
         # 检查并添加项目地点字段到星级案例表
         try:
-            cursor.execute("""
-            IF NOT EXISTS (
-                SELECT * FROM sys.columns 
-                WHERE name = '项目地点' AND object_id = OBJECT_ID('星级案例')
-            )
-            BEGIN
-                ALTER TABLE 星级案例 ADD 项目地点 NVARCHAR(200)
-            END
-            """)
-            conn.commit()
+            # 使用MySQL语法检查和添加列
+            db.session.execute(text("""
+            ALTER TABLE `星级案例` 
+            ADD COLUMN IF NOT EXISTS `项目地点` VARCHAR(200)
+            """))
+            db.session.commit()
             logger.info("检查或添加星级案例表的项目地点字段成功")
         except Exception as e:
             logger.error(f"检查或添加星级案例表的项目地点字段时出错: {str(e)}")
+            db.session.rollback()
 
         # 检查并添加唯一索引，防止数据重复
         try:
-            cursor.execute("""
-            IF NOT EXISTS (
-                SELECT * FROM sys.indexes 
-                WHERE name = 'IX_星级案例_Unique' AND object_id = OBJECT_ID('星级案例')
-            )
-            BEGIN
-                CREATE UNIQUE INDEX IX_星级案例_Unique ON 星级案例(评价标准, 星级目标, 条文号, 建筑类型)
-            END
-            """)
-            conn.commit()
-            logger.info("检查或添加星级案例表的唯一索引成功")
+            # 先检查索引是否存在
+            result = db.session.execute(text("""
+            SHOW INDEX FROM `星级案例` WHERE Key_name = 'IX_星级案例_Unique'
+            """))
+            if not result.fetchone():
+                # 创建唯一索引
+                db.session.execute(text("""
+                CREATE UNIQUE INDEX `IX_星级案例_Unique` ON `星级案例`(`评价标准`, `星级目标`, `条文号`, `建筑类型`)
+                """))
+                db.session.commit()
+                logger.info("添加星级案例表的唯一索引成功")
+            else:
+                logger.info("星级案例表的唯一索引已存在")
         except Exception as e:
             logger.error(f"检查或添加星级案例表的唯一索引时出错: {str(e)}")
+            db.session.rollback()
 
         # 其他字段检查...
-        
-        cursor.close()
-        conn.close()
         
     except Exception as e:
         logger.error(f"检查和添加缺失字段时出错: {str(e)}")
@@ -1797,221 +1791,6 @@ def init_db():
     except Exception as e:
         logger.error(f"初始化数据库失败: {str(e)}")
         return False
-
-# 获取数据库连接
-def get_db_connection():
-    """获取数据库连接"""
-    retry_count = 0
-    max_retries = 3
-    retry_delay = 2  # 秒
-    
-    while retry_count < max_retries:
-        try:
-            # 获取数据库连接字符串
-            db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-            print(f"尝试连接数据库 (尝试 {retry_count + 1}/{max_retries})...")
-            
-            # 使用SQLAlchemy创建MySQL连接
-            from sqlalchemy import create_engine
-            engine = create_engine(db_uri, pool_size=10, max_overflow=5,
-                                 pool_timeout=30, pool_recycle=1800)
-            conn = engine.connect()
-            print(f"MySQL数据库连接成功: {db_uri}")
-            return conn
-            
-        except Exception as e:
-            retry_count += 1
-            print(f"获取数据库连接失败 (尝试 {retry_count}/{max_retries}): {str(e)}")
-            traceback.print_exc()
-            
-            if retry_count < max_retries:
-                print(f"将在 {retry_delay} 秒后重试...")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # 指数退避
-            else:
-                print("已达到最大重试次数，放弃连接")
-                raise
-
-# 获取评分汇总数据的函数
-def get_score_summary(project_id, force_refresh=False):
-    """获取评分汇总数据的函数"""
-    try:
-        # 获取数据库会话
-        session = db.session
-        
-        # 获取项目信息，确定评价标准
-        project = get_project(project_id)
-        project_standard = project.standard if project and project.standard else '成都市标'
-        
-        app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
-        
-        # 构建缓存键
-        cache_key = f"score_summary_{project_id}_{project_standard}"
-        
-        # 如果强制刷新或缓存中没有数据，则重新计算
-        if force_refresh or not cache.get(cache_key):
-            # 连接数据库
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # 获取得分表中的记录数
-            try:
-                cursor.execute("SELECT COUNT(*) FROM [得分表]")
-                count = cursor.fetchone()[0]
-                app.logger.info(f"得分表中共有 {count} 条记录")
-                
-                # 获取得分表中项目ID为当前项目且评价标准匹配的记录数
-                cursor.execute("SELECT COUNT(*) FROM [得分表] WHERE [项目ID] = ? AND [评价标准] = ?", [project_id, project_standard])
-                project_count = cursor.fetchone()[0]
-                app.logger.info(f"得分表中项目ID={project_id}，评价标准={project_standard}的记录有 {project_count} 条")
-                
-                # 获取所有专业的得分数据
-                specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
-                
-                # 如果是四川省标，添加环境健康与节能专业
-                if project_standard == '四川省标':
-                    specialties.append('环境健康与节能专业')
-                
-                # 专业名称映射，用于处理数据库中的专业名称与预定义专业名称的不完全匹配
-                specialty_mapping = {
-                    '建筑': '建筑专业',
-                    '结构': '结构专业',
-                    '给排水': '给排水专业',
-                    '电气': '电气专业',
-                    '暖通': '暖通专业',
-                    '景观': '景观专业',
-                    '环境健康与节能': '环境健康与节能专业',
-                    '建筑专业': '建筑专业',
-                    '结构专业': '结构专业',
-                    '给排水专业': '给排水专业',
-                    '电气专业': '电气专业',
-                    '暖通空调专业': '暖通专业',
-                    '暖通专业': '暖通专业',
-                    '景观专业': '景观专业'
-                }
-                
-                # 存储各专业得分
-                specialty_scores = {specialty: 0 for specialty in specialties}
-                # 存储各专业按分类的得分
-                specialty_scores_by_category = {}
-                
-                # 初始化各专业的分类得分
-                for specialty in specialties:
-                    specialty_scores_by_category[specialty] = {
-                        '安全耐久': 0,
-                        '健康舒适': 0,
-                        '生活便利': 0,
-                        '资源节约': 0,
-                        '环境宜居': 0,
-                        '提高与创新': 0,
-                        '总分': 0
-                    }
-                
-                # 使用参数化查询，包含评价标准的筛选条件
-                sql_query = """
-                SELECT [专业], [分类], [是否达标], [得分], [评价等级]
-                FROM [得分表]
-                WHERE [项目ID] = ? AND [评价标准] = ?
-                """
-                
-                app.logger.info(f"执行SQL查询: {sql_query} 参数: [项目ID={project_id}, 评价标准={project_standard}]")
-                
-                cursor.execute(sql_query, (project_id, project_standard))
-                rows = cursor.fetchall()
-                
-                app.logger.info(f"查询结果: {len(rows)} 行")
-                
-                # 处理查询结果
-                for row in rows:
-                    specialty = row[0]
-                    category = row[1]
-                    is_achieved = row[2]
-                    score = row[3]
-                    level = row[4]
-                    
-                    app.logger.info(f"处理记录: 专业={specialty}, 分类={category}, 是否达标={is_achieved}, 得分={score}, 级别={level}")
-                    
-                    # 映射专业名称
-                    mapped_specialty = specialty_mapping.get(specialty)
-                    if not mapped_specialty:
-                        # 如果没有精确匹配，尝试部分匹配
-                        for key, value in specialty_mapping.items():
-                            if key in specialty or specialty in key:
-                                mapped_specialty = value
-                                break
-                    
-                    # 如果仍然没有匹配，跳过
-                    if not mapped_specialty:
-                        app.logger.warning(f"未能映射专业名称: {specialty}")
-                        continue
-                    
-                    # 处理是否达标字段
-                    is_achieved_value = is_achieved.lower() if isinstance(is_achieved, str) else str(is_achieved).lower()
-                    is_achieved_flag = is_achieved_value in ['是', 'yes', 'true', '1', 'y']
-                    
-                    # 处理得分字段
-                    score_value = 0
-                    if score is not None:
-                        try:
-                            if isinstance(score, (int, float)):
-                                score_value = float(score)
-                            elif isinstance(score, str) and score.strip():
-                                score_value = float(score)
-                        except (ValueError, TypeError) as e:
-                            app.logger.error(f"得分转换失败: {score}, 错误: {str(e)}")
-                    
-                    app.logger.info(f"映射后: 专业={mapped_specialty}, 是否达标={is_achieved_flag}, 得分={score_value}")
-                    
-                    # 基本级条文必须达标才计分，提高级条文有得分就计分
-                    if (level == '基本级' and is_achieved_flag) or (level == '提高级' and score_value > 0):
-                        specialty_scores[mapped_specialty] += score_value
-                        
-                        # 按分类累加得分
-                        if category in specialty_scores_by_category[mapped_specialty]:
-                            specialty_scores_by_category[mapped_specialty][category] += score_value
-                            app.logger.info(f"累加得分: 专业={mapped_specialty}, 分类={category}, 得分={score_value}, 累计={specialty_scores_by_category[mapped_specialty][category]}")
-                
-                # 计算各专业的总分
-                for specialty in specialties:
-                    category_scores = specialty_scores_by_category[specialty]
-                    total_score = sum(score for category, score in category_scores.items() if category != '总分')
-                    category_scores['总分'] = total_score
-                    specialty_scores[specialty] = total_score  # 更新专业总分
-                    app.logger.info(f"专业总分: {specialty}={total_score}")
-                
-                # 计算总分（所有专业分数之和）
-                total_score = sum(specialty_scores.values())
-                app.logger.info(f"项目总分: {total_score}")
-                
-                # 关闭数据库连接
-                conn.close()
-                
-                # 构建汇总数据
-                summary_data = {
-                    'specialty_scores': specialty_scores,
-                    'specialty_scores_by_category': specialty_scores_by_category,
-                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'total_score': total_score,
-                    'project_standard': project_standard
-                }
-                
-                # 缓存结果
-                cache.set(cache_key, summary_data)
-                
-                return summary_data
-            except Exception as e:
-                app.logger.error(f"查询得分表失败: {str(e)}")
-                app.logger.error(traceback.format_exc())
-                conn.close()
-                return get_test_score_data()
-        else:
-            # 从缓存中获取数据
-            app.logger.info(f"从缓存中获取评分汇总数据: {cache_key}")
-            return cache.get(cache_key)
-    
-    except Exception as e:
-        app.logger.error(f"获取评分汇总数据失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
 
 @app.route('/update_score', methods=['POST'])
 def update_score():
@@ -2037,52 +1816,69 @@ def update_score():
         if not all([project_id, standard, clause_number, score is not None]):
             return jsonify({'success': False, 'message': '缺少必要的字段'}), 400
         
-        # 连接数据库
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # 检查项目是否存在
-        cursor.execute("SELECT id FROM projects WHERE id = ?", (project_id,))
-        project = cursor.fetchone()
-        
-        if not project:
-            conn.close()
-            return jsonify({'success': False, 'message': '项目不存在'}), 404
-        
-        # 检查得分记录是否已存在
-        cursor.execute(
-            "SELECT id FROM project_scores WHERE project_id = ? AND standard = ? AND clause_number = ?",
-            (project_id, standard, clause_number)
-        )
-        existing_score = cursor.fetchone()
-        
-        if existing_score:
-            # 更新现有记录
-            cursor.execute(
-                """
-                UPDATE project_scores 
-                SET score = ?, page = ?, level = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE project_id = ? AND standard = ? AND clause_number = ?
-                """,
-                (score, page, level, project_id, standard, clause_number)
+        try:
+            # 检查项目是否存在
+            result = db.session.execute(
+                text("SELECT id FROM projects WHERE id = :project_id"),
+                {"project_id": project_id}
             )
-            app.logger.info(f"更新项目 {project_id} 的得分记录，条文号: {clause_number}, 分值: {score}")
-        else:
-            # 创建新记录
-            cursor.execute(
-                """
-                INSERT INTO project_scores (project_id, standard, clause_number, score, page, level, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """,
-                (project_id, standard, clause_number, score, page, level)
+            project = result.fetchone()
+            
+            if not project:
+                return jsonify({'success': False, 'message': '项目不存在'}), 404
+            
+            # 检查得分记录是否已存在
+            result = db.session.execute(
+                text("SELECT id FROM project_scores WHERE project_id = :project_id AND standard = :standard AND clause_number = :clause_number"),
+                {"project_id": project_id, "standard": standard, "clause_number": clause_number}
             )
-            app.logger.info(f"创建项目 {project_id} 的新得分记录，条文号: {clause_number}, 分值: {score}")
+            existing_score = result.fetchone()
+            
+            if existing_score:
+                # 更新现有记录
+                db.session.execute(
+                    text("""
+                    UPDATE project_scores 
+                    SET score = :score, page = :page, level = :level, updated_at = CURRENT_TIMESTAMP
+                    WHERE project_id = :project_id AND standard = :standard AND clause_number = :clause_number
+                    """),
+                    {
+                        "score": score, 
+                        "page": page, 
+                        "level": level, 
+                        "project_id": project_id, 
+                        "standard": standard, 
+                        "clause_number": clause_number
+                    }
+                )
+                app.logger.info(f"更新项目 {project_id} 的得分记录，条文号: {clause_number}, 分值: {score}")
+            else:
+                # 创建新记录
+                db.session.execute(
+                    text("""
+                    INSERT INTO project_scores (project_id, standard, clause_number, score, page, level, created_at, updated_at)
+                    VALUES (:project_id, :standard, :clause_number, :score, :page, :level, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    """),
+                    {
+                        "project_id": project_id, 
+                        "standard": standard, 
+                        "clause_number": clause_number, 
+                        "score": score, 
+                        "page": page, 
+                        "level": level
+                    }
+                )
+                app.logger.info(f"创建项目 {project_id} 的新得分记录，条文号: {clause_number}, 分值: {score}")
+            
+            # 提交事务
+            db.session.commit()
+            
+            return jsonify({'success': True, 'message': '得分更新成功'})
         
-        # 提交事务并关闭连接
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': '得分更新成功'})
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"数据库操作失败: {str(e)}")
+            return jsonify({'success': False, 'message': f'数据库操作失败: {str(e)}'}), 500
         
     except Exception as e:
         app.logger.error(f"更新得分时出错: {str(e)}")
@@ -2124,60 +1920,62 @@ def update_score_direct():
                 'message': '缺少必要参数: project_id, clause_number, score'
             }), 400
         
-        # 连接数据库
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            app.logger.info("数据库连接成功")
-        except Exception as e:
-            app.logger.error(f"数据库连接失败: {str(e)}")
-            return jsonify({
-                'success': False,
-                'message': f'数据库连接失败: {str(e)}'
-            }), 500
-        
-        try:
-            # 开始事务
-            conn.autocommit = False
+            # 使用SQLAlchemy事务管理
+            app.logger.info("开始数据库操作")
             
             # 先检查记录是否存在
             check_query = """
-            SELECT COUNT(*) FROM [得分表]
-            WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+            SELECT COUNT(*) FROM `得分表`
+            WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
             """
-            cursor.execute(check_query, (project_id, clause_number, standard))
-            count = cursor.fetchone()[0]
+            result = db.session.execute(
+                text(check_query), 
+                {"project_id": project_id, "clause_number": clause_number, "standard": standard}
+            )
+            count = result.scalar()
             
             if count > 0:
                 # 更新现有记录，只修改得分字段
                 update_query = """
-                UPDATE [得分表]
-                SET [得分] = ?
-                WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+                UPDATE `得分表`
+                SET `得分` = :score
+                WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
                 """
-                cursor.execute(
-                    update_query,
-                    (score, project_id, clause_number, standard)
+                result = db.session.execute(
+                    text(update_query),
+                    {"score": score, "project_id": project_id, "clause_number": clause_number, "standard": standard}
                 )
-                app.logger.info(f"更新记录: 影响行数={cursor.rowcount}")
+                app.logger.info(f"更新记录: 影响行数={result.rowcount}")
             else:
                 # 插入新记录
                 insert_query = """
-                INSERT INTO [得分表] (
-                    [项目ID], [项目名称], [专业], [评价等级], [条文号], 
-                    [分类], [是否达标], [得分], [技术措施], [评价标准]
+                INSERT INTO `得分表` (
+                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
+                    `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (:project_id, :project_name, :specialty, :level, :clause_number, 
+                       :category, :is_achieved, :score, :technical_measures, :standard)
                 """
-                cursor.execute(
-                    insert_query,
-                    (project_id, f'项目{project_id}', specialty, level, clause_number,
-                     category, is_achieved, score, technical_measures, standard)
+                result = db.session.execute(
+                    text(insert_query),
+                    {
+                        "project_id": project_id, 
+                        "project_name": f'项目{project_id}', 
+                        "specialty": specialty, 
+                        "level": level, 
+                        "clause_number": clause_number,
+                        "category": category, 
+                        "is_achieved": is_achieved, 
+                        "score": score, 
+                        "technical_measures": technical_measures, 
+                        "standard": standard
+                    }
                 )
-                app.logger.info(f"插入记录: 影响行数={cursor.rowcount}")
+                app.logger.info(f"插入记录: 影响行数={result.rowcount}")
             
             # 提交事务
-            conn.commit()
+            db.session.commit()
             app.logger.info("事务提交成功")
             
             # 清除评分汇总缓存
@@ -2194,14 +1992,17 @@ def update_score_direct():
             
             # 验证更新是否成功
             verify_query = """
-            SELECT [得分] FROM [得分表]
-            WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+            SELECT `得分` FROM `得分表`
+            WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
             """
-            cursor.execute(verify_query, (project_id, clause_number, standard))
-            result = cursor.fetchone()
+            result = db.session.execute(
+                text(verify_query), 
+                {"project_id": project_id, "clause_number": clause_number, "standard": standard}
+            )
+            row = result.fetchone()
             
-            if result:
-                actual_score = result[0]
+            if row:
+                actual_score = row[0]
                 app.logger.info(f"验证成功: 条文 {clause_number} 的得分为 {actual_score}")
                 
                 # 返回成功响应
@@ -2224,19 +2025,13 @@ def update_score_direct():
         
         except Exception as e:
             # 回滚事务
-            conn.rollback()
+            db.session.rollback()
             app.logger.error(f"数据库操作失败: {str(e)}")
             app.logger.error(traceback.format_exc())
             return jsonify({
                 'success': False,
                 'message': f'数据库操作失败: {str(e)}'
             }), 500
-        
-        finally:
-            # 关闭数据库连接
-            cursor.close()
-            conn.close()
-            app.logger.info("数据库连接已关闭")
     
     except Exception as e:
         app.logger.error(f"处理请求失败: {str(e)}")
@@ -2309,27 +2104,26 @@ def get_score_by_clause():
         try:
             # 查询记录
             query = """
-            SELECT [条文号], [分类], [专业], [是否达标], [得分]
-            FROM [得分表]
-            WHERE [项目ID] = ? AND [条文号] = ? AND [评价标准] = ?
+            SELECT `条文号`, `分类`, `专业`, `是否达标`, `得分`
+            FROM `得分表`
+            WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
             """
-            cursor.execute(query, (project_id, clause_number, standard))
-            result = cursor.fetchone()
+            result = db.session.execute(
+                text(query), 
+                {"project_id": project_id, "clause_number": clause_number, "standard": standard}
+            )
+            row = result.fetchone()
             
-            # 关闭数据库连接
-            cursor.close()
-            conn.close()
-            
-            if result:
+            if row:
                 # 返回成功响应
                 return jsonify({
                     'success': True,
                     'message': '查询成功',
-                    'clause_number': result[0],
-                    'category': result[1],
-                    'specialty': result[2],
-                    'is_achieved': result[3],
-                    'score': result[4]
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'specialty': row[2],
+                    'is_achieved': row[3],
+                    'score': row[4]
                 })
             else:
                 return jsonify({
@@ -2340,13 +2134,6 @@ def get_score_by_clause():
         except Exception as e:
             app.logger.error(f"数据库查询失败: {str(e)}")
             app.logger.error(traceback.format_exc())
-            
-            # 关闭数据库连接
-            if 'cursor' in locals() and cursor:
-                cursor.close()
-            if 'conn' in locals() and conn:
-                conn.close()
-                
             return jsonify({
                 'success': False,
                 'message': f'数据库查询失败: {str(e)}'
@@ -2395,7 +2182,7 @@ def execute_sql():
         
         # 获取SQL语句和参数
         sql = data.get('sql')
-        params = data.get('params', [])
+        params = data.get('params', {})
         
         if not sql:
             return jsonify({
@@ -2425,42 +2212,24 @@ def execute_sql():
                     'message': f'禁止执行危险操作: {op}'
                 }), 403
         
-        # 连接数据库
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            app.logger.info("数据库连接成功")
-        except Exception as e:
-            app.logger.error(f"数据库连接失败: {str(e)}")
-            return jsonify({
-                'success': False,
-                'message': f'数据库连接失败: {str(e)}'
-            }), 500
-        
-        try:
-            # 开始事务
-            conn.autocommit = False
-            
-            # 执行SQL语句
-            if params:
-                cursor.execute(sql, params)
-            else:
-                cursor.execute(sql)
+            # 使用SQLAlchemy执行SQL语句
+            result = db.session.execute(text(sql), params)
             
             # 如果是SELECT语句，获取结果
             results = []
             if sql_lower.startswith('select'):
-                columns = [column[0] for column in cursor.description]
-                for row in cursor.fetchall():
-                    results.append(dict(zip(columns, row)))
+                # 获取结果集的列名
+                column_names = result.keys()
+                # 处理返回的结果集
+                for row in result.fetchall():
+                    results.append(dict(zip(column_names, row)))
             
-            # 提交事务
-            conn.commit()
-            app.logger.info("SQL执行成功，事务已提交")
+            # 如果不是SELECT语句，则提交事务
+            if not sql_lower.startswith('select'):
+                db.session.commit()
             
-            # 关闭数据库连接
-            cursor.close()
-            conn.close()
+            app.logger.info("SQL执行成功")
             
             # 返回成功响应
             return jsonify({
@@ -2471,13 +2240,9 @@ def execute_sql():
         
         except Exception as e:
             # 回滚事务
-            conn.rollback()
+            db.session.rollback()
             app.logger.error(f"SQL执行失败: {str(e)}")
             app.logger.error(traceback.format_exc())
-            
-            # 关闭数据库连接
-            cursor.close()
-            conn.close()
             
             return jsonify({
                 'success': False,
@@ -2503,35 +2268,32 @@ def check_project_scores():
         if not project_id:
             return jsonify({'error': '缺少必要参数: project_id'}), 400
         
-        # 连接数据库
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
+        # 使用SQLAlchemy查询项目得分数据
         # 查询项目得分数据
         query = """
         SELECT COUNT(*) AS count
-        FROM [得分表]
-        WHERE [项目ID] = ?
+        FROM `得分表`
+        WHERE `项目ID` = :project_id
         """
         
-        cursor.execute(query, (project_id,))
-        result = cursor.fetchone()
+        result = db.session.execute(text(query), {"project_id": project_id})
+        row = result.fetchone()
         
         # 获取得分记录数
-        score_count = result[0] if result else 0
+        score_count = row[0] if row else 0
         
         # 如果有得分记录，返回一些示例得分数据
         scores = []
         if score_count > 0:
             sample_query = """
-            SELECT TOP 5 [条文号], [分类], [是否达标], [得分], [技术措施], [专业], [评价等级]
-            FROM [得分表]
-            WHERE [项目ID] = ?
+            SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `专业`, `评价等级`
+            FROM `得分表`
+            WHERE `项目ID` = :project_id
+            LIMIT 5
             """
-            cursor.execute(sample_query, (project_id,))
-            rows = cursor.fetchall()
             
-            for row in rows:
+            result = db.session.execute(text(sample_query), {"project_id": project_id})
+            for row in result.fetchall():
                 scores.append({
                     'clause_number': row[0],
                     'category': row[1],
@@ -2542,21 +2304,18 @@ def check_project_scores():
                     'level': row[6]
                 })
         
-        # 关闭数据库连接
-        conn.close()
-        
+        # 返回结果
         return jsonify({
             'success': True,
-            'project_id': project_id,
-            'standard': standard,
             'has_scores': score_count > 0,
             'score_count': score_count,
-            'scores': scores
+            'sample_scores': scores
         })
-        
+    
     except Exception as e:
         app.logger.error(f"检查项目得分数据时出错: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
 
 def save_score_for_new_project(data):
     """为新创建的项目保存初始评分数据"""
@@ -2619,20 +2378,13 @@ def save_score_for_new_project(data):
                 traceback.print_exc()
                 return False
         
-        # 连接数据库
+        # 使用SQLAlchemy进行数据库操作
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            print("数据库连接成功")
-        except Exception as db_error:
-            print(f"数据库连接失败: {str(db_error)}")
-            traceback.print_exc()
-            return False
-        
-        # 检查得分表是否存在
-        try:
-            cursor.execute("SHOW TABLES LIKE '得分表'")
-            if not cursor.fetchone():
+            print("开始数据库操作")
+            
+            # 检查得分表是否存在
+            result = db.session.execute(text("SHOW TABLES LIKE '得分表'"))
+            if not result.fetchone():
                 print("得分表不存在，尝试创建")
                 # 尝试创建得分表
                 create_table_query = """
@@ -2650,19 +2402,13 @@ def save_score_for_new_project(data):
                     `评价标准` VARCHAR(50)
                 )
                 """
-                cursor.execute(create_table_query)
-                conn.commit()
+                db.session.execute(text(create_table_query))
+                db.session.commit()
                 print("得分表创建成功")
-        except Exception as e:
-            print(f"检查或创建得分表失败: {str(e)}")
-            traceback.print_exc()
-            conn.close()
-            return False
-        
-        # 检查project_scores表是否存在
-        try:
-            cursor.execute("SHOW TABLES LIKE 'project_scores'")
-            if not cursor.fetchone():
+            
+            # 检查project_scores表是否存在
+            result = db.session.execute(text("SHOW TABLES LIKE 'project_scores'"))
+            if not result.fetchone():
                 print("project_scores表不存在，尝试创建")
                 # 尝试创建project_scores表
                 create_table_query = """
@@ -2680,8 +2426,8 @@ def save_score_for_new_project(data):
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
                 """
-                cursor.execute(create_table_query)
-                conn.commit()
+                db.session.execute(text(create_table_query))
+                db.session.commit()
                 print("project_scores表创建成功")
                 
                 # 创建索引
@@ -3677,7 +3423,7 @@ def update_database_structure():
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = 'projects'
             AND COLUMN_NAME = 'user_id'
-        """))
+                """))
         
         if result.scalar() == 0:
             # 添加 user_id 列
@@ -3832,7 +3578,7 @@ def delete_project_api(project_id):
         
         # 删除项目
         db.session.delete(project)
-        db.session.commit()
+                db.session.commit()
         
         return jsonify({
             'success': True,
@@ -4142,6 +3888,185 @@ def validate_invite_code():
             'valid': False,
             'message': '验证失败，请稍后重试'
         }), 500
+
+# 获取评分汇总数据的函数
+def get_score_summary(project_id, force_refresh=False):
+    """获取评分汇总数据的函数"""
+    try:
+        # 获取数据库会话
+        session = db.session
+        
+        # 获取项目信息，确定评价标准
+        project = get_project(project_id)
+        project_standard = project.standard if project and project.standard else '成都市标'
+        
+        app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
+        
+        # 构建缓存键
+        cache_key = f"score_summary_{project_id}_{project_standard}"
+        
+        # 如果强制刷新或缓存中没有数据，则重新计算
+        if force_refresh or not cache.get(cache_key):
+            # 获取得分表中的记录数
+            try:
+                result = db.session.execute(text("SELECT COUNT(*) FROM `得分表`"))
+                count = result.scalar()
+                app.logger.info(f"得分表中共有 {count} 条记录")
+                
+                # 获取得分表中项目ID为当前项目且评价标准匹配的记录数
+                result = db.session.execute(
+                    text("SELECT COUNT(*) FROM `得分表` WHERE `项目ID` = :project_id AND `评价标准` = :standard"),
+                    {"project_id": project_id, "standard": project_standard}
+                )
+                project_count = result.scalar()
+                app.logger.info(f"得分表中项目ID={project_id}，评价标准={project_standard}的记录有 {project_count} 条")
+                
+                # 获取所有专业的得分数据
+                specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
+                
+                # 如果是四川省标，添加环境健康与节能专业
+                if project_standard == '四川省标':
+                    specialties.append('环境健康与节能专业')
+                
+                # 专业名称映射，用于处理数据库中的专业名称与预定义专业名称的不完全匹配
+                specialty_mapping = {
+                    '建筑': '建筑专业',
+                    '结构': '结构专业',
+                    '给排水': '给排水专业',
+                    '电气': '电气专业',
+                    '暖通': '暖通专业',
+                    '景观': '景观专业',
+                    '环境健康与节能': '环境健康与节能专业',
+                    '建筑专业': '建筑专业',
+                    '结构专业': '结构专业',
+                    '给排水专业': '给排水专业',
+                    '电气专业': '电气专业',
+                    '暖通空调专业': '暖通专业',
+                    '暖通专业': '暖通专业',
+                    '景观专业': '景观专业'
+                }
+                
+                # 存储各专业得分
+                specialty_scores = {specialty: 0 for specialty in specialties}
+                # 存储各专业按分类的得分
+                specialty_scores_by_category = {}
+                
+                # 初始化各专业的分类得分
+                for specialty in specialties:
+                    specialty_scores_by_category[specialty] = {
+                        '安全耐久': 0,
+                        '健康舒适': 0,
+                        '生活便利': 0,
+                        '资源节约': 0,
+                        '环境宜居': 0,
+                        '提高与创新': 0,
+                        '总分': 0
+                    }
+                
+                # 使用参数化查询，包含评价标准的筛选条件
+                sql_query = """
+                SELECT `专业`, `分类`, `是否达标`, `得分`, `评价等级`
+                FROM `得分表`
+                WHERE `项目ID` = :project_id AND `评价标准` = :standard
+                """
+                
+                app.logger.info(f"执行SQL查询: {sql_query} 参数: [项目ID={project_id}, 评价标准={project_standard}]")
+                
+                result = db.session.execute(
+                    text(sql_query), 
+                    {"project_id": project_id, "standard": project_standard}
+                )
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果: {len(rows)} 行")
+                
+                # 处理查询结果
+                for row in rows:
+                    specialty = row[0]
+                    category = row[1]
+                    is_achieved = row[2]
+                    score = row[3]
+                    level = row[4]
+                    
+                    app.logger.info(f"处理记录: 专业={specialty}, 分类={category}, 是否达标={is_achieved}, 得分={score}, 级别={level}")
+                    
+                    # 映射专业名称
+                    mapped_specialty = specialty_mapping.get(specialty)
+                    if not mapped_specialty:
+                        # 如果没有精确匹配，尝试部分匹配
+                        for key, value in specialty_mapping.items():
+                            if key in specialty or specialty in key:
+                                mapped_specialty = value
+                                break
+                    
+                    # 如果仍然没有匹配，跳过
+                    if not mapped_specialty:
+                        app.logger.warning(f"未能映射专业名称: {specialty}")
+                        continue
+                    
+                    # 处理是否达标字段
+                    is_achieved_value = is_achieved.lower() if isinstance(is_achieved, str) else str(is_achieved).lower()
+                    is_achieved_flag = is_achieved_value in ['是', 'yes', 'true', '1', 'y']
+                    
+                    # 处理得分字段
+                    score_value = 0
+                    if score is not None:
+                        try:
+                            if isinstance(score, (int, float)):
+                                score_value = float(score)
+                            elif isinstance(score, str) and score.strip():
+                                score_value = float(score)
+                        except (ValueError, TypeError) as e:
+                            app.logger.error(f"得分转换失败: {score}, 错误: {str(e)}")
+                    
+                    app.logger.info(f"映射后: 专业={mapped_specialty}, 是否达标={is_achieved_flag}, 得分={score_value}")
+                    
+                    # 基本级条文必须达标才计分，提高级条文有得分就计分
+                    if (level == '基本级' and is_achieved_flag) or (level == '提高级' and score_value > 0):
+                        specialty_scores[mapped_specialty] += score_value
+                        
+                        # 按分类累加得分
+                        if category in specialty_scores_by_category[mapped_specialty]:
+                            specialty_scores_by_category[mapped_specialty][category] += score_value
+                            app.logger.info(f"累加得分: 专业={mapped_specialty}, 分类={category}, 得分={score_value}, 累计={specialty_scores_by_category[mapped_specialty][category]}")
+                
+                # 计算各专业的总分
+                for specialty in specialties:
+                    category_scores = specialty_scores_by_category[specialty]
+                    total_score = sum(score for category, score in category_scores.items() if category != '总分')
+                    category_scores['总分'] = total_score
+                    specialty_scores[specialty] = total_score  # 更新专业总分
+                    app.logger.info(f"专业总分: {specialty}={total_score}")
+                
+                # 计算总分（所有专业分数之和）
+                total_score = sum(specialty_scores.values())
+                app.logger.info(f"项目总分: {total_score}")
+                
+                # 构建汇总数据
+                summary_data = {
+                    'specialty_scores': specialty_scores,
+                    'specialty_scores_by_category': specialty_scores_by_category,
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'total_score': total_score,
+                    'project_standard': project_standard
+                }
+                
+                # 缓存结果
+                cache.set(cache_key, summary_data)
+                
+                return summary_data
+            except Exception as e:
+                app.logger.error(f"查询得分表失败: {str(e)}")
+                app.logger.error(traceback.format_exc())
+                return get_test_score_data()
+        else:
+            # 从缓存中获取数据
+            app.logger.info(f"从缓存中获取评分汇总数据: {cache_key}")
+            return cache.get(cache_key)
+    
+    except Exception as e:
+        app.logger.error(f"获取评分汇总数据失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
 
 if __name__ == '__main__':
     # 初始化数据库
