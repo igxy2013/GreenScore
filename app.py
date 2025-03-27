@@ -27,7 +27,6 @@ import urllib.parse
 import traceback
 import time
 import sqlite3
-import pyodbc
 from sqlalchemy import text
 import json
 from datetime import datetime, timedelta
