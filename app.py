@@ -1,6 +1,21 @@
 # 在文件顶部添加以下代码
+import platform
+import os
+
+# 检查是否在WSL环境中
+IS_WSL = 'WSL' in platform.uname().release or \
+         (os.path.exists('/proc/version') and 'microsoft' in open('/proc/version').read().lower())
+
+# 根据环境导入相应的模块
 import pymysql
 pymysql.install_as_MySQLdb()
+
+if not IS_WSL:
+    try:
+        import pyodbc
+    except ImportError:
+        print("警告: pyodbc模块未安装，某些功能可能不可用")
+        print("请运行 'pip install pyodbc' 安装所需模块")
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash
 from flask_caching import Cache
@@ -4042,6 +4057,66 @@ def get_score_summary(project_id, force_refresh=False):
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
         app.logger.error(traceback.format_exc())
+
+# 数据库连接配置
+def get_db_connection():
+    try:
+        # 解析数据库连接字符串
+        db_url = os.getenv('DATABASE_URL')
+        if not db_url:
+            print("数据库连接字符串未配置")
+            raise ValueError("数据库连接字符串未配置")
+
+        if IS_WSL:
+            # WSL环境下使用MySQL连接
+            # 使用正则表达式解析连接字符串
+            import re
+            pattern = r'mysql\+pymysql://([^:]+):([^@]+)@([^/]+)/([^?]+)'
+            match = re.match(pattern, db_url)
+            if not match:
+                print("数据库连接字符串格式错误")
+                raise ValueError("数据库连接字符串格式错误")
+
+            username, password, server, database = match.groups()
+            
+            try:
+                conn = pymysql.connect(
+                    host=server,
+                    user=username,
+                    password=password,
+                    database=database,
+                    charset='utf8mb4'
+                )
+                current_app.logger.info("MySQL数据库连接成功")
+                return conn
+            except Exception as e:
+                current_app.logger.error(f"MySQL数据库连接失败: {str(e)}")
+                raise
+        else:
+            # Windows环境下使用SQL Server连接
+            # 使用正则表达式解析连接字符串
+            import re
+            pattern = r'mssql\+pyodbc://([^:]+):([^@]+)@([^/]+)/([^?]+)'
+            match = re.match(pattern, db_url)
+            if not match:
+                print("数据库连接字符串格式错误")
+                raise ValueError("数据库连接字符串格式错误")
+
+            username, password, server, database = match.groups()
+
+            # 构建连接字符串，添加超时和TLS配置
+            conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes"
+            # 尝试建立连接
+            try:
+                conn = pyodbc.connect(conn_str)
+                current_app.logger.info("SQL Server数据库连接成功")
+                return conn
+            except Exception as e:
+                current_app.logger.error(f"SQL Server数据库连接失败: {str(e)}")
+                raise
+    except Exception as e:
+        current_app.logger.error(f"创建数据库连接时出错: {str(e)}")
+        raise
 
 if __name__ == '__main__':
     # 初始化数据库

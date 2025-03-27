@@ -1,3 +1,28 @@
+# WSL中安装python
+
+sudo apt update && sudo apt install python-is-python3 -y
+
+# WSL中安装mysql-server
+
+
+更新系统包列表
+首先确保你的 Ubuntu 系统是最新的：
+
+sudo apt update && sudo apt upgrade -y
+2. 安装 MySQL Server
+运行以下命令安装 MySQL Server：
+
+sudo apt install mysql-server -y
+3. 启动 MySQL 服务
+安装完成后，MySQL 服务会自动启动。你可以手动检查状态：
+
+sudo service mysql status
+如果未运行，手动启动：
+
+sudo service mysql start
+
+
+
 # WSL 启动步骤
 
 打开 PowerShell:
@@ -57,7 +82,6 @@ python3 -m pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/si
    ```bash
    python start.py
    ```
-
 2. 再启动 Nginx
 
    ```bash
@@ -79,4 +103,4 @@ hostname -I
 ```powershell
 $wslIp = (wsl -e hostname -I).Trim()
 netsh interface portproxy add v4tov4 listenport=5050 listenaddress=0.0.0.0 connectport=5050 connectaddress=$wslIp
-``` 
+```
