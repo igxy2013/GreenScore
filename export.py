@@ -8,6 +8,7 @@ import json
 import traceback
 import platform
 from dwg_client import dwg_client
+from sqlalchemy import text
 
 # 检查运行环境
 IS_WINDOWS = platform.system() == 'Windows'
@@ -68,8 +69,6 @@ def generate_word(request_data):
     返回:
     - tuple: (response, status_code)
     """
-    cursor = None
-    conn = None
     try:
         # 从请求参数中获取项目ID
         project_id = request_data.get('project_id')
@@ -112,31 +111,32 @@ def generate_word(request_data):
         # 如果缓存不存在或无效，从数据库获取数据
         if not data:
             print("从数据库获取数据...")
-            conn = get_db_connection()
-            cursor = conn.cursor()
             
             # 获取项目基本信息
             print(f"获取项目 {project_id} 的基本信息")
-            cursor.execute("""
-                SELECT p.id, p.user_id, p.name, p.code, p.construction_unit, p.design_unit, p.location, 
-                       p.building_area, p.standard, p.building_type, p.created_at, p.climate_zone, 
-                       p.star_rating_target, p.total_land_area, p.total_building_area, p.above_ground_area, 
-                       p.underground_area, p.building_height, p.building_floors, p.underground_floor_area, 
-                       p.ground_parking_spaces, p.plot_ratio, p.building_base_area, p.building_density, 
-                       p.green_area, p.green_ratio, p.residential_units, p.air_conditioning_type,
-                       p.average_floors, p.has_garbage_room, p.has_elevator, p.has_underground_garage,
-                       p.construction_type, p.has_water_landscape, p.is_fully_decorated, p.public_building_type,
-                       p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
-                       p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
-                       p.env_health_energy_innovation_score, p.architecture_innovation_score, 
-                       p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
-                       p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
-                       p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
-                       p.total_score, p.evaluation_result
-                FROM projects p
-                WHERE p.id = ?
-            """, [project_id])
-            project_rows = cursor.fetchall()
+            result = db.session.execute(
+                text("""
+                    SELECT p.id, p.user_id, p.name, p.code, p.construction_unit, p.design_unit, p.location, 
+                           p.building_area, p.standard, p.building_type, p.created_at, p.climate_zone, 
+                           p.star_rating_target, p.total_land_area, p.total_building_area, p.above_ground_area, 
+                           p.underground_area, p.building_height, p.building_floors, p.underground_floor_area, 
+                           p.ground_parking_spaces, p.plot_ratio, p.building_base_area, p.building_density, 
+                           p.green_area, p.green_ratio, p.residential_units, p.air_conditioning_type,
+                           p.average_floors, p.has_garbage_room, p.has_elevator, p.has_underground_garage,
+                           p.construction_type, p.has_water_landscape, p.is_fully_decorated, p.public_building_type,
+                           p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
+                           p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
+                           p.env_health_energy_innovation_score, p.architecture_innovation_score, 
+                           p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
+                           p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
+                           p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
+                           p.total_score, p.evaluation_result
+                    FROM projects p
+                    WHERE p.id = :project_id
+                """),
+                {"project_id": project_id}
+            )
+            project_rows = result.fetchall()
 
             if not project_rows:
                 print(f"未找到项目数据: ID={project_id}")
@@ -206,27 +206,19 @@ def generate_word(request_data):
                 "项目总分": str(project_rows[0][55] or '0'),
                 "评定结果": project_rows[0][56] or ''
             })
-            
-            # 打印数据对象，用于调试
-            print("数据对象内容:")
-            print("数据对象中的所有字段名:")
-            for key in data[0].keys():
-                print(f"  {key}")
-            print("数据对象中的所有字段值:")
-            for key, value in data[0].items():
-                print(f"  {key}: {value}")
-            print("数据对象中的总建筑面积字段值:", data[0].get("总建筑面积", "未找到"))
-            print("数据对象中的建筑面积字段值:", data[0].get("建筑面积", "未找到"))
 
             # 获取得分数据
             print(f"获取项目 {project_id} 的得分数据")
-            cursor.execute("""
-                SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
-                FROM 得分表 
-                WHERE 项目ID = ?
-                ORDER BY 条文号
-            """, [project_id])
-            score_rows = cursor.fetchall()
+            result = db.session.execute(
+                text("""
+                    SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
+                    FROM 得分表 
+                    WHERE 项目ID = :project_id
+                    ORDER BY 条文号
+                """),
+                {"project_id": project_id}
+            )
+            score_rows = result.fetchall()
             
             print(f"获取到 {len(score_rows)} 条得分数据")
 
@@ -284,13 +276,6 @@ def generate_word(request_data):
         print(f"生成Word文档失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
         return jsonify({"error": f"生成Word文档失败: {str(e)}"}), 500
-        
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-        print("数据库连接已关闭")
 
 def save_project_info(project_data):
     """
@@ -302,8 +287,6 @@ def save_project_info(project_data):
     返回:
     - tuple: (response, status_code)
     """
-    cursor = None
-    conn = None
     try:
         project_id = project_data.get('project_id')
         if not project_id:
@@ -319,56 +302,61 @@ def save_project_info(project_data):
             except Exception as e:
                 print(f"清除旧缓存失败: {str(e)}")
 
-        # 保存到数据库
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
         # 更新项目信息
-        cursor.execute("""
-            UPDATE projects 
-            SET name = ?, 
-                design_unit = ?,
-                construction_unit = ?,
-                total_building_area = ?,
-                building_type = ?,
-                location = ?,
-                climate_zone = ?,
-                star_rating_target = ?
-            WHERE id = ?
-        """, [
-            project_data.get('project_name', ''),
-            project_data.get('design_unit', ''),
-            project_data.get('construction_unit', ''),
-            project_data.get('total_building_area', ''),
-            project_data.get('building_type', ''),
-            project_data.get('location', ''),
-            project_data.get('climate_zone', ''),
-            project_data.get('star_rating_target', ''),
-            project_id
-        ])
+        result = db.session.execute(
+            text("""
+                UPDATE projects 
+                SET name = :project_name, 
+                    design_unit = :design_unit,
+                    construction_unit = :construction_unit,
+                    total_building_area = :total_building_area,
+                    building_type = :building_type,
+                    location = :location,
+                    climate_zone = :climate_zone,
+                    star_rating_target = :star_rating_target
+                WHERE id = :project_id
+            """),
+            {
+                "project_name": project_data.get('project_name', ''),
+                "design_unit": project_data.get('design_unit', ''),
+                "construction_unit": project_data.get('construction_unit', ''),
+                "total_building_area": project_data.get('total_building_area', ''),
+                "building_type": project_data.get('building_type', ''),
+                "location": project_data.get('location', ''),
+                "climate_zone": project_data.get('climate_zone', ''),
+                "star_rating_target": project_data.get('star_rating_target', ''),
+                "project_id": project_id
+            }
+        )
         
-        conn.commit()
+        db.session.commit()
         print("项目信息已保存到数据库")
         
         # 创建新的缓存
         try:
             # 获取最新的项目信息
-            cursor.execute("""
-                SELECT name, design_unit, construction_unit, total_building_area
-                FROM projects 
-                WHERE id = ?
-            """, [project_id])
-            project_rows = cursor.fetchall()
+            result = db.session.execute(
+                text("""
+                    SELECT name, design_unit, construction_unit, total_building_area
+                    FROM projects 
+                    WHERE id = :project_id
+                """),
+                {"project_id": project_id}
+            )
+            project_rows = result.fetchall()
             
             if project_rows:
                 # 获取得分数据
-                cursor.execute("""
-                    SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
-                    FROM 得分表 
-                    WHERE 项目ID = ?
-                    ORDER BY 条文号
-                """, [project_id])
-                score_rows = cursor.fetchall()
+                result = db.session.execute(
+                    text("""
+                        SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
+                        FROM 得分表 
+                        WHERE 项目ID = :project_id
+                        ORDER BY 条文号
+                    """),
+                    {"project_id": project_id}
+                )
+                score_rows = result.fetchall()
                 
                 # 准备数据
                 data = []
@@ -460,96 +448,84 @@ def save_project_info(project_data):
         print(f"保存项目信息失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
         return jsonify({"error": f"保存项目信息失败: {str(e)}"}), 500
-        
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-        print("数据库连接已关闭")
 
 def generate_dwg(request_data):
     """
     生成绿色建筑设计专篇DWG文件
     """
-    cursor = None
-    conn = None
     try:
         project_id = request_data.get('project_id')
         if not project_id:
             print("未提供项目ID")
             return jsonify({"error": "未提供项目ID"}), 400
 
-        # 获取数据库连接
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
         # 获取项目信息和评分数据
-        query = """
-            SELECT 
-                p.id,
-                p.user_id,
-                p.name,
-                p.code,
-                p.construction_unit,
-                p.design_unit,
-                p.location,
-                p.building_area,
-                p.standard,
-                p.building_type,
-                p.created_at,
-                p.climate_zone,
-                p.star_rating_target,
-                p.total_land_area,
-                p.total_building_area,
-                p.above_ground_area,
-                p.underground_area,
-                p.building_height,
-                p.building_floors,
-                p.underground_floor_area,
-                p.ground_parking_spaces,
-                p.plot_ratio,
-                p.building_base_area,
-                p.building_density,
-                p.green_area,
-                p.green_ratio,
-                p.residential_units,
-                p.air_conditioning_type,
-                p.average_floors,
-                p.has_garbage_room,
-                p.has_elevator,
-                p.has_underground_garage,
-                p.construction_type,
-                p.has_water_landscape,
-                p.is_fully_decorated,
-                p.public_building_type,
-                p.public_green_space,
-                p.architecture_score,
-                p.structure_score,
-                p.water_supply_score,
-                p.electrical_score,
-                p.hvac_score,
-                p.landscape_score,
-                p.env_health_energy_score,
-                p.env_health_energy_innovation_score,
-                p.architecture_innovation_score,
-                p.structure_innovation_score,
-                p.hvac_innovation_score,
-                p.landscape_innovation_score,
-                p.safety_durability_score,
-                p.health_comfort_score,
-                p.life_convenience_score,
-                p.resource_saving_score,
-                p.environment_livability_score,
-                p.improvement_innovation_score,
-                p.total_score,
-                p.evaluation_result
-            FROM projects p
-            WHERE p.id = ?
-        """
-        
-        cursor.execute(query, (project_id,))
-        project_rows = cursor.fetchall()
+        result = db.session.execute(
+            text("""
+                SELECT 
+                    p.id,
+                    p.user_id,
+                    p.name,
+                    p.code,
+                    p.construction_unit,
+                    p.design_unit,
+                    p.location,
+                    p.building_area,
+                    p.standard,
+                    p.building_type,
+                    p.created_at,
+                    p.climate_zone,
+                    p.star_rating_target,
+                    p.total_land_area,
+                    p.total_building_area,
+                    p.above_ground_area,
+                    p.underground_area,
+                    p.building_height,
+                    p.building_floors,
+                    p.underground_floor_area,
+                    p.ground_parking_spaces,
+                    p.plot_ratio,
+                    p.building_base_area,
+                    p.building_density,
+                    p.green_area,
+                    p.green_ratio,
+                    p.residential_units,
+                    p.air_conditioning_type,
+                    p.average_floors,
+                    p.has_garbage_room,
+                    p.has_elevator,
+                    p.has_underground_garage,
+                    p.construction_type,
+                    p.has_water_landscape,
+                    p.is_fully_decorated,
+                    p.public_building_type,
+                    p.public_green_space,
+                    p.architecture_score,
+                    p.structure_score,
+                    p.water_supply_score,
+                    p.electrical_score,
+                    p.hvac_score,
+                    p.landscape_score,
+                    p.env_health_energy_score,
+                    p.env_health_energy_innovation_score,
+                    p.architecture_innovation_score,
+                    p.structure_innovation_score,
+                    p.hvac_innovation_score,
+                    p.landscape_innovation_score,
+                    p.safety_durability_score,
+                    p.health_comfort_score,
+                    p.life_convenience_score,
+                    p.resource_saving_score,
+                    p.environment_livability_score,
+                    p.improvement_innovation_score,
+                    p.total_score,
+                    p.evaluation_result
+                FROM projects p
+                WHERE p.id = :project_id
+            """),
+            {"project_id": project_id}
+        )
+        project_rows = result.fetchall()
 
         if not project_rows:
             print(f"未找到项目数据: ID={project_id}")
@@ -591,22 +567,31 @@ def generate_dwg(request_data):
         print(f"同步项目 {project_id} 的得分表和project_scores表数据")
         try:
             # 检查得分表中是否有该项目的数据
-            cursor.execute("SELECT COUNT(*) FROM [得分表] WHERE [项目ID] = ?", (project_id,))
-            score_count = cursor.fetchone()[0]
+            result = db.session.execute(
+                text("SELECT COUNT(*) FROM 得分表 WHERE 项目ID = :project_id"),
+                {"project_id": project_id}
+            )
+            score_count = result.scalar()
             print(f"得分表中项目ID={project_id}的记录有 {score_count} 条")
             
             # 清空project_scores表中该项目的数据
-            cursor.execute("DELETE FROM project_scores WHERE project_id = ?", (project_id,))
-            deleted_count = cursor.rowcount
+            result = db.session.execute(
+                text("DELETE FROM project_scores WHERE project_id = :project_id"),
+                {"project_id": project_id}
+            )
+            deleted_count = result.rowcount
             print(f"从project_scores表中删除项目ID={project_id}的 {deleted_count} 条记录")
             
             # 从得分表导入数据到project_scores表
-            cursor.execute("""
-                SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
-                FROM [得分表]
-                WHERE [项目ID] = ?
-            """, (project_id,))
-            scores = cursor.fetchall()
+            result = db.session.execute(
+                text("""
+                    SELECT 项目ID, 评价等级, 专业, 条文号, 分类, 是否达标, 得分, 技术措施
+                    FROM 得分表
+                    WHERE 项目ID = :project_id
+                """),
+                {"project_id": project_id}
+            )
+            scores = result.fetchall()
             
             # 导入数据到project_scores表
             imported_count = 0
@@ -623,14 +608,26 @@ def generate_dwg(request_data):
                     score_float = 0
                 
                 # 插入数据
-                cursor.execute("""
-                    INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (project_id, level, specialty, clause_number, category, is_achieved, score_float, technical_measures))
+                db.session.execute(
+                    text("""
+                        INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
+                        VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
+                    """),
+                    {
+                        "project_id": project_id,
+                        "level": level,
+                        "specialty": specialty,
+                        "clause_number": clause_number,
+                        "category": category,
+                        "is_achieved": is_achieved,
+                        "score_float": score_float,
+                        "technical_measures": technical_measures
+                    }
+                )
                 imported_count += 1
             
             # 提交事务
-            conn.commit()
+            db.session.commit()
             print(f"成功从得分表导入 {imported_count} 条记录到project_scores表")
         except Exception as e:
             print(f"同步得分表和project_scores表数据时出错: {str(e)}")
@@ -661,13 +658,16 @@ def generate_dwg(request_data):
         if not data:
             # 获取得分数据
             print(f"获取项目 {project_id} 的得分数据")
-            cursor.execute("""
-                SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
-                FROM 得分表 
-                WHERE 项目ID = ?
-                ORDER BY 条文号
-            """, [project_id])
-            score_rows = cursor.fetchall()
+            result = db.session.execute(
+                text("""
+                    SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
+                    FROM 得分表 
+                    WHERE 项目ID = :project_id
+                    ORDER BY 条文号
+                """),
+                {"project_id": project_id}
+            )
+            score_rows = result.fetchall()
             
             print(f"获取到 {len(score_rows)} 条得分数据")
 
@@ -938,10 +938,3 @@ def generate_dwg(request_data):
         print(f"生成CAD文件失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
         return jsonify({"error": f"生成失败: {str(e)}"}), 500
-        
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
-        print("数据库连接已关闭")

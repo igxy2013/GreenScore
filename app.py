@@ -194,7 +194,7 @@ def sync_score_tables(project_id):
                     score FLOAT NULL,
                     technical_measures TEXT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
                 )
             """))
             session.commit()
@@ -219,9 +219,9 @@ def sync_score_tables(project_id):
         # 从得分表导入数据到project_scores表
         result = session.execute(
             text("""
-                SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
-                FROM [得分表]
-                WHERE [项目ID] = :project_id
+                SELECT `项目ID`, `评价等级`, `专业`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                WHERE `项目ID` = :project_id
             """),
             {"project_id": project_id}
         )
@@ -544,12 +544,12 @@ def get_filtered_standards(level, specialty):
     # 方法4: 使用SQL文本查询
     if not standards:
         try:
-            sql = f"SELECT * FROM [{model_class.__tablename__}]"
+            sql = f"SELECT * FROM `{model_class.__tablename__}`"
             conditions = []
             if attribute:
-                conditions.append(f"属性 = N'{attribute}'")
+                conditions.append(f"属性 = '{attribute}'")
             if specialty:
-                conditions.append(f"专业 LIKE N'%{specialty}%'")
+                conditions.append(f"专业 LIKE '%{specialty}%'")
             
             if conditions:
                 sql += " WHERE " + " AND ".join(conditions)
@@ -1377,54 +1377,58 @@ def save_score():
                          :is_achieved, :score, :technical_measures, :standard)
                 """
                 
-                db.session.execute(
-                    text(insert_query),
-                    {
-                        "project_id": project_id,
-                        "project_name": project_name,
-                        "specialty": specialty,
-                        "level": level,
-                        "clause_number": clause_number,
-                        "category": category,
-                        "is_achieved": is_achieved,
-                        "score": score,
-                        "technical_measures": technical_measures,
-                        "standard": standard
-                    }
-                )
-                
-                # 同时插入到project_scores表
-                if project_id:
-                    # 尝试将得分转换为浮点数
-                    try:
-                        if score and score.strip():
-                            score_float = float(score)
-                        else:
-                            score_float = 0
-                    except (ValueError, TypeError):
-                        score_float = 0
-                    
-                    insert_ps_query = """
-                    INSERT INTO project_scores (
-                        project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
-                    ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
-                    """
-                    
+                try:
                     db.session.execute(
-                        text(insert_ps_query),
+                        text(insert_query),
                         {
                             "project_id": project_id,
-                            "level": level,
+                            "project_name": project_name,
                             "specialty": specialty,
+                            "level": level,
                             "clause_number": clause_number,
                             "category": category,
                             "is_achieved": is_achieved,
-                            "score_float": score_float,
-                            "technical_measures": technical_measures
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "standard": standard
                         }
                     )
-                
-                insert_count += 1
+                    
+                    # 同时插入到project_scores表
+                    if project_id:
+                        # 尝试将得分转换为浮点数
+                        try:
+                            if score and score.strip():
+                                score_float = float(score)
+                            else:
+                                score_float = 0
+                        except (ValueError, TypeError):
+                            score_float = 0
+                        
+                        insert_ps_query = """
+                        INSERT INTO project_scores (
+                            project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
+                        ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
+                        """
+                        
+                        db.session.execute(
+                            text(insert_ps_query),
+                            {
+                                "project_id": project_id,
+                                "level": level,
+                                "specialty": specialty,
+                                "clause_number": clause_number,
+                                "category": category,
+                                "is_achieved": is_achieved,
+                                "score_float": score_float,
+                                "technical_measures": technical_measures
+                            }
+                        )
+                    
+                    insert_count += 1
+                except Exception as insert_error:
+                    print(f"插入评分记录失败: {str(insert_error)}, 条文号: {clause_number}")
+                    continue
             
             # 提交事务
             db.session.commit()
@@ -2089,18 +2093,6 @@ def get_score_by_clause():
                 'message': '缺少必要参数: project_id, clause_number'
             }), 400
         
-        # 连接数据库
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            app.logger.info("数据库连接成功")
-        except Exception as e:
-            app.logger.error(f"数据库连接失败: {str(e)}")
-            return jsonify({
-                'success': False,
-                'message': f'数据库连接失败: {str(e)}'
-            }), 500
-        
         try:
             # 查询记录
             query = """
@@ -2399,8 +2391,10 @@ def save_score_for_new_project(data):
                     `是否达标` VARCHAR(10),
                     `得分` VARCHAR(10),
                     `技术措施` TEXT,
-                    `评价标准` VARCHAR(50)
-                )
+                    `评价标准` VARCHAR(50),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
                 db.session.execute(text(create_table_query))
                 db.session.commit()
@@ -2423,23 +2417,22 @@ def save_score_for_new_project(data):
                     score FLOAT NULL,
                     technical_measures TEXT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
                 db.session.execute(text(create_table_query))
                 db.session.commit()
                 print("project_scores表创建成功")
                 
                 # 创建索引
-                cursor.execute("""
+                db.session.execute(text("""
                     CREATE INDEX idx_project_scores_project_id ON project_scores (project_id)
-                """)
-                conn.commit()
+                """))
+                db.session.commit()
                 print("成功创建project_scores表索引")
         except Exception as e:
             print(f"检查或创建project_scores表失败: {str(e)}")
             traceback.print_exc()
-            conn.close()
             return False
         
         # 开始事务
@@ -2448,18 +2441,24 @@ def save_score_for_new_project(data):
             if project_id:
                 delete_query = """
                 DELETE FROM `得分表`
-                WHERE `项目ID` = %s AND `专业` = %s AND `评价等级` = %s
+                WHERE `项目ID` = :project_id AND `专业` = :specialty AND `评价等级` = :level
                 """
-                cursor.execute(delete_query, (project_id, specialty, level))
-                print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                result = db.session.execute(
+                    text(delete_query),
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
                 
                 # 同时删除project_scores表中的记录
                 delete_ps_query = """
                 DELETE FROM project_scores
-                WHERE project_id = %s AND specialty = %s AND level = %s
+                WHERE project_id = :project_id AND specialty = :specialty AND level = :level
                 """
-                cursor.execute(delete_ps_query, (project_id, specialty, level))
-                print(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                result = db.session.execute(
+                    text(delete_ps_query),
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                print(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
             
             # 插入评分数据
             insert_count = 0
@@ -2475,17 +2474,25 @@ def save_score_for_new_project(data):
                 insert_query = """
                 INSERT INTO `得分表` (
                     `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category, 
+                         :is_achieved, :score, :technical_measures, :standard)
                 """
                 
                 try:
-                    cursor.execute(
-                        insert_query,
-                        (
-                            project_id, project_name, specialty, level,
-                            clause_number, category, is_achieved, score,
-                            technical_measures, standard
-                        )
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "project_id": project_id,
+                            "project_name": project_name,
+                            "specialty": specialty,
+                            "level": level,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "standard": standard
+                        }
                     )
                     
                     # 同时插入到project_scores表
@@ -2502,15 +2509,21 @@ def save_score_for_new_project(data):
                         insert_ps_query = """
                         INSERT INTO project_scores (
                             project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
                         """
                         
-                        cursor.execute(
-                            insert_ps_query,
-                            (
-                                project_id, level, specialty, clause_number,
-                                category, is_achieved, score_float, technical_measures
-                            )
+                        db.session.execute(
+                            text(insert_ps_query),
+                            {
+                                "project_id": project_id,
+                                "level": level,
+                                "specialty": specialty,
+                                "clause_number": clause_number,
+                                "category": category,
+                                "is_achieved": is_achieved,
+                                "score_float": score_float,
+                                "technical_measures": technical_measures
+                            }
                         )
                     
                     insert_count += 1
@@ -2519,10 +2532,7 @@ def save_score_for_new_project(data):
                     continue
             
             # 提交事务
-            conn.commit()
-            
-            # 关闭数据库连接
-            conn.close()
+            db.session.commit()
             
             # 同时也保存到缓存
             cache_key = get_scores_cache_key(level, specialty, project_id, standard)
@@ -2533,12 +2543,12 @@ def save_score_for_new_project(data):
         except Exception as e:
             # 回滚事务
             try:
-                conn.rollback()
+                db.session.rollback()
             except:
                 pass
             
             try:
-                conn.close()
+                db.session.close()
             except:
                 pass
             
@@ -2576,31 +2586,28 @@ def get_star_case_scores():
         project_location = target_project.location  # 获取项目地点
 
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
             # 首先获取当前项目适用的条文号列表
             app.logger.info(f"获取项目 {target_project_id} 适用的条文列表")
-            cursor.execute(f"""
+            result = db.session.execute(text(f"""
                 SELECT 条文号 
                 FROM {standard}
-            """)
-            valid_clauses = set([row[0] for row in cursor.fetchall()])
+            """))
+            valid_clauses = set([row[0] for row in result.fetchall()])
             app.logger.info(f"找到 {len(valid_clauses)} 条适用的条文")
 
             # 构建基本查询条件
-            query_conditions = ["评价标准 = ?"]
-            query_params = [standard]
+            query_conditions = ["评价标准 = :standard"]
+            query_params = {"standard": standard}
 
             # 添加星级目标条件
             if star_rating_target:
-                query_conditions.append("星级目标 = ?")
-                query_params.append(star_rating_target)
+                query_conditions.append("星级目标 = :star_rating_target")
+                query_params["star_rating_target"] = star_rating_target
 
             # 添加建筑类型条件
             if building_type:
-                query_conditions.append("建筑类型 = ?")
-                query_params.append(building_type)
+                query_conditions.append("建筑类型 = :building_type")
+                query_params["building_type"] = building_type
             
             # 首先尝试使用项目地点进行匹配
             location_matched_case_data = None
@@ -2612,14 +2619,17 @@ def get_star_case_scores():
                     SELECT DISTINCT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
                     FROM 星级案例
                     WHERE {' AND '.join(query_conditions)} 
-                    AND (项目地点 LIKE ? OR ? LIKE 项目地点 + '%')
+                    AND (项目地点 LIKE :location_pattern OR :project_location LIKE CONCAT(项目地点, '%'))
                 """
-                # 第一个参数匹配"项目地点包含当前地点"，第二个参数匹配"当前地点包含项目地点"
-                location_params = query_params + [f'%{project_location}%', project_location]
+                location_params = {
+                    **query_params,
+                    "location_pattern": f'%{project_location}%',
+                    "project_location": project_location
+                }
                 
-                app.logger.info(f"执行项目地点匹配查询: {location_query} 参数: {location_params}")
-                cursor.execute(location_query, location_params)
-                location_matched_case_data = cursor.fetchall()
+                app.logger.info(f"执行项目地点匹配查询: {location_query}")
+                result = db.session.execute(text(location_query), location_params)
+                location_matched_case_data = result.fetchall()
                 
                 if location_matched_case_data:
                     app.logger.info(f"基于项目地点找到 {len(location_matched_case_data)} 条匹配的星级案例数据")
@@ -2633,9 +2643,9 @@ def get_star_case_scores():
                     WHERE {' AND '.join(query_conditions)}
                 """
                 
-                app.logger.info(f"执行标准查询: {query} 参数: {query_params}")
-                cursor.execute(query, query_params)
-                case_data = cursor.fetchall()
+                app.logger.info(f"执行标准查询: {query}")
+                result = db.session.execute(text(query), query_params)
+                case_data = result.fetchall()
             else:
                 # 使用基于地点匹配的数据
                 case_data = location_matched_case_data
@@ -2657,10 +2667,10 @@ def get_star_case_scores():
                 # 先删除目标项目的所有得分数据
                 delete_query = """
                 DELETE FROM 得分表
-                WHERE 项目ID = ?
+                WHERE 项目ID = :project_id
                 """
-                cursor.execute(delete_query, (target_project_id,))
-                deleted_count = cursor.rowcount
+                result = db.session.execute(text(delete_query), {"project_id": target_project_id})
+                deleted_count = result.rowcount
                 app.logger.info(f"删除目标项目的 {deleted_count} 条得分数据")
 
                 # 插入新的得分数据
@@ -2682,23 +2692,33 @@ def get_star_case_scores():
                     INSERT INTO 得分表 (
                         项目ID, 项目名称, 专业, 评价等级, 条文号, 
                         分类, 是否达标, 得分, 技术措施, 评价标准
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number,
+                            :category, :is_achieved, :score, :technical_measures, :standard)
                     """
-                    cursor.execute(
-                        insert_query,
-                        (target_project_id, target_project.name, specialty, level, clause_number,
-                         category, is_achieved, score, technical_measures, standard)
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "project_id": target_project_id,
+                            "project_name": target_project.name,
+                            "specialty": specialty,
+                            "level": level,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "standard": standard
+                        }
                     )
                     inserted_count += 1
 
                     # 每100条提交一次，避免事务过大
                     if inserted_count % 100 == 0:
-                        conn.commit()
+                        db.session.commit()
                         app.logger.info(f"已提交 {inserted_count} 条记录")
 
                 # 提交事务
-                conn.commit()
+                db.session.commit()
                 app.logger.info(f"事务提交成功，共导入 {inserted_count} 条记录")
 
                 # 清除目标项目的缓存
@@ -2726,22 +2746,13 @@ def get_star_case_scores():
 
         except Exception as e:
             # 回滚事务
-            if 'conn' in locals():
-                conn.rollback()
+            db.session.rollback()
             app.logger.error(f"数据库操作失败: {str(e)}")
             app.logger.error(traceback.format_exc())
             return jsonify({
                 'success': False,
                 'message': f'数据库操作失败: {str(e)}'
             }), 500
-
-        finally:
-            # 关闭数据库连接
-            if 'cursor' in locals():
-                cursor.close()
-            if 'conn' in locals():
-                conn.close()
-            app.logger.info("数据库连接已关闭")
 
     except Exception as e:
         app.logger.error(f"处理请求失败: {str(e)}")
@@ -2761,42 +2772,7 @@ def create_default_scores(project_id, project_name, standard_selection):
     - standard_selection: 评价标准
     """
     try:
-        # 连接数据库
-        print("尝试连接数据库...")
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        print("数据库连接成功")
-        
-        # 检查得分表是否存在，如果不存在则创建
-        try:
-            print("检查得分表是否存在...")
-            cursor.execute("SHOW TABLES LIKE '得分表'")
-            table_exists = cursor.fetchone()
-            if not table_exists:
-                print("得分表不存在，创建新表")
-                create_table_sql = """
-                CREATE TABLE `得分表` (
-                    `ID` INT AUTO_INCREMENT PRIMARY KEY,
-                    `项目ID` INT,
-                    `项目名称` VARCHAR(100),
-                    `专业` VARCHAR(50),
-                    `评价等级` VARCHAR(20),
-                    `条文号` VARCHAR(50),
-                    `分类` VARCHAR(50),
-                    `是否达标` VARCHAR(10),
-                    `得分` VARCHAR(10),
-                    `技术措施` TEXT,
-                    `评价标准` VARCHAR(50)
-                )
-                """
-                cursor.execute(create_table_sql)
-                conn.commit()
-                print("得分表创建成功")
-            else:
-                print("得分表已存在")
-        except Exception as e:
-            print(f"检查或创建得分表失败: {str(e)}")
-            traceback.print_exc()
+        print("开始创建默认评分记录...")
         
         # 获取标准数据
         print(f"获取标准数据: {standard_selection}")
@@ -2818,14 +2794,6 @@ def create_default_scores(project_id, project_name, standard_selection):
             standards_data = get_standards_by_name('成都市标')
             if standards_data:
                 print(f"获取到 {len(standards_data)} 条默认标准数据")
-                # 打印前5条标准数据的示例
-                if len(standards_data) > 0:
-                    print("默认标准数据示例:")
-                    for i, std in enumerate(standards_data[:5]):
-                        try:
-                            print(f"  {i+1}. 条文号: {std.条文号}, 专业: {std.专业}, 属性: {std.属性}, 分类: {std.分类}")
-                        except Exception as attr_error:
-                            print(f"  {i+1}. 无法显示标准数据: {str(attr_error)}")
             else:
                 print("未获取到任何标准数据")
                 raise Exception("未获取到任何标准数据")
@@ -2856,12 +2824,11 @@ def create_default_scores(project_id, project_name, standard_selection):
                 if filtered_standards:
                     # 先删除该项目该专业该级别的所有评分记录
                     try:
-                        delete_sql = """
-                        DELETE FROM `得分表`
-                        WHERE `项目ID` = %s AND `专业` = %s AND `评价等级` = %s
-                        """
-                        cursor.execute(delete_sql, (project_id, specialty, level))
-                        print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
+                        result = db.session.execute(
+                            text("DELETE FROM `得分表` WHERE `项目ID` = :project_id AND `专业` = :specialty AND `评价等级` = :level"),
+                            {"project_id": project_id, "specialty": specialty, "level": level}
+                        )
+                        print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
                     except Exception as delete_error:
                         print(f"删除评分记录失败: {str(delete_error)}")
                         traceback.print_exc()
@@ -2874,25 +2841,35 @@ def create_default_scores(project_id, project_name, standard_selection):
                         is_achieved = '是' if level == '基本级' else '否'
                         
                         # 插入评分记录
-                        insert_sql = """
-                        INSERT INTO `得分表` (
-                            `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """
-                        
                         try:
-                            cursor.execute(
-                                insert_sql,
-                                (
-                                    project_id, project_name, specialty, level,
-                                    std.条文号, std.分类, is_achieved, '0',
-                                    '', standard_selection
+                            db.session.execute(
+                                text("""
+                                INSERT INTO `得分表` (
+                                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, 
+                                    `是否达标`, `得分`, `技术措施`, `评价标准`
+                                ) VALUES (
+                                    :project_id, :project_name, :specialty, :level, :clause_number, 
+                                    :category, :is_achieved, :score, :technical_measures, :standard
                                 )
+                                """),
+                                {
+                                    "project_id": project_id,
+                                    "project_name": project_name,
+                                    "specialty": specialty,
+                                    "level": level,
+                                    "clause_number": std.条文号,
+                                    "category": std.分类,
+                                    "is_achieved": is_achieved,
+                                    "score": '0',
+                                    "technical_measures": '',
+                                    "standard": standard_selection
+                                }
                             )
                             insert_count += 1
+                            
                             # 每插入10条记录提交一次事务，避免事务过大
                             if insert_count % 10 == 0:
-                                conn.commit()
+                                db.session.commit()
                                 print(f"已提交 {insert_count} 条记录")
                         except Exception as insert_error:
                             insert_errors += 1
@@ -2904,19 +2881,13 @@ def create_default_scores(project_id, project_name, standard_selection):
                     print(f"为项目 {project_id} 的 {specialty} 专业 {level} 级别插入了 {insert_count} 条评分记录，失败 {insert_errors} 条")
                     total_inserted += insert_count
         
-        # 提交事务并关闭连接
+        # 提交最后的事务
         try:
-            conn.commit()
+            db.session.commit()
             print("最终提交事务成功")
         except Exception as commit_error:
             print(f"提交事务失败: {str(commit_error)}")
-            traceback.print_exc()
-        
-        try:
-            conn.close()
-            print("数据库连接关闭成功")
-        except Exception as close_error:
-            print(f"关闭数据库连接失败: {str(close_error)}")
+            db.session.rollback()
             traceback.print_exc()
         
         print(f"为项目 {project_id} 总共插入了 {total_inserted} 条评分记录")
@@ -2990,24 +2961,20 @@ def handle_generate_dwg():
                 app.logger.warning(f"同步得分表和project_scores表数据失败或无需同步，继续使用现有数据")
             
             # 获取项目的所有评分记录
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # 查询项目的所有评分记录
-            cursor.execute("""
+            result = db.session.execute(text("""
                 SELECT ps.clause_number, ps.score, s.分类, s.专业, s.属性
                 FROM project_scores ps
                 LEFT JOIN 
                 (
-                    SELECT 条文号, 分类, 专业, 属性 FROM [成都市标]
+                    SELECT 条文号, 分类, 专业, 属性 FROM 成都市标
                     UNION ALL
-                    SELECT 条文号, 分类, 专业, 属性 FROM [四川省标]
+                    SELECT 条文号, 分类, 专业, 属性 FROM 四川省标
                     UNION ALL
-                    SELECT 条文号, 分类, 专业, 属性 FROM [国标]
+                    SELECT 条文号, 分类, 专业, 属性 FROM 国标
                 ) s ON ps.clause_number = s.条文号
-                WHERE ps.project_id = ?
-            """, (project_id,))
-            
+                WHERE ps.project_id = :project_id
+            """), {"project_id": project_id})
+            scores = result.fetchall()
             
             # 将更新后的项目添加到session并保存
             db.session.add(project)
@@ -3057,11 +3024,11 @@ def calculate_project_scores(project_id):
                 FROM project_scores ps
                 LEFT JOIN 
                 (
-                    SELECT 条文号, 分类, 专业, 属性 FROM [成都市标]
+                    SELECT 条文号, 分类, 专业, 属性 FROM 成都市标
                     UNION ALL
-                    SELECT 条文号, 分类, 专业, 属性 FROM [四川省标]
+                    SELECT 条文号, 分类, 专业, 属性 FROM 四川省标
                     UNION ALL
-                    SELECT 条文号, 分类, 专业, 属性 FROM [国标]
+                    SELECT 条文号, 分类, 专业, 属性 FROM 国标
                 ) s ON ps.clause_number = s.条文号
                 WHERE ps.project_id = :project_id AND ps.standard = :project_standard
             """),
@@ -3229,11 +3196,10 @@ def calculate_project_scores(project_id):
         finally:
             # 确保数据库连接正确关闭
             try:
-                cursor.close()
-                conn.close()
-                logger.info(f"数据库连接已关闭")
+                db.session.close()
+                logger.info("数据库会话已关闭")
             except Exception as e:
-                logger.error(f"关闭数据库连接时出错: {str(e)}")
+                logger.error(f"关闭数据库会话时出错: {str(e)}")
                 # 不抛出异常，因为主要操作已完成
         
         return jsonify({
@@ -3414,36 +3380,33 @@ def login_required(f):
 def update_database_structure():
     """更新数据库表结构，添加 user_id 字段和 role 字段"""
     try:
-        from sqlalchemy import text
-        conn = get_db_connection()
-        
         # 检查 user_id 列是否存在
-        result = conn.execute(text("""
+        result = db.session.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = 'projects'
             AND COLUMN_NAME = 'user_id'
-                """))
+        """))
         
         if result.scalar() == 0:
             # 添加 user_id 列
-            conn.execute(text("""
+            db.session.execute(text("""
                 ALTER TABLE projects
                 ADD user_id INT NOT NULL DEFAULT 1
             """))
             
             # 添加外键约束
-            conn.execute(text("""
+            db.session.execute(text("""
                 ALTER TABLE projects
                 ADD CONSTRAINT FK_Projects_Users
                 FOREIGN KEY (user_id) REFERENCES users (id)
             """))
             
-            conn.commit()
+            db.session.commit()
             print("成功添加 user_id 列和外键约束")
         
         # 检查 role 列是否存在
-        result = conn.execute(text("""
+        result = db.session.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = 'users'
@@ -3452,24 +3415,18 @@ def update_database_structure():
         
         if result.scalar() == 0:
             # 添加 role 列
-            conn.execute(text("""
+            db.session.execute(text("""
                 ALTER TABLE users
-                ADD role NVARCHAR(20) NOT NULL DEFAULT 'user'
+                ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'
             """))
             
-            conn.commit()
+            db.session.commit()
             print("成功添加 role 列")
             
-        conn.close()
-    except Exception as e:
-        print(f"更新数据库表结构失败: {str(e)}")
-        raise
-        
-        cursor.close()
-        conn.close()
         print("数据库表结构更新完成")
         
     except Exception as e:
+        db.session.rollback()
         print(f"更新数据库表结构失败: {str(e)}")
         raise
 
@@ -3578,7 +3535,7 @@ def delete_project_api(project_id):
         
         # 删除项目
         db.session.delete(project)
-                db.session.commit()
+        db.session.commit()
         
         return jsonify({
             'success': True,
@@ -3612,17 +3569,14 @@ def save_star_case():
             }), 404
 
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-
             # 获取项目的得分数据
             query = """
                 SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
                 FROM 得分表
-                WHERE 项目ID = ?
+                WHERE 项目ID = :project_id
             """
-            cursor.execute(query, (project_id,))
-            score_data = cursor.fetchall()
+            result = db.session.execute(text(query), {"project_id": project_id})
+            score_data = result.fetchall()
 
             if not score_data:
                 return jsonify({
@@ -3631,9 +3585,8 @@ def save_star_case():
                 }), 404
 
             # 获取当前最大序号
-            cursor.execute("SELECT MAX(序号) FROM 星级案例")
-            result = cursor.fetchone()
-            max_seq = result[0] if result[0] is not None else 0
+            result = db.session.execute(text("SELECT MAX(序号) FROM 星级案例"))
+            max_seq = result.scalar() or 0
 
             # 插入数据到星级案例表
             inserted_count = 0
@@ -3642,30 +3595,46 @@ def save_star_case():
 
                 # 检查记录是否已存在
                 check_query = """
-                SELECT 序号
-                FROM 星级案例
-                WHERE 条文号 = ? AND 评价标准 = ? AND 星级目标 = ? AND 建筑类型 = ?
+                SELECT COUNT(*) FROM 星级案例
+                WHERE 条文号 = :clause_number AND 评价标准 = :standard AND 星级目标 = :star_rating_target AND 建筑类型 = :building_type
                 """
-                cursor.execute(check_query, (
-                    clause_number,
-                    project.standard,
-                    project.star_rating_target,
-                    project.building_type
-                ))
-                existing_record = cursor.fetchone()
+                result = db.session.execute(
+                    text(check_query), 
+                    {
+                        "clause_number": clause_number,
+                        "standard": project.standard,
+                        "star_rating_target": project.star_rating_target,
+                        "building_type": project.building_type
+                    }
+                )
+                count = result.scalar()
 
-                if existing_record:
+                if count > 0:
                     # 更新现有记录
                     update_query = """
                     UPDATE 星级案例
-                    SET 分类 = ?, 是否达标 = ?, 得分 = ?, 技术措施 = ?, 专业 = ?, 评价等级 = ?, 项目地点 = ?
-                    WHERE 序号 = ?
+                    SET 分类 = :category, 是否达标 = :is_achieved, 得分 = :score, 
+                        技术措施 = :technical_measures, 专业 = :specialty, 评价等级 = :level, 
+                        项目地点 = :location
+                    WHERE 条文号 = :clause_number AND 评价标准 = :standard 
+                        AND 星级目标 = :star_rating_target AND 建筑类型 = :building_type
                     """
-                    cursor.execute(update_query, (
-                        category, is_achieved, score, technical_measures, specialty, level,
-                        project.location,  # 添加项目地点信息
-                        existing_record[0]
-                    ))
+                    db.session.execute(
+                        text(update_query),
+                        {
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "specialty": specialty,
+                            "level": level,
+                            "location": project.location,
+                            "clause_number": clause_number,
+                            "standard": project.standard,
+                            "star_rating_target": project.star_rating_target,
+                            "building_type": project.building_type
+                        }
+                    )
                 else:
                     # 插入新记录，使用自增序号
                     max_seq += 1
@@ -3673,22 +3642,37 @@ def save_star_case():
                     INSERT INTO 星级案例 (
                         序号, 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级,
                         评价标准, 星级目标, 建筑类型, 项目地点
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (:seq, :clause_number, :category, :is_achieved, :score, 
+                            :technical_measures, :specialty, :level, :standard, 
+                            :star_rating_target, :building_type, :location)
                     """
-                    cursor.execute(insert_query, (
-                        max_seq, clause_number, category, is_achieved, score, technical_measures, specialty, level,
-                        project.standard, project.star_rating_target, project.building_type, project.location
-                    ))
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "seq": max_seq,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "specialty": specialty,
+                            "level": level,
+                            "standard": project.standard,
+                            "star_rating_target": project.star_rating_target,
+                            "building_type": project.building_type,
+                            "location": project.location
+                        }
+                    )
 
                 inserted_count += 1
 
                 # 每100条提交一次，避免事务过大
                 if inserted_count % 100 == 0:
-                    conn.commit()
+                    db.session.commit()
                     app.logger.info(f"已提交 {inserted_count} 条记录")
 
             # 提交事务
-            conn.commit()
+            db.session.commit()
             app.logger.info(f"事务提交成功，共处理 {inserted_count} 条记录")
 
             return jsonify({
@@ -3698,29 +3682,20 @@ def save_star_case():
                     'standard': project.standard,
                     'star_rating_target': project.star_rating_target,
                     'building_type': project.building_type,
-                    'location': project.location,  # 添加项目地点信息
+                    'location': project.location,
                     'processed_count': inserted_count
                 }
             })
 
         except Exception as e:
             # 回滚事务
-            if 'conn' in locals():
-                conn.rollback()
+            db.session.rollback()
             app.logger.error(f"数据库操作失败: {str(e)}")
             app.logger.error(traceback.format_exc())
             return jsonify({
                 'success': False,
                 'message': f'数据库操作失败: {str(e)}'
             }), 500
-
-        finally:
-            # 关闭数据库连接
-            if 'cursor' in locals():
-                cursor.close()
-            if 'conn' in locals():
-                conn.close()
-            app.logger.info("数据库连接已关闭")
 
     except Exception as e:
         app.logger.error(f"处理请求失败: {str(e)}")
