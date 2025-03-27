@@ -6,22 +6,8 @@ from loguru import logger
 
 def get_db_connection():
     """获取数据库连接"""
-    server = os.environ.get('SQLSERVER_SERVER', '192.168.0.35')
-    database = os.environ.get('SQLSERVER_DATABASE', '绿色建筑')
-    username = os.environ.get('SQLSERVER_USERNAME', 'test')
-    password = os.environ.get('SQLSERVER_PASSWORD', '123456')
-    driver = os.environ.get('SQLSERVER_DRIVER', 'ODBC Driver 17 for SQL Server')
-    
-    # 构建连接字符串，添加超时和TLS配置
-    conn_params = {
-        'driver': urllib.parse.quote_plus(driver),
-        'timeout': '30',
-        'encrypt': 'yes',
-        'trustservercertificate': 'yes'
-    }
-    params_str = '&'.join(f'{k}={v}' for k, v in conn_params.items())
-    db_uri = f"mssql+pyodbc://{username}:{password}@{server}/{database}?{params_str}"
-    return create_engine(db_uri)
+    from config import SQLALCHEMY_DATABASE_URI
+    return create_engine(SQLALCHEMY_DATABASE_URI)
 
 def hash_password(password):
     """对密码进行加密"""

@@ -12,11 +12,11 @@ if not DATABASE_URL:
     mysql_host = os.environ.get('MYSQL_HOST', 'localhost')
     mysql_port = os.environ.get('MYSQL_PORT', '3306')
     mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
-    mysql_username = os.environ.get('MYSQL_USERNAME', 'root')
-    mysql_password = os.environ.get('MYSQL_PASSWORD', 'password')
+    mysql_username = os.environ.get('MYSQL_USERNAME', 'mysql')
+    mysql_password = os.environ.get('MYSQL_PASSWORD', '12345678')
     
     # 构建MySQL连接字符串
-    DATABASE_URL = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4'
+    DATABASE_URL = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4&auth_plugin=mysql_native_password'
 
 SQLALCHEMY_DATABASE_URI = DATABASE_URL
 SQLALCHEMY_TRACK_MODIFICATIONS = False

@@ -439,30 +439,16 @@ function updateScoreSQL(clauseNumber, score, projectId) {
     
     // 准备SQL语句
     const sql = `
-        IF EXISTS (
-            SELECT 1 FROM 得分表 
-            WHERE 项目ID = ${projectId} 
-            AND 条文号 = '${clauseNumber}'
-            AND 评价标准 = '${standard}'
+        INSERT INTO 得分表 (
+            项目ID, 项目名称, 专业, 评价等级, 条文号, 
+            分类, 是否达标, 得分, 技术措施, 评价标准
         )
-        BEGIN
-            UPDATE 得分表
-            SET 得分 = ${parseFloat(score)}
-            WHERE 项目ID = ${projectId}
-            AND 条文号 = '${clauseNumber}'
-            AND 评价标准 = '${standard}';
-        END
-        ELSE
-        BEGIN
-            INSERT INTO 得分表 (
-                项目ID, 项目名称, 专业, 评价等级, 条文号, 
-                分类, 是否达标, 得分, 技术措施, 评价标准
-            )
-            VALUES (
-                ${projectId}, '项目${projectId}', '建筑专业', '提高级', '${clauseNumber}',
-                '资源节约', '是', ${parseFloat(score)}, '', '${standard}'
-            );
-        END
+        VALUES (
+            ${projectId}, '项目${projectId}', '建筑专业', '提高级', '${clauseNumber}',
+            '资源节约', '是', ${parseFloat(score)}, '', '${standard}'
+        )
+        ON DUPLICATE KEY UPDATE
+            得分 = ${parseFloat(score)}
     `;
     
     // 准备请求数据
@@ -888,4 +874,4 @@ function getCurrentProjectStandard() {
     
     // 默认返回成都市标
     return '成都市标';
-} 
+}

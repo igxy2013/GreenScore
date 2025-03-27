@@ -47,28 +47,12 @@ def get_sqlserver_connection():
 def get_mysql_connection():
     """获取MySQL数据库连接"""
     try:
-        # MySQL连接配置
-        mysql_host = os.environ.get('MYSQL_HOST', 'aibim.xyz')  # 默认改为localhost
-        mysql_port = os.environ.get('MYSQL_PORT', '3306')
-        mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
-        mysql_username = os.environ.get('MYSQL_USERNAME', 'root')
-        mysql_password = os.environ.get('MYSQL_PASSWORD', '12345678')
+        from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_ENGINE_OPTIONS
         
-        # 构建连接字符串，添加连接超时和重试参数
-        mysql_url = (
-            f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}'
-            '?charset=utf8mb4'
-            '&connect_timeout=10'  # 连接超时时间
-            '&read_timeout=30'     # 读取超时时间
-            '&write_timeout=30'    # 写入超时时间
-        )
-        
-        # 创建引擎
+        # 创建引擎，使用统一的配置
         engine = create_engine(
-            mysql_url,
-            pool_pre_ping=True,    # 在使用连接前ping一下，确保连接有效
-            pool_size=5,           # 连接池大小
-            pool_timeout=30        # 连接池超时时间
+            SQLALCHEMY_DATABASE_URI,
+            **SQLALCHEMY_ENGINE_OPTIONS
         )
         
         # 测试连接

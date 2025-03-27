@@ -72,7 +72,15 @@ cache = Cache(app, config=cache_config)
 # 配置数据库连接
 db_uri = os.environ.get('DATABASE_URL')
 if not db_uri:
-    db_uri = "mssql+pyodbc://test:123456@acbim.fun/绿色建筑?driver=ODBC+Driver+17+for+SQL+Server"
+    # MySQL数据库连接配置
+    mysql_host = os.environ.get('MYSQL_HOST', 'localhost')
+    mysql_port = os.environ.get('MYSQL_PORT', '3306')
+    mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
+    mysql_username = os.environ.get('MYSQL_USERNAME', 'root')
+    mysql_password = os.environ.get('MYSQL_PASSWORD', 'password')
+    
+    # 构建MySQL连接字符串
+    db_uri = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4'
     app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
@@ -166,53 +174,58 @@ def login_required(f):
 def sync_score_tables(project_id):
     """同步指定项目的得分表和project_scores表的数据"""
     try:
-        # 获取数据库连接
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # 获取数据库会话
+        session = db.session
         
         # 检查project_scores表是否存在
-        cursor.execute("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'project_scores'")
-        if cursor.fetchone()[0] == 0:
+        result = session.execute(text("SHOW TABLES LIKE 'project_scores'"))
+        if not result.fetchone():
             logger.info("project_scores表不存在，创建表")
             # 创建project_scores表
-            cursor.execute("""
+            session.execute(text("""
                 CREATE TABLE project_scores (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    id INT AUTO_INCREMENT PRIMARY KEY,
                     project_id INT NOT NULL,
-                    level NVARCHAR(10) NOT NULL,
-                    specialty NVARCHAR(20) NOT NULL,
-                    clause_number NVARCHAR(20) NOT NULL,
-                    category NVARCHAR(20) NULL,
-                    is_achieved NVARCHAR(10) NOT NULL,
+                    level VARCHAR(10) NOT NULL,
+                    specialty VARCHAR(20) NOT NULL,
+                    clause_number VARCHAR(20) NOT NULL,
+                    category VARCHAR(20) NULL,
+                    is_achieved VARCHAR(10) NOT NULL,
                     score FLOAT NULL,
-                    technical_measures NVARCHAR(MAX) NULL,
-                    created_at DATETIME DEFAULT GETDATE(),
-                    updated_at DATETIME DEFAULT GETDATE()
+                    technical_measures TEXT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
-            conn.commit()
+            """))
+            session.commit()
             logger.info("成功创建project_scores表")
             
             # 创建索引
-            cursor.execute("""
+            session.execute(text("""
                 CREATE INDEX idx_project_scores_project_id ON project_scores (project_id)
-            """)
-            conn.commit()
+            """))
+            session.commit()
             logger.info("成功创建project_scores表索引")
         
         # 删除该项目在project_scores表中的数据
-        cursor.execute("DELETE FROM project_scores WHERE project_id = ?", (project_id,))
-        deleted_count = cursor.rowcount
-        conn.commit()
+        result = session.execute(
+            text("DELETE FROM project_scores WHERE project_id = :project_id"),
+            {"project_id": project_id}
+        )
+        deleted_count = result.rowcount
+        session.commit()
         logger.info(f"删除项目 {project_id} 在project_scores表中的 {deleted_count} 条记录")
         
         # 从得分表导入数据到project_scores表
-        cursor.execute("""
-            SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
-            FROM [得分表]
-            WHERE [项目ID] = ?
-        """, (project_id,))
-        scores = cursor.fetchall()
+        result = session.execute(
+            text("""
+                SELECT [项目ID], [评价等级], [专业], [条文号], [分类], [是否达标], [得分], [技术措施]
+                FROM [得分表]
+                WHERE [项目ID] = :project_id
+            """),
+            {"project_id": project_id}
+        )
+        scores = result.fetchall()
         
         # 导入数据到project_scores表
         imported_count = 0
@@ -229,19 +242,27 @@ def sync_score_tables(project_id):
                 score_float = 0
             
             # 插入数据
-            cursor.execute("""
-                INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (project_id, level, specialty, clause_number, category, is_achieved, score_float, technical_measures))
+            session.execute(
+                text("""
+                    INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
+                    VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score, :technical_measures)
+                """),
+                {
+                    "project_id": project_id,
+                    "level": level,
+                    "specialty": specialty,
+                    "clause_number": clause_number,
+                    "category": category,
+                    "is_achieved": is_achieved,
+                    "score": score_float,
+                    "technical_measures": technical_measures
+                }
+            )
             imported_count += 1
         
         # 提交事务
-        conn.commit()
+        session.commit()
         logger.info(f"项目 {project_id} 同步完成，导入了 {imported_count} 条记录")
-        
-        # 关闭连接
-        cursor.close()
-        conn.close()
         
         return True
     except Exception as e:
@@ -1313,8 +1334,8 @@ def save_score():
             # 如果提供了项目ID，先删除该项目该专业该级别的所有评分记录
             if project_id:
                 delete_query = """
-                DELETE FROM [得分表]
-                WHERE [项目ID] = ? AND [专业] = ? AND [评价等级] = ?
+                DELETE FROM `得分表`
+                WHERE `项目ID` = %s AND `专业` = %s AND `评价等级` = %s
                 """
                 cursor.execute(delete_query, (project_id, specialty, level))
                 app.logger.info(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
@@ -1322,7 +1343,7 @@ def save_score():
                 # 同时删除project_scores表中的记录
                 delete_ps_query = """
                 DELETE FROM project_scores
-                WHERE project_id = ? AND specialty = ? AND level = ?
+                WHERE project_id = %s AND specialty = %s AND level = %s
                 """
                 cursor.execute(delete_ps_query, (project_id, specialty, level))
                 app.logger.info(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
@@ -1352,9 +1373,9 @@ def save_score():
                 
                 # 插入评分记录到得分表
                 insert_query = """
-                INSERT INTO [得分表] (
-                    [项目ID], [项目名称], [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO `得分表` (
+                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 cursor.execute(
@@ -1790,35 +1811,14 @@ def get_db_connection():
             db_uri = app.config['SQLALCHEMY_DATABASE_URI']
             print(f"尝试连接数据库 (尝试 {retry_count + 1}/{max_retries})...")
             
-            # 解析连接字符串
-            if 'sqlite' in db_uri:
-                # SQLite连接
-                db_path = db_uri.replace('sqlite:///', '')
-                conn = sqlite3.connect(db_path)
-                print(f"SQLite数据库连接成功: {db_path}")
-                return conn
-            elif 'mssql' in db_uri:
-                # SQL Server连接
-                # 从连接字符串中提取参数
-                conn_parts = db_uri.replace('mssql+pyodbc://', '').split('?')[0].split('@')
-                user_pass = conn_parts[0].split(':')
-                server_db = conn_parts[1].split('/')
-                
-                username = user_pass[0]
-                password = user_pass[1]
-                server = server_db[0]
-                database = server_db[1]
-                
-                # 构建连接字符串
-                conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER=aibim.xyz;DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes'
-                
-                # 创建连接
-                conn = pyodbc.connect(conn_str)
-                print(f"SQL Server数据库连接成功: 服务器={server}, 数据库={database}, 用户={username}")
-                return conn
-            else:
-                # 其他数据库类型
-                raise ValueError(f"不支持的数据库类型: {db_uri}")
+            # 使用SQLAlchemy创建MySQL连接
+            from sqlalchemy import create_engine
+            engine = create_engine(db_uri, pool_size=10, max_overflow=5,
+                                 pool_timeout=30, pool_recycle=1800)
+            conn = engine.connect()
+            print(f"MySQL数据库连接成功: {db_uri}")
+            return conn
+            
         except Exception as e:
             retry_count += 1
             print(f"获取数据库连接失败 (尝试 {retry_count}/{max_retries}): {str(e)}")
@@ -1836,6 +1836,9 @@ def get_db_connection():
 def get_score_summary(project_id, force_refresh=False):
     """获取评分汇总数据的函数"""
     try:
+        # 获取数据库会话
+        session = db.session
+        
         # 获取项目信息，确定评价标准
         project = get_project(project_id)
         project_standard = project.standard if project and project.standard else '成都市标'
@@ -2628,23 +2631,23 @@ def save_score_for_new_project(data):
         
         # 检查得分表是否存在
         try:
-            cursor.execute("SELECT TOP 1 * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '得分表'")
+            cursor.execute("SHOW TABLES LIKE '得分表'")
             if not cursor.fetchone():
                 print("得分表不存在，尝试创建")
                 # 尝试创建得分表
                 create_table_query = """
-                CREATE TABLE [得分表] (
-                    [ID] INT IDENTITY(1,1) PRIMARY KEY,
-                    [项目ID] INT,
-                    [项目名称] NVARCHAR(100),
-                    [专业] NVARCHAR(50),
-                    [评价等级] NVARCHAR(20),
-                    [条文号] NVARCHAR(50),
-                    [分类] NVARCHAR(50),
-                    [是否达标] NVARCHAR(10),
-                    [得分] NVARCHAR(10),
-                    [技术措施] NVARCHAR(MAX),
-                    [评价标准] NVARCHAR(50)
+                CREATE TABLE `得分表` (
+                    `ID` INT AUTO_INCREMENT PRIMARY KEY,
+                    `项目ID` INT,
+                    `项目名称` VARCHAR(100),
+                    `专业` VARCHAR(50),
+                    `评价等级` VARCHAR(20),
+                    `条文号` VARCHAR(50),
+                    `分类` VARCHAR(50),
+                    `是否达标` VARCHAR(10),
+                    `得分` VARCHAR(10),
+                    `技术措施` TEXT,
+                    `评价标准` VARCHAR(50)
                 )
                 """
                 cursor.execute(create_table_query)
@@ -2658,23 +2661,23 @@ def save_score_for_new_project(data):
         
         # 检查project_scores表是否存在
         try:
-            cursor.execute("SELECT TOP 1 * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'project_scores'")
+            cursor.execute("SHOW TABLES LIKE 'project_scores'")
             if not cursor.fetchone():
                 print("project_scores表不存在，尝试创建")
                 # 尝试创建project_scores表
                 create_table_query = """
                 CREATE TABLE project_scores (
-                    id INT IDENTITY(1,1) PRIMARY KEY,
+                    id INT AUTO_INCREMENT PRIMARY KEY,
                     project_id INT NOT NULL,
-                    level NVARCHAR(10) NOT NULL,
-                    specialty NVARCHAR(20) NOT NULL,
-                    clause_number NVARCHAR(20) NOT NULL,
-                    category NVARCHAR(20) NULL,
-                    is_achieved NVARCHAR(10) NOT NULL,
+                    level VARCHAR(10) NOT NULL,
+                    specialty VARCHAR(20) NOT NULL,
+                    clause_number VARCHAR(20) NOT NULL,
+                    category VARCHAR(20) NULL,
+                    is_achieved VARCHAR(10) NOT NULL,
                     score FLOAT NULL,
-                    technical_measures NVARCHAR(MAX) NULL,
-                    created_at DATETIME DEFAULT GETDATE(),
-                    updated_at DATETIME DEFAULT GETDATE()
+                    technical_measures TEXT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
                 """
                 cursor.execute(create_table_query)
@@ -2698,8 +2701,8 @@ def save_score_for_new_project(data):
             # 如果提供了项目ID，先删除该项目该专业该级别的所有评分记录
             if project_id:
                 delete_query = """
-                DELETE FROM [得分表]
-                WHERE [项目ID] = ? AND [专业] = ? AND [评价等级] = ?
+                DELETE FROM `得分表`
+                WHERE `项目ID` = %s AND `专业` = %s AND `评价等级` = %s
                 """
                 cursor.execute(delete_query, (project_id, specialty, level))
                 print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
@@ -2707,7 +2710,7 @@ def save_score_for_new_project(data):
                 # 同时删除project_scores表中的记录
                 delete_ps_query = """
                 DELETE FROM project_scores
-                WHERE project_id = ? AND specialty = ? AND level = ?
+                WHERE project_id = %s AND specialty = %s AND level = %s
                 """
                 cursor.execute(delete_ps_query, (project_id, specialty, level))
                 print(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
@@ -2724,9 +2727,9 @@ def save_score_for_new_project(data):
                 
                 # 插入评分记录到得分表
                 insert_query = """
-                INSERT INTO [得分表] (
-                    [项目ID], [项目名称], [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO `得分表` (
+                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 
                 try:
@@ -2753,7 +2756,7 @@ def save_score_for_new_project(data):
                         insert_ps_query = """
                         INSERT INTO project_scores (
                             project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """
                         
                         cursor.execute(
@@ -3021,23 +3024,23 @@ def create_default_scores(project_id, project_name, standard_selection):
         # 检查得分表是否存在，如果不存在则创建
         try:
             print("检查得分表是否存在...")
-            cursor.execute("SELECT TOP 1 * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '得分表'")
+            cursor.execute("SHOW TABLES LIKE '得分表'")
             table_exists = cursor.fetchone()
             if not table_exists:
                 print("得分表不存在，创建新表")
                 create_table_sql = """
-                CREATE TABLE [得分表] (
-                    [ID] INT IDENTITY(1,1) PRIMARY KEY,
-                    [项目ID] INT,
-                    [项目名称] NVARCHAR(100),
-                    [专业] NVARCHAR(50),
-                    [评价等级] NVARCHAR(20),
-                    [条文号] NVARCHAR(50),
-                    [分类] NVARCHAR(50),
-                    [是否达标] NVARCHAR(10),
-                    [得分] NVARCHAR(10),
-                    [技术措施] NVARCHAR(MAX),
-                    [评价标准] NVARCHAR(50)
+                CREATE TABLE `得分表` (
+                    `ID` INT AUTO_INCREMENT PRIMARY KEY,
+                    `项目ID` INT,
+                    `项目名称` VARCHAR(100),
+                    `专业` VARCHAR(50),
+                    `评价等级` VARCHAR(20),
+                    `条文号` VARCHAR(50),
+                    `分类` VARCHAR(50),
+                    `是否达标` VARCHAR(10),
+                    `得分` VARCHAR(10),
+                    `技术措施` TEXT,
+                    `评价标准` VARCHAR(50)
                 )
                 """
                 cursor.execute(create_table_sql)
@@ -3108,8 +3111,8 @@ def create_default_scores(project_id, project_name, standard_selection):
                     # 先删除该项目该专业该级别的所有评分记录
                     try:
                         delete_sql = """
-                        DELETE FROM [得分表]
-                        WHERE [项目ID] = ? AND [专业] = ? AND [评价等级] = ?
+                        DELETE FROM `得分表`
+                        WHERE `项目ID` = %s AND `专业` = %s AND `评价等级` = %s
                         """
                         cursor.execute(delete_sql, (project_id, specialty, level))
                         print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {cursor.rowcount} 条")
@@ -3126,9 +3129,9 @@ def create_default_scores(project_id, project_name, standard_selection):
                         
                         # 插入评分记录
                         insert_sql = """
-                        INSERT INTO [得分表] (
-                            [项目ID], [项目名称], [专业], [评价等级], [条文号], [分类], [是否达标], [得分], [技术措施], [评价标准]
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO `得分表` (
+                            `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """
                         
                         try:
@@ -3298,26 +3301,28 @@ def calculate_project_scores(project_id):
         if not sync_result:
             logger.warning(f"同步得分表和project_scores表数据失败或无需同步，继续使用现有数据")
         
-        # 获取项目的所有评分记录
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        # 获取数据库会话
+        session = db.session
         
         # 查询项目的所有评分记录，使用项目评价标准
-        cursor.execute("""
-            SELECT ps.clause_number, ps.score, s.分类, s.专业, s.属性
-            FROM project_scores ps
-            LEFT JOIN 
-            (
-                SELECT 条文号, 分类, 专业, 属性 FROM [成都市标]
-                UNION ALL
-                SELECT 条文号, 分类, 专业, 属性 FROM [四川省标]
-                UNION ALL
-                SELECT 条文号, 分类, 专业, 属性 FROM [国标]
-            ) s ON ps.clause_number = s.条文号
-            WHERE ps.project_id = ? AND ps.standard = ?
-        """, (project_id, project_standard))
+        result = session.execute(
+            text("""
+                SELECT ps.clause_number, ps.score, s.分类, s.专业, s.属性
+                FROM project_scores ps
+                LEFT JOIN 
+                (
+                    SELECT 条文号, 分类, 专业, 属性 FROM [成都市标]
+                    UNION ALL
+                    SELECT 条文号, 分类, 专业, 属性 FROM [四川省标]
+                    UNION ALL
+                    SELECT 条文号, 分类, 专业, 属性 FROM [国标]
+                ) s ON ps.clause_number = s.条文号
+                WHERE ps.project_id = :project_id AND ps.standard = :project_standard
+            """),
+            {"project_id": project_id, "project_standard": project_standard}
+        )
         
-        scores = cursor.fetchall()
+        scores = result.fetchall()
         
         # 初始化各专业分数
         专业分数 = {
@@ -3663,51 +3668,56 @@ def login_required(f):
 def update_database_structure():
     """更新数据库表结构，添加 user_id 字段和 role 字段"""
     try:
+        from sqlalchemy import text
         conn = get_db_connection()
-        cursor = conn.cursor()
         
         # 检查 user_id 列是否存在
-        cursor.execute("""
+        result = conn.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = 'projects'
             AND COLUMN_NAME = 'user_id'
-        """)
+        """))
         
-        if cursor.fetchone()[0] == 0:
+        if result.scalar() == 0:
             # 添加 user_id 列
-            cursor.execute("""
+            conn.execute(text("""
                 ALTER TABLE projects
                 ADD user_id INT NOT NULL DEFAULT 1
-            """)
+            """))
             
             # 添加外键约束
-            cursor.execute("""
+            conn.execute(text("""
                 ALTER TABLE projects
                 ADD CONSTRAINT FK_Projects_Users
                 FOREIGN KEY (user_id) REFERENCES users (id)
-            """)
+            """))
             
             conn.commit()
             print("成功添加 user_id 列和外键约束")
         
         # 检查 role 列是否存在
-        cursor.execute("""
+        result = conn.execute(text("""
             SELECT COUNT(*)
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_NAME = 'users'
             AND COLUMN_NAME = 'role'
-        """)
+        """))
         
-        if cursor.fetchone()[0] == 0:
+        if result.scalar() == 0:
             # 添加 role 列
-            cursor.execute("""
+            conn.execute(text("""
                 ALTER TABLE users
                 ADD role NVARCHAR(20) NOT NULL DEFAULT 'user'
-            """)
+            """))
             
             conn.commit()
             print("成功添加 role 列")
+            
+        conn.close()
+    except Exception as e:
+        print(f"更新数据库表结构失败: {str(e)}")
+        raise
         
         cursor.close()
         conn.close()
