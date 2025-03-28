@@ -19,7 +19,7 @@ class DwgServiceClient:
     """DWG服务客户端"""
     
     def __init__(self, api_url=None, api_key=None):
-        self.api_url = api_url or os.environ.get('DWG_SERVICE_URL', 'http://aibim.xyz:5001')
+        self.api_url = api_url or os.environ.get('DWG_SERVICE_URL', 'http://localhost:5001')
         self.api_key = api_key or os.environ.get('DWG_SERVICE_KEY', '5c72fbbfc4e446aa7bc28c81348b35a6c264b83b47768a9dec768d7a26b2ea85')
         logger.info(f"DWG服务客户端初始化，API地址: {self.api_url}")
         

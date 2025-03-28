@@ -2903,7 +2903,7 @@
         }
         
         // 调用generate_dwg接口
-        fetch('/api/generate_dwg', {
+        fetch(`${window.location.protocol}//${window.location.host}/api/generate_dwg`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

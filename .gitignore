@@ -5743,3 +5743,5 @@ venv/lib/python3.12/site-packages/Werkzeug-2.2.3.dist-info/RECORD
 venv/lib/python3.12/site-packages/Werkzeug-2.2.3.dist-info/REQUESTED
 venv/lib/python3.12/site-packages/Werkzeug-2.2.3.dist-info/top_level.txt
 venv/lib/python3.12/site-packages/Werkzeug-2.2.3.dist-info/WHEEL
+uploads/*.dwg
+static/exports/*.dwg

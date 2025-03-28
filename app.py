@@ -52,6 +52,11 @@ load_dotenv()
 # 创建应用
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 
+# 设置配置
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['EXPORT_FOLDER'] = 'static/exports'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 最大上传文件限制为16MB
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('greenscore')
