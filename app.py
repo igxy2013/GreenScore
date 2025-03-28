@@ -1938,90 +1938,93 @@ def update_score_direct():
                 'message': '缺少必要参数: project_id, clause_number, score'
             }), 400
         
-        try:
-            # 使用SQLAlchemy事务管理
-            app.logger.info("开始数据库操作")
-            
-            # 先检查记录是否存在
-            check_query = """
-            SELECT COUNT(*) FROM `得分表`
-            WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
-            """
-            result = db.session.execute(
-                text(check_query), 
-                {"project_id": project_id, "clause_number": clause_number, "standard": standard}
-            )
-            count = result.scalar()
-            
-            if count > 0:
-                # 更新现有记录，只修改得分字段
-                update_query = """
-                UPDATE `得分表`
-                SET `得分` = :score
-                WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
-                """
-                result = db.session.execute(
-                    text(update_query),
-                    {"score": score, "project_id": project_id, "clause_number": clause_number, "standard": standard}
-                )
-                app.logger.info(f"更新记录: 影响行数={result.rowcount}")
-            else:
-                # 插入新记录
-                insert_query = """
-                INSERT INTO `得分表` (
-                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
-                    `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
-                )
-                VALUES (:project_id, :project_name, :specialty, :level, :clause_number, 
-                       :category, :is_achieved, :score, :technical_measures, :standard)
-                """
-                result = db.session.execute(
-                    text(insert_query),
-                    {
-                        "project_id": project_id, 
-                        "project_name": f'项目{project_id}', 
-                        "specialty": specialty, 
-                        "level": level, 
-                        "clause_number": clause_number,
-                        "category": category, 
-                        "is_achieved": is_achieved, 
-                        "score": score, 
-                        "technical_measures": technical_measures, 
-                        "standard": standard
-                    }
-                )
-                app.logger.info(f"插入记录: 影响行数={result.rowcount}")
-            
-            # 提交事务
-            db.session.commit()
-            app.logger.info("事务提交成功")
-            
-            # 清除评分汇总缓存
-            cache_key = f"score_summary_{project_id}_{standard}"
-            if cache.has(cache_key):
-                cache.delete(cache_key)
-                app.logger.info(f"清除评分汇总缓存: {cache_key}")
-            
-            # 清除专业得分缓存
-            specialty_cache_key = get_scores_cache_key('提高级', specialty.split('专业')[0], project_id, standard)
-            if cache.has(specialty_cache_key):
-                cache.delete(specialty_cache_key)
-                app.logger.info(f"清除专业得分缓存: {specialty_cache_key}")
-            
-            # 验证更新是否成功
-            verify_query = """
-            SELECT `得分` FROM `得分表`
-            WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
-            """
-            result = db.session.execute(
-                text(verify_query), 
-                {"project_id": project_id, "clause_number": clause_number, "standard": standard}
-            )
-            row = result.fetchone()
-            
-            if row:
-                actual_score = row[0]
-                app.logger.info(f"验证成功: 条文 {clause_number} 的得分为 {actual_score}")
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                # 使用SQLAlchemy事务管理
+                app.logger.info("开始数据库操作")
+                
+                with db.session.begin():
+                    # 先检查记录是否存在
+                    check_query = """
+                    SELECT COUNT(*) FROM `得分表`
+                    WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
+                    """
+                    result = db.session.execute(
+                        text(check_query), 
+                        {"project_id": project_id, "clause_number": clause_number, "standard": standard}
+                    )
+                    count = result.fetchone()[0]
+                    
+                    if count > 0:
+                        # 更新现有记录，只修改得分字段
+                        update_query = """
+                        UPDATE `得分表`
+                        SET `得分` = :score
+                        WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
+                        """
+                        result = db.session.execute(
+                            text(update_query),
+                            {"score": score, "project_id": project_id, "clause_number": clause_number, "standard": standard}
+                        )
+                        app.logger.info(f"更新记录: 影响行数={result.rowcount}")
+                    else:
+                        # 插入新记录
+                        insert_query = """
+                        INSERT INTO `得分表` (
+                            `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
+                            `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                        )
+                        VALUES (:project_id, :project_name, :specialty, :level, :clause_number, 
+                               :category, :is_achieved, :score, :technical_measures, :standard)
+                        """
+                        result = db.session.execute(
+                            text(insert_query),
+                            {
+                                "project_id": project_id, 
+                                "project_name": f'项目{project_id}', 
+                                "specialty": specialty, 
+                                "level": level, 
+                                "clause_number": clause_number,
+                                "category": category, 
+                                "is_achieved": is_achieved, 
+                                "score": score, 
+                                "technical_measures": technical_measures, 
+                                "standard": standard
+                            }
+                        )
+                        app.logger.info(f"插入记录: 影响行数={result.rowcount}")
+                    
+                    # 验证更新是否成功
+                    verify_query = """
+                    SELECT `得分` FROM `得分表`
+                    WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
+                    """
+                    result = db.session.execute(
+                        text(verify_query), 
+                        {"project_id": project_id, "clause_number": clause_number, "standard": standard}
+                    )
+                    row = result.fetchone()
+                    
+                    if not row:
+                        raise Exception("验证失败：未找到更新后的记录")
+                    
+                    actual_score = row[0]
+                    app.logger.info(f"验证成功: 条文 {clause_number} 的得分为 {actual_score}")
+                
+                # 清除评分汇总缓存
+                cache_key = f"score_summary_{project_id}_{standard}"
+                if cache.has(cache_key):
+                    cache.delete(cache_key)
+                    app.logger.info(f"清除评分汇总缓存: {cache_key}")
+                
+                # 清除专业得分缓存
+                specialty_cache_key = get_scores_cache_key('提高级', specialty.split('专业')[0], project_id, standard)
+                if cache.has(specialty_cache_key):
+                    cache.delete(specialty_cache_key)
+                    app.logger.info(f"清除专业得分缓存: {specialty_cache_key}")
                 
                 # 返回成功响应
                 return jsonify({
@@ -2034,22 +2037,22 @@ def update_score_direct():
                         'standard': standard
                     }
                 })
-            else:
-                app.logger.error(f"验证失败: 未找到条文 {clause_number} 的记录")
-                return jsonify({
-                    'success': False,
-                    'message': f'验证失败: 未找到条文 {clause_number} 的记录'
-                }), 500
-        
-        except Exception as e:
-            # 回滚事务
-            db.session.rollback()
-            app.logger.error(f"数据库操作失败: {str(e)}")
-            app.logger.error(traceback.format_exc())
-            return jsonify({
-                'success': False,
-                'message': f'数据库操作失败: {str(e)}'
-            }), 500
+                
+            except Exception as e:
+                # 回滚事务
+                db.session.rollback()
+                app.logger.error(f"数据库操作失败: {str(e)}")
+                retry_count += 1
+                if retry_count < max_retries:
+                    app.logger.info(f"正在进行第{retry_count}次重试...")
+                    time.sleep(1)  # 等待1秒后重试
+                else:
+                    app.logger.error("已达到最大重试次数，操作失败")
+                    app.logger.error(traceback.format_exc())
+                    return jsonify({
+                        'success': False,
+                        'message': f'数据库操作失败: {str(e)}'
+                    }), 500
     
     except Exception as e:
         app.logger.error(f"处理请求失败: {str(e)}")
@@ -4063,7 +4066,7 @@ def get_db_connection():
         # 解析数据库连接字符串
         db_url = os.getenv('DATABASE_URL')
         if not db_url:
-            print("数据库连接字符串未配置")
+            app.logger.error("数据库连接字符串未配置")
             raise ValueError("数据库连接字符串未配置")
 
         if IS_WSL:
@@ -4073,7 +4076,7 @@ def get_db_connection():
             pattern = r'mysql\+pymysql://([^:]+):([^@]+)@([^/]+)/([^?]+)'
             match = re.match(pattern, db_url)
             if not match:
-                print("数据库连接字符串格式错误")
+                app.logger.error("数据库连接字符串格式错误")
                 raise ValueError("数据库连接字符串格式错误")
 
             username, password, server, database = match.groups()
@@ -4086,10 +4089,10 @@ def get_db_connection():
                     database=database,
                     charset='utf8mb4'
                 )
-                current_app.logger.info("MySQL数据库连接成功")
+                app.logger.info("MySQL数据库连接成功")
                 return conn
             except Exception as e:
-                current_app.logger.error(f"MySQL数据库连接失败: {str(e)}")
+                app.logger.error(f"MySQL数据库连接失败: {str(e)}")
                 raise
         else:
             # Windows环境下使用SQL Server连接
@@ -4098,7 +4101,7 @@ def get_db_connection():
             pattern = r'mssql\+pyodbc://([^:]+):([^@]+)@([^/]+)/([^?]+)'
             match = re.match(pattern, db_url)
             if not match:
-                print("数据库连接字符串格式错误")
+                app.logger.error("数据库连接字符串格式错误")
                 raise ValueError("数据库连接字符串格式错误")
 
             username, password, server, database = match.groups()
@@ -4108,13 +4111,13 @@ def get_db_connection():
             # 尝试建立连接
             try:
                 conn = pyodbc.connect(conn_str)
-                current_app.logger.info("SQL Server数据库连接成功")
+                app.logger.info("SQL Server数据库连接成功")
                 return conn
             except Exception as e:
-                current_app.logger.error(f"SQL Server数据库连接失败: {str(e)}")
+                app.logger.error(f"SQL Server数据库连接失败: {str(e)}")
                 raise
     except Exception as e:
-        current_app.logger.error(f"创建数据库连接时出错: {str(e)}")
+        app.logger.error(f"创建数据库连接时出错: {str(e)}")
         raise
 
 if __name__ == '__main__':

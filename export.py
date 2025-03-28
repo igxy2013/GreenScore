@@ -9,6 +9,7 @@ import traceback
 from dwg_client import dwg_client
 from sqlalchemy import text
 import pymysql
+from models import db
 
 # 检查是否在WSL环境中
 IS_WSL = 'WSL' in platform.uname().release or \
@@ -97,6 +98,8 @@ def get_db_connection():
     except Exception as e:
         current_app.logger.error(f"创建数据库连接时出错: {str(e)}")
         raise
+
+from models import db
 
 def generate_word(request_data):
     """
