@@ -9,14 +9,14 @@ DEBUG = True
 DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     # MySQL数据库连接配置
-    mysql_host = os.environ.get('MYSQL_HOST', 'localhost')
+    mysql_host = os.environ.get('MYSQL_HOST', 'aibim.xyz')
     mysql_port = os.environ.get('MYSQL_PORT', '3306')
     mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
     mysql_username = os.environ.get('MYSQL_USERNAME', 'mysql')
     mysql_password = os.environ.get('MYSQL_PASSWORD', '12345678')
     
-    # 构建MySQL连接字符串
-    DATABASE_URL = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4&auth_plugin=mysql_native_password'
+    # 构建MySQL连接字符串，使用最简单的配置
+    DATABASE_URL = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4'
 
 SQLALCHEMY_DATABASE_URI = DATABASE_URL
 SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -35,4 +35,4 @@ PERMANENT_SESSION_LIFETIME = 1800  # 30分钟
 
 # 上传文件配置
 UPLOAD_FOLDER = 'uploads'
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 最大上传文件限制为16MB
