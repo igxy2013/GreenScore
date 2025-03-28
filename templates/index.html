@@ -7,6 +7,8 @@
     
     <!-- 先加载Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- 加载loader.js -->
+    <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
@@ -118,17 +120,13 @@
          border-radius: 10px;
          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
          width: 170px;
-         display: none;
-         transform-origin: bottom left;
-         opacity: 0;
-         transform: scale(0.95);
-         transition: all 0.2s ease;
+         display: block;
      }
      
      .user-menu.active {
-         display: block;
          opacity: 1;
          transform: scale(1);
+         pointer-events: auto;
      }
     </style>
     <style>
@@ -259,6 +257,13 @@
     </script>
 </head>
 <body class="bg-gray-100">
+    <!-- 加载器 -->
+    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
+            <i class="ri-loader-2-line text-primary text-2xl animate-spin"></i>
+            <span class="text-gray-700">加载中...</span>
+        </div>
+    </div>
     <!-- 隐藏字段，用于存储当前项目ID和标准 -->
     <input type="hidden" id="current-project-id" value="{{ project.id if project else '21' }}">
     <input type="hidden" id="current-project-standard" value="{{ project.standard if project else '成都市标' }}">
@@ -293,14 +298,7 @@
                     });
                 }
 
-                // 点击联系我们显示联系信息模态框
-                if (contactUsBtn) {
-                    contactUsBtn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        userMenu.classList.remove('active');
-                        contactModal.classList.remove('hidden');
-                    });
-                }
+
 
                 // 头像预览
                 if (avatarInput) {
@@ -322,29 +320,29 @@
                 window.closeAvatarModal = function() {
                     if (avatarModal) {
                         avatarModal.classList.add('hidden');
-                        avatarInput.value = '';
-                        avatarPreview.classList.add('hidden');
-                        defaultAvatar.classList.remove('hidden');
+                        if (avatarInput) {
+                            avatarInput.value = '';
+                        }
+                        if (avatarPreview) {
+                            avatarPreview.classList.add('hidden');
+                        }
+                        if (defaultAvatar) {
+                            defaultAvatar.classList.remove('hidden');
+                        }
                     }
                 };
 
-                window.closeContactModal = function() {
-                    if (contactModal) {
-                        contactModal.classList.add('hidden');
-                    }
-                };
+
 
                 // 点击页面其他区域关闭菜单和模态框
                 document.addEventListener('click', function(e) {
                     if (!userMenu.contains(e.target) && !userIcon.contains(e.target)) {
                         userMenu.classList.remove('active');
                     }
-                    if (avatarModal && e.target === avatarModal) {
+                    if (avatarModal && !avatarModal.querySelector('.bg-white').contains(e.target)) {
                         closeAvatarModal();
                     }
-                    if (contactModal && e.target === contactModal) {
-                        closeContactModal();
-                    }
+
                 });
             }
         });
@@ -500,11 +498,7 @@
                         <span class="ml-2 text-gray-700">系统设置</span>
                     </div>
                     
-                    <!-- 联系我们选项 -->
-                    <div id="contactUsBtn" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                        <i class="fas fa-paper-plane text-gray-500"></i>
-                        <span class="ml-2 text-gray-700">联系我们</span>
-                    </div>
+
                     
                     <!-- 退出登录选项 -->
                     <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer group">
@@ -515,7 +509,7 @@
 
                 <!-- 头像选择模态框 -->
                 <div id="avatarModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative" style="z-index: 10000;">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-xl font-bold">选择头像</h3>
                             <button class="text-gray-500 hover:text-gray-700" onclick="closeAvatarModal()">
@@ -524,23 +518,8 @@
                         </div>
                         <div class="grid grid-cols-3 gap-4 mb-6">
                             <!-- 预设头像选项 -->
-                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="avatar1">
-                                <img src="{{ url_for('static', filename='image/avatars/avatar1.png') }}" alt="头像1" class="w-full h-auto rounded-full">
-                            </div>
-                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="avatar2">
-                                <img src="{{ url_for('static', filename='image/avatars/avatar2.png') }}" alt="头像2" class="w-full h-auto rounded-full">
-                            </div>
-                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="avatar3">
-                                <img src="{{ url_for('static', filename='image/avatars/avatar3.png') }}" alt="头像3" class="w-full h-auto rounded-full">
-                            </div>
-                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="avatar4">
-                                <img src="{{ url_for('static', filename='image/avatars/avatar4.png') }}" alt="头像4" class="w-full h-auto rounded-full">
-                            </div>
-                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="avatar5">
-                                <img src="{{ url_for('static', filename='image/avatars/avatar5.png') }}" alt="头像5" class="w-full h-auto rounded-full">
-                            </div>
-                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="avatar6">
-                                <img src="{{ url_for('static', filename='image/avatars/avatar6.png') }}" alt="头像6" class="w-full h-auto rounded-full">
+                            <div class="avatar-option cursor-pointer hover:opacity-80 transition-opacity" data-avatar="default">
+                                <img src="{{ url_for('static', filename='image/greenscore-64.png') }}" alt="默认头像" class="w-full h-auto rounded-full">
                             </div>
                         </div>
                         <div class="flex justify-end space-x-3">
@@ -554,38 +533,6 @@
                     </div>
                 </div>
 
-                <!-- 联系我们模态框 -->
-                <div id="contactModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-xl font-bold">联系我们</h3>
-                            <button class="text-gray-500 hover:text-gray-700" onclick="closeContactModal()">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="space-y-4">
-                            <div class="flex items-center space-x-3">
-                                <i class="fas fa-envelope text-primary text-xl"></i>
-                                <div>
-                                    <p class="text-gray-700 font-medium">Email:</p>
-                                    <p class="text-gray-600">acbim@qq.com</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center space-x-3">
-                                <i class="fab fa-qq text-primary text-xl"></i>
-                                <div>
-                                    <p class="text-gray-700 font-medium">用户服务QQ群:</p>
-                                    <p class="text-gray-600">715172744</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-6 flex justify-end">
-                            <button onclick="closeContactModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                                关闭
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
                 <div class="max-w-7xl mx-auto">
                     <!-- 添加项目管理按钮 -->
@@ -3271,54 +3218,43 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 获取所有头像选项
-            const avatarOptions = document.querySelectorAll('.avatar-option');
-            let selectedAvatar = null;
+            const userIcon = document.getElementById('userIcon');
+            const userMenu = document.getElementById('userMenu');
+            const contactUsBtn = document.getElementById('contactUsBtn');
+            const contactModal = document.getElementById('contactModal');
 
-            // 为每个头像选项添加点击事件
-            avatarOptions.forEach(option => {
-                option.addEventListener('click', function() {
-                    // 移除其他头像的选中状态
-                    avatarOptions.forEach(opt => opt.classList.remove('ring-4', 'ring-primary'));
-                    // 添加当前头像的选中状态
-                    this.classList.add('ring-4', 'ring-primary');
-                    selectedAvatar = this.dataset.avatar;
-                });
+            // 点击用户图标时切换菜单显示状态
+            userIcon.addEventListener('click', function() {
+                userMenu.classList.toggle('active');
             });
 
-            // 保存选择的头像
-            window.saveSelectedAvatar = function() {
-                if (!selectedAvatar) {
-                    alert('请选择一个头像');
-                    return;
+            // 点击页面其他区域时隐藏菜单
+            document.addEventListener('click', function(event) {
+                if (!userIcon.contains(event.target) && !userMenu.contains(event.target)) {
+                    userMenu.classList.remove('active');
                 }
+            });
 
-                // 更新用户图标
-                const userIcon = document.getElementById('userIcon');
-                const userMenuIcon = document.querySelector('#userProfileBtn i.fas.fa-user-circle');
-                
-                // 获取选中头像的图片URL
-                const selectedAvatarImg = document.querySelector(`[data-avatar="${selectedAvatar}"] img`).src;
-                
-                // 更新用户图标
-                userIcon.innerHTML = `<img src="${selectedAvatarImg}" alt="用户头像" class="w-8 h-8 rounded-full">`;
-                
-                // 更新用户菜单中的头像
-                if (userMenuIcon) {
-                    userMenuIcon.parentElement.innerHTML = `<img src="${selectedAvatarImg}" alt="用户头像" class="w-8 h-8 rounded-full mr-2">`;
-                }
+            // 打开联系我们模态窗口
+            contactUsBtn.addEventListener('click', function() {
+                contactModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // 防止背景滚动
+            });
+        });
 
-                // 关闭模态框
-                closeAvatarModal();
-            };
+        // 关闭联系我们模态窗口
+        function closeContactModal() {
+            const contactModal = document.getElementById('contactModal');
+            contactModal.classList.add('hidden');
+            document.body.style.overflow = ''; // 恢复背景滚动
+        }
 
-            // 关闭模态框时重置选择状态
-            window.closeAvatarModal = function() {
-                const avatarModal = document.getElementById('avatarModal');
-                avatarModal.classList.add('hidden');
-                selectedAvatar = null;
-                avatarOptions.forEach(opt => opt.classList.remove('ring-4', 'ring-primary'));
-            };
+        // 点击模态窗口外部关闭
+        document.addEventListener('click', function(e) {
+            const contactModal = document.getElementById('contactModal');
+            if (contactModal && !contactModal.querySelector('.bg-white').contains(e.target)) {
+                closeContactModal();
+            }
         });
     </script>
 </body>
