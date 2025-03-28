@@ -13,6 +13,7 @@ import urllib.parse
 from sqlalchemy import create_engine, text
 import pandas as pd
 import pyodbc
+import pymysql
 
 # 配置日志
 logging.basicConfig(
@@ -47,20 +48,29 @@ def get_sqlserver_connection():
 def get_mysql_connection():
     """获取MySQL数据库连接"""
     try:
-        from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_ENGINE_OPTIONS
+        # 从配置文件获取MySQL数据库连接参数
+        mysql_host = os.environ.get('MYSQL_HOST', 'localhost')
+        mysql_port = int(os.environ.get('MYSQL_PORT', '3306'))
+        mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
+        mysql_username = os.environ.get('MYSQL_USERNAME', 'mysql')
+        mysql_password = os.environ.get('MYSQL_PASSWORD', '12345678')
         
-        # 创建引擎，使用统一的配置
-        engine = create_engine(
-            SQLALCHEMY_DATABASE_URI,
-            **SQLALCHEMY_ENGINE_OPTIONS
+        # 使用pymysql直接创建连接
+        conn = pymysql.connect(
+            host=mysql_host,
+            port=mysql_port,
+            user=mysql_username,
+            password=mysql_password,
+            database=mysql_database,
+            charset='utf8mb4'
         )
         
         # 测试连接
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1")
             logger.info("MySQL连接测试成功")
         
-        return engine
+        return conn
     except Exception as e:
         logger.error(f"MySQL连接失败: {str(e)}")
         raise
@@ -80,12 +90,12 @@ def get_tables(conn):
         logger.error(f"获取表列表失败: {str(e)}")
         raise
 
-def migrate_table(source_conn, target_engine, table_name):
+def migrate_table(source_conn, target_conn, table_name):
     """迁移单个表的数据"""
     try:
         logger.info(f"开始迁移表: {table_name}")
         
-        # 构建查询语句，使用方括号包围表名以支持特殊字符
+        # 构建查询语句，使用方括号包围表名以支持特殊字符（SQL Server语法）
         query = f"SELECT * FROM [{table_name}]"
         
         # 使用pandas从pyodbc连接读取数据
@@ -97,47 +107,33 @@ def migrate_table(source_conn, target_engine, table_name):
             # 处理中文列名，防止在MySQL中出现问题
             df.columns = [col if isinstance(col, str) else str(col) for col in df.columns]
             
-            # 写入目标数据库
+            # 创建MySQL游标
+            mysql_cursor = target_conn.cursor()
+            
             try:
-                # 使用事务管理
-                with target_engine.begin() as conn:
-                    # 删除现有表（如果存在）
-                    conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
-                    
-                    # 创建表并写入数据
-                    df.to_sql(
-                        table_name,
-                        conn,
-                        if_exists='replace',
-                        index=False,
-                        chunksize=1000  # 分批写入，避免内存问题
-                    )
-                    
+                # 删除现有表（如果存在），使用MySQL语法
+                mysql_cursor.execute(f"DROP TABLE IF EXISTS `{table_name}`")
+                
+                # 根据DataFrame构建创建表SQL
+                create_table_sql = get_create_table_sql(df, table_name)
+                mysql_cursor.execute(create_table_sql)
+                
+                # 批量插入数据
+                insert_data_sql_list = get_insert_data_sql(df, table_name)
+                for sql in insert_data_sql_list:
+                    mysql_cursor.execute(sql)
+                
+                # 提交事务
+                target_conn.commit()
                 logger.info(f"表 {table_name} 迁移完成")
             except Exception as e:
+                # 回滚事务
+                target_conn.rollback()
                 logger.error(f"写入MySQL失败: {str(e)}")
-                # 尝试备用方法
-                logger.info("尝试使用备用方法写入数据...")
-                
-                try:
-                    # 将DataFrame转换为SQL语句手动执行
-                    create_table_sql = get_create_table_sql(df, table_name)
-                    insert_data_sql = get_insert_data_sql(df, table_name)
-                    
-                    with target_engine.begin() as conn:
-                        # 删除现有表（如果存在）
-                        conn.execute(text(f"DROP TABLE IF EXISTS `{table_name}`"))
-                        # 创建表
-                        conn.execute(text(create_table_sql))
-                        # 插入数据（分批处理）
-                        if len(insert_data_sql) > 0:
-                            for sql in insert_data_sql:
-                                conn.execute(text(sql))
-                        
-                    logger.info(f"使用备用方法完成表 {table_name} 的迁移")
-                except Exception as backup_error:
-                    logger.error(f"备用方法也失败: {str(backup_error)}")
-                    raise
+                raise
+            finally:
+                # 关闭游标
+                mysql_cursor.close()
         else:
             logger.warning(f"表 {table_name} 没有数据，跳过")
         
@@ -166,7 +162,7 @@ def get_create_table_sql(df, table_name):
         escaped_col = f"`{col}`"
         columns.append(f"{escaped_col} {col_type}")
     
-    # 生成创建表的SQL
+    # 生成创建表的SQL（MySQL语法）
     create_sql = f"CREATE TABLE `{table_name}` ({', '.join(columns)})"
     return create_sql
 
@@ -198,7 +194,7 @@ def get_insert_data_sql(df, table_name, batch_size=100):
             
             values_list.append(f"({', '.join(values)})")
         
-        # 生成完整的INSERT语句
+        # 生成完整的INSERT语句（MySQL语法）
         insert_sql = f"INSERT INTO `{table_name}` ({', '.join(columns)}) VALUES {', '.join(values_list)}"
         result.append(insert_sql)
     
@@ -211,7 +207,7 @@ def main():
         
         # 获取数据库连接
         source_conn = get_sqlserver_connection()
-        target_engine = get_mysql_connection()
+        target_conn = get_mysql_connection()
         
         # 获取所有表
         tables = get_tables(source_conn)
@@ -224,7 +220,7 @@ def main():
         # 迁移每个表
         for table in tables:
             try:
-                rows = migrate_table(source_conn, target_engine, table)
+                rows = migrate_table(source_conn, target_conn, table)
                 total_rows += rows
                 successful_tables += 1
             except Exception as e:
@@ -232,6 +228,7 @@ def main():
         
         # 关闭连接
         source_conn.close()
+        target_conn.close()
         
         # 迁移统计
         logger.info(f"数据迁移完成，总计 {total_tables} 个表，成功 {successful_tables} 个，共迁移 {total_rows} 条记录")

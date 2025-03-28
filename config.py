@@ -9,7 +9,7 @@ DEBUG = True
 DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     # MySQL数据库连接配置
-    mysql_host = os.environ.get('MYSQL_HOST', 'aibim.xyz')
+    mysql_host = os.environ.get('MYSQL_HOST', 'localhost')
     mysql_port = os.environ.get('MYSQL_PORT', '3306')
     mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
     mysql_username = os.environ.get('MYSQL_USERNAME', 'mysql')
