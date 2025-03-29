@@ -642,6 +642,16 @@ def api_update_dwg():
         except:
             pass
 
+# 添加健康检查接口
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """健康检查接口"""
+    return jsonify({
+        'status': 'ok',
+        'service': 'dwg-service',
+        'version': '1.0'
+    }), 200
+
 # 尝试重启AutoCAD的函数
 def restart_autocad():
     """尝试关闭现有AutoCAD实例并启动一个新的实例"""
@@ -715,6 +725,10 @@ if __name__ == '__main__':
         logger.warning(f"预启动AutoCAD失败: {str(e)}")
         # 尝试重启AutoCAD
         restart_autocad()
+    
+    # 设置Flask调试模式，替代已废弃的FLASK_ENV
+    import os
+    os.environ['FLASK_DEBUG'] = '1'
     
     # 添加host参数使其可以从外部访问
     app.run(host='0.0.0.0', port=5001, debug=True, threaded=False)  # 使用单线程模式避免COM冲突

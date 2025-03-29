@@ -5749,3 +5749,4 @@ uploads/606033e7-8ac6-4bd0-8bd9-9f7cf98c7b24.dwl2
 dwg_cache/*.dwg
 output/*.dwg
 logs/*
+*.tmp

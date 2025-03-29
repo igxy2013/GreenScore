@@ -45,7 +45,7 @@ def get_service_host_ip():
             valid_ip = None
             
             # 方法1：直接使用.env中配置的默认IP（最可靠的方法）
-            default_ip = '192.168.0.80'  # 使用.env中配置的默认IP
+            default_ip = 'localhost'  # 使用.env中配置的默认IP
             try:
                 test_url = f"http://{default_ip}:5001/api/health"
                 logger.info(f"测试默认IP是否可用: {test_url}")
@@ -118,7 +118,7 @@ def get_service_host_ip():
             return 'localhost'
     except Exception as e:
         logger.error(f"获取主机IP失败: {str(e)}")
-        return '192.168.0.80'  # 出错时使用默认IP
+        return 'localhost'  # 出错时使用默认IP
 
 class DwgServiceClient:
     """DWG服务客户端"""
