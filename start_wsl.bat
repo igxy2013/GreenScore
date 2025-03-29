@@ -34,10 +34,11 @@
 @echo off
 chcp 65001 > nul
 
-:: 1. 拉取最新代码
-git pull
+:: 1. 拉取最新代�?
+git fetch --all
+git reset --hard origin/main
 if errorlevel 1 (
-echo [错误] Git 拉取失败，请检查网络或仓库权限�?
+echo [错误] Git 拉取失败，请检查网络或仓库权限�?
 )
 
 :: 2. 启动WSL中的MySQL
@@ -54,7 +55,7 @@ exit /b
 for /f "delims=" %%A in ('wsl wslpath -a "%cd%"') do set WSL_PATH=%%A
 
 :: 4. 启动Python服务
-echo 正在WSL环境中启动服务...
+echo 正在WSL环境中启动服�?..
 wsl -d Ubuntu -e bash -c "cd '%WSL_PATH%' && source venv/bin/activate && python start.py"
 echo 如果服务已成功启动，请访问http://localhost:5050
 pause

@@ -45,7 +45,7 @@ def get_service_host_ip():
             valid_ip = None
             
             # 方法1：直接使用.env中配置的默认IP（最可靠的方法）
-            default_ip = 'localhost'  # 使用.env中配置的默认IP
+            default_ip = os.environ.get('DWG_HOST_IP')  # 使用.env中配置的默认IP
             try:
                 test_url = f"http://{default_ip}:5001/api/health"
                 logger.info(f"测试默认IP是否可用: {test_url}")

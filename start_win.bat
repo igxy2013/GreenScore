@@ -5,7 +5,7 @@
 ::YAwzuBVtJxjWCl3EqQJgSA==
 ::ZR4luwNxJguZRRnk
 ::Yhs/ulQjdF+5
-::cxAkpRVqdFKZSzk=
+::cxAkpRVqdFKZSjk=
 ::cBs/ulQjdF+5
 ::ZR41oxFsdFKZSDk=
 ::eBoioBt6dFKZSDk=
@@ -26,13 +26,14 @@
 ::ZQ0/vhVqMQ3MEVWAtB9wSA==
 ::Zg8zqx1/OA3MEVWAtB9wSA==
 ::dhA7pRFwIByZRRnk
-::Zh4grVQjdCuDJGm9yGUiLR5afweNLm6GIacZ7ebI7OWVpwAOUfApfZ2V36yLQA==
+::Zh4grVQjdCuDJGm9yGUiLR5afweNLm6GIacZ7ebI7OWVpwAqfcxya4rJzLGcbuUL7yU=
 ::YB416Ek+ZG8=
 ::
 ::
 ::978f952a14a936cc963da21a135fa983
 @echo off
-git pull
+git fetch --all
+git reset --hard origin/main
 title Python Script Runner
 python start.py
 pause
