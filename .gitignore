@@ -1,11 +1,10 @@
+
 /.cursor
 /.venv
 /database.db
 /output.txt
 /schema.sql
 /设计工作说明页面.html
-/.env
-/logs/
 /cache/
 /__pycache__/
 *.pyc
@@ -5751,3 +5750,6 @@ uploads/606033e7-8ac6-4bd0-8bd9-9f7cf98c7b24.dwl
 uploads/606033e7-8ac6-4bd0-8bd9-9f7cf98c7b24.dwl2
 dwg_cache/*.dwg
 output/*.dwg
+logs/app.log.1
+logs/app.log.2
+logs/app.log.3
