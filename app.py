@@ -807,130 +807,93 @@ def create_project():
         if not standard:
             return jsonify({'error': '请选择评价标准'}), 400
         
-        # 创建新项目
-        project = Project(
-            name=project_name,
-            user_id=user_id,
-            standard=standard,
-            building_type=building_type,
-            star_rating_target=star_rating_target,
-            code=data.get('code'),
-            construction_unit=data.get('construction_unit'),
-            design_unit=data.get('design_unit'),
-            location=data.get('location'),
-            climate_zone=data.get('climate_zone'),
-            total_land_area=data.get('total_land_area'),
-            total_building_area=data.get('total_building_area'),
-            above_ground_area=data.get('above_ground_area'),
-            underground_area=data.get('underground_area'),
-            plot_ratio=data.get('plot_ratio'),
-            building_base_area=data.get('building_base_area'),
-            building_density=data.get('building_density'),
-            green_area=data.get('green_area'),
-            green_ratio=data.get('green_ratio'),
-            building_height=data.get('building_height'),
-            building_floors=data.get('building_floors'),
-            air_conditioning_type=data.get('air_conditioning_type'),
-            has_garbage_room=data.get('has_garbage_room'),
-            has_elevator=data.get('has_elevator'),
-            has_underground_garage=data.get('has_underground_garage'),
-            construction_type=data.get('construction_type'),
-            has_water_landscape=data.get('has_water_landscape'),
-            is_fully_decorated=data.get('is_fully_decorated'),
-            public_building_type=data.get('public_building_type'),
-            public_green_space=data.get('public_green_space')
-        )
-        
-        db.session.add(project)
-        db.session.commit()
-        
-        # 从星级案例表获取初始数据
         try:
-            # 构建查询条件
-            query_conditions = []
-            query_params = {}
+            # 创建新项目
+            project = Project(
+                name=project_name,
+                user_id=user_id,
+                standard=standard,
+                building_type=building_type,
+                star_rating_target=star_rating_target,
+                code=data.get('code'),
+                construction_unit=data.get('construction_unit'),
+                design_unit=data.get('design_unit'),
+                location=data.get('location'),
+                climate_zone=data.get('climate_zone'),
+                total_land_area=data.get('total_land_area'),
+                total_building_area=data.get('total_building_area'),
+                above_ground_area=data.get('above_ground_area'),
+                underground_area=data.get('underground_area'),
+                plot_ratio=data.get('plot_ratio'),
+                building_base_area=data.get('building_base_area'),
+                building_density=data.get('building_density'),
+                green_area=data.get('green_area'),
+                green_ratio=data.get('green_ratio'),
+                building_height=data.get('building_height'),
+                building_floors=data.get('building_floors'),
+                air_conditioning_type=data.get('air_conditioning_type'),
+                has_garbage_room=data.get('has_garbage_room'),
+                has_elevator=data.get('has_elevator'),
+                has_underground_garage=data.get('has_underground_garage'),
+                construction_type=data.get('construction_type'),
+                has_water_landscape=data.get('has_water_landscape'),
+                is_fully_decorated=data.get('is_fully_decorated'),
+                public_building_type=data.get('public_building_type'),
+                public_green_space=data.get('public_green_space')
+            )
             
-            # 添加评价标准条件
-            query_conditions.append("评价标准 = :standard")
-            query_params["standard"] = standard
+            # 尝试添加项目并提交事务
+            db.session.add(project)
+            db.session.flush()  # 获取项目ID但不提交事务
             
-            # 添加星级目标条件
-            if star_rating_target:
-                query_conditions.append("星级目标 = :star_rating_target")
-                query_params["star_rating_target"] = star_rating_target
+            project_id = project.id
+            app.logger.info(f"项目创建成功: ID={project_id}, 名称={project_name}")
             
-            # 添加建筑类型条件
-            if building_type:
-                query_conditions.append("建筑类型 = :building_type")
-                query_params["building_type"] = building_type
-            
-            # 构建完整的查询语句
-            query = f"""
-                SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
-                FROM 星级案例表
-                WHERE {' AND '.join(query_conditions)}
-            """
-            
-            app.logger.info(f"执行查询: {query} 参数: {query_params}")
-            
-            # 使用SQLAlchemy执行查询
-            result = db.session.execute(text(query), query_params)
-            case_data = result.fetchall()
-            
-            if case_data:
-                app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
-                # 插入得分记录到得分表
-                for record in case_data:
-                    clause_number, category, is_achieved, score, technical_measures, specialty, level = record
-                    
-                    # 使用SQLAlchemy执行插入
-                    insert_query = """
-                        INSERT INTO 得分表 (
-                            项目ID, 项目名称, 专业, 评价等级, 条文号, 分类, 
-                            是否达标, 得分, 技术措施, 评价标准
-                        ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category,
-                                :is_achieved, :score, :technical_measures, :standard)
-                    """
-                    
-                    db.session.execute(
-                        text(insert_query),
-                        {
-                            "project_id": project.id,
-                            "project_name": project_name,
-                            "specialty": specialty,
-                            "level": level,
-                            "clause_number": clause_number,
-                            "category": category,
-                            "is_achieved": is_achieved,
-                            "score": score,
-                            "technical_measures": technical_measures,
-                            "standard": standard
-                        }
-                    )
+            # 创建成功后尝试创建默认评分数据
+            try:
+                # 直接创建默认评分数据
+                app.logger.info(f"创建项目默认评分数据: 项目ID={project_id}, 名称={project_name}, 标准={standard}")
+                create_default_scores(project_id, project_name, standard)
                 
+                # 提交事务
                 db.session.commit()
-                app.logger.info(f"成功导入 {len(case_data)} 条星级案例数据到项目 {project.id}")
-            else:
-                app.logger.warning(f"未找到匹配的星级案例数据，使用默认评分数据")
-                # 如果没有找到匹配的星级案例数据，则创建默认评分数据
-                create_default_scores(project.id, project_name, standard)
-            
-        except Exception as e:
-            app.logger.error(f"导入星级案例数据失败: {str(e)}")
+                return jsonify({
+                    'id': project_id,
+                    'name': project.name,
+                    'message': '项目创建成功'
+                })
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"创建默认评分数据失败: {str(e)}")
+                app.logger.error(traceback.format_exc())
+                
+                # 虽然评分数据创建失败，但项目创建已成功，返回项目ID
+                return jsonify({
+                    'id': project_id,
+                    'name': project_name,
+                    'error': '创建默认评分数据失败，但项目已创建'
+                })
+                
+        except Exception as db_error:
+            db.session.rollback()
+            app.logger.error(f"数据库操作失败: {str(db_error)}")
             app.logger.error(traceback.format_exc())
-            # 不影响项目创建，继续执行
-        
-        return jsonify({
-            'id': project.id,
-            'name': project.name,
-            'message': '项目创建成功'
-        })
+            
+            # 检查是否是ID字段无默认值错误
+            if "Field 'id' doesn't have a default value" in str(db_error):
+                return jsonify({
+                    'error': '数据库配置错误：ID字段未配置为自动递增。请检查数据库表结构或联系管理员。'
+                }), 500
+            else:
+                return jsonify({
+                    'error': f'数据库写入失败: {str(db_error)}'
+                }), 500
         
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"创建项目失败: {str(e)}")
         app.logger.error(traceback.format_exc())
-        return jsonify({'error': '创建项目失败'}), 500
+        return jsonify({'error': f'创建项目失败: {str(e)}'}), 500
 
 # 修改项目访问权限检查
 def check_project_access(project_id):
@@ -959,10 +922,12 @@ def project_detail(project_id):
         project = Project.query.get_or_404(project_id)
         # 获取page参数，默认为project_info
         page = request.args.get('page', 'project_info')
+        app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
         return render_template('index.html', project=project, current_page=page)
     except Exception as e:
-        print(f"获取项目详情失败: {str(e)}")
-        return redirect(url_for('project_management'))
+        app.logger.error(f"获取项目详情失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return render_template('error.html', error=f"获取项目详情失败: {str(e)}")
 
 # 修改项目删除函数
 @app.route('/delete_project/<int:project_id>', methods=['DELETE'])
@@ -3471,6 +3436,10 @@ def get_projects():
         # 将项目数据转换为JSON格式
         projects_data = []
         for project in projects:
+            # 确保项目对象有效
+            if project is None:
+                continue
+                
             projects_data.append({
                 'id': project.id,
                 'name': project.name,
@@ -4110,6 +4079,7 @@ def get_db_connection():
                 raise ValueError("数据库连接字符串格式错误")
 
             username, password, server, database = match.groups()
+            database = database.split('?')[0]  # 移除查询参数
 
             # 构建连接字符串，添加超时和TLS配置
             conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password};Connection Timeout=30;Encrypt=yes;TrustServerCertificate=yes"

@@ -15,8 +15,10 @@ if not DATABASE_URL:
     mysql_username = os.environ.get('MYSQL_USERNAME', 'mysql')
     mysql_password = os.environ.get('MYSQL_PASSWORD', '12345678')
     
-    # 构建MySQL连接字符串，使用最简单的配置
-    DATABASE_URL = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4'
+    # 构建MySQL连接字符串
+    # 对中文数据库名进行URL编码
+    encoded_database = urllib.parse.quote(mysql_database)
+    DATABASE_URL = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{encoded_database}'
 
 SQLALCHEMY_DATABASE_URI = DATABASE_URL
 SQLALCHEMY_TRACK_MODIFICATIONS = False

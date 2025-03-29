@@ -189,7 +189,7 @@
             <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold">联系我们</h3>
-                    <button class="text-gray-500 hover:text-gray-700" onclick="closeContactModal()">
+                    <button class="text-gray-500 hover:text-gray-700" onclick="closeContactModal()" title="关闭">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -293,42 +293,22 @@
             <!-- 创建新项目模态窗口 -->
             <div id="createProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
                 <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 relative">
-                    <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+                    <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" title="关闭">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                     <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">创建新项目</h3>
                     
                     <form id="modalProjectForm" action="/create_project" method="POST" class="space-y-6">
-                        <div class="grid grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 gap-6">
                             <div>
                                 <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称 <span class="text-red-500">*</span></label>
                                 <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目名称" required>
                             </div>
                             
                             <div>
-                                <label for="project_code" class="block text-base font-medium text-gray-700 mb-1">项目编号</label>
-                                <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目编号">
-                            </div>
-                            
-                            <div>
-                                <label for="construction_unit" class="block text-base font-medium text-gray-700 mb-1">建设单位</label>
-                                <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入建设单位名称">
-                            </div>
-                            
-                            <div>
-                                <label for="design_unit" class="block text-base font-medium text-gray-700 mb-1">设计单位</label>
-                                <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入设计单位名称">
-                            </div>
-                            
-                            <div>
-                                <label for="project_location" class="block text-base font-medium text-gray-700 mb-1">项目地点</label>
-                                <input type="text" id="project_location" name="project_location" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目地点">
-                            </div>
-                            
-                            <div>
                                 <label for="standard_selection" class="block text-base font-medium text-gray-700 mb-1">评价标准 <span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                    <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="评价标准">
                                         <option value="">请选择评价标准</option>
                                         <option value="国标">绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
                                         <option value="四川省标">四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
@@ -343,7 +323,7 @@
                             <div>
                                 <label for="building_type" class="block text-base font-medium text-gray-700 mb-1">建筑类型 <span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                    <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="建筑类型">
                                         <option value="">请选择建筑类型</option>
                                         <option value="居住建筑">居住建筑</option>
                                         <option value="公共建筑">公共建筑</option>
@@ -358,7 +338,7 @@
                             <div>
                                 <label for="target_star_level" class="block text-base font-medium text-gray-700 mb-1">目标星级<span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required>
+                                    <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="目标星级">
                                         <option value="">请选择目标星级</option>
                                         <option value="基本级">基本级</option>
                                         <option value="一星级">一星级</option>
@@ -519,10 +499,34 @@
         
         // 获取项目列表
         function fetchProjects() {
+            // 显示加载中提示
+            document.getElementById('projectList').innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                        <i class="fas fa-sync fa-spin mr-2"></i> 正在加载项目列表...
+                    </td>
+                </tr>
+            `;
+            
             fetch('/api/projects')
-                .then(response => response.json())
+                .then(response => {
+                    // 检查HTTP状态码
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            // 未登录
+                            throw new Error('用户未登录，请重新登录');
+                        } else if (response.status === 500) {
+                            // 服务器错误
+                            throw new Error('服务器错误，可能是数据库连接问题');
+                        } else {
+                            // 其他错误
+                            throw new Error(`服务器返回错误状态码: ${response.status}`);
+                        }
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.success && data.projects) {
+                    if (data.success && Array.isArray(data.projects)) {
                         // 保存所有项目数据
                         allProjects = data.projects;
                         
@@ -563,7 +567,39 @@
                 })
                 .catch(error => {
                     console.error('获取项目列表失败:', error);
-                    displayError();
+                    // 显示更友好的错误信息
+                    document.getElementById('projectList').innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4">
+                                <div class="text-center">
+                                    <div class="text-red-500 font-bold mb-2">
+                                        <i class="fas fa-exclamation-triangle mr-2"></i> 获取项目列表失败
+                                    </div>
+                                    <p class="text-gray-700 mb-3">${error.message || '请检查网络连接并刷新页面'}</p>
+                                    <div class="text-left bg-gray-50 p-4 rounded-lg text-sm mx-auto max-w-lg">
+                                        <p class="font-medium mb-2">可能的解决方法:</p>
+                                        <ul class="list-disc pl-5 space-y-1">
+                                            <li>检查MySQL数据库是否正在运行</li>
+                                            <li>验证数据库连接参数是否正确</li>
+                                            <li>确保数据库表结构已正确创建</li>
+                                            <li>刷新页面重试</li>
+                                        </ul>
+                                    </div>
+                                    <button onclick="fetchProjects()" class="mt-4 px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90">
+                                        <i class="fas fa-sync mr-2"></i> 重试加载
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // 更新分页信息
+                    document.getElementById('pageStart').textContent = '0';
+                    document.getElementById('pageEnd').textContent = '0';
+                    document.getElementById('totalRecords').textContent = '0';
+                    document.getElementById('prevPageBtn').disabled = true;
+                    document.getElementById('nextPageBtn').disabled = true;
+                    document.getElementById('pageNumbers').innerHTML = '';
                 });
         }
         
@@ -706,10 +742,30 @@
         // 显示通知
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 px-6 py-3 rounded shadow-lg transform transition-all duration-500 opacity-0 ${
-                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-            }`;
-            notification.textContent = message;
+            
+            // 根据类型设置不同的样式
+            let bgColor, textColor, icon;
+            switch(type) {
+                case 'error':
+                    bgColor = 'bg-red-500';
+                    textColor = 'text-white';
+                    icon = '<i class="fas fa-exclamation-circle mr-2"></i>';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-500';
+                    textColor = 'text-white';
+                    icon = '<i class="fas fa-exclamation-triangle mr-2"></i>';
+                    break;
+                case 'success':
+                default:
+                    bgColor = 'bg-green-500';
+                    textColor = 'text-white';
+                    icon = '<i class="fas fa-check-circle mr-2"></i>';
+                    break;
+            }
+            
+            notification.className = `fixed top-4 right-4 px-6 py-3 rounded shadow-lg transform transition-all duration-500 opacity-0 ${bgColor} ${textColor} z-50 flex items-center`;
+            notification.innerHTML = `${icon}<span>${message}</span>`;
             document.body.appendChild(notification);
             
             setTimeout(() => {
@@ -741,17 +797,6 @@
             document.getElementById('prevPageBtn').disabled = true;
             document.getElementById('nextPageBtn').disabled = true;
             document.getElementById('pageNumbers').innerHTML = '';
-        }
-        
-        // 显示错误提示
-        function displayError() {
-            document.getElementById('projectList').innerHTML = `
-                <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-red-500">
-                        获取项目列表失败，请刷新页面重试
-                    </td>
-                </tr>
-            `;
         }
         
         // 模态窗口相关的JavaScript
@@ -789,10 +834,12 @@
                 const standardSelection = document.getElementById('standard_selection').value;
                 const buildingType = document.getElementById('building_type').value;
                 const starRatingTarget = document.getElementById('star_rating_target').value;
-                const projectCode = document.getElementById('project_code').value;
-                const constructionUnit = document.getElementById('construction_unit').value;
-                const designUnit = document.getElementById('design_unit').value;
-                const projectLocation = document.getElementById('project_location').value;
+                
+                // 显示加载中状态
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>处理中...';
                 
                 try {
                     const response = await fetch('/create_project', {
@@ -804,33 +851,46 @@
                             name: projectName,
                             standard: standardSelection,
                             building_type: buildingType,
-                            star_rating_target: starRatingTarget,
-                            code: projectCode,
-                            construction_unit: constructionUnit,
-                            design_unit: designUnit,
-                            location: projectLocation
+                            star_rating_target: starRatingTarget
                         })
                     });
                     
                     const data = await response.json();
                     
-                    if (response.ok) {
+                    // 即使有错误信息，只要有ID就表示项目创建成功
+                    if (data.id) {
                         // 关闭模态窗口
                         modal.classList.add('hidden');
                         document.body.style.overflow = '';
                         
-                        // 显示成功通知
-                        showNotification('项目创建成功！正在进入项目...');
+                        // 显示消息（可能包含警告）
+                        if (data.error) {
+                            // 项目创建成功但有警告
+                            showNotification(`项目创建成功，但${data.error}`, 'warning');
+                        } else {
+                            // 完全成功
+                            showNotification('项目创建成功！正在进入项目...', 'success');
+                        }
                         
-                        // 直接跳转到新创建的项目页面
+                        // 无论如何，都跳转到项目页面
                         setTimeout(() => {
                             window.location.href = `/project/${data.id}`;
-                        }, 1000);
+                        }, 1500);
+                    } else if (!response.ok) {
+                        // HTTP错误
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                        showNotification(data.error || `服务器错误: ${response.status}`, 'error');
                     } else {
+                        // 其他错误
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
                         showNotification(data.error || '创建项目失败', 'error');
                     }
                 } catch (error) {
                     console.error('Error:', error);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
                     showNotification('创建项目失败，请稍后重试', 'error');
                 }
             });
