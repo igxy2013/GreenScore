@@ -6,6 +6,11 @@ import json
 from flask import current_app
 import platform
 import socket
+from dotenv import load_dotenv
+import traceback  # 添加traceback模块
+
+# 手动设置环境变量（测试用）
+os.environ['DWG_HOST_IP'] = '192.168.0.80'
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -18,107 +23,19 @@ IS_WSL = 'WSL' in platform.uname().release or \
 # 获取服务主机IP
 def get_service_host_ip():
     try:
-        # 首先检查环境变量中是否手动设置了DWG主机IP
-        manual_host_ip = os.environ.get('DWG_HOST_IP')
-        if manual_host_ip:
-            logger.info(f"使用环境变量中设置的DWG主机IP: {manual_host_ip}")
-            # 验证手动设置的IP是否可用
-            try:
-                test_url = f"http://{manual_host_ip}:5001/api/health"
-                logger.info(f"测试手动设置的IP是否可用: {test_url}")
-                response = requests.get(test_url, timeout=2)
-                if response.status_code == 200:
-                    logger.info(f"手动设置的IP {manual_host_ip} 可用")
-                    return manual_host_ip
-                else:
-                    logger.warning(f"手动设置的IP {manual_host_ip} 不可用，状态码: {response.status_code}")
-                    # 继续尝试其他方法
-            except Exception as e:
-                logger.warning(f"手动设置的IP {manual_host_ip} 不可用: {str(e)}")
-                # 继续尝试其他方法
-            # 即使验证失败，仍然优先使用手动设置的IP
-            return manual_host_ip
-            
-        # 如果在WSL环境中，尝试获取Windows主机IP
-        if IS_WSL:
-            detected_ip = None
-            valid_ip = None
-            
-            # 方法1：直接使用.env中配置的默认IP（最可靠的方法）
-            default_ip = os.environ.get('DWG_HOST_IP')  # 使用.env中配置的默认IP
-            try:
-                test_url = f"http://{default_ip}:5001/api/health"
-                logger.info(f"测试默认IP是否可用: {test_url}")
-                response = requests.get(test_url, timeout=2)
-                if response.status_code == 200:
-                    logger.info(f"默认IP {default_ip} 可用")
-                    return default_ip
-                else:
-                    logger.warning(f"默认IP {default_ip} 不可用，状态码: {response.status_code}")
-            except Exception as e:
-                logger.warning(f"默认IP {default_ip} 不可用: {str(e)}")
-            
-            # 方法2：尝试读取/etc/resolv.conf获取WSL DNS服务器IP（通常是Windows主机IP）
-            try:
-                with open('/etc/resolv.conf', 'r') as f:
-                    for line in f:
-                        if line.startswith('nameserver'):
-                            detected_ip = line.split()[1]
-                            # 排除特殊IP地址，如10.255.255.254
-                            if detected_ip.startswith('10.255.255.'):
-                                logger.warning(f"跳过特殊IP地址: {detected_ip}")
-                                continue
-                            logger.info(f"从/etc/resolv.conf获取到Windows主机IP: {detected_ip}")
-                            # 验证IP是否可用
-                            try:
-                                test_url = f"http://{detected_ip}:5001/api/health"
-                                logger.info(f"测试检测到的IP是否可用: {test_url}")
-                                response = requests.get(test_url, timeout=2)
-                                if response.status_code == 200:
-                                    logger.info(f"检测到的IP {detected_ip} 可用")
-                                    valid_ip = detected_ip
-                                    break
-                                else:
-                                    logger.warning(f"检测到的IP {detected_ip} 不可用，状态码: {response.status_code}")
-                            except Exception as e:
-                                logger.warning(f"检测到的IP {detected_ip} 不可用: {str(e)}")
-            except Exception as e:
-                logger.warning(f"无法从/etc/resolv.conf获取IP: {str(e)}")
-            
-            # 如果找到有效IP，直接返回
-            if valid_ip:
-                return valid_ip
-            
-            # 方法3：如果方法2失败，尝试使用host.docker.internal域名
-            if not valid_ip:
-                try:
-                    detected_ip = socket.gethostbyname('host.docker.internal')
-                    logger.info(f"从host.docker.internal获取到Windows主机IP: {detected_ip}")
-                    # 验证IP是否可用
-                    try:
-                        test_url = f"http://{detected_ip}:5001/api/health"
-                        logger.info(f"测试检测到的IP是否可用: {test_url}")
-                        response = requests.get(test_url, timeout=2)
-                        if response.status_code == 200:
-                            logger.info(f"检测到的IP {detected_ip} 可用")
-                            return detected_ip
-                        else:
-                            logger.warning(f"检测到的IP {detected_ip} 不可用，状态码: {response.status_code}")
-                    except Exception as e:
-                        logger.warning(f"检测到的IP {detected_ip} 不可用: {str(e)}")
-                except socket.gaierror:
-                    logger.warning("无法从host.docker.internal获取IP")
-            
-            # 方法4：最后使用默认IP
-            logger.info(f"使用默认IP: {default_ip}")
-            return default_ip
-        else:
-            # 在Windows环境中，默认使用localhost
-            logger.info("在Windows环境中使用localhost作为服务主机")
-            return 'localhost'
+        # 从环境变量中获取DWG主机IP，直接使用os.environ
+        host_ip = os.environ.get('DWG_HOST_IP')
+        if host_ip:
+            logger.info(f"使用环境变量中的DWG主机IP: {host_ip}")
+            return host_ip
+        
+        # 如果环境变量中没有，使用默认值aibim.xyz
+        default_ip = 'aibim.xyz'
+        logger.info(f"未配置DWG_HOST_IP环境变量，使用'{default_ip}'作为默认值")
+        return default_ip
     except Exception as e:
         logger.error(f"获取主机IP失败: {str(e)}")
-        return 'localhost'  # 出错时使用默认IP
+        return 'aibim.xyz'  # 出错时使用默认IP aibim.xyz
 
 class DwgServiceClient:
     """DWG服务客户端"""
@@ -150,6 +67,40 @@ class DwgServiceClient:
         # 初始化模板缓存
         self.template_cache = {}
         logger.info(f"DWG服务客户端初始化完成，API地址: {self.api_url}, 超时: {self.timeout}秒, 最大重试: {self.max_retries}次")
+        
+    def check_health(self):
+        """
+        检查DWG服务的健康状态
+        
+        Returns:
+            (success, result): 成功状态和结果数据
+        """
+        try:
+            url = f"{self.api_url}/api/health"
+            logger.info(f"检查DWG服务健康状态: {url}")
+            
+            response = requests.get(url, timeout=10)
+            logger.info(f"健康检查响应状态码: {response.status_code}")
+            
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"健康检查结果: {result}")
+                return True, result
+            else:
+                logger.error(f"健康检查失败，状态码: {response.status_code}")
+                return False, {"message": f"健康检查失败，状态码: {response.status_code}"}
+                
+        except requests.exceptions.Timeout as e:
+            logger.error(f"健康检查超时: {str(e)}")
+            return False, {"message": f"健康检查超时: {str(e)}"}
+            
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"无法连接到DWG服务: {str(e)}")
+            return False, {"message": f"无法连接到DWG服务: {str(e)}"}
+            
+        except Exception as e:
+            logger.error(f"健康检查出错: {str(e)}")
+            return False, {"message": f"健康检查出错: {str(e)}"}
         
     def update_dwg_attributes(self, template_file, attribute_data):
         """
@@ -196,13 +147,16 @@ class DwgServiceClient:
                 # 打开文件但不立即关闭，使用with语句确保正确关闭
                 file_obj = open(template_file, 'rb')
                 files = {'file': file_obj}
+                logger.info(f"已打开文件: {template_file}, 大小: {os.path.getsize(template_file)} 字节")
             else:
                 # 如果已经是文件对象
                 files = {'file': template_file}
+                logger.info("使用提供的文件对象")
             
             # 序列化属性数据
             try:
                 data_json = json.dumps(attribute_data)
+                logger.info(f"已序列化属性数据，JSON长度: {len(data_json)} 字符")
             except Exception as e:
                 logger.error(f"序列化属性数据失败: {str(e)}")
                 if file_obj:
@@ -223,6 +177,7 @@ class DwgServiceClient:
                         time.sleep(self.retry_delay)  # 重试前等待
                     
                     # 发送请求
+                    logger.info(f"正在发送POST请求到 {url}, 请求头: {headers}, 文件数量: {len(files)}, 数据长度: {len(data_json)}")
                     response = requests.post(url, headers=headers, files=files, data=data, timeout=self.timeout)
                     
                     # 只在调试级别记录详细响应信息
@@ -231,8 +186,29 @@ class DwgServiceClient:
                     else:
                         logger.info(f"请求成功，状态码: {response.status_code}")
                     
+                    # 添加额外响应内容调试
+                    try:
+                        content_type = response.headers.get('Content-Type', '')
+                        logger.info(f"响应Content-Type: {content_type}")
+                        # 尝试打印响应内容的前200个字符
+                        response_text = response.text[:200] + ('...' if len(response.text) > 200 else '')
+                        logger.info(f"响应内容前200个字符: {response_text}")
+                    except:
+                        pass
+                    
                     # 处理响应
-                    result = response.json()
+                    try:
+                        result = response.json()
+                    except ValueError as json_err:
+                        logger.error(f"响应不是有效的JSON格式: {response.text[:200] if len(response.text) > 0 else '响应为空'}")
+                        logger.error(f"JSON解析错误: {str(json_err)}")
+                        logger.error(f"错误详情: {traceback.format_exc()}")
+                        # 检查是否是HTML响应
+                        if 'text/html' in content_type and '<html' in response.text.lower():
+                            logger.error("服务器返回了HTML页面，可能是因为路由配置错误或服务端出现异常")
+                        elif response.status_code == 404:
+                            logger.error("404错误，URL可能不正确或服务未正确配置")
+                        return False, {'message': f"服务器返回的数据不是有效的JSON格式"}
                     
                     # 即使是错误状态码，也尝试从JSON中获取有用信息
                     success = result.get('success', False) if response.status_code == 200 else False

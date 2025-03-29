@@ -37,7 +37,14 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(CACHE_FOLDER, exist_ok=True)
 
 # 从dwg_service.py导入所有现有功能
-from dwg_service import DwgFileCache, update_dwg_attribute, restart_autocad, api_update_dwg, health_check
+from dwg_service import DwgFileCache, update_dwg_attribute, restart_autocad
+
+# 显式注册API端点
+@app.route('/api/dwg/update', methods=['POST'])
+def api_update_dwg():
+    """API接口：更新DWG文件属性"""
+    from dwg_service import api_update_dwg
+    return api_update_dwg()
 
 # 添加健康检查接口
 @app.route('/api/health', methods=['GET'])
