@@ -1,6 +1,5 @@
 
 /.cursor
-/.venv
 /database.db
 /output.txt
 /schema.sql
@@ -38,7 +37,6 @@ static/templates/*.dwl
 __pycache__/*.pyc
 /migrations/
 .env
-/.env
 venv/lib64
 venv/pyvenv.cfg
 venv/bin/activate
