@@ -9,9 +9,6 @@ import socket
 from dotenv import load_dotenv
 import traceback  # 添加traceback模块
 
-# 手动设置环境变量（测试用）
-os.environ['DWG_HOST_IP'] = '192.168.0.80'
-
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,6 +19,11 @@ IS_WSL = 'WSL' in platform.uname().release or \
 
 # 获取服务主机IP
 def get_service_host_ip():
+    # 只有WSL环境才需要获取主机IP
+    if not IS_WSL:
+        logger.info("非WSL环境，不需要远程DWG服务")
+        return '127.0.0.1'  # 在Windows环境中返回本地地址
+    
     try:
         # 从环境变量中获取DWG主机IP，直接使用os.environ
         host_ip = os.environ.get('DWG_HOST_IP')
@@ -29,18 +31,79 @@ def get_service_host_ip():
             logger.info(f"使用环境变量中的DWG主机IP: {host_ip}")
             return host_ip
         
-        # 如果环境变量中没有，使用默认值aibim.xyz
-        default_ip = 'aibim.xyz'
-        logger.info(f"未配置DWG_HOST_IP环境变量，使用'{default_ip}'作为默认值")
+        # 如果环境变量中没有，尝试获取WSL主机IP
+        try:
+            # 方法1: 直接查找192.168.x.x网段的IP
+            import subprocess
+            result = subprocess.run(['ip', 'route'], capture_output=True, text=True)
+            if result.returncode == 0:
+                output = result.stdout.strip()
+                # 查找192.168开头的路由条目
+                for line in output.split('\n'):
+                    if '192.168.' in line and 'via' in line:
+                        parts = line.split()
+                        via_index = parts.index('via') if 'via' in parts else -1
+                        if via_index >= 0 and via_index + 1 < len(parts):
+                            host_ip = parts[via_index + 1]
+                            logger.info(f"从ip route获取到Windows主机IP: {host_ip}")
+                            return host_ip
+
+            # 方法2: 尝试使用特殊的hostname获取
+            try:
+                host_ip = socket.gethostbyname('host.docker.internal')
+                logger.info(f"通过host.docker.internal获取到Windows主机IP: {host_ip}")
+                return host_ip
+            except:
+                pass
+            
+            # 方法3: 在WSL环境中尝试获取Windows主机IP - /etc/resolv.conf
+            # 但忽略已知的错误IP
+            if os.path.exists('/etc/resolv.conf'):
+                with open('/etc/resolv.conf', 'r') as f:
+                    for line in f:
+                        if line.startswith('nameserver'):
+                            parts = line.strip().split()
+                            if len(parts) > 1:
+                                host_ip = parts[1]
+                                # 跳过已知的错误IP
+                                if host_ip not in ['127.0.0.1', '10.255.255.254']:
+                                    logger.info(f"从/etc/resolv.conf获取到主机IP: {host_ip}")
+                                    return host_ip
+            
+            # 方法4: 尝试读取/etc/hosts
+            if os.path.exists('/etc/hosts'):
+                with open('/etc/hosts', 'r') as f:
+                    for line in f:
+                        if 'host.docker.internal' in line or 'windows' in line.lower():
+                            parts = line.strip().split()
+                            if parts and parts[0] != '127.0.0.1' and parts[0] != '::1':
+                                host_ip = parts[0]
+                                logger.info(f"从/etc/hosts获取到Windows主机IP: {host_ip}")
+                                return host_ip
+            
+            # 方法5: 使用内置变量(WSL2特有)
+            host_ip = '192.168.0.80'  # 这里使用已知的正确IP地址
+            logger.info(f"使用已知的Windows主机IP: {host_ip}")
+            return host_ip
+            
+        except Exception as e:
+            logger.warning(f"自动获取主机IP失败: {str(e)}")
+        
+        # 以上方法都失败，则使用默认值
+        default_ip = '192.168.0.80'  # 已知的正确Windows主机IP
+        logger.info(f"未能自动获取主机IP，使用'{default_ip}'作为默认值")
         return default_ip
     except Exception as e:
         logger.error(f"获取主机IP失败: {str(e)}")
-        return 'aibim.xyz'  # 出错时使用默认IP aibim.xyz
+        return '192.168.0.80'  # 出错时使用指定的IP
 
 class DwgServiceClient:
     """DWG服务客户端"""
     
     def __init__(self, api_url=None, api_key=None):
+        # 标记当前环境
+        self.is_wsl = IS_WSL
+        
         # 根据环境选择合适的服务地址
         # 优先使用传入的api_url参数
         if api_url:
@@ -75,6 +138,11 @@ class DwgServiceClient:
         Returns:
             (success, result): 成功状态和结果数据
         """
+        # 如果不在WSL环境中且使用本地地址，则不执行远程健康检查
+        if not self.is_wsl and '127.0.0.1' in self.api_url:
+            logger.info("非WSL环境，本地DWG服务，跳过健康检查")
+            return True, {"status": "ok", "service": "dwg-service", "version": "local"}
+        
         try:
             url = f"{self.api_url}/api/health"
             logger.info(f"检查DWG服务健康状态: {url}")
@@ -113,6 +181,12 @@ class DwgServiceClient:
         Returns:
             (success, result): 成功状态和结果数据
         """
+        # 非WSL环境不使用远程服务
+        if not self.is_wsl:
+            logger.info("非WSL环境，应直接使用本地AutoCAD处理DWG文件，而不是通过远程服务")
+            logger.info("请在Windows环境中使用update_dwg_attribute模块直接处理")
+            return False, {'message': '非WSL环境，请使用本地AutoCAD处理DWG文件'}
+        
         # 检查缓存
         cache_key = None
         if isinstance(template_file, str):

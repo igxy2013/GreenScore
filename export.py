@@ -6,7 +6,6 @@ from docx import Document
 from word_template import process_template
 import json
 import traceback
-from dwg_client import dwg_client
 from sqlalchemy import text
 import pymysql
 from models import db
@@ -34,6 +33,13 @@ if IS_WINDOWS:
         update_attribute_text = None
 else:
     update_attribute_text = None
+    # 仅在WSL环境中导入dwg_client
+    try:
+        from dwg_client import dwg_client
+        print("已加载WSL环境的DWG客户端")
+    except ImportError:
+        print("警告: dwg_client模块未找到，WSL环境下的DWG导出功能将不可用")
+        dwg_client = None
 
 # 加载环境变量
 load_dotenv()
@@ -894,11 +900,10 @@ def generate_dwg(request_data):
         
         output_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
         
-        # 判断是否是Windows环境
-        if IS_WINDOWS:
-            # 在Windows环境下使用本地update_attribute_text函数
+        # 根据环境选择处理方式
+        if IS_WINDOWS and update_attribute_text:
+            print("使用Windows本地AutoCAD处理DWG文件")
             try:
-                from update_dwg_attribute import update_attribute_text
                 print(f"使用本地函数更新CAD文件，使用模板: {template_path}...")
                 print(f"更新的属性数量: {len(attributes)}")
                 
@@ -924,8 +929,8 @@ def generate_dwg(request_data):
                 print(f"本地处理DWG文件失败: {str(e)}")
                 print(traceback.format_exc())
                 return jsonify({"error": f"生成失败: {str(e)}"}), 500
-        else:
-            # 非Windows环境下使用DWG服务客户端
+        elif IS_WSL and dwg_client:
+            print("使用WSL环境下的DWG远程服务处理DWG文件")
             # 将字典转换为列表格式，以适应DWG服务的API
             attribute_list = []
             for key, value in attributes.items():
@@ -981,6 +986,11 @@ def generate_dwg(request_data):
                 error_message = result.get('message', '未知错误')
                 print(f"DWG服务返回错误: {error_message}")
                 return jsonify({"error": f"生成失败: {error_message}"}), 500
+        else:
+            # 环境不支持处理DWG
+            return jsonify({
+                "error": "当前环境不支持DWG处理。Windows需要安装pywin32，WSL需要配置dwg_client。"
+            }), 500
 
     except Exception as e:
         print(f"生成CAD文件失败: {str(e)}")
