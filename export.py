@@ -842,8 +842,9 @@ def generate_dwg(request_data):
         attributes["是否全装修"] = project_rows[0][34] or ''
         attributes["公建类型"] = project_rows[0][35] or ''
         attributes["绿地向公众开放"] = project_rows[0][36] or ''
-        
+        attributes["设计日期"] = datetime.now().strftime('%Y%m%d')
         # 添加评分数据
+
         attributes["建筑总分"] = str(project_rows[0][37] or '0')
         attributes["结构总分"] = str(project_rows[0][38] or '0')
         attributes["给排水总分"] = str(project_rows[0][39] or '0')

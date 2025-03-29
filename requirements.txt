@@ -22,6 +22,4 @@ flask_migrate
 flask_cors
 flask_login==0.6.3
 cryptography
-# Windows环境可选依赖
 pywin32>=306; sys_platform == 'win32'
-pyodbc==4.0.39; sys_platform == 'win32'
