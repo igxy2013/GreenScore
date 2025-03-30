@@ -41,3 +41,39 @@ class InvitationCode(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     used_at = db.Column(db.DateTime)
     used_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+
+class LogRecord(db.Model):
+    """系统日志记录模型"""
+    __tablename__ = 'log_records'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    level = db.Column(db.String(20), nullable=False)  # INFO, WARNING, ERROR, etc.
+    message = db.Column(db.Text, nullable=False)  # 日志消息
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)  # 日志时间
+    source = db.Column(db.String(100))  # 日志来源（模块、函数等）
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 相关用户ID
+    ip_address = db.Column(db.String(50))  # 操作者IP
+    path = db.Column(db.String(255))  # 请求路径
+    method = db.Column(db.String(10))  # 请求方法（GET, POST等）
+    user_agent = db.Column(db.String(255))  # 用户代理
+    
+    @classmethod
+    def add_log(cls, level, message, source=None, user_id=None, ip_address=None, path=None, method=None, user_agent=None):
+        """添加一条日志记录"""
+        log = cls(
+            level=level,
+            message=message,
+            source=source,
+            user_id=user_id,
+            ip_address=ip_address,
+            path=path,
+            method=method,
+            user_agent=user_agent
+        )
+        db.session.add(log)
+        try:
+            db.session.commit()
+            return True
+        except Exception:
+            db.session.rollback()
+            return False

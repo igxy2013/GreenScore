@@ -36,7 +36,7 @@ from flask_cors import CORS
 from word_template import process_template
 from export import generate_word, generate_dwg, generate_self_assessment_report
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from models import db, User, InvitationCode  # 导入共享的模型
+from models import db, User, InvitationCode, LogRecord  # 导入LogRecord模型
 import random
 import string
 
@@ -129,6 +129,86 @@ def update_last_seen():
     if current_user.is_authenticated:
         current_user.last_seen = datetime.utcnow()
         db.session.commit()
+
+# 添加请求日志中间件
+@app.before_request
+def log_request_info():
+    # 只记录GET和POST请求
+    if request.method in ['GET', 'POST', 'PUT', 'DELETE']:
+        try:
+            # 获取用户ID（如果已登录）
+            user_id = current_user.id if current_user.is_authenticated else None
+            
+            # 记录请求信息，但排除静态文件和某些特定路径
+            path = request.path
+            if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
+                LogRecord.add_log(
+                    level="INFO",
+                    message=f"请求: {request.method} {path}",
+                    source="HTTP_REQUEST",
+                    user_id=user_id,
+                    ip_address=request.remote_addr,
+                    path=path,
+                    method=request.method,
+                    user_agent=request.user_agent.string
+                )
+        except Exception as e:
+            app.logger.error(f"记录请求日志时出错: {str(e)}")
+
+# 添加响应日志中间件
+@app.after_request
+def log_response_info(response):
+    try:
+        # 只记录错误响应
+        if response.status_code >= 400:
+            path = request.path
+            if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
+                user_id = current_user.id if current_user.is_authenticated else None
+                
+                LogRecord.add_log(
+                    level="ERROR" if response.status_code >= 500 else "WARNING",
+                    message=f"响应错误: {request.method} {path} 状态码: {response.status_code}",
+                    source="HTTP_RESPONSE",
+                    user_id=user_id,
+                    ip_address=request.remote_addr,
+                    path=path,
+                    method=request.method,
+                    user_agent=request.user_agent.string
+                )
+    except Exception as e:
+        app.logger.error(f"记录响应日志时出错: {str(e)}")
+    
+    return response
+
+# 添加异常日志中间件
+@app.errorhandler(Exception)
+def log_exception(e):
+    try:
+        # 获取请求相关信息
+        path = request.path if request else "未知路径"
+        method = request.method if request else "未知方法"
+        user_id = current_user.id if current_user and current_user.is_authenticated else None
+        
+        # 记录异常信息
+        LogRecord.add_log(
+            level="ERROR",
+            message=f"系统异常: {str(e)}",
+            source="EXCEPTION",
+            user_id=user_id,
+            ip_address=request.remote_addr if request else None,
+            path=path,
+            method=method,
+            user_agent=request.user_agent.string if request else None
+        )
+        
+        # 记录详细的异常堆栈到应用日志
+        app.logger.error(f"系统异常: {str(e)}", exc_info=True)
+        
+    except Exception as log_err:
+        app.logger.error(f"记录异常日志时出错: {str(log_err)}")
+    
+    # 返回通用的错误页面
+    return render_template('error.html', error=str(e)), 500
 
 # 导入和注册蓝图（在数据库初始化之后）
 from admin import admin_app

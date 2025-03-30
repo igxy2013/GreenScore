@@ -432,6 +432,282 @@
                     </table>
                 </div>
             </div>
+            
+            <!-- 日志管理卡片 -->
+            <div id="log-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 日志统计面板 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- 总日志数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-history text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">总日志数</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="totalLogsCount">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 今日日志 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-calendar-day text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">今日日志</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="todayLogsCount">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 错误日志 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-red-100 text-red-600">
+                                <i class="fas fa-exclamation-triangle text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">错误日志</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="errorLogsCount">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 警告日志 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <i class="fas fa-exclamation-circle text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">警告日志</p>
+                                <p class="text-2xl font-semibold text-gray-900" id="warningLogsCount">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="relative">
+                                <input type="text" id="logSearchInput" 
+                                       class="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索日志内容..." title="搜索日志内容">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <select id="logLevelFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择日志级别">
+                                    <option value="">所有级别</option>
+                                    <!-- 日志级别选项会通过JavaScript动态添加 -->
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="logStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="开始日期">
+                                <span class="text-gray-500">至</span>
+                                <input type="date" id="logEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="结束日期">
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <button id="exportLogsBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                <i class="fas fa-file-export mr-2"></i>导出日志
+                            </button>
+                            <button id="clearLogsBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                <i class="fas fa-trash-alt mr-2"></i>清除日志
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 日志列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">级别</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">消息</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">来源</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">用户</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">IP地址</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="logTableBody">
+                                <!-- 日志记录将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 日志分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="logStartIndex">0</span> 到 <span id="logEndIndex">0</span> 条，共 <span id="logTotalCount">0</span> 条
+                                <span class="ml-4">
+                                    第 <span id="logCurrentPage">1</span> / <span id="logTotalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="logPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="logNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标准管理卡片 -->
+            <div id="standard-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="relative">
+                                <input type="text" id="standardSearchInput" 
+                                       class="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索标准内容..." title="搜索标准内容">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <select id="standardLevelFilter" class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择专业类别">
+                                    <option value="">所有专业</option>
+                                    <option value="建筑">建筑专业</option>
+                                    <option value="结构">结构专业</option>
+                                    <option value="给排水">给排水专业</option>
+                                    <option value="电气">电气专业</option>
+                                    <option value="暖通">暖通专业</option>
+                                    <option value="其他">其他专业</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <label class="relative flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
+                                <i class="fas fa-file-import mr-2"></i>导入标准
+                                <input type="file" id="importStandardFile" accept=".xlsx,.xls,.csv" class="hidden">
+                            </label>
+                            <button id="addStandardBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>添加标准
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 标准列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">条文号</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">条文内容</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分类</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">专业</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分值</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">审查材料</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="standardTableBody">
+                                <!-- 标准记录将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 标准分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="standardStartIndex">0</span> 到 <span id="standardEndIndex">0</span> 条，共 <span id="standardTotalCount">0</span> 条
+                                <span class="ml-4">
+                                    第 <span id="standardCurrentPage">1</span> / <span id="standardTotalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="standardPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="standardNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标准表单模态框 -->
+            <div id="standardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold" id="standardModalTitle">添加标准</h3>
+                        <button class="text-gray-500 hover:text-gray-700" onclick="closeStandardModal()" title="关闭">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="standardForm" class="space-y-4">
+                        <input type="hidden" id="standardId" name="standardId">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="standardNum" class="block text-sm font-medium text-gray-700">条文号</label>
+                                <input type="text" id="standardNum" name="standardNum" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardCategory" class="block text-sm font-medium text-gray-700">分类</label>
+                                <input type="text" id="standardCategory" name="standardCategory" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardMajor" class="block text-sm font-medium text-gray-700">专业</label>
+                                <input type="text" id="standardMajor" name="standardMajor" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardScore" class="block text-sm font-medium text-gray-700">分值</label>
+                                <input type="text" id="standardScore" name="standardScore" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="standardContent" class="block text-sm font-medium text-gray-700">条文内容</label>
+                                <textarea id="standardContent" name="standardContent" rows="3" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="standardMaterial" class="block text-sm font-medium text-gray-700">审查材料</label>
+                                <textarea id="standardMaterial" name="standardMaterial" rows="3"
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="standardProperty" class="block text-sm font-medium text-gray-700">属性</label>
+                                <textarea id="standardProperty" name="standardProperty" rows="2"
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="closeStandardModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                                取消
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                                确定
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1300,6 +1576,969 @@
             alert('删除失败: ' + error.message);
         });
     }
+
+    // 日志管理相关功能
+    document.addEventListener('DOMContentLoaded', function() {
+        let logLevels = [];
+        let currentLogPage = 1;
+        const itemsPerPage = 50;
+        let totalLogPages = 0;
+        let totalLogs = 0;
+        
+        // 初始化日志管理页面
+        function initLogManagement() {
+            // 加载日志统计数据
+            loadLogStats();
+            // 加载日志级别选项
+            loadLogLevels();
+            // 加载日志列表
+            loadLogs(1);
+            
+            // 设置初始日期范围为过去7天到今天
+            const today = new Date();
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            
+            document.getElementById('logEndDate').valueAsDate = today;
+            document.getElementById('logStartDate').valueAsDate = weekAgo;
+            
+            // 添加事件监听器
+            document.getElementById('logSearchInput').addEventListener('input', debounce(function() {
+                currentLogPage = 1;
+                loadLogs(currentLogPage);
+            }, 500));
+            
+            document.getElementById('logLevelFilter').addEventListener('change', function() {
+                currentLogPage = 1;
+                loadLogs(currentLogPage);
+            });
+            
+            document.getElementById('logStartDate').addEventListener('change', function() {
+                currentLogPage = 1;
+                loadLogs(currentLogPage);
+            });
+            
+            document.getElementById('logEndDate').addEventListener('change', function() {
+                currentLogPage = 1;
+                loadLogs(currentLogPage);
+            });
+            
+            document.getElementById('logPrevPage').addEventListener('click', function() {
+                if (currentLogPage > 1) {
+                    currentLogPage--;
+                    loadLogs(currentLogPage);
+                }
+            });
+            
+            document.getElementById('logNextPage').addEventListener('click', function() {
+                if (currentLogPage < totalLogPages) {
+                    currentLogPage++;
+                    loadLogs(currentLogPage);
+                }
+            });
+            
+            document.getElementById('exportLogsBtn').addEventListener('click', exportLogs);
+            
+            document.getElementById('clearLogsBtn').addEventListener('click', function() {
+                if (confirm('确定要清除符合当前筛选条件的所有日志吗？此操作不可恢复！')) {
+                    clearLogs();
+                }
+            });
+        }
+        
+        // 加载日志统计数据
+        function loadLogStats() {
+            fetch('/admin/api/logs/stats', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                // 检查响应状态码
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('totalLogsCount').textContent = data.total_logs;
+                    document.getElementById('todayLogsCount').textContent = data.today_logs;
+                    document.getElementById('errorLogsCount').textContent = data.level_stats.ERROR || 0;
+                    document.getElementById('warningLogsCount').textContent = data.level_stats.WARNING || 0;
+                }
+            })
+            .catch(error => {
+                console.error('加载日志统计数据失败:', error);
+                document.getElementById('totalLogsCount').textContent = '加载失败';
+                document.getElementById('todayLogsCount').textContent = '加载失败';
+                document.getElementById('errorLogsCount').textContent = '加载失败';
+                document.getElementById('warningLogsCount').textContent = '加载失败';
+            });
+        }
+        
+        // 加载日志级别选项
+        function loadLogLevels() {
+            fetch('/admin/api/logs/levels', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                // 检查响应状态码
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    logLevels = data.levels;
+                    const select = document.getElementById('logLevelFilter');
+                    
+                    // 清除现有选项（除了第一个）
+                    while (select.options.length > 1) {
+                        select.remove(1);
+                    }
+                    
+                    // 添加新选项
+                    logLevels.forEach(level => {
+                        const option = document.createElement('option');
+                        option.value = level;
+                        option.textContent = level;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('加载日志级别失败:', error);
+                // 添加一个默认的错误选项
+                const select = document.getElementById('logLevelFilter');
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '加载级别失败';
+                option.disabled = true;
+                select.appendChild(option);
+            });
+        }
+        
+        // 加载日志列表
+        function loadLogs(page) {
+            const searchTerm = document.getElementById('logSearchInput').value.trim();
+            const level = document.getElementById('logLevelFilter').value;
+            const startDate = document.getElementById('logStartDate').value;
+            const endDate = document.getElementById('logEndDate').value;
+            
+            // 构建查询参数
+            const params = new URLSearchParams({
+                page: page,
+                per_page: itemsPerPage
+            });
+            
+            if (searchTerm) {
+                params.append('keyword', searchTerm);
+            }
+            
+            if (level) {
+                params.append('level', level);
+            }
+            
+            if (startDate) {
+                params.append('start_date', startDate);
+            }
+            
+            if (endDate) {
+                // 添加一天以包含截止日期的全天
+                const nextDay = new Date(endDate);
+                nextDay.setDate(nextDay.getDate() + 1);
+                params.append('end_date', nextDay.toISOString().split('T')[0]);
+            }
+            
+            // 显示加载状态
+            const tableBody = document.getElementById('logTableBody');
+            tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center">加载中...</td></tr>';
+            
+            fetch(`/admin/api/logs?${params.toString()}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                // 检查响应状态码
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应，可能是API未实现或需要重新登录');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    displayLogs(data.logs, data.total, data.pages, page);
+                } else {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">${data.message || '加载失败'}</td></tr>`;
+                }
+            })
+            .catch(error => {
+                console.error('加载日志失败:', error);
+                tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">加载失败: ${error.message}</td></tr>`;
+            });
+        }
+        
+        // 显示日志列表
+        function displayLogs(logs, total, pages, currentPage) {
+            const tableBody = document.getElementById('logTableBody');
+            tableBody.innerHTML = '';
+            
+            if (logs.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center">无符合条件的日志记录</td></tr>';
+                return;
+            }
+            
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                // 根据日志级别设置行样式
+                if (log.level === 'ERROR') {
+                    tr.classList.add('bg-red-50');
+                } else if (log.level === 'WARNING') {
+                    tr.classList.add('bg-yellow-50');
+                }
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                            ${getLevelClass(log.level)}">
+                            ${log.level}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${truncateText(log.message, 100)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.timestamp}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.source || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.user_email || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.ip_address || '-'}</td>
+                `;
+                
+                tableBody.appendChild(tr);
+            });
+            
+            // 更新分页信息
+            totalLogs = total;
+            totalLogPages = pages;
+            
+            document.getElementById('logStartIndex').textContent = total > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+            document.getElementById('logEndIndex').textContent = Math.min(currentPage * itemsPerPage, total);
+            document.getElementById('logTotalCount').textContent = total;
+            document.getElementById('logCurrentPage').textContent = currentPage;
+            document.getElementById('logTotalPages').textContent = pages;
+            
+            // 更新分页按钮状态
+            document.getElementById('logPrevPage').disabled = currentPage <= 1;
+            document.getElementById('logNextPage').disabled = currentPage >= pages;
+            
+            // 转换UTC时间为本地时间
+            convertUTCToLocal();
+        }
+        
+        // 根据日志级别获取CSS类名
+        function getLevelClass(level) {
+            switch (level) {
+                case 'ERROR':
+                    return 'bg-red-100 text-red-800';
+                case 'WARNING':
+                    return 'bg-yellow-100 text-yellow-800';
+                case 'INFO':
+                    return 'bg-blue-100 text-blue-800';
+                case 'DEBUG':
+                    return 'bg-gray-100 text-gray-800';
+                default:
+                    return 'bg-gray-100 text-gray-800';
+            }
+        }
+        
+        // 截断长文本并添加省略号
+        function truncateText(text, maxLength) {
+            if (!text) return '-';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+        
+        // 清除日志
+        function clearLogs() {
+            const searchTerm = document.getElementById('logSearchInput').value.trim();
+            const level = document.getElementById('logLevelFilter').value;
+            const startDate = document.getElementById('logStartDate').value;
+            const endDate = document.getElementById('logEndDate').value;
+            
+            // 构建查询参数
+            const params = new URLSearchParams();
+            
+            if (searchTerm) {
+                params.append('keyword', searchTerm);
+            }
+            
+            if (level) {
+                params.append('level', level);
+            }
+            
+            if (startDate) {
+                params.append('start_date', startDate);
+            }
+            
+            if (endDate) {
+                // 添加一天以包含截止日期的全天
+                const nextDay = new Date(endDate);
+                nextDay.setDate(nextDay.getDate() + 1);
+                params.append('end_date', nextDay.toISOString().split('T')[0]);
+            }
+            
+            fetch(`/admin/api/logs/clear?${params.toString()}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                // 检查响应状态码
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert(`已成功清除 ${data.count} 条日志记录`);
+                    // 重新加载日志统计和列表
+                    loadLogStats();
+                    loadLogs(1);
+                } else {
+                    alert(data.message || '清除失败');
+                }
+            })
+            .catch(error => {
+                console.error('清除日志时出错:', error);
+                alert('清除失败: ' + error.message);
+            });
+        }
+        
+        // 导出日志
+        function exportLogs() {
+            try {
+                const searchTerm = document.getElementById('logSearchInput').value.trim();
+                const level = document.getElementById('logLevelFilter').value;
+                const startDate = document.getElementById('logStartDate').value;
+                const endDate = document.getElementById('logEndDate').value;
+                
+                // 构建查询参数
+                const params = new URLSearchParams();
+                
+                if (searchTerm) {
+                    params.append('keyword', searchTerm);
+                }
+                
+                if (level) {
+                    params.append('level', level);
+                }
+                
+                if (startDate) {
+                    params.append('start_date', startDate);
+                }
+                
+                if (endDate) {
+                    // 添加一天以包含截止日期的全天
+                    const nextDay = new Date(endDate);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    params.append('end_date', nextDay.toISOString().split('T')[0]);
+                }
+                
+                // 添加一个时间戳参数，避免浏览器缓存
+                params.append('_t', new Date().getTime());
+                
+                // 打开导出链接
+                const exportUrl = `/admin/api/logs/export?${params.toString()}`;
+                console.log('导出日志URL:', exportUrl);
+                window.open(exportUrl);
+            } catch (error) {
+                console.error('准备导出日志参数时出错:', error);
+                alert('导出失败: ' + error.message);
+            }
+        }
+        
+        // 函数节流工具
+        function debounce(func, wait) {
+            let timeout;
+            return function() {
+                const context = this;
+                const args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
+
+        // 如果用户在日志管理菜单上，则初始化日志管理页面
+        if (localStorage.getItem('activeMenuItem') === 'log-management') {
+            initLogManagement();
+        }
+
+        // 为日志管理菜单点击事件添加初始化
+        document.querySelector('[data-target="log-management"]').addEventListener('click', function() {
+            initLogManagement();
+        });
+    });
+
+    // 标准管理相关功能
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentStandardPage = 1;
+        const itemsPerPage = 15;
+        let totalStandardPages = 0;
+        let totalStandards = 0;
+        let allStandards = []; // 用于存储所有标准，以便于过滤和分页
+        
+        // 初始化标准管理页面
+        function initStandardManagement() {
+            // 加载标准统计数据
+            loadStandardStats();
+            // 加载标准列表
+            loadStandards();
+            
+            // 添加事件监听器
+            document.getElementById('standardSearchInput').addEventListener('input', debounce(function() {
+                filterAndDisplayStandards();
+            }, 300));
+            
+            document.getElementById('standardLevelFilter').addEventListener('change', function() {
+                filterAndDisplayStandards();
+            });
+            
+            document.getElementById('standardPrevPage').addEventListener('click', function() {
+                if (currentStandardPage > 1) {
+                    currentStandardPage--;
+                    filterAndDisplayStandards();
+                }
+            });
+            
+            document.getElementById('standardNextPage').addEventListener('click', function() {
+                if (currentStandardPage < totalStandardPages) {
+                    currentStandardPage++;
+                    filterAndDisplayStandards();
+                }
+            });
+            
+            // 添加标准按钮
+            document.getElementById('addStandardBtn').addEventListener('click', function() {
+                openStandardModal();
+            });
+            
+            // 导入标准文件
+            document.getElementById('importStandardFile').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    importStandards(file);
+                }
+            });
+            
+            // 标准表单提交
+            document.getElementById('standardForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const standardId = document.getElementById('standardId').value;
+                if (standardId) {
+                    updateStandard(standardId);
+                } else {
+                    createStandard();
+                }
+            });
+        }
+        
+        // 加载标准统计数据
+        function loadStandardStats() {
+            fetch('/admin/api/standards/stats', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('totalStandardsCount').textContent = data.total_standards || 0;
+                    document.getElementById('level1StandardsCount').textContent = data.category_stats?.type1 || 0;
+                    document.getElementById('level2StandardsCount').textContent = data.category_stats?.type2 || 0;
+                    document.getElementById('level3StandardsCount').textContent = data.category_stats?.type3 || 0;
+                }
+            })
+            .catch(error => {
+                console.error('加载标准统计数据失败:', error);
+                document.getElementById('totalStandardsCount').textContent = '加载失败';
+                document.getElementById('level1StandardsCount').textContent = '加载失败';
+                document.getElementById('level2StandardsCount').textContent = '加载失败';
+                document.getElementById('level3StandardsCount').textContent = '加载失败';
+            });
+        }
+        
+        // 加载标准列表
+        function loadStandards() {
+            const tableBody = document.getElementById('standardTableBody');
+            tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center">加载中...</td></tr>';
+            
+            fetch('/admin/api/standards', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    allStandards = data.standards;
+                    totalStandards = allStandards.length;
+                    
+                    // 显示标准列表（第一页）
+                    filterAndDisplayStandards();
+                } else {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">${data.message || '加载失败'}</td></tr>`;
+                }
+            })
+            .catch(error => {
+                console.error('加载标准列表失败:', error);
+                tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">加载失败: ${error.message}</td></tr>`;
+            });
+        }
+        
+        // 过滤并显示标准
+        function filterAndDisplayStandards() {
+            if (!allStandards || allStandards.length === 0) {
+                return;
+            }
+            
+            const searchTerm = document.getElementById('standardSearchInput').value.toLowerCase().trim();
+            const categoryFilter = document.getElementById('standardLevelFilter').value;
+            
+            // 过滤标准
+            const filteredStandards = allStandards.filter(standard => {
+                const matchesSearch = 
+                    (standard.standard_num && standard.standard_num.toString().includes(searchTerm)) ||
+                    (standard.content && standard.content.toLowerCase().includes(searchTerm)) ||
+                    (standard.category && standard.category.toLowerCase().includes(searchTerm)) ||
+                    (standard.major && standard.major.toLowerCase().includes(searchTerm));
+                
+                const matchesCategory = !categoryFilter || (standard.category && standard.category.toLowerCase() === categoryFilter.toLowerCase());
+                
+                return matchesSearch && matchesCategory;
+            });
+            
+            // 计算分页信息
+            totalStandardPages = Math.ceil(filteredStandards.length / itemsPerPage);
+            if (currentStandardPage > totalStandardPages) {
+                currentStandardPage = totalStandardPages || 1;
+            }
+            
+            const startIndex = (currentStandardPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredStandards.length);
+            const currentPageStandards = filteredStandards.slice(startIndex, endIndex);
+            
+            // 更新分页控件
+            document.getElementById('standardStartIndex').textContent = filteredStandards.length > 0 ? startIndex + 1 : 0;
+            document.getElementById('standardEndIndex').textContent = endIndex;
+            document.getElementById('standardTotalCount').textContent = filteredStandards.length;
+            document.getElementById('standardCurrentPage').textContent = currentStandardPage;
+            document.getElementById('standardTotalPages').textContent = totalStandardPages || 1;
+            
+            document.getElementById('standardPrevPage').disabled = currentStandardPage <= 1;
+            document.getElementById('standardNextPage').disabled = currentStandardPage >= totalStandardPages;
+            
+            // 显示当前页标准
+            displayStandards(currentPageStandards);
+        }
+        
+        // 显示标准列表
+        function displayStandards(standards) {
+            const tableBody = document.getElementById('standardTableBody');
+            tableBody.innerHTML = '';
+            
+            if (standards.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center">无符合条件的标准记录</td></tr>';
+                return;
+            }
+            
+            standards.forEach(standard => {
+                const tr = document.createElement('tr');
+                
+                // 根据分类设置行样式
+                if (standard.category === '强制性标准') {
+                    tr.classList.add('bg-red-50');
+                } else if (standard.category === '重点标准') {
+                    tr.classList.add('bg-yellow-50');
+                }
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.standard_num || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${truncateText(standard.content, 50) || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.category || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.major || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.score || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-900">${truncateText(standard.review_materials, 50) || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button class="text-blue-600 hover:text-blue-900 view-standard-btn" data-standard-id="${standard.id}" title="查看详情">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="text-green-600 hover:text-green-900 edit-standard-btn" data-standard-id="${standard.id}" title="编辑标准">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="text-red-600 hover:text-red-900 delete-standard-btn" data-standard-id="${standard.id}" title="删除标准">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(tr);
+            });
+            
+            // 添加事件监听器
+            addStandardButtonListeners();
+        }
+        
+        // 添加标准按钮事件监听器
+        function addStandardButtonListeners() {
+            // 查看按钮
+            document.querySelectorAll('.view-standard-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const standardId = this.dataset.standardId;
+                    viewStandard(standardId);
+                });
+            });
+            
+            // 编辑按钮
+            document.querySelectorAll('.edit-standard-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const standardId = this.dataset.standardId;
+                    openStandardModal(standardId);
+                });
+            });
+            
+            // 删除按钮
+            document.querySelectorAll('.delete-standard-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const standardId = this.dataset.standardId;
+                    if (confirm('确定要删除此标准吗？这可能会影响相关的评价结果。')) {
+                        deleteStandard(standardId);
+                    }
+                });
+            });
+        }
+        
+        // 打开标准模态框
+        function openStandardModal(standardId = null) {
+            const modal = document.getElementById('standardModal');
+            const form = document.getElementById('standardForm');
+            const modalTitle = document.getElementById('standardModalTitle');
+            
+            // 重置表单
+            form.reset();
+            document.getElementById('standardId').value = '';
+            
+            if (standardId) {
+                modalTitle.textContent = '编辑标准';
+                // 获取标准数据
+                const standard = allStandards.find(s => s.id.toString() === standardId.toString());
+                if (standard) {
+                    document.getElementById('standardId').value = standard.id;
+                    document.getElementById('standardNum').value = standard.standard_num || '';
+                    document.getElementById('standardContent').value = standard.content || '';
+                    document.getElementById('standardCategory').value = standard.category || '';
+                    document.getElementById('standardMajor').value = standard.major || '';
+                    document.getElementById('standardScore').value = standard.score || '';
+                    document.getElementById('standardMaterial').value = standard.review_materials || '';
+                    document.getElementById('standardProperty').value = standard.property || '';
+                }
+            } else {
+                modalTitle.textContent = '添加标准';
+            }
+            
+            modal.classList.remove('hidden');
+        }
+        
+        // 查看标准详情
+        function viewStandard(standardId) {
+            // 获取标准数据
+            const standard = allStandards.find(s => s.id.toString() === standardId.toString());
+            if (standard) {
+                alert(`标准详情：\n\n条文号：${standard.standard_num || '-'}\n条文内容：${standard.content || '-'}\n分类：${standard.category || '-'}\n专业：${standard.major || '-'}\n分值：${standard.score || '-'}\n审查材料：${standard.review_materials || '-'}\n属性：${standard.property || '-'}`);
+            }
+        }
+        
+        // 关闭标准模态框
+        function closeStandardModal() {
+            document.getElementById('standardModal').classList.add('hidden');
+        }
+        
+        // 创建标准
+        function createStandard() {
+            const formData = {
+                standard_num: document.getElementById('standardNum').value,
+                content: document.getElementById('standardContent').value,
+                category: document.getElementById('standardCategory').value,
+                major: document.getElementById('standardMajor').value,
+                score: document.getElementById('standardScore').value,
+                review_materials: document.getElementById('standardMaterial').value,
+                property: document.getElementById('standardProperty').value
+            };
+            
+            fetch('/admin/api/standards', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(formData),
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('标准创建成功');
+                    closeStandardModal();
+                    // 重新加载标准数据
+                    loadStandardStats();
+                    loadStandards();
+                } else {
+                    alert(data.message || '创建失败');
+                }
+            })
+            .catch(error => {
+                console.error('创建标准失败:', error);
+                alert('创建失败: ' + error.message);
+            });
+        }
+        
+        // 更新标准
+        function updateStandard(standardId) {
+            const formData = {
+                standard_num: document.getElementById('standardNum').value,
+                content: document.getElementById('standardContent').value,
+                category: document.getElementById('standardCategory').value,
+                major: document.getElementById('standardMajor').value,
+                score: document.getElementById('standardScore').value,
+                review_materials: document.getElementById('standardMaterial').value,
+                property: document.getElementById('standardProperty').value
+            };
+            
+            fetch(`/admin/api/standards/${standardId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(formData),
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('标准更新成功');
+                    closeStandardModal();
+                    // 重新加载标准数据
+                    loadStandardStats();
+                    loadStandards();
+                } else {
+                    alert(data.message || '更新失败');
+                }
+            })
+            .catch(error => {
+                console.error('更新标准失败:', error);
+                alert('更新失败: ' + error.message);
+            });
+        }
+        
+        // 删除标准
+        function deleteStandard(standardId) {
+            fetch(`/admin/api/standards/${standardId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('标准删除成功');
+                    // 重新加载标准数据
+                    loadStandardStats();
+                    loadStandards();
+                } else {
+                    alert(data.message || '删除失败');
+                }
+            })
+            .catch(error => {
+                console.error('删除标准失败:', error);
+                alert('删除失败: ' + error.message);
+            });
+        }
+        
+        // 导入标准
+        function importStandards(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('/admin/api/standards/import', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应');
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert(`导入成功，共导入 ${data.imported_count} 条标准`);
+                    // 重新加载标准数据
+                    loadStandardStats();
+                    loadStandards();
+                } else {
+                    alert(data.message || '导入失败');
+                }
+            })
+            .catch(error => {
+                console.error('导入标准失败:', error);
+                alert('导入失败: ' + error.message);
+            });
+            
+            // 清空文件输入框，以便于下次选择同一文件
+            document.getElementById('importStandardFile').value = '';
+        }
+        
+        // 截断长文本并添加省略号
+        function truncateText(text, maxLength) {
+            if (!text) return '-';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+        
+        // 公开函数
+        window.openStandardModal = openStandardModal;
+        window.closeStandardModal = closeStandardModal;
+        
+        // 如果用户在标准管理菜单上，则初始化标准管理页面
+        if (localStorage.getItem('activeMenuItem') === 'standard-management') {
+            initStandardManagement();
+        }
+        
+        // 为标准管理菜单点击事件添加初始化
+        document.querySelector('[data-target="standard-management"]').addEventListener('click', function() {
+            initStandardManagement();
+        });
+    });
     </script>
 </body>
 </html>
