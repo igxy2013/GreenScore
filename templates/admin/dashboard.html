@@ -151,7 +151,6 @@
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">项目名称</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">所属用户</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分数</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
@@ -163,18 +162,6 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 project-name">{{ project.name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.user.email }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                            {% if project.status == 'completed' %}
-                                                bg-green-100 text-green-800
-                                            {% elif project.status == 'in_progress' %}
-                                                bg-blue-100 text-blue-800
-                                            {% else %}
-                                                bg-yellow-100 text-yellow-800
-                                            {% endif %}">
-                                            {{ {'completed': '已完成', 'in_progress': '进行中', 'pending': '待处理'}[project.status] }}
-                                        </span>
-                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                                         <span class="px-2 py-1 rounded-full text-xs font-medium 
                                             {% if project.score >= 80 %}
