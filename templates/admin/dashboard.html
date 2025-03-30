@@ -161,17 +161,17 @@
                                 <tr class="project-row">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.id }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 project-name">{{ project.name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.user.email }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                                         <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                            {% if project.score >= 80 %}
+                                            {% if project.total_score is not none and project.total_score >= 80 %}
                                                 bg-green-100 text-green-800
-                                            {% elif project.score >= 60 %}
+                                            {% elif project.total_score is not none and project.total_score >= 60 %}
                                                 bg-yellow-100 text-yellow-800
                                             {% else %}
                                                 bg-red-100 text-red-800
                                             {% endif %}">
-                                            {{ project.score|default('尚未评分', true) }}
+                                            {{ project.total_score|default('尚未评分', true) }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
@@ -1189,8 +1189,8 @@
                     document.getElementById('projectName').value = data.name;
                     document.getElementById('projectUser').value = data.user_id;
                     document.getElementById('projectStatus').value = data.status;
-                    if (data.score) {
-                        document.getElementById('projectScore').value = data.score;
+                    if (data.total_score) {
+                        document.getElementById('projectScore').value = data.total_score;
                     }
                 });
         } else {
@@ -1217,7 +1217,7 @@
             name: document.getElementById('projectName').value,
             user_id: document.getElementById('projectUser').value,
             status: document.getElementById('projectStatus').value,
-            score: document.getElementById('projectScore').value || null
+            total_score: document.getElementById('projectScore').value || null
         };
 
         fetch('/admin/api/projects', {
@@ -1247,7 +1247,7 @@
             name: document.getElementById('projectName').value,
             user_id: document.getElementById('projectUser').value,
             status: document.getElementById('projectStatus').value,
-            score: document.getElementById('projectScore').value || null
+            total_score: document.getElementById('projectScore').value || null
         };
 
         fetch(`/admin/api/projects/${projectId}`, {

@@ -52,15 +52,26 @@ def dashboard():
     users = User.query.all()
     invite_codes = InvitationCode.query.all()
     
+    # 导入Project模型
+    from app import Project
+    
+    # 获取所有项目
+    projects = Project.query.all()
+    
     # 计算用户统计数据
     stats = {
         'total_users': len(users),
         'online_users': sum(1 for user in users if user.is_online()),
         'offline_users': sum(1 for user in users if not user.is_online()),
-        'admin_users': sum(1 for user in users if user.role == 'admin')
+        'admin_users': sum(1 for user in users if user.role == 'admin'),
+        # 添加项目统计数据
+        'total_projects': len(projects),
+        'active_projects': sum(1 for project in projects if project.total_score is None),
+        'completed_projects': sum(1 for project in projects if project.total_score is not None),
+        'avg_project_score': round(sum(project.total_score or 0 for project in projects) / len(projects), 2) if projects else 0
     }
     
-    return render_template('admin/dashboard.html', users=users, invite_codes=invite_codes, stats=stats)
+    return render_template('admin/dashboard.html', users=users, invite_codes=invite_codes, projects=projects, stats=stats)
 
 @admin_app.route('/api/users', methods=['POST'])
 @login_required
@@ -196,6 +207,160 @@ def delete_invite_code(code_id):
             'success': True,
             'message': '邀请码删除成功'
         })
+    except Exception as e:
+        db.session.rollback()
+        
+# 项目管理API路由
+@admin_app.route('/admin/api/projects', methods=['GET'])
+@login_required
+@admin_required
+def get_all_projects():
+    try:
+        # 导入Project模型
+        from app import Project, User
+        
+        # 获取所有项目，并按创建时间降序排序
+        projects = Project.query.order_by(Project.created_at.desc()).all()
+        
+        # 将项目数据转换为JSON格式
+        projects_data = []
+        for project in projects:
+            # 获取项目所属用户
+            user = User.query.get(project.user_id)
+            user_email = user.email if user else '未知用户'
+            
+            projects_data.append({
+                'id': project.id,
+                'name': project.name,
+                'user_id': project.user_id,
+                'user_email': user_email,
+                'code': project.code,
+                'construction_unit': project.construction_unit,
+                'design_unit': project.design_unit,
+                'location': project.location,
+                'building_area': project.building_area,
+                'building_type': project.building_type,
+                'standard': project.standard,
+                'score': project.total_score,
+                'created_at': project.created_at
+            })
+        
+        return jsonify({
+            'success': True,
+            'projects': projects_data
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_app.route('/admin/api/projects/<int:project_id>', methods=['GET'])
+@login_required
+@admin_required
+def get_project(project_id):
+    try:
+        # 导入Project模型
+        from app import Project, User
+        
+        # 获取指定项目
+        project = Project.query.get_or_404(project_id)
+        
+        # 获取项目所属用户
+        user = User.query.get(project.user_id)
+        user_email = user.email if user else '未知用户'
+        
+        return jsonify({
+            'id': project.id,
+            'name': project.name,
+            'user_id': project.user_id,
+            'user_email': user_email,
+            'code': project.code,
+            'construction_unit': project.construction_unit,
+            'design_unit': project.design_unit,
+            'location': project.location,
+            'building_area': project.building_area,
+            'building_type': project.building_type,
+            'standard': project.standard,
+            'score': project.total_score,
+            'created_at': project.created_at.strftime('%Y-%m-%d %H:%M:%S') if project.created_at else None
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_app.route('/admin/api/projects', methods=['POST'])
+@login_required
+@admin_required
+def create_project():
+    try:
+        # 导入Project模型
+        from app import Project
+        
+        data = request.get_json()
+        
+        if not all(key in data for key in ['name', 'user_id']):
+            return jsonify({'success': False, 'message': '缺少必要字段'}), 400
+        
+        # 创建新项目
+        new_project = Project(
+            name=data['name'],
+            user_id=data['user_id'],
+            standard=data.get('standard'),
+            score=data.get('score')
+        )
+        
+        db.session.add(new_project)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '项目创建成功',
+            'project': {
+                'id': new_project.id,
+                'name': new_project.name,
+                'user_id': new_project.user_id
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_app.route('/admin/api/projects/<int:project_id>', methods=['PUT'])
+@login_required
+@admin_required
+def update_project(project_id):
+    try:
+        # 导入Project模型
+        from app import Project
+        
+        project = Project.query.get_or_404(project_id)
+        data = request.get_json()
+        
+        # 更新项目信息
+        if 'name' in data:
+            project.name = data['name']
+        if 'user_id' in data:
+            project.user_id = data['user_id']
+        if 'score' in data and data['score'] is not None:
+            project.total_score = float(data['score'])
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': '项目更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_app.route('/admin/api/projects/<int:project_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def delete_project(project_id):
+    try:
+        # 导入Project模型
+        from app import Project
+        
+        project = Project.query.get_or_404(project_id)
+        
+        # 删除项目
+        db.session.delete(project)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '项目删除成功'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': '删除邀请码失败'}), 500
