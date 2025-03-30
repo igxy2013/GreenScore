@@ -19,6 +19,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
     <script src="/static/js/green_building_score_calculator.js"></script>
+    <script src="/static/js/exportSelfAssessmentReport.js"></script>
     <!-- 在 head 部分添加对 db_updater.js 的引用 -->
     <script src="/static/js/db_updater.js"></script>
      <!-- 使用Font Awesome图标库 -->
@@ -264,6 +265,15 @@
             <span class="text-gray-700">加载中...</span>
         </div>
     </div>
+    
+    <!-- 页面加载器 -->
+    <div id="page-loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
+            <i class="ri-loader-4-line text-primary text-4xl animate-spin mb-3"></i>
+            <span class="text-gray-700 text-lg">数据处理中，请稍候...</span>
+        </div>
+    </div>
+    
     <!-- 隐藏字段，用于存储当前项目ID和标准 -->
     <input type="hidden" id="current-project-id" value="{{ project.id if project else '21' }}">
     <input type="hidden" id="current-project-standard" value="{{ project.standard if project else '成都市标' }}">
@@ -470,6 +480,12 @@
                                     <i class="ri-calculator-line mr-3"></i>
                                     <span>绿色建材应用比例</span>
                                 </a>
+                                {% if project and project.standard == '国标' %}
+                                <a href="javascript:void(0)" onclick="generateSelfAssessmentReport(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                                    <i class="ri-book-line mr-3"></i>
+                                    <span>绿建自评估报告</span>
+                                </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -3254,6 +3270,333 @@
             const contactModal = document.getElementById('contactModal');
             if (contactModal && !contactModal.querySelector('.bg-white').contains(e.target)) {
                 closeContactModal();
+            }
+        });
+    </script>
+
+    <!-- 在适当的JS部分添加生成自评估报告的函数 -->
+    <script>
+    // 调试辅助函数
+    function showDebugMessage(message) {
+        console.log(message);
+        if (typeof showLoadingModal === 'undefined') {
+            alert("错误: showLoadingModal函数未定义");
+        }
+        if (typeof hideLoadingModal === 'undefined') {
+            alert("错误: hideLoadingModal函数未定义");
+        }
+        if (typeof showErrorModal === 'undefined') {
+            alert("错误: showErrorModal函数未定义");
+        }
+        if (typeof showSuccessModal === 'undefined') {
+            alert("错误: showSuccessModal函数未定义");
+        }
+    }
+
+    // 绿建自评估报告生成函数
+    function generateSelfAssessmentReport() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard')?.value || '国标';
+        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+        
+        // 只有国标项目才能生成绿建自评估报告
+        if (currentProjectStandard !== '国标') {
+            alert('只有国标项目才能生成绿建自评估报告！');
+            return;
+        }
+        
+        // 移除其他菜单项的激活状态
+        currentMenuItems.forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // 找到绿建自评估报告菜单项并添加active类
+        const reportMenuItem = document.querySelector('a[onclick="generateSelfAssessmentReport(); return false;"]');
+        let progressInterval;
+        
+        if (reportMenuItem) {
+            reportMenuItem.classList.add('active');
+            reportMenuItem.classList.add('loading');
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取当前项目ID
+        const projectId = document.getElementById('project_id').value;
+        console.log("项目ID:", projectId);
+        
+        if (!projectId) {
+            alert('未找到项目ID');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (reportMenuItem) {
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+            }
+            return;
+        }
+
+        console.log("正在生成绿建自评估报告，项目ID: " + projectId);
+
+        // 发送请求
+        fetch('/api/self-assessment-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId
+            })
+        })
+        .then(response => {
+            console.log("收到服务器响应状态:", response.status);
+            
+            if (!response.ok) {
+                // 如果服务器返回错误，尝试获取错误信息
+                return response.json().then(data => {
+                    console.error("服务器返回错误:", data);
+                    throw new Error(data.error || '生成绿建自评估报告失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            console.log("收到blob数据，类型:", blob.type, "大小:", blob.size, "bytes");
+            
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            const projectName = document.getElementById('current_project_name').value || '';
+            console.log("项目名称:", projectName);
+            
+            a.href = url;
+            a.download = projectName ? `${projectName}_绿建自评估报告.docx` : '绿建自评估报告.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    reportMenuItem.classList.remove('loading');
+                    reportMenuItem.style.backgroundImage = '';
+                }, 500);
+            }
+        })
+        .catch(error => {
+            console.error('生成报告失败:', error);
+            alert(error.message || '生成绿建自评估报告失败，请稍后重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+            }
+        });
+    }
+    </script>
+
+    <script>
+        // 通用模态窗口函数
+        // 加载中模态窗口
+        function showLoadingModal(message = '处理中，请稍候...') {
+            // 检查是否已存在加载模态窗口
+            let loadingModal = document.getElementById('loadingModal');
+            
+            // 如果不存在，创建一个
+            if (!loadingModal) {
+                loadingModal = document.createElement('div');
+                loadingModal.id = 'loadingModal';
+                loadingModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                loadingModal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+                        <div class="animate-spin mb-4 mx-auto">
+                            <i class="ri-loader-4-line text-4xl text-primary"></i>
+                        </div>
+                        <p id="loadingMessage" class="text-gray-700"></p>
+                    </div>
+                `;
+                document.body.appendChild(loadingModal);
+            }
+            
+            // 设置消息并显示
+            const messageElement = loadingModal.querySelector('#loadingMessage');
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            
+            loadingModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 隐藏加载中模态窗口
+        function hideLoadingModal() {
+            const loadingModal = document.getElementById('loadingModal');
+            if (loadingModal) {
+                loadingModal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        }
+        
+        // 显示错误模态窗口
+        function showErrorModal(message, title = '出错了') {
+            // 隐藏加载窗口
+            hideLoadingModal();
+            
+            // 检查是否已存在错误模态窗口
+            let errorModal = document.getElementById('errorModal');
+            
+            // 如果不存在，创建一个
+            if (!errorModal) {
+                errorModal = document.createElement('div');
+                errorModal.id = 'errorModal';
+                errorModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                errorModal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 id="errorTitle" class="text-xl font-bold text-red-600"></h3>
+                            <button class="text-gray-500 hover:text-gray-700" onclick="closeErrorModal()" aria-label="关闭">
+                                <i class="ri-close-line text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="mb-6">
+                            <p id="errorMessage" class="text-gray-700"></p>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="closeErrorModal()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                我知道了
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(errorModal);
+            }
+            
+            // 设置标题和消息并显示
+            const titleElement = errorModal.querySelector('#errorTitle');
+            const messageElement = errorModal.querySelector('#errorMessage');
+            
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+            
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            
+            errorModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭错误模态窗口
+        function closeErrorModal() {
+            const errorModal = document.getElementById('errorModal');
+            if (errorModal) {
+                errorModal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        }
+        
+        // 显示成功模态窗口
+        function showSuccessModal(message, title = '操作成功') {
+            // 隐藏加载窗口
+            hideLoadingModal();
+            
+            // 检查是否已存在成功模态窗口
+            let successModal = document.getElementById('successModal');
+            
+            // 如果不存在，创建一个
+            if (!successModal) {
+                successModal = document.createElement('div');
+                successModal.id = 'successModal';
+                successModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                successModal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 id="successTitle" class="text-xl font-bold text-green-600"></h3>
+                            <button class="text-gray-500 hover:text-gray-700" onclick="closeSuccessModal()" aria-label="关闭">
+                                <i class="ri-close-line text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="mb-6">
+                            <p id="successMessage" class="text-gray-700"></p>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="closeSuccessModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                确定
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(successModal);
+            }
+            
+            // 设置标题和消息并显示
+            const titleElement = successModal.querySelector('#successTitle');
+            const messageElement = successModal.querySelector('#successMessage');
+            
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+            
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            
+            successModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭成功模态窗口
+        function closeSuccessModal() {
+            const successModal = document.getElementById('successModal');
+            if (successModal) {
+                successModal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        }
+        
+        // 点击模态窗口外部关闭
+        document.addEventListener('click', function(e) {
+            const errorModal = document.getElementById('errorModal');
+            const successModal = document.getElementById('successModal');
+            
+            if (errorModal && !errorModal.querySelector('.bg-white').contains(e.target) && !errorModal.classList.contains('hidden')) {
+                closeErrorModal();
+            }
+            
+            if (successModal && !successModal.querySelector('.bg-white').contains(e.target) && !successModal.classList.contains('hidden')) {
+                closeSuccessModal();
             }
         });
     </script>

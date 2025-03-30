@@ -34,7 +34,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask_cors import CORS
 from word_template import process_template
-from export import generate_word, generate_dwg
+from export import generate_word, generate_dwg, generate_self_assessment_report
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from models import db, User, InvitationCode  # 导入共享的模型
 import random
@@ -2981,6 +2981,34 @@ def handle_generate_dwg():
         return generate_dwg(data)
     except Exception as e:
         app.logger.error(f"处理生成DWG请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+
+@app.route('/api/self-assessment-report', methods=['POST'])
+def handle_self_assessment_report():
+    """
+    处理生成绿建自评估报告的请求
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 提取必要参数
+        project_id = data.get('project_id')
+        if not project_id:
+            return jsonify({"error": "缺少项目ID参数"}), 400
+        
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        request_data = {
+            'project_id': project_id,
+            'use_cache': False
+        }
+        
+        # 调用generate_self_assessment_report函数
+        return generate_self_assessment_report(request_data)
+    except Exception as e:
+        app.logger.error(f"处理生成绿建自评估报告请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
 
 @app.route('/api/calculate_scores/<int:project_id>', methods=['POST'])

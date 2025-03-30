@@ -296,6 +296,21 @@ def generate_word(request_data):
         try:
             # 使用word_template模块处理文档
             output_file = process_template(data)
+            
+            # 处理国标情况，国标时process_template返回None
+            if output_file is None:
+                # 对于国标，直接使用绿色建筑设计自评估报告.docx模板
+                standard = data[0].get('评价标准')
+                print(f"检测到评价标准为{standard}，直接使用绿色建筑设计自评估报告模板")
+                output_file = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
+                
+                # 复制模板到临时目录作为输出文件
+                import shutil
+                os.makedirs('temp', exist_ok=True)
+                temp_output = os.path.join('temp', f"{data[0]['项目名称']}_绿色建筑设计自评估报告.docx")
+                shutil.copy2(output_file, temp_output)
+                output_file = temp_output
+            
             print(f"Word文档生成成功: {output_file}")
             
             # 检查生成的文件是否存在
@@ -496,6 +511,234 @@ def save_project_info(project_data):
         print(f"保存项目信息失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
         return jsonify({"error": f"保存项目信息失败: {str(e)}"}), 500
+
+def generate_self_assessment_report(request_data):
+    """
+    生成绿色建筑设计自评估报告的函数
+    
+    参数:
+    - request_data: 包含project_id的字典
+    
+    返回:
+    - tuple: (response, status_code)
+    """
+    try:
+        # 从请求参数中获取项目ID
+        project_id = request_data.get('project_id')
+        if not project_id:
+            print("未提供项目ID")
+            return jsonify({"error": "请提供项目ID"}), 400
+            
+        # 检查模板文件是否存在
+        template_file = '绿色建筑设计自评估报告.docx'
+        template_path = os.path.join(current_app.static_folder, 'templates', template_file)
+        
+        if not os.path.exists(template_path):
+            print(f"模板文件不存在: {template_path}")
+            return jsonify({"error": f"模板文件不存在: {template_file}"}), 404
+
+        # 尝试从缓存获取数据
+        cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
+        data = None
+        use_cache = request_data.get('use_cache', True)
+        
+        if use_cache and os.path.exists(cache_file):
+            try:
+                print(f"从缓存文件加载数据: {cache_file}")
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                print("成功从缓存加载数据")
+                
+                # 检查缓存数据是否有效
+                if not data or len(data) < 1 or not isinstance(data[0], dict) or not data[0].get("项目名称"):
+                    print("缓存数据无效，将从数据库重新获取")
+                    data = None
+            except Exception as e:
+                print(f"读取缓存文件失败: {str(e)}")
+                data = None
+
+        # 如果缓存不存在或无效，从数据库获取数据
+        if not data:
+            print("从数据库获取数据...")
+            
+            # 获取项目基本信息
+            print(f"获取项目 {project_id} 的基本信息")
+            result = db.session.execute(
+                text("""
+                    SELECT p.id, p.user_id, p.name, p.code, p.construction_unit, p.design_unit, p.location, 
+                           p.building_area, p.standard, p.building_type, p.created_at, p.climate_zone, 
+                           p.star_rating_target, p.total_land_area, p.total_building_area, p.above_ground_area, 
+                           p.underground_area, p.building_height, p.building_floors, p.underground_floor_area, 
+                           p.ground_parking_spaces, p.plot_ratio, p.building_base_area, p.building_density, 
+                           p.green_area, p.green_ratio, p.residential_units, p.air_conditioning_type,
+                           p.average_floors, p.has_garbage_room, p.has_elevator, p.has_underground_garage,
+                           p.construction_type, p.has_water_landscape, p.is_fully_decorated, p.public_building_type,
+                           p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
+                           p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
+                           p.env_health_energy_innovation_score, p.architecture_innovation_score, 
+                           p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
+                           p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
+                           p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
+                           p.total_score, p.evaluation_result
+                    FROM projects p
+                    WHERE p.id = :project_id
+                """),
+                {"project_id": project_id}
+            )
+            project_rows = result.fetchall()
+
+            if not project_rows:
+                print(f"未找到项目数据: ID={project_id}")
+                return jsonify({"error": "未找到项目数据"}), 404
+
+            print(f"获取到项目数据: {project_rows[0]}")
+
+            # 准备数据
+            data = []
+            # 添加项目信息作为第一条数据
+            data.append({
+                "项目ID": str(project_rows[0][0] or ''),
+                "用户ID": str(project_rows[0][1] or ''),
+                "项目名称": project_rows[0][2] or '',
+                "项目编号": project_rows[0][3] or '',
+                "建设单位": project_rows[0][4] or '',
+                "设计单位": project_rows[0][5] or '',
+                "项目地点": project_rows[0][6] or '',
+                "建筑面积": str(project_rows[0][7] or '0'),
+                "评价标准": project_rows[0][8] or '成都市标',
+                "建筑类型": project_rows[0][9] or '',
+                "创建时间": project_rows[0][10].strftime('%Y-%m-%d %H:%M:%S') if project_rows[0][10] else '',
+                "气候区划": project_rows[0][11] or '',
+                "星级目标": project_rows[0][12] or '',
+                "总用地面积": str(project_rows[0][13] or '0'),
+                "总建筑面积": str(project_rows[0][14] or '0'),
+                "地上建筑面积": str(project_rows[0][15] or '0'),
+                "地下建筑面积": str(project_rows[0][16] or '0'),
+                "建筑高度": str(project_rows[0][17] or '0'),
+                "建筑层数": project_rows[0][18] or '',
+                "地下一层建筑面积": str(project_rows[0][19] or '0'),
+                "地面停车位数量": str(project_rows[0][20] or '0'),
+                "容积率": str(project_rows[0][21] or '0'),
+                "建筑基底面积": str(project_rows[0][22] or '0'),
+                "建筑密度": str(project_rows[0][23] or '0'),
+                "绿地面积": str(project_rows[0][24] or '0'),
+                "绿地率": str(project_rows[0][25] or '0'),
+                "住宅户数": str(project_rows[0][26] or '0'),
+                "空调类型": project_rows[0][27] or '',
+                "平均层数": project_rows[0][28] or '',
+                "有无垃圾用房": project_rows[0][29] or '',
+                "有无电梯": project_rows[0][30] or '',
+                "有无地下车库": project_rows[0][31] or '',
+                "建设情况": project_rows[0][32] or '',
+                "有无景观水体": project_rows[0][33] or '',
+                "是否全装修": project_rows[0][34] or '',
+                "公建类型": project_rows[0][35] or '',
+                "绿地向公众开放": project_rows[0][36] or '',
+                "建筑总分": str(project_rows[0][37] or '0'),
+                "结构总分": str(project_rows[0][38] or '0'),
+                "给排水总分": str(project_rows[0][39] or '0'),
+                "电气总分": str(project_rows[0][40] or '0'),
+                "暖通总分": str(project_rows[0][41] or '0'),
+                "景观总分": str(project_rows[0][42] or '0'),
+                "环境健康与节能总分": str(project_rows[0][43] or '0'),
+                "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
+                "建筑创新总分": str(project_rows[0][45] or '0'),
+                "结构创新总分": str(project_rows[0][46] or '0'),
+                "暖通创新总分": str(project_rows[0][47] or '0'),
+                "景观创新总分": str(project_rows[0][48] or '0'),
+                "安全耐久总分": str(project_rows[0][49] or '0'),
+                "健康舒适总分": str(project_rows[0][50] or '0'),
+                "生活便利总分": str(project_rows[0][51] or '0'),
+                "资源节约总分": str(project_rows[0][52] or '0'),
+                "环境宜居总分": str(project_rows[0][53] or '0'),
+                "提高与创新总分": str(project_rows[0][54] or '0'),
+                "项目总分": str(project_rows[0][55] or '0'),
+                "评定结果": project_rows[0][56] or ''
+            })
+
+            # 获取得分数据
+            print(f"获取项目 {project_id} 的得分数据")
+            result = db.session.execute(
+                text("""
+                    SELECT 条文号, 分类, 是否达标, 得分, 技术措施 
+                    FROM 得分表 
+                    WHERE 项目ID = :project_id
+                    ORDER BY 条文号
+                """),
+                {"project_id": project_id}
+            )
+            score_rows = result.fetchall()
+            
+            print(f"获取到 {len(score_rows)} 条得分数据")
+
+            # 添加得分数据
+            for score_row in score_rows:
+                data.append({
+                    "条文号": score_row[0] or '',
+                    "分类": score_row[1] or '',
+                    "是否达标": score_row[2] or '',
+                    "得分": str(score_row[3] or '0'),
+                    "技术措施": score_row[4] or ''
+                })
+
+            # 保存数据到缓存
+            try:
+                os.makedirs('temp', exist_ok=True)
+                with open(cache_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                print(f"数据已保存到缓存: {cache_file}")
+            except Exception as e:
+                print(f"保存缓存失败: {str(e)}")
+
+        # 使用word_template模块处理文档
+        print("开始处理Word模板...")
+        
+        try:
+            # 使用word_template模块处理文档
+            output_file = process_template(data)
+            
+            # 处理国标情况，国标时process_template返回None
+            if output_file is None:
+                # 对于国标，直接使用绿色建筑设计自评估报告.docx模板
+                standard = data[0].get('评价标准')
+                print(f"检测到评价标准为{standard}，直接使用绿色建筑设计自评估报告模板")
+                output_file = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
+                
+                # 复制模板到临时目录作为输出文件
+                import shutil
+                os.makedirs('temp', exist_ok=True)
+                temp_output = os.path.join('temp', f"{data[0]['项目名称']}_绿色建筑设计自评估报告.docx")
+                shutil.copy2(output_file, temp_output)
+                output_file = temp_output
+            
+            print(f"Word文档生成成功: {output_file}")
+            
+            # 检查生成的文件是否存在
+            if not os.path.exists(output_file):
+                print(f"生成的文件不存在: {output_file}")
+                return jsonify({"error": "生成的文件不存在"}), 500
+                
+            # 获取文件名
+            download_name = f"{data[0]['项目名称']}_绿色建筑设计自评估报告.docx"
+            if not download_name:
+                download_name = "self_assessment_report.docx"
+            
+            print(f"准备下载文件: {download_name}")
+            return send_file(
+                output_file,
+                as_attachment=True,
+                download_name=download_name,
+                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            )
+        except Exception as e:
+            print(f"处理Word模板失败: {str(e)}")
+            print(f"异常详情: {traceback.format_exc()}")
+            return jsonify({"error": f"处理Word模板失败: {str(e)}"}), 500
+
+    except Exception as e:
+        print(f"生成绿色建筑设计自评估报告失败: {str(e)}")
+        print(f"异常详情: {traceback.format_exc()}")
+        return jsonify({"error": f"生成绿色建筑设计自评估报告失败: {str(e)}"}), 500
 
 def generate_dwg(request_data):
     """

@@ -66,6 +66,167 @@
     <!-- 主要内容区域 -->
     <div class="ml-64 flex-1 p-6 transition-all duration-300" id="mainContent">
         <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- 项目管理卡片 -->
+            <div id="project-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 项目统计面板 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- 总项目数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-project-diagram text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">总项目数</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.total_projects }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 进行中项目 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-tasks text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">进行中项目</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.active_projects }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 已完成项目 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-check-circle text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">已完成项目</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.completed_projects }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 平均项目分数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <i class="fas fa-star text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">平均分数</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.avg_project_score }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1 max-w-sm">
+                            <div class="relative">
+                                <input type="text" id="projectSearchInput" 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索项目名称...">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addProjectBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>添加项目
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 项目列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">项目名称</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">所属用户</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分数</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="projectTableBody">
+                                {% for project in projects %}
+                                <tr class="project-row">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 project-name">{{ project.name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.user.email }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if project.status == 'completed' %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.status == 'in_progress' %}
+                                                bg-blue-100 text-blue-800
+                                            {% else %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% endif %}">
+                                            {{ {'completed': '已完成', 'in_progress': '进行中', 'pending': '待处理'}[project.status] }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if project.score >= 80 %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.score >= 60 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ project.score|default('尚未评分', true) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-900 view-project-btn" data-project-id="{{ project.id }}" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="projectStartIndex">1</span> 到 <span id="projectEndIndex">15</span> 条，共 <span id="projectTotalCount">{{ projects|length }}</span> 条
+                                <span class="ml-4">
+                                    第 <span id="projectCurrentPage">1</span> / <span id="projectTotalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="projectPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="projectNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 用户管理卡片 -->
             <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
                 <!-- 用户统计面板 -->
@@ -183,10 +344,10 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}">
+                                        <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}" title="编辑用户">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}">
+                                        <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}" title="删除用户">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </td>
@@ -274,7 +435,7 @@
                                     {{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}">
+                                    <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}" title="删除邀请码">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </td>
@@ -292,7 +453,7 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold" id="modalTitle">添加用户</h3>
-                <button class="text-gray-500 hover:text-gray-700" onclick="closeUserModal()">
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeUserModal()" title="关闭">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -319,6 +480,58 @@
                 </div>
                 <div class="flex justify-end space-x-3 mt-6">
                     <button type="button" onclick="closeUserModal()"class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                        确定
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 项目表单模态框 -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="projectModalTitle">添加项目</h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeProjectModal()" title="关闭">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="projectForm" class="space-y-4">
+                <input type="hidden" id="projectId" name="projectId">
+                <div>
+                    <label for="projectName" class="block text-sm font-medium text-gray-700">项目名称</label>
+                    <input type="text" id="projectName" name="projectName" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label for="projectUser" class="block text-sm font-medium text-gray-700">所属用户</label>
+                    <select id="projectUser" name="projectUser" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                        {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.email }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="projectStatus" class="block text-sm font-medium text-gray-700">状态</label>
+                    <select id="projectStatus" name="projectStatus" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                        <option value="pending">待处理</option>
+                        <option value="in_progress">进行中</option>
+                        <option value="completed">已完成</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="projectScore" class="block text-sm font-medium text-gray-700">项目分数</label>
+                    <input type="number" id="projectScore" name="projectScore" min="0" max="100"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                    <p class="mt-1 text-sm text-gray-500">留空表示尚未评分</p>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeProjectModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
                         取消
                     </button>
                     <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
@@ -797,6 +1010,306 @@
         })
         .catch(error => {
             console.error('删除邀请码时出错:', error);
+            alert('删除失败: ' + error.message);
+        });
+    }
+
+    // 项目管理相关功能
+    document.addEventListener('DOMContentLoaded', function() {
+        // 添加项目按钮点击事件
+        const addProjectBtn = document.getElementById('addProjectBtn');
+        if (addProjectBtn) {
+            addProjectBtn.addEventListener('click', function() {
+                openProjectModal();
+            });
+        }
+
+        // 编辑项目按钮点击事件
+        document.querySelectorAll('.edit-project-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const projectId = this.dataset.projectId;
+                openProjectModal(projectId);
+            });
+        });
+
+        // 查看项目按钮点击事件
+        document.querySelectorAll('.view-project-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const projectId = this.dataset.projectId;
+                viewProject(projectId);
+            });
+        });
+
+        // 删除项目按钮点击事件
+        document.querySelectorAll('.delete-project-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const projectId = this.dataset.projectId;
+                if (confirm('确定要删除此项目吗？')) {
+                    deleteProject(projectId);
+                }
+            });
+        });
+
+        // 项目表单提交事件
+        const projectForm = document.getElementById('projectForm');
+        if (projectForm) {
+            projectForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const projectId = document.getElementById('projectId').value;
+                if (projectId) {
+                    updateProject(projectId);
+                } else {
+                    createProject();
+                }
+            });
+        }
+
+        // 项目分页和搜索功能
+        const itemsPerPage = 15;
+        let currentProjectPage = parseInt(localStorage.getItem('currentProjectPage')) || 1;
+        const projectRows = document.querySelectorAll('.project-row');
+        
+        if (projectRows.length > 0) {
+            const totalProjectPages = Math.ceil(projectRows.length / itemsPerPage);
+            
+            const prevProjectPageBtn = document.getElementById('projectPrevPage');
+            const nextProjectPageBtn = document.getElementById('projectNextPage');
+            const startProjectIndexSpan = document.getElementById('projectStartIndex');
+            const endProjectIndexSpan = document.getElementById('projectEndIndex');
+            const totalProjectCountSpan = document.getElementById('projectTotalCount');
+            const currentProjectPageSpan = document.getElementById('projectCurrentPage');
+            const totalProjectPagesSpan = document.getElementById('projectTotalPages');
+            const projectSearchInput = document.getElementById('projectSearchInput');
+            
+            // 恢复搜索条件
+            const savedProjectSearch = localStorage.getItem('projectSearchTerm') || '';
+            if (projectSearchInput) {
+                projectSearchInput.value = savedProjectSearch;
+            }
+            
+            function updateProjectPagination() {
+                if (!projectSearchInput) return;
+                
+                const searchTerm = projectSearchInput.value.toLowerCase().trim();
+                const filteredRows = Array.from(projectRows).filter(row => {
+                    const name = row.querySelector('.project-name').textContent.toLowerCase();
+                    const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                    return name.includes(searchTerm) || id.includes(searchTerm);
+                });
+                
+                const totalFilteredItems = filteredRows.length;
+                const totalFilteredPages = Math.ceil(totalFilteredItems / itemsPerPage);
+                
+                // 确保当前页不超过总页数
+                if (currentProjectPage > totalFilteredPages) {
+                    currentProjectPage = totalFilteredPages || 1;
+                }
+                
+                // 更新按钮状态
+                if (prevProjectPageBtn) {
+                    prevProjectPageBtn.disabled = currentProjectPage === 1;
+                }
+                if (nextProjectPageBtn) {
+                    nextProjectPageBtn.disabled = currentProjectPage === totalFilteredPages || totalFilteredItems === 0;
+                }
+                
+                // 更新显示范围
+                const start = totalFilteredItems > 0 ? (currentProjectPage - 1) * itemsPerPage + 1 : 0;
+                const end = Math.min(currentProjectPage * itemsPerPage, totalFilteredItems);
+                
+                if (startProjectIndexSpan) startProjectIndexSpan.textContent = start;
+                if (endProjectIndexSpan) endProjectIndexSpan.textContent = end;
+                if (totalProjectCountSpan) totalProjectCountSpan.textContent = totalFilteredItems;
+                
+                // 更新页码显示
+                if (currentProjectPageSpan) currentProjectPageSpan.textContent = currentProjectPage;
+                if (totalProjectPagesSpan) totalProjectPagesSpan.textContent = totalFilteredPages || 1;
+                
+                // 保存当前页码和搜索条件
+                localStorage.setItem('currentProjectPage', currentProjectPage);
+                localStorage.setItem('projectSearchTerm', searchTerm);
+                
+                // 显示当前页的数据
+                projectRows.forEach(row => {
+                    const name = row.querySelector('.project-name').textContent.toLowerCase();
+                    const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                    const matchesSearch = name.includes(searchTerm) || id.includes(searchTerm);
+                    const index = Array.from(projectRows).indexOf(row);
+                    const isInCurrentPage = index >= (currentProjectPage - 1) * itemsPerPage && index < currentProjectPage * itemsPerPage;
+                    
+                    row.style.display = matchesSearch && isInCurrentPage ? '' : 'none';
+                });
+            }
+            
+            // 搜索功能
+            if (projectSearchInput) {
+                projectSearchInput.addEventListener('input', function() {
+                    currentProjectPage = 1;
+                    updateProjectPagination();
+                });
+            }
+            
+            // 上一页
+            if (prevProjectPageBtn) {
+                prevProjectPageBtn.addEventListener('click', function() {
+                    if (currentProjectPage > 1) {
+                        currentProjectPage--;
+                        updateProjectPagination();
+                    }
+                });
+            }
+            
+            // 下一页
+            if (nextProjectPageBtn) {
+                nextProjectPageBtn.addEventListener('click', function() {
+                    const searchTerm = projectSearchInput.value.toLowerCase().trim();
+                    const filteredRows = Array.from(projectRows).filter(row => {
+                        const name = row.querySelector('.project-name').textContent.toLowerCase();
+                        const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                        return name.includes(searchTerm) || id.includes(searchTerm);
+                    });
+                    const totalFilteredPages = Math.ceil(filteredRows.length / itemsPerPage);
+                    
+                    if (currentProjectPage < totalFilteredPages) {
+                        currentProjectPage++;
+                        updateProjectPagination();
+                    }
+                });
+            }
+            
+            // 初始化分页
+            updateProjectPagination();
+        }
+    });
+
+    // 打开项目模态框
+    function openProjectModal(projectId = null) {
+        const modal = document.getElementById('projectModal');
+        const form = document.getElementById('projectForm');
+        const modalTitle = document.getElementById('projectModalTitle');
+
+        // 重置表单
+        form.reset();
+        document.getElementById('projectId').value = '';
+
+        if (projectId) {
+            modalTitle.textContent = '编辑项目';
+            // 获取项目数据
+            fetch(`/admin/api/projects/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('projectId').value = data.id;
+                    document.getElementById('projectName').value = data.name;
+                    document.getElementById('projectUser').value = data.user_id;
+                    document.getElementById('projectStatus').value = data.status;
+                    if (data.score) {
+                        document.getElementById('projectScore').value = data.score;
+                    }
+                });
+        } else {
+            modalTitle.textContent = '添加项目';
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    // 关闭项目模态框
+    function closeProjectModal() {
+        document.getElementById('projectModal').classList.add('hidden');
+    }
+
+    // 查看项目详情
+    function viewProject(projectId) {
+        // 跳转到项目详情页面
+        window.location.href = `/admin/projects/${projectId}`;
+    }
+
+    // 创建项目
+    function createProject() {
+        const formData = {
+            name: document.getElementById('projectName').value,
+            user_id: document.getElementById('projectUser').value,
+            status: document.getElementById('projectStatus').value,
+            score: document.getElementById('projectScore').value || null
+        };
+
+        fetch('/admin/api/projects', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('项目创建成功');
+                location.reload();
+            } else {
+                alert(data.message || '创建失败');
+            }
+        })
+        .catch(error => {
+            alert('创建失败: ' + error.message);
+        });
+    }
+
+    // 更新项目
+    function updateProject(projectId) {
+        const formData = {
+            name: document.getElementById('projectName').value,
+            user_id: document.getElementById('projectUser').value,
+            status: document.getElementById('projectStatus').value,
+            score: document.getElementById('projectScore').value || null
+        };
+
+        fetch(`/admin/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('项目更新成功');
+                location.reload();
+            } else {
+                alert(data.message || '更新失败');
+            }
+        })
+        .catch(error => {
+            alert('更新失败: ' + error.message);
+        });
+    }
+
+    // 删除项目
+    function deleteProject(projectId) {
+        fetch(`/admin/api/projects/${projectId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('项目删除成功');
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('删除项目时出错:', error);
             alert('删除失败: ' + error.message);
         });
     }

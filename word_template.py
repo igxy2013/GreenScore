@@ -279,12 +279,51 @@ def replace_placeholders(template_path, data):
                             parent.replace(bookmark_range, new_run)
                             print(f"替换简写书签: {bookmark_name} -> {field_value}")
         
-        # 处理表格中的■字符，将其字体改为宋体
+        # 处理单大括号格式的占位符，如{项目名称}
+        for paragraph in doc.paragraphs:
+            for run in paragraph.runs:
+                # 使用正则表达式查找{字段名}格式的占位符
+                placeholders = re.findall(r'\{([^\}]+)\}', run.text)
+                if placeholders:
+                    text = run.text
+                    for placeholder in placeholders:
+                        # 查找对应的字段值
+                        field_value = ''
+                        if data and isinstance(data[0], dict):
+                            # 检查是否是映射的简写字段
+                            if placeholder in placeholder_mapping:
+                                field_value = str(data[0].get(placeholder_mapping[placeholder], ''))
+                            else:
+                                field_value = str(data[0].get(placeholder, ''))
+                        # 替换占位符
+                        text = text.replace('{' + placeholder + '}', field_value)
+                    run.text = text
+                    print(f"替换占位符: {placeholders} -> {text}")
+        
+        # 处理表格中的占位符
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for paragraph in cell.paragraphs:
                         for run in paragraph.runs:
+                            # 使用正则表达式查找{字段名}格式的占位符
+                            placeholders = re.findall(r'\{([^\}]+)\}', run.text)
+                            if placeholders:
+                                text = run.text
+                                for placeholder in placeholders:
+                                    # 查找对应的字段值
+                                    field_value = ''
+                                    if data and isinstance(data[0], dict):
+                                        # 检查是否是映射的简写字段
+                                        if placeholder in placeholder_mapping:
+                                            field_value = str(data[0].get(placeholder_mapping[placeholder], ''))
+                                        else:
+                                            field_value = str(data[0].get(placeholder, ''))
+                                    # 替换占位符
+                                    text = text.replace('{' + placeholder + '}', field_value)
+                                run.text = text
+                                print(f"替换表格中的占位符: {placeholders} -> {text}")
+                            # 处理表格中的■字符，将其字体改为宋体
                             if '■' in run.text:
                                 run.font.name = '宋体'
                                 run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
