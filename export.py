@@ -9,6 +9,9 @@ import traceback
 from sqlalchemy import text
 import pymysql
 from models import db
+from datetime import datetime
+
+
 
 # 检查是否在WSL环境中
 IS_WSL = 'WSL' in platform.uname().release or \
@@ -1085,7 +1088,7 @@ def generate_dwg(request_data):
         attributes["是否全装修"] = project_rows[0][34] or ''
         attributes["公建类型"] = project_rows[0][35] or ''
         attributes["绿地向公众开放"] = project_rows[0][36] or ''
-        attributes["设计日期"] = datetime.now().strftime('%Y%m%d')
+        attributes["设计日期"] = datetime.now().strftime('%Y年%m月%d日')
         # 添加评分数据
 
         attributes["建筑总分"] = str(project_rows[0][37] or '0')
@@ -1125,7 +1128,7 @@ def generate_dwg(request_data):
                 attributes[f"{条文号}分类"] = 分类
         
         # 生成输出文件路径
-        from datetime import datetime
+
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
         os.makedirs(output_dir, exist_ok=True)
