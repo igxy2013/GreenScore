@@ -171,6 +171,12 @@
                 <span class="ml-2 text-gray-700">系统设置</span>
             </div>
             
+            <!-- 用户指南选项 -->
+            <a href="{{ url_for('user_guide') }}" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+                <i class="fas fa-book text-gray-500"></i>
+                <span class="ml-2 text-gray-700">用户使用指南</span>
+            </a>
+            
             <!-- 联系我们选项 -->
             <div id="contactUsBtn" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
                 <i class="fas fa-paper-plane text-gray-500"></i>
@@ -226,7 +232,16 @@
                 </picture>
                 <span>智能绿建评价系统</span>
             </h1>
-            <h2 class="text-2xl text-primary mb-8 font-bold">项目管理中心</h2>
+            
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl text-primary font-bold">项目管理中心</h2>
+                <div class="flex items-center">
+                    <a href="{{ url_for('user_guide') }}" class="inline-flex items-center text-primary hover:text-primary/80 mr-2 bg-blue-50 px-3 py-1 rounded-full transition-all duration-300 hover:bg-blue-100">
+                        <i class="fas fa-question-circle mr-2"></i>
+                        <span>使用指南</span>
+                    </a>
+                </div>
+            </div>
             <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-semibold">现有项目</h3>
