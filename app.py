@@ -4203,6 +4203,16 @@ def get_db_connection():
         app.logger.error(f"创建数据库连接时出错: {str(e)}")
         raise
 
+@app.route('/user_guide')
+@login_required
+def user_guide():
+    """用户使用指南页面"""
+    try:
+        return render_template('user_guide.html')
+    except Exception as e:
+        app.logger.error(f"访问用户指南页面出错: {str(e)}")
+        return render_template('error.html', error=str(e))
+
 if __name__ == '__main__':
     # 初始化数据库
     init_db()
