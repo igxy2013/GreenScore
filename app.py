@@ -271,101 +271,145 @@ def login_required(f):
     return decorated_function
 
 def sync_score_tables(project_id):
-    """同步指定项目的得分表和project_scores表的数据"""
+    """同步得分表和project_scores表的数据"""
+    if not project_id:
+        logger.warning("项目ID不能为空，无法同步数据")
+        return False
+    
     try:
-        # 获取数据库会话
-        session = db.session
+        # 记录开始时间
+        start_time = datetime.now()
+        logger.info(f"开始同步项目ID={project_id}的得分表和project_scores表数据")
         
-        # 检查project_scores表是否存在
-        result = session.execute(text("SHOW TABLES LIKE 'project_scores'"))
-        if not result.fetchone():
-            logger.info("project_scores表不存在，创建表")
-            # 创建project_scores表
-            session.execute(text("""
-                CREATE TABLE project_scores (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    project_id INT NOT NULL,
-                    level VARCHAR(10) NOT NULL,
-                    specialty VARCHAR(20) NOT NULL,
-                    clause_number VARCHAR(20) NOT NULL,
-                    category VARCHAR(20) NULL,
-                    is_achieved VARCHAR(10) NOT NULL,
-                    score FLOAT NULL,
-                    technical_measures TEXT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-                )
-            """))
-            session.commit()
-            logger.info("成功创建project_scores表")
+        # 获取项目信息
+        project = get_project(project_id)
+        if not project:
+            logger.error(f"项目不存在: ID={project_id}")
+            return False
             
-            # 创建索引
-            session.execute(text("""
-                CREATE INDEX idx_project_scores_project_id ON project_scores (project_id)
-            """))
-            session.commit()
-            logger.info("成功创建project_scores表索引")
-        
-        # 删除该项目在project_scores表中的数据
-        result = session.execute(
-            text("DELETE FROM project_scores WHERE project_id = :project_id"),
-            {"project_id": project_id}
-        )
-        deleted_count = result.rowcount
-        session.commit()
-        logger.info(f"删除项目 {project_id} 在project_scores表中的 {deleted_count} 条记录")
+        project_standard = project.standard if project else '成都市标'
         
         # 从得分表导入数据到project_scores表
-        result = session.execute(
-            text("""
-                SELECT `项目ID`, `评价等级`, `专业`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
-                FROM `得分表`
-                WHERE `项目ID` = :project_id
-            """),
-            {"project_id": project_id}
-        )
-        scores = result.fetchall()
-        
-        # 导入数据到project_scores表
-        imported_count = 0
-        for score in scores:
-            project_id, level, specialty, clause_number, category, is_achieved, score_value, technical_measures = score
-            
-            # 尝试将得分转换为浮点数
-            try:
-                if score_value and score_value.strip():
-                    score_float = float(score_value)
-                else:
-                    score_float = 0
-            except (ValueError, TypeError):
-                score_float = 0
-            
-            # 插入数据
-            session.execute(
-                text("""
-                    INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
-                    VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score, :technical_measures)
-                """),
-                {
-                    "project_id": project_id,
-                    "level": level,
-                    "specialty": specialty,
-                    "clause_number": clause_number,
-                    "category": category,
-                    "is_achieved": is_achieved,
-                    "score": score_float,
-                    "technical_measures": technical_measures
-                }
+        count = 0
+        try:
+            result = db.session.execute(
+                text("SELECT COUNT(*) FROM `得分表` WHERE `项目ID` = :project_id"),
+                {"project_id": project_id}
             )
-            imported_count += 1
-        
-        # 提交事务
-        session.commit()
-        logger.info(f"项目 {project_id} 同步完成，导入了 {imported_count} 条记录")
-        
-        return True
+            count = result.scalar()
+            logger.info(f"得分表中项目ID={project_id}的记录数: {count}")
+        except Exception as e:
+            logger.error(f"查询得分表记录数时出错: {str(e)}")
+            
+        # 如果不存在记录，跳过同步
+        if count == 0:
+            logger.warning(f"得分表中不存在项目ID={project_id}的记录，跳过同步")
+            return False
+            
+        # 从得分表中获取数据，考虑缺失的列
+        try:
+            # 使用安全的查询方式
+            result = db.session.execute(
+                text("""
+                    SELECT 
+                        `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
+                        `分类`, `是否达标`, `得分`, `技术措施`, 
+                        COALESCE(`评价标准`, :default_standard) as `评价标准`
+                    FROM `得分表` 
+                    WHERE `项目ID` = :project_id
+                """),
+                {"project_id": project_id, "default_standard": project_standard}
+            )
+            
+            scores = result.fetchall()
+            logger.info(f"从得分表中获取到 {len(scores)} 条记录")
+            
+            if not scores:
+                logger.warning(f"得分表中不存在项目ID={project_id}的记录，跳过同步")
+                return False
+                
+            # 先删除project_scores表中的相关记录
+            try:
+                delete_result = db.session.execute(
+                    text("DELETE FROM project_scores WHERE project_id = :project_id"),
+                    {"project_id": project_id}
+                )
+                logger.info(f"已从project_scores表中删除 {delete_result.rowcount} 条记录")
+                db.session.flush()
+            except Exception as e:
+                logger.error(f"删除project_scores表记录时出错: {str(e)}")
+                db.session.rollback()
+                raise
+                
+            # 批量插入数据到project_scores表
+            inserted_count = 0
+            for score in scores:
+                try:
+                    # 解包得分数据，避免数组越界错误
+                    项目ID = score[0] if len(score) > 0 else project_id
+                    项目名称 = score[1] if len(score) > 1 else ""
+                    专业 = score[2] if len(score) > 2 else ""
+                    评价等级 = score[3] if len(score) > 3 else "基本级"
+                    条文号 = score[4] if len(score) > 4 else ""
+                    分类 = score[5] if len(score) > 5 else ""
+                    是否达标 = score[6] if len(score) > 6 else "是"
+                    得分 = score[7] if len(score) > 7 else 0
+                    技术措施 = score[8] if len(score) > 8 else ""
+                    评价标准 = score[9] if len(score) > 9 else project_standard
+                    
+                    # 转换得分为浮点数
+                    try:
+                        if 得分 and str(得分).strip():
+                            score_float = float(得分)
+                        else:
+                            score_float = 0
+                    except (ValueError, TypeError):
+                        logger.warning(f"无法将得分转换为浮点数: {得分}，使用默认值0")
+                        score_float = 0
+                    
+                    # 插入数据到project_scores表
+                    db.session.execute(
+                        text("""
+                            INSERT INTO project_scores (
+                                project_id, project_name, specialty, level, clause_number, 
+                                category, is_achieved, score, technical_measures, standard
+                            ) VALUES (
+                                :project_id, :project_name, :specialty, :level, :clause_number,
+                                :category, :is_achieved, :score, :technical_measures, :standard
+                            )
+                        """),
+                        {
+                            "project_id": 项目ID,
+                            "project_name": 项目名称,
+                            "specialty": 专业,
+                            "level": 评价等级,
+                            "clause_number": 条文号,
+                            "category": 分类,
+                            "is_achieved": 是否达标,
+                            "score": score_float,
+                            "technical_measures": 技术措施,
+                            "standard": 评价标准
+                        }
+                    )
+                    inserted_count += 1
+                except Exception as e:
+                    logger.error(f"插入project_scores表时出错: {str(e)}, 条文号: {条文号}")
+                    # 继续处理下一条记录
+                    
+            # 提交事务
+            db.session.commit()
+            end_time = datetime.now()
+            logger.info(f"同步完成，共插入 {inserted_count} 条记录，耗时: {(end_time - start_time).total_seconds()} 秒")
+            return True
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"同步数据时出错: {str(e)}")
+            logger.error(traceback.format_exc())
+            return False
+            
     except Exception as e:
-        logger.error(f"同步项目 {project_id} 数据时出错: {str(e)}")
+        logger.error(f"同步得分表和project_scores表数据时出错: {str(e)}")
         logger.error(traceback.format_exc())
         return False
 
@@ -3102,9 +3146,13 @@ def handle_self_assessment_report():
 def calculate_project_scores(project_id):
     """计算并更新项目的各项评分"""
     try:
+        # 添加更详细的日志
+        logger.info(f"开始计算项目评分: 项目ID={project_id}")
+        
         # 获取项目信息
         project = Project.query.get(project_id)
         if not project:
+            logger.error(f"项目不存在: ID={project_id}")
             return jsonify({'success': False, 'message': '项目不存在'}), 404
         
         # 获取项目评价标准
@@ -3112,16 +3160,20 @@ def calculate_project_scores(project_id):
         logger.info(f"计算项目评分: 项目ID={project_id}, 评价标准={project_standard}")
         
         # 同步得分表和project_scores表的数据
-        sync_result = sync_score_tables(project_id)
-        if not sync_result:
-            logger.warning(f"同步得分表和project_scores表数据失败或无需同步，继续使用现有数据")
+        try:
+            sync_result = sync_score_tables(project_id)
+            if not sync_result:
+                logger.warning(f"同步得分表和project_scores表数据失败或无需同步，继续使用现有数据")
+        except Exception as e:
+            logger.error(f"同步得分表和project_scores表数据出错: {str(e)}")
+            # 继续执行，不中断流程
         
         # 获取数据库会话
         session = db.session
         
-        # 查询项目的所有评分记录，使用项目评价标准
-        result = session.execute(
-            text("""
+        try:
+            # 查询项目的所有评分记录，使用项目评价标准
+            sql_query = """
                 SELECT ps.clause_number, ps.score, s.分类, s.专业, s.属性
                 FROM project_scores ps
                 LEFT JOIN 
@@ -3133,11 +3185,22 @@ def calculate_project_scores(project_id):
                     SELECT 条文号, 分类, 专业, 属性 FROM 国标
                 ) s ON ps.clause_number = s.条文号
                 WHERE ps.project_id = :project_id AND ps.standard = :project_standard
-            """),
-            {"project_id": project_id, "project_standard": project_standard}
-        )
-        
-        scores = result.fetchall()
+            """
+            
+            logger.info(f"执行SQL查询: {sql_query}")
+            logger.info(f"查询参数: project_id={project_id}, project_standard={project_standard}")
+            
+            result = session.execute(
+                text(sql_query),
+                {"project_id": project_id, "project_standard": project_standard}
+            )
+            
+            scores = result.fetchall()
+            logger.info(f"查询到 {len(scores)} 条评分记录")
+        except Exception as e:
+            logger.error(f"查询评分记录时出错: {str(e)}")
+            logger.error(traceback.format_exc())
+            return jsonify({'success': False, 'message': f'查询评分记录失败: {str(e)}'}), 500
         
         # 初始化各专业分数
         专业分数 = {
@@ -3166,78 +3229,99 @@ def calculate_project_scores(project_id):
         }
         
         # 计算各专业和章节的分数
-        for score in scores:
-            clause_number = score[0]  # 条文号
-            score_value = score[1] or 0  # 得分
-            分类 = score[2]  # 分类
-            专业 = score[3]  # 专业
-            属性 = score[4]  # 属性
-            
-            # 判断专业
-            if 专业 and '建' in 专业:
-                if 属性 and '创新' in 属性:
-                    专业分数['建筑创新'] += score_value
-                else:
-                    专业分数['建筑'] += score_value
-            elif 专业 and '结' in 专业:
-                if 属性 and '创新' in 属性:
-                    专业分数['结构创新'] += score_value
-                else:
-                    专业分数['结构'] += score_value
-            elif 专业 and ('给' in 专业 or '排' in 专业 or '水' in 专业):
-                专业分数['给排水'] += score_value
-            elif 专业 and '电' in 专业:
-                专业分数['电气'] += score_value
-            elif 专业 and ('暖' in 专业 or '通' in 专业 or '空调' in 专业):
-                if 属性 and '创新' in 属性:
-                    专业分数['暖通创新'] += score_value
-                else:
-                    专业分数['暖通'] += score_value
-            elif 专业 and ('景' in 专业 or '园' in 专业):
-                if 属性 and '创新' in 属性:
-                    专业分数['景观创新'] += score_value
-                else:
-                    专业分数['景观'] += score_value
-            elif 专业 and ('环境' in 专业 or '健康' in 专业 or '节能' in 专业):
-                if 属性 and '创新' in 属性:
-                    专业分数['环境健康与节能创新'] += score_value
-                else:
-                    专业分数['环境健康与节能'] += score_value
-            
-            # 判断章节
-            if clause_number and clause_number.startswith('4') or (分类 and ('安全' in 分类 or '耐久' in 分类)):
-                章节分数['安全耐久'] += score_value
-            elif clause_number and clause_number.startswith('5') or (分类 and ('健康' in 分类 or '舒适' in 分类)):
-                章节分数['健康舒适'] += score_value
-            elif clause_number and clause_number.startswith('6') or (分类 and ('生活' in 分类 or '便利' in 分类)):
-                章节分数['生活便利'] += score_value
-            elif clause_number and clause_number.startswith('7') or (分类 and ('资源' in 分类 or '节约' in 分类)):
-                章节分数['资源节约'] += score_value
-            elif clause_number and clause_number.startswith('8') or (分类 and ('环境' in 分类 or '宜居' in 分类)):
-                章节分数['环境宜居'] += score_value
-            elif clause_number and clause_number.startswith('9') or (分类 and ('提高' in 分类 or '创新' in 分类)):
-                章节分数['提高与创新'] += score_value
+        for idx, score in enumerate(scores):
+            try:
+                clause_number = score[0]  # 条文号
+                score_value = score[1] or 0  # 得分
+                分类 = score[2]  # 分类
+                专业 = score[3]  # 专业
+                属性 = score[4]  # 属性
+                
+                # 确保score_value是浮点数
+                if isinstance(score_value, str):
+                    try:
+                        score_value = float(score_value)
+                    except (ValueError, TypeError):
+                        score_value = 0
+                        logger.warning(f"无法将得分转换为浮点数: {score[1]}, 使用默认值0")
+                
+                logger.debug(f"处理评分记录 {idx+1}/{len(scores)}: 条文号={clause_number}, 得分={score_value}, 分类={分类}, 专业={专业}")
+                
+                # 判断专业
+                if 专业 and '建' in 专业:
+                    if 属性 and '创新' in 属性:
+                        专业分数['建筑创新'] += score_value
+                    else:
+                        专业分数['建筑'] += score_value
+                elif 专业 and '结' in 专业:
+                    if 属性 and '创新' in 属性:
+                        专业分数['结构创新'] += score_value
+                    else:
+                        专业分数['结构'] += score_value
+                elif 专业 and ('给' in 专业 or '排' in 专业 or '水' in 专业):
+                    专业分数['给排水'] += score_value
+                elif 专业 and '电' in 专业:
+                    专业分数['电气'] += score_value
+                elif 专业 and ('暖' in 专业 or '通' in 专业 or '空调' in 专业):
+                    if 属性 and '创新' in 属性:
+                        专业分数['暖通创新'] += score_value
+                    else:
+                        专业分数['暖通'] += score_value
+                elif 专业 and ('景' in 专业 or '园' in 专业):
+                    if 属性 and '创新' in 属性:
+                        专业分数['景观创新'] += score_value
+                    else:
+                        专业分数['景观'] += score_value
+                elif 专业 and ('环境' in 专业 or '健康' in 专业 or '节能' in 专业):
+                    if 属性 and '创新' in 属性:
+                        专业分数['环境健康与节能创新'] += score_value
+                    else:
+                        专业分数['环境健康与节能'] += score_value
+                
+                # 判断章节
+                if clause_number and clause_number.startswith('4') or (分类 and ('安全' in 分类 or '耐久' in 分类)):
+                    章节分数['安全耐久'] += score_value
+                elif clause_number and clause_number.startswith('5') or (分类 and ('健康' in 分类 or '舒适' in 分类)):
+                    章节分数['健康舒适'] += score_value
+                elif clause_number and clause_number.startswith('6') or (分类 and ('生活' in 分类 or '便利' in 分类)):
+                    章节分数['生活便利'] += score_value
+                elif clause_number and clause_number.startswith('7') or (分类 and ('资源' in 分类 or '节约' in 分类)):
+                    章节分数['资源节约'] += score_value
+                elif clause_number and clause_number.startswith('8') or (分类 and ('环境' in 分类 or '宜居' in 分类)):
+                    章节分数['环境宜居'] += score_value
+                elif clause_number and clause_number.startswith('9') or (分类 and ('提高' in 分类 or '创新' in 分类)):
+                    章节分数['提高与创新'] += score_value
+            except Exception as e:
+                logger.error(f"处理评分记录时出错 (索引 {idx}): {str(e)}")
+                # 继续处理下一条记录
+        
+        logger.info(f"计算完成 - 专业分数: {专业分数}")
+        logger.info(f"计算完成 - 章节分数: {章节分数}")
+        
+        # 四舍五入各项分数
+        专业分数_rounded = {k: round(v, 2) for k, v in 专业分数.items()}
+        章节分数_rounded = {k: round(v, 2) for k, v in 章节分数.items()}
         
         # 更新项目的各项评分
-        project.architecture_score = round(专业分数['建筑'], 2)
-        project.structure_score = round(专业分数['结构'], 2)
-        project.water_supply_score = round(专业分数['给排水'], 2)
-        project.electrical_score = round(专业分数['电气'], 2)
-        project.hvac_score = round(专业分数['暖通'], 2)
-        project.landscape_score = round(专业分数['景观'], 2)
-        project.env_health_energy_score = round(专业分数['环境健康与节能'], 2)
-        project.env_health_energy_innovation_score = round(专业分数['环境健康与节能创新'], 2)
-        project.architecture_innovation_score = round(专业分数['建筑创新'], 2)
-        project.structure_innovation_score = round(专业分数['结构创新'], 2)
-        project.hvac_innovation_score = round(专业分数['暖通创新'], 2)
-        project.landscape_innovation_score = round(专业分数['景观创新'], 2)
+        project.architecture_score = 专业分数_rounded['建筑']
+        project.structure_score = 专业分数_rounded['结构']
+        project.water_supply_score = 专业分数_rounded['给排水']
+        project.electrical_score = 专业分数_rounded['电气']
+        project.hvac_score = 专业分数_rounded['暖通']
+        project.landscape_score = 专业分数_rounded['景观']
+        project.env_health_energy_score = 专业分数_rounded['环境健康与节能']
+        project.env_health_energy_innovation_score = 专业分数_rounded['环境健康与节能创新']
+        project.architecture_innovation_score = 专业分数_rounded['建筑创新']
+        project.structure_innovation_score = 专业分数_rounded['结构创新']
+        project.hvac_innovation_score = 专业分数_rounded['暖通创新']
+        project.landscape_innovation_score = 专业分数_rounded['景观创新']
         
-        project.safety_durability_score = round(章节分数['安全耐久'], 2)
-        project.health_comfort_score = round(章节分数['健康舒适'], 2)
-        project.life_convenience_score = round(章节分数['生活便利'], 2)
-        project.resource_saving_score = round(章节分数['资源节约'], 2)
-        project.environment_livability_score = round(章节分数['环境宜居'], 2)
-        project.improvement_innovation_score = round(章节分数['提高与创新'], 2)
+        project.safety_durability_score = 章节分数_rounded['安全耐久']
+        project.health_comfort_score = 章节分数_rounded['健康舒适']
+        project.life_convenience_score = 章节分数_rounded['生活便利']
+        project.resource_saving_score = 章节分数_rounded['资源节约']
+        project.environment_livability_score = 章节分数_rounded['环境宜居']
+        project.improvement_innovation_score = 章节分数_rounded['提高与创新']
         
         # 计算项目总分
         project.total_score = round(sum(专业分数.values()), 2)
@@ -3275,9 +3359,20 @@ def calculate_project_scores(project_id):
         
         # 将更新后的项目添加到session并保存
         try:
+            # 使用显式的保存方式
             db.session.add(project)
+            db.session.flush()  # 先刷新，确保SQL语句已生成
+            
+            # 再次确认是否正确写入数据库
+            logger.info(f"正在更新项目ID={project_id}的评分数据: architecture_score={project.architecture_score}, structure_score={project.structure_score}")
+            
+            # 显式提交事务
             db.session.commit()
-            logger.info(f"项目 {project_id} 的评分已更新: 总分={project.total_score}, 评定结果={project.evaluation_result}")
+            logger.info(f"项目 {project_id} 的评分已成功更新到数据库: 总分={project.total_score}, 评定结果={project.evaluation_result}")
+            
+            # 直接从数据库再次获取项目，检查是否真的更新了
+            refreshed_project = db.session.query(Project).get(project_id)
+            logger.info(f"从数据库重新获取项目评分: architecture_score={refreshed_project.architecture_score}, structure_score={refreshed_project.structure_score}")
             
             # 清除评分汇总缓存
             cache_key = f"score_summary_{project_id}_{project_standard}"
@@ -3291,35 +3386,63 @@ def calculate_project_scores(project_id):
                 if cache.has(specialty_cache_key):
                     cache.delete(specialty_cache_key)
                     logger.info(f"清除专业得分缓存: {specialty_cache_key}")
+                    
+            # 准备专业得分数据结构用于前端展示
+            specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
+            if project_standard == '四川省标':
+                specialties.append('环境健康与节能专业')
+                
+            # 专业到字段的映射
+            specialty_to_field = {
+                '建筑专业': 专业分数_rounded['建筑'],
+                '结构专业': 专业分数_rounded['结构'],
+                '给排水专业': 专业分数_rounded['给排水'],
+                '电气专业': 专业分数_rounded['电气'],
+                '暖通专业': 专业分数_rounded['暖通'],
+                '景观专业': 专业分数_rounded['景观'],
+                '环境健康与节能专业': 专业分数_rounded['环境健康与节能']
+            }
+            
+            specialty_scores = {specialty: specialty_to_field.get(specialty, 0) for specialty in specialties}
+            
+            # 构建分类得分数据
+            specialty_scores_by_category = {}
+            for specialty in specialties:
+                specialty_scores_by_category[specialty] = {
+                    '安全耐久': 0,
+                    '健康舒适': 0,
+                    '生活便利': 0,
+                    '资源节约': 0,
+                    '环境宜居': 0,
+                    '提高与创新': 0,
+                    '总分': specialty_to_field.get(specialty, 0)
+                }
+            
+            # 返回计算结果和项目详细评分数据
+            return jsonify({
+                'success': True,
+                'message': '项目评分计算并更新成功',
+                'total_score': project.total_score,
+                'evaluation_result': project.evaluation_result,
+                'specialty_scores': specialty_scores,
+                'specialty_scores_by_category': specialty_scores_by_category,
+                'project_standard': project_standard,
+                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'scores_detail': {
+                    '专业分数': 专业分数_rounded,
+                    '章节分数': 章节分数_rounded
+                }
+            })
+            
         except Exception as e:
             db.session.rollback()
             logger.error(f"更新项目评分时出错: {str(e)}")
-            raise
-        finally:
-            # 确保数据库连接正确关闭
-            try:
-                db.session.close()
-                logger.info("数据库会话已关闭")
-            except Exception as e:
-                logger.error(f"关闭数据库会话时出错: {str(e)}")
-                # 不抛出异常，因为主要操作已完成
+            return jsonify({'success': False, 'message': f'更新项目评分时出错: {str(e)}'}), 500
         
-        return jsonify({
-            'success': True, 
-            'message': '评分计算完成',
-            'scores': {
-                '专业分数': 专业分数,
-                '章节分数': 章节分数,
-                '项目总分': project.total_score,
-                '评定结果': project.evaluation_result
-            }
-        })
-    
     except Exception as e:
-        db.session.rollback()
         logger.error(f"计算项目评分时出错: {str(e)}")
         logger.error(traceback.format_exc())
-        return jsonify({'success': False, 'message': f'计算评分失败: {str(e)}'}), 500
+        return jsonify({'success': False, 'message': f'计算项目评分时出错: {str(e)}'}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
