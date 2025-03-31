@@ -3518,27 +3518,6 @@ def calculate_project_scores(project_id):
                                     print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
                                 # 更新总分
                                 specialty_scores_by_category['环境健康与节能专业']['总分'] += score_value
-                        
-                        # 判断章节
-                        if 分类:
-                            if '安全' in 分类 or '耐久' in 分类:
-                                章节分数['安全耐久'] += score_value
-                                print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
-                            elif '健康' in 分类 or '舒适' in 分类:
-                                章节分数['健康舒适'] += score_value
-                                print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
-                            elif '生活' in 分类 or '便利' in 分类:
-                                章节分数['生活便利'] += score_value
-                                print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
-                            elif '资源' in 分类 or '节约' in 分类:
-                                章节分数['资源节约'] += score_value
-                                print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
-                            elif '环境' in 分类 or '宜居' in 分类:
-                                章节分数['环境宜居'] += score_value
-                                print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
-                            elif '提高' in 分类 or '创新' in 分类:
-                                章节分数['提高与创新'] += score_value
-                                print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
             except Exception as e:
                 logger.error(f"处理评分记录时出错 (索引 {idx}): {str(e)}")
                 # 继续处理下一条记录
