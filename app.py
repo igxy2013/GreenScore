@@ -3176,7 +3176,10 @@ def calculate_project_scores(project_id):
             sql_query = """
                 SELECT `专业`, `分类`, `是否达标`, `得分`, `评价等级`
                 FROM `得分表`
-                WHERE `项目ID` = :project_id AND `评价标准` = :standard
+                WHERE `项目ID` = :project_id 
+                AND (`评价标准` = :standard 
+                     OR (:standard = '国标' AND `评价标准` IN ('国标', '通用国标'))
+                     OR (:standard = '通用国标' AND `评价标准` IN ('国标', '通用国标')))
             """
             
             logger.info(f"执行SQL查询: 项目ID={project_id}, 标准={project_standard}")
@@ -3230,6 +3233,23 @@ def calculate_project_scores(project_id):
             '提高与创新': 0,
         }
         
+        # 初始化专业分类得分
+        specialty_scores_by_category = {}
+        specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
+        if project_standard == '四川省标':
+            specialties.append('环境健康与节能专业')
+        
+        for specialty in specialties:
+            specialty_scores_by_category[specialty] = {
+                '安全耐久': 0,
+                '健康舒适': 0,
+                '生活便利': 0,
+                '资源节约': 0,
+                '环境宜居': 0,
+                '提高与创新': 0,
+                '总分': 0
+            }
+        
         # 计算各专业和章节的分数
         for idx, score in enumerate(scores):
             try:
@@ -3260,6 +3280,35 @@ def calculate_project_scores(project_id):
                         else:
                             专业分数['建筑'] += score_value
                             print(f"建筑得分 +{score_value}, 累计={专业分数['建筑']}")
+                            
+                            # 更新专业分类得分
+                            if '安全' in 分类 or '耐久' in 分类:
+                                specialty_scores_by_category['建筑专业']['安全耐久'] += score_value
+                                章节分数['安全耐久'] += score_value
+                                print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                            elif '健康' in 分类 or '舒适' in 分类:
+                                specialty_scores_by_category['建筑专业']['健康舒适'] += score_value
+                                章节分数['健康舒适'] += score_value
+                                print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                            elif '生活' in 分类 or '便利' in 分类:
+                                specialty_scores_by_category['建筑专业']['生活便利'] += score_value
+                                章节分数['生活便利'] += score_value
+                                print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                            elif '资源' in 分类 or '节约' in 分类:
+                                specialty_scores_by_category['建筑专业']['资源节约'] += score_value
+                                章节分数['资源节约'] += score_value
+                                print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                            elif '环境' in 分类 or '宜居' in 分类:
+                                specialty_scores_by_category['建筑专业']['环境宜居'] += score_value
+                                章节分数['环境宜居'] += score_value
+                                print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                            elif '提高' in 分类 or '创新' in 分类:
+                                specialty_scores_by_category['建筑专业']['提高与创新'] += score_value
+                                章节分数['提高与创新'] += score_value
+                                print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                            # 更新总分
+                            specialty_scores_by_category['建筑专业']['总分'] += score_value
+                            
                     elif 专业 and '结' in 专业:
                         if '创新' in 专业:
                             专业分数['结构创新'] += score_value
@@ -3267,12 +3316,99 @@ def calculate_project_scores(project_id):
                         else:
                             专业分数['结构'] += score_value
                             print(f"结构得分 +{score_value}, 累计={专业分数['结构']}")
+                            
+                            # 更新专业分类得分
+                            if '安全' in 分类 or '耐久' in 分类:
+                                specialty_scores_by_category['结构专业']['安全耐久'] += score_value
+                                章节分数['安全耐久'] += score_value
+                                print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                            elif '健康' in 分类 or '舒适' in 分类:
+                                specialty_scores_by_category['结构专业']['健康舒适'] += score_value
+                                章节分数['健康舒适'] += score_value
+                                print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                            elif '生活' in 分类 or '便利' in 分类:
+                                specialty_scores_by_category['结构专业']['生活便利'] += score_value
+                                章节分数['生活便利'] += score_value
+                                print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                            elif '资源' in 分类 or '节约' in 分类:
+                                specialty_scores_by_category['结构专业']['资源节约'] += score_value
+                                章节分数['资源节约'] += score_value
+                                print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                            elif '环境' in 分类 or '宜居' in 分类:
+                                specialty_scores_by_category['结构专业']['环境宜居'] += score_value
+                                章节分数['环境宜居'] += score_value
+                                print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                            elif '提高' in 分类 or '创新' in 分类:
+                                specialty_scores_by_category['结构专业']['提高与创新'] += score_value
+                                章节分数['提高与创新'] += score_value
+                                print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                            # 更新总分
+                            specialty_scores_by_category['结构专业']['总分'] += score_value
+                            
                     elif 专业 and ('给' in 专业 or '排' in 专业 or '水' in 专业):
                         专业分数['给排水'] += score_value
                         print(f"给排水得分 +{score_value}, 累计={专业分数['给排水']}")
+                        
+                        # 更新专业分类得分
+                        if '安全' in 分类 or '耐久' in 分类:
+                            specialty_scores_by_category['给排水专业']['安全耐久'] += score_value
+                            章节分数['安全耐久'] += score_value
+                            print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                        elif '健康' in 分类 or '舒适' in 分类:
+                            specialty_scores_by_category['给排水专业']['健康舒适'] += score_value
+                            章节分数['健康舒适'] += score_value
+                            print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                        elif '生活' in 分类 or '便利' in 分类:
+                            specialty_scores_by_category['给排水专业']['生活便利'] += score_value
+                            章节分数['生活便利'] += score_value
+                            print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                        elif '资源' in 分类 or '节约' in 分类:
+                            specialty_scores_by_category['给排水专业']['资源节约'] += score_value
+                            章节分数['资源节约'] += score_value
+                            print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                        elif '环境' in 分类 or '宜居' in 分类:
+                            specialty_scores_by_category['给排水专业']['环境宜居'] += score_value
+                            章节分数['环境宜居'] += score_value
+                            print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                        elif '提高' in 分类 or '创新' in 分类:
+                            specialty_scores_by_category['给排水专业']['提高与创新'] += score_value
+                            章节分数['提高与创新'] += score_value
+                            print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                        # 更新总分
+                        specialty_scores_by_category['给排水专业']['总分'] += score_value
+                        
                     elif 专业 and '电' in 专业:
                         专业分数['电气'] += score_value
                         print(f"电气得分 +{score_value}, 累计={专业分数['电气']}")
+                        
+                        # 更新专业分类得分
+                        if '安全' in 分类 or '耐久' in 分类:
+                            specialty_scores_by_category['电气专业']['安全耐久'] += score_value
+                            章节分数['安全耐久'] += score_value
+                            print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                        elif '健康' in 分类 or '舒适' in 分类:
+                            specialty_scores_by_category['电气专业']['健康舒适'] += score_value
+                            章节分数['健康舒适'] += score_value
+                            print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                        elif '生活' in 分类 or '便利' in 分类:
+                            specialty_scores_by_category['电气专业']['生活便利'] += score_value
+                            章节分数['生活便利'] += score_value
+                            print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                        elif '资源' in 分类 or '节约' in 分类:
+                            specialty_scores_by_category['电气专业']['资源节约'] += score_value
+                            章节分数['资源节约'] += score_value
+                            print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                        elif '环境' in 分类 or '宜居' in 分类:
+                            specialty_scores_by_category['电气专业']['环境宜居'] += score_value
+                            章节分数['环境宜居'] += score_value
+                            print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                        elif '提高' in 分类 or '创新' in 分类:
+                            specialty_scores_by_category['电气专业']['提高与创新'] += score_value
+                            章节分数['提高与创新'] += score_value
+                            print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                        # 更新总分
+                        specialty_scores_by_category['电气专业']['总分'] += score_value
+                        
                     elif 专业 and ('暖' in 专业 or '通' in 专业 or '空调' in 专业):
                         if '创新' in 专业:
                             专业分数['暖通创新'] += score_value
@@ -3280,6 +3416,35 @@ def calculate_project_scores(project_id):
                         else:
                             专业分数['暖通'] += score_value
                             print(f"暖通得分 +{score_value}, 累计={专业分数['暖通']}")
+                            
+                            # 更新专业分类得分
+                            if '安全' in 分类 or '耐久' in 分类:
+                                specialty_scores_by_category['暖通专业']['安全耐久'] += score_value
+                                章节分数['安全耐久'] += score_value
+                                print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                            elif '健康' in 分类 or '舒适' in 分类:
+                                specialty_scores_by_category['暖通专业']['健康舒适'] += score_value
+                                章节分数['健康舒适'] += score_value
+                                print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                            elif '生活' in 分类 or '便利' in 分类:
+                                specialty_scores_by_category['暖通专业']['生活便利'] += score_value
+                                章节分数['生活便利'] += score_value
+                                print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                            elif '资源' in 分类 or '节约' in 分类:
+                                specialty_scores_by_category['暖通专业']['资源节约'] += score_value
+                                章节分数['资源节约'] += score_value
+                                print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                            elif '环境' in 分类 or '宜居' in 分类:
+                                specialty_scores_by_category['暖通专业']['环境宜居'] += score_value
+                                章节分数['环境宜居'] += score_value
+                                print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                            elif '提高' in 分类 or '创新' in 分类:
+                                specialty_scores_by_category['暖通专业']['提高与创新'] += score_value
+                                章节分数['提高与创新'] += score_value
+                                print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                            # 更新总分
+                            specialty_scores_by_category['暖通专业']['总分'] += score_value
+                            
                     elif 专业 and ('景' in 专业 or '园' in 专业):
                         if '创新' in 专业:
                             专业分数['景观创新'] += score_value
@@ -3287,6 +3452,35 @@ def calculate_project_scores(project_id):
                         else:
                             专业分数['景观'] += score_value
                             print(f"景观得分 +{score_value}, 累计={专业分数['景观']}")
+                            
+                            # 更新专业分类得分
+                            if '安全' in 分类 or '耐久' in 分类:
+                                specialty_scores_by_category['景观专业']['安全耐久'] += score_value
+                                章节分数['安全耐久'] += score_value
+                                print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                            elif '健康' in 分类 or '舒适' in 分类:
+                                specialty_scores_by_category['景观专业']['健康舒适'] += score_value
+                                章节分数['健康舒适'] += score_value
+                                print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                            elif '生活' in 分类 or '便利' in 分类:
+                                specialty_scores_by_category['景观专业']['生活便利'] += score_value
+                                章节分数['生活便利'] += score_value
+                                print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                            elif '资源' in 分类 or '节约' in 分类:
+                                specialty_scores_by_category['景观专业']['资源节约'] += score_value
+                                章节分数['资源节约'] += score_value
+                                print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                            elif '环境' in 分类 or '宜居' in 分类:
+                                specialty_scores_by_category['景观专业']['环境宜居'] += score_value
+                                章节分数['环境宜居'] += score_value
+                                print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                            elif '提高' in 分类 or '创新' in 分类:
+                                specialty_scores_by_category['景观专业']['提高与创新'] += score_value
+                                章节分数['提高与创新'] += score_value
+                                print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                            # 更新总分
+                            specialty_scores_by_category['景观专业']['总分'] += score_value
+                            
                     elif 专业 and ('环境' in 专业 or '健康' in 专业 or '节能' in 专业):
                         if '创新' in 专业:
                             专业分数['环境健康与节能创新'] += score_value
@@ -3294,6 +3488,36 @@ def calculate_project_scores(project_id):
                         else:
                             专业分数['环境健康与节能'] += score_value
                             print(f"环境健康与节能得分 +{score_value}, 累计={专业分数['环境健康与节能']}")
+                            
+                            # 四川省标才有环境健康与节能专业
+                            if project_standard == '四川省标' and '环境健康与节能专业' in specialty_scores_by_category:
+                                # 更新专业分类得分
+                                if '安全' in 分类 or '耐久' in 分类:
+                                    specialty_scores_by_category['环境健康与节能专业']['安全耐久'] += score_value
+                                    章节分数['安全耐久'] += score_value
+                                    print(f"安全耐久得分 +{score_value}, 累计={章节分数['安全耐久']}")
+                                elif '健康' in 分类 or '舒适' in 分类:
+                                    specialty_scores_by_category['环境健康与节能专业']['健康舒适'] += score_value
+                                    章节分数['健康舒适'] += score_value
+                                    print(f"健康舒适得分 +{score_value}, 累计={章节分数['健康舒适']}")
+                                elif '生活' in 分类 or '便利' in 分类:
+                                    specialty_scores_by_category['环境健康与节能专业']['生活便利'] += score_value
+                                    章节分数['生活便利'] += score_value
+                                    print(f"生活便利得分 +{score_value}, 累计={章节分数['生活便利']}")
+                                elif '资源' in 分类 or '节约' in 分类:
+                                    specialty_scores_by_category['环境健康与节能专业']['资源节约'] += score_value
+                                    章节分数['资源节约'] += score_value
+                                    print(f"资源节约得分 +{score_value}, 累计={章节分数['资源节约']}")
+                                elif '环境' in 分类 or '宜居' in 分类:
+                                    specialty_scores_by_category['环境健康与节能专业']['环境宜居'] += score_value
+                                    章节分数['环境宜居'] += score_value
+                                    print(f"环境宜居得分 +{score_value}, 累计={章节分数['环境宜居']}")
+                                elif '提高' in 分类 or '创新' in 分类:
+                                    specialty_scores_by_category['环境健康与节能专业']['提高与创新'] += score_value
+                                    章节分数['提高与创新'] += score_value
+                                    print(f"提高与创新得分 +{score_value}, 累计={章节分数['提高与创新']}")
+                                # 更新总分
+                                specialty_scores_by_category['环境健康与节能专业']['总分'] += score_value
                         
                         # 判断章节
                         if 分类:
@@ -3323,20 +3547,41 @@ def calculate_project_scores(project_id):
         print("\n各专业得分：")
         for 专业, 得分 in 专业分数.items():
             if 得分 > 0:  # 只显示有得分的专业
-                print(f"{专业}: {得分}")
+                print(f"{专业}: {得分:.2f}")
         
         print("\n各章节得分：")
         for 章节, 得分 in 章节分数.items():
             if 得分 > 0:  # 只显示有得分的章节
-                print(f"{章节}: {得分}")
+                print(f"{章节}: {得分:.2f}")
         
-        # 四舍五入各项分数
-        专业分数_rounded = {k: round(v, 2) for k, v in 专业分数.items()}
-        章节分数_rounded = {k: round(v, 2) for k, v in 章节分数.items()}
+        # 计算各分类的总得分
+        分类总分 = {
+            '安全耐久': 0,
+            '健康舒适': 0,
+            '生活便利': 0,
+            '资源节约': 0,
+            '环境宜居': 0,
+            '提高与创新': 0
+        }
+        
+        # 遍历所有专业的分类得分，累加到分类总分
+        for 专业, 分类得分 in specialty_scores_by_category.items():
+            for 分类, 得分 in 分类得分.items():
+                if 分类 != '总分':  # 跳过总分字段
+                    分类总分[分类] += 得分
+        
+        print("\n各分类总得分：")
+        for 分类, 得分 in 分类总分.items():
+            if 得分 > 0:  # 只显示有得分的分类
+                print(f"{分类}: {得分:.2f}")
         
         # 计算项目总分
         total_score = round(sum(专业分数.values()), 2)
-        print(f"\n项目总分：{total_score}")
+        print(f"\n项目总分：{total_score:.2f}")
+        
+        # 对专业分数和章节分数进行四舍五入处理
+        专业分数_rounded = {k: round(v, 2) for k, v in 专业分数.items()}
+        章节分数_rounded = {k: round(v, 2) for k, v in 章节分数.items()}
         
         # 直接使用SQL更新项目得分，确保数据库更新成功
         try:
@@ -3490,17 +3735,11 @@ def calculate_project_scores(project_id):
             
             specialty_scores = {specialty: specialty_to_field.get(specialty, 0) for specialty in specialties}
             
-            # 构建分类得分数据
-            specialty_scores_by_category = {}
-            for specialty in specialties:
-                specialty_scores_by_category[specialty] = {
-                    '安全耐久': 0,
-                    '健康舒适': 0,
-                    '生活便利': 0,
-                    '资源节约': 0,
-                    '环境宜居': 0,
-                    '提高与创新': 0,
-                    '总分': specialty_to_field.get(specialty, 0)
+            # 对specialty_scores_by_category中的值进行四舍五入处理
+            rounded_specialty_scores_by_category = {}
+            for specialty, categories in specialty_scores_by_category.items():
+                rounded_specialty_scores_by_category[specialty] = {
+                    category: round(score, 2) for category, score in categories.items()
                 }
             
             # 返回计算结果和项目详细评分数据
@@ -3510,7 +3749,7 @@ def calculate_project_scores(project_id):
                 'total_score': total_score,
                 'evaluation_result': evaluation_result,
                 'specialty_scores': specialty_scores,
-                'specialty_scores_by_category': specialty_scores_by_category,
+                'specialty_scores_by_category': rounded_specialty_scores_by_category,
                 'project_standard': project_standard,
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'scores_detail': {
