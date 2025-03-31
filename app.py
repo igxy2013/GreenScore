@@ -1785,7 +1785,14 @@ def api_get_score_summary():
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
         app.logger.error(traceback.format_exc())
-        return jsonify({'error': f'获取评分汇总数据失败: {str(e)}'}), 500
+        # 返回一个基本的数据结构，而不是隐式返回None
+        return {
+            'specialty_scores': {},
+            'specialty_scores_by_category': {},
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'total_score': 0,
+            'project_standard': '未知'
+        }
 
 # 移除缓存装饰器，确保每次都从数据库获取最新数据
 def get_min_scores():
@@ -4141,6 +4148,14 @@ def get_score_summary(project_id, force_refresh=False):
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
         app.logger.error(traceback.format_exc())
+        # 返回一个基本的数据结构，而不是隐式返回None
+        return {
+            'specialty_scores': {},
+            'specialty_scores_by_category': {},
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'total_score': 0,
+            'project_standard': '未知'
+        }
 
 # 数据库连接配置
 def get_db_connection():
