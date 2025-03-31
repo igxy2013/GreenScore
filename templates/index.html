@@ -73,6 +73,7 @@
      .ri-checkbox-multiple-line:before { content: "\f14a"; }     /* fa-check-square */
      .ri-leaf-line:before { content: "\f06c"; }                  /* fa-leaf */
      .ri-file-list-3-line:before { content: "\f15c"; }          /* fa-file-alt */
+     .ri-book-line:before { content: "\f02d"; }                  /* fa-book */
  
      /* 添加动画效果 */
      .fa-spin {
@@ -258,21 +259,7 @@
     </script>
 </head>
 <body class="bg-gray-100">
-    <!-- 加载器 -->
-    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-4 rounded-lg shadow-lg flex items-center space-x-3">
-            <i class="ri-loader-2-line text-primary text-2xl animate-spin"></i>
-            <span class="text-gray-700">加载中...</span>
-        </div>
-    </div>
-    
-    <!-- 页面加载器 -->
-    <div id="page-loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
-        <div class="bg-white p-6 rounded-lg shadow-lg flex flex-col items-center">
-            <i class="ri-loader-4-line text-primary text-4xl animate-spin mb-3"></i>
-            <span class="text-gray-700 text-lg">数据处理中，请稍候...</span>
-        </div>
-    </div>
+
     
     <!-- 隐藏字段，用于存储当前项目ID和标准 -->
     <input type="hidden" id="current-project-id" value="{{ project.id if project else '21' }}">

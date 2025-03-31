@@ -3,7 +3,7 @@ import platform
 from flask import jsonify, current_app, send_file, request
 from dotenv import load_dotenv
 from docx import Document
-from word_template import process_template
+from word_template import process_template, replace_placeholders
 import json
 import traceback
 from sqlalchemy import text
@@ -302,17 +302,24 @@ def generate_word(request_data):
             
             # 处理国标情况，国标时process_template返回None
             if output_file is None:
-                # 对于国标，直接使用绿色建筑设计自评估报告.docx模板
+                # 对于国标，使用绿色建筑设计自评估报告.docx模板
                 standard = data[0].get('评价标准')
-                print(f"检测到评价标准为{standard}，直接使用绿色建筑设计自评估报告模板")
-                output_file = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
+                print(f"检测到评价标准为{standard}，使用绿色建筑设计自评估报告模板")
+                template_path = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
                 
-                # 复制模板到临时目录作为输出文件
-                import shutil
-                os.makedirs('temp', exist_ok=True)
-                temp_output = os.path.join('temp', f"{data[0]['项目名称']}_绿色建筑设计自评估报告.docx")
-                shutil.copy2(output_file, temp_output)
-                output_file = temp_output
+                # 确保模板文件存在
+                if not os.path.exists(template_path):
+                    print(f"模板文件不存在: {template_path}")
+                    return jsonify({"error": "模板文件不存在"}), 404
+                
+                try:
+                    # 调用word_template模块的replace_placeholders函数处理占位符
+                    output_file = replace_placeholders(template_path, data)
+                    print(f"占位符替换完成，输出文件: {output_file}")
+                except Exception as e:
+                    print(f"处理占位符时出错: {str(e)}")
+                    print(f"异常详情: {traceback.format_exc()}")
+                    return jsonify({"error": f"处理占位符失败: {str(e)}"}), 500
             
             print(f"Word文档生成成功: {output_file}")
             
@@ -702,17 +709,24 @@ def generate_self_assessment_report(request_data):
             
             # 处理国标情况，国标时process_template返回None
             if output_file is None:
-                # 对于国标，直接使用绿色建筑设计自评估报告.docx模板
+                # 对于国标，使用绿色建筑设计自评估报告.docx模板
                 standard = data[0].get('评价标准')
-                print(f"检测到评价标准为{standard}，直接使用绿色建筑设计自评估报告模板")
-                output_file = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
+                print(f"检测到评价标准为{standard}，使用绿色建筑设计自评估报告模板")
+                template_path = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
                 
-                # 复制模板到临时目录作为输出文件
-                import shutil
-                os.makedirs('temp', exist_ok=True)
-                temp_output = os.path.join('temp', f"{data[0]['项目名称']}_绿色建筑设计自评估报告.docx")
-                shutil.copy2(output_file, temp_output)
-                output_file = temp_output
+                # 确保模板文件存在
+                if not os.path.exists(template_path):
+                    print(f"模板文件不存在: {template_path}")
+                    return jsonify({"error": "模板文件不存在"}), 404
+                
+                try:
+                    # 调用word_template模块的replace_placeholders函数处理占位符
+                    output_file = replace_placeholders(template_path, data)
+                    print(f"占位符替换完成，输出文件: {output_file}")
+                except Exception as e:
+                    print(f"处理占位符时出错: {str(e)}")
+                    print(f"异常详情: {traceback.format_exc()}")
+                    return jsonify({"error": f"处理占位符失败: {str(e)}"}), 500
             
             print(f"Word文档生成成功: {output_file}")
             
