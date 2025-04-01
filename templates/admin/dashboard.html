@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - 仪表板</title>
+    <title>智能绿建管理后台</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
@@ -583,7 +583,7 @@
                                 </div>
                             </div>
                             <div>
-                                <select id="standardLevelFilter" class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择专业类别">
+                                <select id="standardMajorFilter" class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择专业类别">
                                     <option value="">所有专业</option>
                                     <option value="建筑">建筑专业</option>
                                     <option value="结构">结构专业</option>
@@ -591,6 +591,19 @@
                                     <option value="电气">电气专业</option>
                                     <option value="暖通">暖通专业</option>
                                     <option value="其他">其他专业</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="standardNameFilter" class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择标准名称">
+                                    <option value="">所有标准</option>
+                                    <!-- 标准名称选项将通过JavaScript动态加载 -->
+                                </select>
+                            </div>
+                            <div>
+                                <select id="standardAttributeFilter" class="w-full md:w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择属性">
+                                    <option value="">所有属性</option>
+                                    <option value="控制项">控制项</option>
+                                    <option value="评分项">评分项</option>
                                 </select>
                             </div>
                         </div>
@@ -612,12 +625,14 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">序号</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">条文号</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">条文内容</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分类</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">专业</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分值</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">审查材料</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">属性</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">标准名称</th>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
                                 </tr>
                             </thead>
@@ -681,6 +696,24 @@
                                 <input type="text" id="standardScore" name="standardScore" required
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
                             </div>
+                            <div>
+                                <label for="standardAttribute" class="block text-sm font-medium text-gray-700">属性</label>
+                                <select id="standardAttribute" name="standardAttribute" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                                    <option value="控制项">控制项</option>
+                                    <option value="评分项">评分项</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="standardName" class="block text-sm font-medium text-gray-700">标准名称</label>
+                                <select id="standardName" name="standardName" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                                    <option value="成都市标">成都市标</option>
+                                    <option value="四川省标">四川省标</option>
+                                    <option value="国标">国标</option>
+                                    <!-- 更多选项将通过JavaScript动态加载 -->
+                                </select>
+                            </div>
                             <div class="md:col-span-2">
                                 <label for="standardContent" class="block text-sm font-medium text-gray-700">条文内容</label>
                                 <textarea id="standardContent" name="standardContent" rows="3" required
@@ -689,11 +722,6 @@
                             <div class="md:col-span-2">
                                 <label for="standardMaterial" class="block text-sm font-medium text-gray-700">审查材料</label>
                                 <textarea id="standardMaterial" name="standardMaterial" rows="3"
-                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="standardProperty" class="block text-sm font-medium text-gray-700">属性</label>
-                                <textarea id="standardProperty" name="standardProperty" rows="2"
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
                             </div>
                         </div>
@@ -805,6 +833,8 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // 菜单切换功能
@@ -2034,510 +2064,557 @@
         
         // 初始化标准管理页面
         function initStandardManagement() {
-            // 加载标准统计数据
-            loadStandardStats();
-            // 加载标准列表
-            loadStandards();
+            // 变量定义
+            const standardSearchInput = document.getElementById('standardSearchInput');
+            const standardMajorFilter = document.getElementById('standardMajorFilter');
+            const standardNameFilter = document.getElementById('standardNameFilter');
+            const standardAttributeFilter = document.getElementById('standardAttributeFilter');
+            const standardTableBody = document.getElementById('standardTableBody');
+            const addStandardBtn = document.getElementById('addStandardBtn');
+            const standardForm = document.getElementById('standardForm');
+            const standardModal = document.getElementById('standardModal');
+            const standardPrevPage = document.getElementById('standardPrevPage');
+            const standardNextPage = document.getElementById('standardNextPage');
+            const standardStartIndex = document.getElementById('standardStartIndex');
+            const standardEndIndex = document.getElementById('standardEndIndex');
+            const standardTotalCount = document.getElementById('standardTotalCount');
+            const standardCurrentPage = document.getElementById('standardCurrentPage');
+            const standardTotalPages = document.getElementById('standardTotalPages');
+            const importStandardFile = document.getElementById('importStandardFile');
             
-            // 添加事件监听器
-            document.getElementById('standardSearchInput').addEventListener('input', debounce(function() {
-                filterAndDisplayStandards();
-            }, 300));
+            // 状态管理
+            let currentPage = 1;
+            let totalPages = 1;
+            let perPage = 20;
+            let searchQuery = '';
+            let standardName = '';
+            let specialty = '';
+            let attribute = '';
             
-            document.getElementById('standardLevelFilter').addEventListener('change', function() {
-                filterAndDisplayStandards();
-            });
+            // 加载标准名称列表
+            function loadStandardNames() {
+                fetch('/admin/api/standards/names')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 重置标准名称筛选器
+                            standardNameFilter.innerHTML = '<option value="">所有标准</option>';
+                            
+                            // 添加标准名称选项
+                            data.standard_names.forEach(name => {
+                                const option = document.createElement('option');
+                                option.value = name;
+                                option.textContent = name;
+                                standardNameFilter.appendChild(option);
+                            });
+                            
+                            // 同时更新添加/编辑表单中的标准名称选项
+                            const standardNameSelect = document.getElementById('standardName');
+                            standardNameSelect.innerHTML = ''; // 清空现有选项
+                            
+                            // 添加默认选项
+                            const defaultOptions = [
+                                {value: "成都市标", text: "成都市标"},
+                                {value: "四川省标", text: "四川省标"},
+                                {value: "国标", text: "国标"}
+                            ];
+                            
+                            defaultOptions.forEach(opt => {
+                                const option = document.createElement('option');
+                                option.value = opt.value;
+                                option.textContent = opt.text;
+                                standardNameSelect.appendChild(option);
+                            });
+                            
+                            // 添加从API获取的其他选项
+                            data.standard_names.forEach(name => {
+                                // 检查是否已存在该选项
+                                if (!defaultOptions.some(opt => opt.value === name)) {
+                                    const option = document.createElement('option');
+                                    option.value = name;
+                                    option.textContent = name;
+                                    standardNameSelect.appendChild(option);
+                                }
+                            });
+                        } else {
+                            console.error('加载标准名称失败:', data.message || '未知错误');
+                            standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准名称失败</td></tr>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载标准名称请求失败:', error);
+                        standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准名称请求失败</td></tr>';
+                    });
+            }
             
-            document.getElementById('standardPrevPage').addEventListener('click', function() {
-                if (currentStandardPage > 1) {
-                    currentStandardPage--;
-                    filterAndDisplayStandards();
+            // 加载标准数据
+            function loadStandards() {
+                // 显示加载状态
+                standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center">加载中...</td></tr>';
+                
+                // 构建查询参数
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: perPage
+                });
+                
+                if (searchQuery) params.append('query', searchQuery);
+                if (standardName) params.append('standard_name', standardName);
+                if (specialty) params.append('specialty', specialty);
+                if (attribute) params.append('attribute', attribute);
+                
+                // 发起API请求
+                fetch(`/admin/api/standards?${params.toString()}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // 更新分页信息
+                            totalPages = data.pagination.pages;
+                            currentPage = data.pagination.page;
+                            
+                            const start = (currentPage - 1) * perPage + 1;
+                            const end = Math.min(start + data.standards.length - 1, data.pagination.total);
+                            
+                            standardStartIndex.textContent = data.standards.length > 0 ? start : 0;
+                            standardEndIndex.textContent = end;
+                            standardTotalCount.textContent = data.pagination.total;
+                            standardCurrentPage.textContent = currentPage;
+                            standardTotalPages.textContent = totalPages;
+                            
+                            // 更新分页按钮状态
+                            standardPrevPage.disabled = currentPage <= 1;
+                            standardNextPage.disabled = currentPage >= totalPages;
+                            
+                            // 清空并填充表格
+                            standardTableBody.innerHTML = '';
+                            
+                            if (data.standards.length === 0) {
+                                standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center">没有找到标准数据</td></tr>';
+                                return;
+                            }
+                            
+                            data.standards.forEach(standard => {
+                                const row = document.createElement('tr');
+                                row.className = 'hover:bg-gray-50';
+                                
+                                row.innerHTML = `
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.序号 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.条文号 || '-'}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-900" title="${standard.条文内容}">${truncateText(standard.条文内容, 30)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.分类 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.专业 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.分值 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            ${standard.属性 === '控制项' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                            ${standard.属性 || '-'}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.标准名称 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-900 edit-standard-btn" data-id="${standard.序号}" title="编辑标准">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900 delete-standard-btn" data-id="${standard.序号}" title="删除标准">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                `;
+                                
+                                standardTableBody.appendChild(row);
+                            });
+                            
+                            // 绑定编辑和删除按钮事件
+                            document.querySelectorAll('.edit-standard-btn').forEach(btn => {
+                                btn.addEventListener('click', function() {
+                                    const standardId = this.getAttribute('data-id');
+                                    editStandard(standardId);
+                                });
+                            });
+                            
+                            document.querySelectorAll('.delete-standard-btn').forEach(btn => {
+                                btn.addEventListener('click', function() {
+                                    const standardId = this.getAttribute('data-id');
+                                    deleteStandard(standardId);
+                                });
+                            });
+                        } else {
+                            console.error('加载标准失败:', data.message || '未知错误');
+                            standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准失败</td></tr>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载标准请求失败:', error);
+                        standardTableBody.innerHTML = `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准请求失败: ${error.message}</td></tr>`;
+                    });
+            }
+            
+            // 截断长文本并添加省略号
+            function truncateText(text, maxLength) {
+                if (!text) return '-';
+                if (text.length <= maxLength) return text;
+                return text.substring(0, maxLength) + '...';
+            }
+            
+            // 打开标准添加/编辑模态框
+            function openStandardModal(isEdit = false, standardData = null) {
+                const standardModalTitle = document.getElementById('standardModalTitle');
+                const standardId = document.getElementById('standardId');
+                const standardNum = document.getElementById('standardNum');
+                const standardCategory = document.getElementById('standardCategory');
+                const standardMajor = document.getElementById('standardMajor');
+                const standardScore = document.getElementById('standardScore');
+                const standardContent = document.getElementById('standardContent');
+                const standardMaterial = document.getElementById('standardMaterial');
+                const standardAttribute = document.getElementById('standardAttribute');
+                const standardName = document.getElementById('standardName');
+                
+                // 设置模态框标题
+                standardModalTitle.textContent = isEdit ? '编辑标准' : '添加标准';
+                
+                // 重置表单
+                standardForm.reset();
+                
+                // 如果是编辑，填充表单数据
+                if (isEdit && standardData) {
+                    standardId.value = standardData.序号;
+                    standardNum.value = (standardData.条文号 || '').trim();
+                    standardCategory.value = (standardData.分类 || '').trim();
+                    standardMajor.value = (standardData.专业 || '').trim();
+                    standardScore.value = (standardData.分值 || '').trim();
+                    standardContent.value = (standardData.条文内容 || '').trim();
+                    standardMaterial.value = (standardData.审查材料 || '').trim();
+                    standardAttribute.value = (standardData.属性 || '控制项').trim();
+                    standardName.value = (standardData.标准名称 || '成都市标').trim();
+                    
+                    // 控制台打印数据，帮助调试
+                    console.log('编辑标准数据:', standardData);
+                } else {
+                    // 新增时清空ID
+                    standardId.value = '';
+                }
+                
+                // 显示模态框
+                standardModal.classList.remove('hidden');
+            }
+            
+            // 关闭标准模态框
+            function closeStandardModal() {
+                standardModal.classList.add('hidden');
+            }
+            
+            // 编辑标准
+            function editStandard(id) {
+                // 显示加载状态
+                Swal.fire({
+                    title: '加载中...',
+                    text: '正在获取标准数据',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // 发起API请求获取标准详情
+                fetch(`/admin/api/standards/${id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        // 使用后端返回的标准数据
+                        const standardData = data.standard;
+                        if (standardData) {
+                            console.log('获取到的标准数据:', standardData);
+                            openStandardModal(true, standardData);
+                        } else {
+                            Swal.fire('错误', '未找到标准数据', 'error');
+                        }
+                    } else {
+                        Swal.fire('错误', `获取标准详情失败: ${data.message || '未知错误'}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('获取标准详情失败:', error);
+                    
+                    // 如果通过ID获取失败，尝试从列表中获取
+                    fetch(`/admin/api/standards?page=1&per_page=1000`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            Swal.close();
+                            if (data.success) {
+                                // 查找对应ID的标准
+                                const standardData = data.standards.find(item => item.序号 == id);
+                                if (standardData) {
+                                    console.log('从列表中找到的标准数据:', standardData);
+                                    openStandardModal(true, standardData);
+                                } else {
+                                    Swal.fire('错误', '未找到标准数据', 'error');
+                                }
+                            } else {
+                                Swal.fire('错误', `获取标准详情失败: ${data.message || '未知错误'}`, 'error');
+                            }
+                        })
+                        .catch(fallbackError => {
+                            console.error('备用方法获取标准详情失败:', fallbackError);
+                            Swal.fire('错误', `获取标准详情失败: ${error.message}`, 'error');
+                        });
+                });
+            }
+            
+            // 删除标准
+            function deleteStandard(id) {
+                Swal.fire({
+                    title: '确定要删除吗？',
+                    text: '此操作不可恢复！',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: '确定删除',
+                    cancelButtonText: '取消'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // 发起API请求
+                        Swal.fire({
+                            title: '删除中...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+                        
+                        fetch(`/admin/api/standards/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            },
+                            credentials: 'same-origin'
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('成功', '标准删除成功', 'success');
+                                loadStandards(); // 重新加载列表
+                            } else {
+                                Swal.fire('错误', `删除失败: ${data.message || '未知错误'}`, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('删除标准失败:', error);
+                            Swal.fire('错误', `删除失败: ${error.message}`, 'error');
+                        });
+                    }
+                });
+            }
+            
+            // 导入标准
+            function importStandards(file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                Swal.fire({
+                    title: '导入中...',
+                    text: '正在导入标准数据，请稍候',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                fetch('/admin/api/standards/import', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('成功', `导入成功, 共导入 ${data.imported_count || 0} 条记录`, 'success');
+                        loadStandards(); // 重新加载列表
+                    } else {
+                        Swal.fire('错误', `导入失败: ${data.message || '未知错误'}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('导入标准失败:', error);
+                    Swal.fire('错误', `导入失败: ${error.message}`, 'error');
+                });
+                
+                // 清空文件输入框，以便于下次选择同一文件
+                importStandardFile.value = '';
+            }
+            
+            // 分页按钮事件
+            standardPrevPage.addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadStandards();
                 }
             });
             
-            document.getElementById('standardNextPage').addEventListener('click', function() {
-                if (currentStandardPage < totalStandardPages) {
-                    currentStandardPage++;
-                    filterAndDisplayStandards();
+            standardNextPage.addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadStandards();
                 }
             });
             
-            // 添加标准按钮
-            document.getElementById('addStandardBtn').addEventListener('click', function() {
-                openStandardModal();
+            // 搜索和筛选事件
+            let searchTimeout;
+            standardSearchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchQuery = this.value.trim();
+                    currentPage = 1;
+                    loadStandards();
+                }, 500);
             });
             
-            // 导入标准文件
-            document.getElementById('importStandardFile').addEventListener('change', function(e) {
+            standardMajorFilter.addEventListener('change', function() {
+                specialty = this.value;
+                currentPage = 1;
+                loadStandards();
+            });
+            
+            standardNameFilter.addEventListener('change', function() {
+                standardName = this.value;
+                currentPage = 1;
+                loadStandards();
+            });
+            
+            standardAttributeFilter.addEventListener('change', function() {
+                attribute = this.value;
+                currentPage = 1;
+                loadStandards();
+            });
+            
+            // 添加标准按钮点击事件
+            addStandardBtn.addEventListener('click', function() {
+                openStandardModal(false);
+            });
+            
+            // 表单提交事件
+            standardForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const standardId = document.getElementById('standardId').value;
+                const isEdit = standardId !== '';
+                
+                // 构建表单数据
+                const formData = {
+                    '条文号': document.getElementById('standardNum').value,
+                    '分类': document.getElementById('standardCategory').value,
+                    '专业': document.getElementById('standardMajor').value,
+                    '条文内容': document.getElementById('standardContent').value,
+                    '分值': document.getElementById('standardScore').value,
+                    '审查材料': document.getElementById('standardMaterial').value,
+                    '属性': document.getElementById('standardAttribute').value,
+                    '标准名称': document.getElementById('standardName').value
+                };
+                
+                // 确定API端点和方法
+                const url = isEdit ? `/admin/api/standards/${standardId}` : '/admin/api/standards';
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                // 显示加载状态
+                Swal.fire({
+                    title: isEdit ? '更新中...' : '添加中...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // 发起API请求
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(formData),
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('成功', isEdit ? '标准更新成功' : '标准添加成功', 'success');
+                        closeStandardModal();
+                        loadStandards(); // 重新加载列表
+                    } else {
+                        Swal.fire('错误', `${isEdit ? '更新' : '添加'}失败: ${data.message || '未知错误'}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error(isEdit ? '更新标准失败:' : '添加标准失败:', error);
+                    Swal.fire('错误', `${isEdit ? '更新' : '添加'}失败: ${error.message}`, 'error');
+                });
+            });
+            
+            // 导入文件事件
+            importStandardFile.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (file) {
                     importStandards(file);
                 }
             });
             
-            // 标准表单提交
-            document.getElementById('standardForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                const standardId = document.getElementById('standardId').value;
-                if (standardId) {
-                    updateStandard(standardId);
-                } else {
-                    createStandard();
-                }
-            });
+            // 初始化
+            loadStandardNames();
+            loadStandards();
+            
+            // 暴露全局函数
+            window.openStandardModal = openStandardModal;
+            window.closeStandardModal = closeStandardModal;
         }
         
-        // 加载标准统计数据
-        function loadStandardStats() {
-            fetch('/admin/api/standards/stats', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('服务器返回了非JSON格式的响应');
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('totalStandardsCount').textContent = data.total_standards || 0;
-                    document.getElementById('level1StandardsCount').textContent = data.category_stats?.type1 || 0;
-                    document.getElementById('level2StandardsCount').textContent = data.category_stats?.type2 || 0;
-                    document.getElementById('level3StandardsCount').textContent = data.category_stats?.type3 || 0;
-                }
-            })
-            .catch(error => {
-                console.error('加载标准统计数据失败:', error);
-                document.getElementById('totalStandardsCount').textContent = '加载失败';
-                document.getElementById('level1StandardsCount').textContent = '加载失败';
-                document.getElementById('level2StandardsCount').textContent = '加载失败';
-                document.getElementById('level3StandardsCount').textContent = '加载失败';
-            });
-        }
-        
-        // 加载标准列表
-        function loadStandards() {
-            const tableBody = document.getElementById('standardTableBody');
-            tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center">加载中...</td></tr>';
-            
-            fetch('/admin/api/standards', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('服务器返回了非JSON格式的响应');
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    allStandards = data.standards;
-                    totalStandards = allStandards.length;
-                    
-                    // 显示标准列表（第一页）
-                    filterAndDisplayStandards();
-                } else {
-                    tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">${data.message || '加载失败'}</td></tr>`;
-                }
-            })
-            .catch(error => {
-                console.error('加载标准列表失败:', error);
-                tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">加载失败: ${error.message}</td></tr>`;
-            });
-        }
-        
-        // 过滤并显示标准
-        function filterAndDisplayStandards() {
-            if (!allStandards || allStandards.length === 0) {
-                return;
-            }
-            
-            const searchTerm = document.getElementById('standardSearchInput').value.toLowerCase().trim();
-            const categoryFilter = document.getElementById('standardLevelFilter').value;
-            
-            // 过滤标准
-            const filteredStandards = allStandards.filter(standard => {
-                const matchesSearch = 
-                    (standard.standard_num && standard.standard_num.toString().includes(searchTerm)) ||
-                    (standard.content && standard.content.toLowerCase().includes(searchTerm)) ||
-                    (standard.category && standard.category.toLowerCase().includes(searchTerm)) ||
-                    (standard.major && standard.major.toLowerCase().includes(searchTerm));
-                
-                const matchesCategory = !categoryFilter || (standard.category && standard.category.toLowerCase() === categoryFilter.toLowerCase());
-                
-                return matchesSearch && matchesCategory;
-            });
-            
-            // 计算分页信息
-            totalStandardPages = Math.ceil(filteredStandards.length / itemsPerPage);
-            if (currentStandardPage > totalStandardPages) {
-                currentStandardPage = totalStandardPages || 1;
-            }
-            
-            const startIndex = (currentStandardPage - 1) * itemsPerPage;
-            const endIndex = Math.min(startIndex + itemsPerPage, filteredStandards.length);
-            const currentPageStandards = filteredStandards.slice(startIndex, endIndex);
-            
-            // 更新分页控件
-            document.getElementById('standardStartIndex').textContent = filteredStandards.length > 0 ? startIndex + 1 : 0;
-            document.getElementById('standardEndIndex').textContent = endIndex;
-            document.getElementById('standardTotalCount').textContent = filteredStandards.length;
-            document.getElementById('standardCurrentPage').textContent = currentStandardPage;
-            document.getElementById('standardTotalPages').textContent = totalStandardPages || 1;
-            
-            document.getElementById('standardPrevPage').disabled = currentStandardPage <= 1;
-            document.getElementById('standardNextPage').disabled = currentStandardPage >= totalStandardPages;
-            
-            // 显示当前页标准
-            displayStandards(currentPageStandards);
-        }
-        
-        // 显示标准列表
-        function displayStandards(standards) {
-            const tableBody = document.getElementById('standardTableBody');
-            tableBody.innerHTML = '';
-            
-            if (standards.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center">无符合条件的标准记录</td></tr>';
-                return;
-            }
-            
-            standards.forEach(standard => {
-                const tr = document.createElement('tr');
-                
-                // 根据分类设置行样式
-                if (standard.category === '强制性标准') {
-                    tr.classList.add('bg-red-50');
-                } else if (standard.category === '重点标准') {
-                    tr.classList.add('bg-yellow-50');
-                }
-                
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.standard_num || '-'}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">${truncateText(standard.content, 50) || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.category || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.major || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.score || '-'}</td>
-                    <td class="px-6 py-4 text-sm text-gray-900">${truncateText(standard.review_materials, 50) || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button class="text-blue-600 hover:text-blue-900 view-standard-btn" data-standard-id="${standard.id}" title="查看详情">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="text-green-600 hover:text-green-900 edit-standard-btn" data-standard-id="${standard.id}" title="编辑标准">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="text-red-600 hover:text-red-900 delete-standard-btn" data-standard-id="${standard.id}" title="删除标准">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </td>
-                `;
-                
-                tableBody.appendChild(tr);
-            });
-            
-            // 添加事件监听器
-            addStandardButtonListeners();
-        }
-        
-        // 添加标准按钮事件监听器
-        function addStandardButtonListeners() {
-            // 查看按钮
-            document.querySelectorAll('.view-standard-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const standardId = this.dataset.standardId;
-                    viewStandard(standardId);
-                });
-            });
-            
-            // 编辑按钮
-            document.querySelectorAll('.edit-standard-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const standardId = this.dataset.standardId;
-                    openStandardModal(standardId);
-                });
-            });
-            
-            // 删除按钮
-            document.querySelectorAll('.delete-standard-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const standardId = this.dataset.standardId;
-                    if (confirm('确定要删除此标准吗？这可能会影响相关的评价结果。')) {
-                        deleteStandard(standardId);
-                    }
-                });
-            });
-        }
-        
-        // 打开标准模态框
-        function openStandardModal(standardId = null) {
-            const modal = document.getElementById('standardModal');
-            const form = document.getElementById('standardForm');
-            const modalTitle = document.getElementById('standardModalTitle');
-            
-            // 重置表单
-            form.reset();
-            document.getElementById('standardId').value = '';
-            
-            if (standardId) {
-                modalTitle.textContent = '编辑标准';
-                // 获取标准数据
-                const standard = allStandards.find(s => s.id.toString() === standardId.toString());
-                if (standard) {
-                    document.getElementById('standardId').value = standard.id;
-                    document.getElementById('standardNum').value = standard.standard_num || '';
-                    document.getElementById('standardContent').value = standard.content || '';
-                    document.getElementById('standardCategory').value = standard.category || '';
-                    document.getElementById('standardMajor').value = standard.major || '';
-                    document.getElementById('standardScore').value = standard.score || '';
-                    document.getElementById('standardMaterial').value = standard.review_materials || '';
-                    document.getElementById('standardProperty').value = standard.property || '';
-                }
-            } else {
-                modalTitle.textContent = '添加标准';
-            }
-            
-            modal.classList.remove('hidden');
-        }
-        
-        // 查看标准详情
-        function viewStandard(standardId) {
-            // 获取标准数据
-            const standard = allStandards.find(s => s.id.toString() === standardId.toString());
-            if (standard) {
-                alert(`标准详情：\n\n条文号：${standard.standard_num || '-'}\n条文内容：${standard.content || '-'}\n分类：${standard.category || '-'}\n专业：${standard.major || '-'}\n分值：${standard.score || '-'}\n审查材料：${standard.review_materials || '-'}\n属性：${standard.property || '-'}`);
-            }
-        }
-        
-        // 关闭标准模态框
-        function closeStandardModal() {
-            document.getElementById('standardModal').classList.add('hidden');
-        }
-        
-        // 创建标准
-        function createStandard() {
-            const formData = {
-                standard_num: document.getElementById('standardNum').value,
-                content: document.getElementById('standardContent').value,
-                category: document.getElementById('standardCategory').value,
-                major: document.getElementById('standardMajor').value,
-                score: document.getElementById('standardScore').value,
-                review_materials: document.getElementById('standardMaterial').value,
-                property: document.getElementById('standardProperty').value
-            };
-            
-            fetch('/admin/api/standards', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(formData),
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('服务器返回了非JSON格式的响应');
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('标准创建成功');
-                    closeStandardModal();
-                    // 重新加载标准数据
-                    loadStandardStats();
-                    loadStandards();
-                } else {
-                    alert(data.message || '创建失败');
-                }
-            })
-            .catch(error => {
-                console.error('创建标准失败:', error);
-                alert('创建失败: ' + error.message);
-            });
-        }
-        
-        // 更新标准
-        function updateStandard(standardId) {
-            const formData = {
-                standard_num: document.getElementById('standardNum').value,
-                content: document.getElementById('standardContent').value,
-                category: document.getElementById('standardCategory').value,
-                major: document.getElementById('standardMajor').value,
-                score: document.getElementById('standardScore').value,
-                review_materials: document.getElementById('standardMaterial').value,
-                property: document.getElementById('standardProperty').value
-            };
-            
-            fetch(`/admin/api/standards/${standardId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(formData),
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('服务器返回了非JSON格式的响应');
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('标准更新成功');
-                    closeStandardModal();
-                    // 重新加载标准数据
-                    loadStandardStats();
-                    loadStandards();
-                } else {
-                    alert(data.message || '更新失败');
-                }
-            })
-            .catch(error => {
-                console.error('更新标准失败:', error);
-                alert('更新失败: ' + error.message);
-            });
-        }
-        
-        // 删除标准
-        function deleteStandard(standardId) {
-            fetch(`/admin/api/standards/${standardId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('服务器返回了非JSON格式的响应');
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('标准删除成功');
-                    // 重新加载标准数据
-                    loadStandardStats();
-                    loadStandards();
-                } else {
-                    alert(data.message || '删除失败');
-                }
-            })
-            .catch(error => {
-                console.error('删除标准失败:', error);
-                alert('删除失败: ' + error.message);
-            });
-        }
-        
-        // 导入标准
-        function importStandards(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            fetch('/admin/api/standards/import', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                body: formData,
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
-                }
-                
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('服务器返回了非JSON格式的响应');
-                }
-                
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert(`导入成功，共导入 ${data.imported_count} 条标准`);
-                    // 重新加载标准数据
-                    loadStandardStats();
-                    loadStandards();
-                } else {
-                    alert(data.message || '导入失败');
-                }
-            })
-            .catch(error => {
-                console.error('导入标准失败:', error);
-                alert('导入失败: ' + error.message);
-            });
-            
-            // 清空文件输入框，以便于下次选择同一文件
-            document.getElementById('importStandardFile').value = '';
-        }
-        
-        // 截断长文本并添加省略号
-        function truncateText(text, maxLength) {
-            if (!text) return '-';
-            if (text.length <= maxLength) return text;
-            return text.substring(0, maxLength) + '...';
-        }
-        
-        // 公开函数
-        window.openStandardModal = openStandardModal;
-        window.closeStandardModal = closeStandardModal;
-        
-        // 如果用户在标准管理菜单上，则初始化标准管理页面
-        if (localStorage.getItem('activeMenuItem') === 'standard-management') {
-            initStandardManagement();
-        }
-        
-        // 为标准管理菜单点击事件添加初始化
+        // 为标准管理菜单项添加点击事件
         document.querySelector('[data-target="standard-management"]').addEventListener('click', function() {
             initStandardManagement();
         });
+        
+        // 如果当前活动菜单是标准管理，则初始化标准管理
+        if (localStorage.getItem('activeMenuItem') === 'standard-management') {
+            initStandardManagement();
+        }
     });
     </script>
 </body>
