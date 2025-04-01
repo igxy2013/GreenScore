@@ -4453,6 +4453,10 @@ def get_score_summary(project_id, force_refresh=False):
         # 构建缓存键
         cache_key = f"score_summary_{project_id}_{project_standard}"
         
+        # 标记是否需要更新项目表
+        need_update_project = force_refresh
+        summary_data = None
+        
         # 如果强制刷新或缓存中没有数据，则重新计算
         if force_refresh or not cache.get(cache_key):
             # 专业名称映射，用于处理数据库中的专业名称与预定义专业名称的不完全匹配
@@ -4574,29 +4578,54 @@ def get_score_summary(project_id, force_refresh=False):
                 # 计算总分（所有专业分数之和）
                 total_score = sum(specialty_scores.values())
                 
+                # 根据总分确定评定结果
+                if total_score >= 85:
+                    evaluation_result = '三星级绿色建筑'
+                elif total_score >= 70:
+                    evaluation_result = '二星级绿色建筑'
+                elif total_score >= 55:
+                    evaluation_result = '一星级绿色建筑'
+                else:
+                    evaluation_result = '未达标'
+                
                 # 构建汇总数据
                 summary_data = {
                     'specialty_scores': specialty_scores,
                     'specialty_scores_by_category': specialty_scores_by_category,
                     'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     'total_score': total_score,
-                    'project_standard': project_standard
+                    'project_standard': project_standard,
+                    'evaluation_result': evaluation_result
                 }
                 
                 # 缓存结果 - 设置较长的过期时间（8小时）
                 cache.set(cache_key, summary_data, timeout=28800)
                 
-                return summary_data
+                # 一定需要更新项目表
+                need_update_project = True
+                
             except Exception as e:
                 app.logger.error(f"查询得分表失败: {str(e)}")
                 if app.debug:
                     app.logger.error(traceback.format_exc())
-                return get_test_score_data()
+                summary_data = get_test_score_data()
+                need_update_project = False
         else:
             # 从缓存中获取数据
             if app.debug:
                 app.logger.info(f"从缓存中获取评分汇总数据: {cache_key}")
-            return cache.get(cache_key)
+            summary_data = cache.get(cache_key)
+            
+        # 如果需要更新项目表，并且有有效的汇总数据
+        if need_update_project and summary_data and project_id:
+            try:
+                # 高效更新项目表，不阻塞API响应
+                update_project_scores_efficient(project_id, summary_data)
+            except Exception as e:
+                # 仅记录错误，不影响API响应
+                app.logger.error(f"更新项目表评分数据时出错: {str(e)}")
+                
+        return summary_data
     
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
@@ -4608,8 +4637,70 @@ def get_score_summary(project_id, force_refresh=False):
             'specialty_scores_by_category': {},
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'total_score': 0,
-            'project_standard': '未知'
+            'project_standard': '未知',
+            'evaluation_result': '未评定'
         }
+
+def update_project_scores_efficient(project_id, scores):
+    """高效更新项目表中的评分数据，不使用with_for_update以避免锁定延迟"""
+    try:
+        # 使用单独的会话避免锁定主会话
+        project = Project.query.get(project_id)
+        if not project:
+            if app.debug:
+                app.logger.warning(f"找不到要更新评分的项目: ID={project_id}")
+            return False
+            
+        # 更新专业评分
+        if 'specialty_scores' in scores:
+            specialty_scores = scores['specialty_scores']
+            project.architecture_score = specialty_scores.get('建筑专业', 0)
+            project.structure_score = specialty_scores.get('结构专业', 0)
+            project.water_supply_score = specialty_scores.get('给排水专业', 0)
+            project.electrical_score = specialty_scores.get('电气专业', 0)
+            project.hvac_score = specialty_scores.get('暖通专业', 0)
+            project.landscape_score = specialty_scores.get('景观专业', 0)
+            project.env_health_energy_score = specialty_scores.get('环境健康与节能专业', 0)
+            
+        # 更新章节评分 - 使用所有专业的平均分
+        if 'specialty_scores_by_category' in scores:
+            categories = ['安全耐久', '健康舒适', '生活便利', '资源节约', '环境宜居', '提高与创新']
+            category_scores = {cat: 0 for cat in categories}
+            specialty_count = 0
+            
+            for specialty_data in scores['specialty_scores_by_category'].values():
+                specialty_count += 1
+                for category in categories:
+                    if category in specialty_data:
+                        category_scores[category] += float(specialty_data[category])
+            
+            if specialty_count > 0:
+                project.safety_durability_score = category_scores['安全耐久'] / specialty_count
+                project.health_comfort_score = category_scores['健康舒适'] / specialty_count
+                project.life_convenience_score = category_scores['生活便利'] / specialty_count
+                project.resource_saving_score = category_scores['资源节约'] / specialty_count
+                project.environment_livability_score = category_scores['环境宜居'] / specialty_count
+                project.improvement_innovation_score = category_scores['提高与创新'] / specialty_count
+            
+        # 更新总分
+        project.total_score = scores.get('total_score', 0)
+        
+        # 设置评定结果
+        project.evaluation_result = scores.get('evaluation_result', '未评定')
+        
+        # 保存更改
+        db.session.commit()
+        
+        if app.debug:
+            app.logger.debug(f"成功更新项目评分: 项目ID={project_id}, 总分={project.total_score}")
+        
+        return True
+        
+    except Exception as e:
+        db.session.rollback()
+        if app.debug:
+            app.logger.error(f"更新项目评分失败: {str(e)}")
+        return False
 
 # 数据库连接配置
 def get_db_connection():
@@ -4698,16 +4789,19 @@ def update_project_scores():
         if not project_id or not scores:
             return jsonify({'success': False, 'message': '缺少必要的字段'}), 400
             
-        # 获取项目记录
-        project = Project.query.get(project_id)
+        # 获取项目记录 - 使用带锁的查询避免并发问题
+        project = db.session.query(Project).with_for_update().get(project_id)
         if not project:
             return jsonify({'success': False, 'message': f'找不到ID为{project_id}的项目'}), 404
             
         # 更新项目的评分字段
         try:
-            # 更新专业评分
+            # 更新专业评分 - 只在debug模式下记录日志
             if 'specialty_scores' in scores:
                 specialty_scores = scores['specialty_scores']
+                if app.debug:
+                    app.logger.debug(f"更新项目专业评分: 项目ID={project_id}")
+                # 批量更新所有字段
                 project.architecture_score = specialty_scores.get('建筑专业', 0)
                 project.structure_score = specialty_scores.get('结构专业', 0)
                 project.water_supply_score = specialty_scores.get('给排水专业', 0)
@@ -4718,28 +4812,56 @@ def update_project_scores():
                 
             # 更新章节评分
             if 'specialty_scores_by_category' in scores:
-                # 使用第一个专业的章节分数作为代表
-                first_specialty = next(iter(scores['specialty_scores_by_category'].values()), {})
-                project.safety_durability_score = first_specialty.get('安全耐久', 0)
-                project.health_comfort_score = first_specialty.get('健康舒适', 0)
-                project.life_convenience_score = first_specialty.get('生活便利', 0)
-                project.resource_saving_score = first_specialty.get('资源节约', 0)
-                project.environment_livability_score = first_specialty.get('环境宜居', 0)
-                project.improvement_innovation_score = first_specialty.get('提高与创新', 0)
+                # 使用所有专业的平均分作为章节分数
+                categories = ['安全耐久', '健康舒适', '生活便利', '资源节约', '环境宜居', '提高与创新']
+                category_scores = {cat: 0 for cat in categories}
+                specialty_count = 0
+                
+                # 计算所有专业的章节平均分
+                for specialty_data in scores['specialty_scores_by_category'].values():
+                    specialty_count += 1
+                    for category in categories:
+                        if category in specialty_data:
+                            category_scores[category] += float(specialty_data[category])
+                
+                # 计算平均分并更新
+                if specialty_count > 0:
+                    if app.debug:
+                        app.logger.debug(f"更新项目章节评分: 项目ID={project_id}, 专业数={specialty_count}")
+                    
+                    project.safety_durability_score = category_scores['安全耐久'] / specialty_count
+                    project.health_comfort_score = category_scores['健康舒适'] / specialty_count
+                    project.life_convenience_score = category_scores['生活便利'] / specialty_count
+                    project.resource_saving_score = category_scores['资源节约'] / specialty_count
+                    project.environment_livability_score = category_scores['环境宜居'] / specialty_count
+                    project.improvement_innovation_score = category_scores['提高与创新'] / specialty_count
                 
             # 更新总分
             project.total_score = scores.get('total_score', 0)
             
+            # 根据总分确定评定结果
+            if project.total_score >= 85:
+                project.evaluation_result = '三星级绿色建筑'
+            elif project.total_score >= 70:
+                project.evaluation_result = '二星级绿色建筑'
+            elif project.total_score >= 55:
+                project.evaluation_result = '一星级绿色建筑'
+            else:
+                project.evaluation_result = '未达标'
+            
             # 保存更改
             db.session.commit()
             
-            app.logger.info(f"成功更新项目评分: 项目ID={project_id}, 总分={project.total_score}")
+            # 只在成功时记录日志，减少日志量
+            if app.debug:
+                app.logger.info(f"成功更新项目评分: 项目ID={project_id}, 总分={project.total_score}")
             
             return jsonify({
                 'success': True, 
                 'message': '成功更新项目评分',
                 'project_id': project_id,
-                'total_score': project.total_score
+                'total_score': project.total_score,
+                'evaluation_result': project.evaluation_result
             })
             
         except Exception as e:

@@ -1901,15 +1901,6 @@
                     console.log('获取评分汇总数据:', summaryData);
                     
                     // 更新进度
-                    progress = 75;
-                    if (progressBar) {
-                        progressBar.style.width = `${progress}%`;
-                    }
-                    
-                    // 更新项目表中的评分数据
-                    await updateProjectScores(projectId, summaryData);
-                    
-                    // 更新进度
                     progress = 85;
                     if (progressBar) {
                         progressBar.style.width = `${progress}%`;
@@ -3403,7 +3394,11 @@
             return projectId;
         }
         
-        // 更新项目评分表的函数
+        /**
+         * 更新项目评分表的函数
+         * 注意：此函数不再自动调用，因为后端get_score_summary已集成更新项目表的功能
+         * 保留此函数以便需要时手动触发项目评分更新
+         */
         async function updateProjectScores(projectId, scoreData) {
             try {
                 console.log('更新项目表中的评分数据:', projectId, scoreData);
@@ -3451,7 +3446,7 @@
             standardInfoEl.textContent = '正在加载评价标准信息...';
             
             try {
-                // 直接调用get_score_summary端点获取评分数据，而不是先计算评分
+                // 直接调用get_score_summary端点获取评分数据，后端会自动更新项目表
                 const response = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
                 
                 if (!response.ok) {
@@ -3460,9 +3455,6 @@
                 
                 // 解析响应数据
                 const data = await response.json();
-                
-                // 更新项目表中的评分数据
-                await updateProjectScores(projectId, data);
                 
                 // 显示评分汇总数据
                 displayScoreSummary(data);

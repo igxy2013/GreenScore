@@ -8278,3 +8278,4 @@ logs/*
 .venv/pyvenv.cfg
 .venv/pyvenv.cfg
 .venv/pyvenv.cfg
+__pycache__/app.cpython-310.pyc
