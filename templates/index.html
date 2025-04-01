@@ -196,17 +196,7 @@
             overflow: hidden;
         }
         
-        .menu-item.loading::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: var(--progress-width, 0%);
-            background-color: rgba(79, 209, 197, 0.3);
-            transition: width 0.1s linear;
-            z-index: 0;
-        }
+        /* 移除伪元素定义，改用背景图像实现进度条 */
         
         .menu-item.loading > * {
             position: relative;
@@ -1860,7 +1850,14 @@
             scoreSummaryMenuItem.addEventListener('click', async function(e) {
                 e.preventDefault();
                 
-                // 添加加载效果
+                // 移除其他菜单项的active类
+                const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+                currentMenuItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // 添加active类和loading效果
+                this.classList.add('active');
                 this.classList.add('loading');
                 let progressInterval;
                 
@@ -1868,19 +1865,20 @@
                 const projectId = document.getElementById('current-project-id').value;
                 if (!projectId) {
                     alert('请先选择项目');
+                    this.classList.remove('active');
                     this.classList.remove('loading');
                     return;
                 }
                 
-                // 创建进度条动画，模拟与报审表相同的进度条逻辑
+                // 创建进度条动画，使用与报审表相同的实现方式
                 let progress = 0;
                 progressInterval = setInterval(() => {
                     progress += 2;
                     if (progress > 90) {
                         clearInterval(progressInterval);
                     }
-                    // 使用设置CSS变量的方式更新进度条宽度，这样CSS中的::before伪元素可以使用这个变量
-                    this.style.setProperty('--progress-width', `${progress}%`);
+                    // 使用backgroundImage线性渐变实现进度条
+                    this.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
                 }, 100);
                 
                 try {
@@ -1892,15 +1890,25 @@
                     // 将数据存储到 sessionStorage
                     sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
                     
-                    // 完成进度条
+                    // 完成进度条 - 循序渐进地增长到100%
                     clearInterval(progressInterval);
-                    this.style.setProperty('--progress-width', '100%');
                     
-                    // 给进度条完成的动画一点时间，然后跳转
-                    setTimeout(() => {
-                        // 跳转到目标页面
-                        window.location.href = this.getAttribute('href');
-                    }, 300);
+                    // 获取当前进度
+                    const currentProgress = parseInt(this.style.backgroundImage.match(/(\d+)%/) ? this.style.backgroundImage.match(/(\d+)%/)[1] : 0);
+                    // 计算剩余步数
+                    const stepsLeft = Math.ceil((100 - currentProgress) / 2);
+                    // 创建新的进度条动画，从当前进度到100%
+                    let finalProgress = currentProgress;
+                    progressInterval = setInterval(() => {
+                        finalProgress += 2;
+                        this.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${finalProgress}%, transparent ${finalProgress}%)`;
+                        
+                        if (finalProgress >= 100) {
+                            clearInterval(progressInterval);
+                            // 进度条达到100%后立即跳转
+                            window.location.href = this.getAttribute('href');
+                        }
+                    }, 40); // 稍微加快速度，每40毫秒更新一次
                     
                 } catch (error) {
                     console.error('获取评分数据失败:', error);
@@ -1908,8 +1916,9 @@
                     
                     // 重置进度条
                     clearInterval(progressInterval);
+                    this.classList.remove('active');
                     this.classList.remove('loading');
-                    this.style.removeProperty('--progress-width');
+                    this.style.backgroundImage = '';
                 }
             });
         }
