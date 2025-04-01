@@ -39,6 +39,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from models import db, User, InvitationCode, LogRecord  # 导入LogRecord模型
 import random
 import string
+import werkzeug.exceptions
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
@@ -58,15 +59,23 @@ app.config['EXPORT_FOLDER'] = 'static/exports'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 最大上传文件限制为16MB
 
 # 配置日志
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)  # 将日志级别从INFO改为WARNING
 logger = logging.getLogger('greenscore')
 handler = RotatingFileHandler('logs/app.log', maxBytes=10000000, backupCount=5)
 handler.setFormatter(logging.Formatter(
     '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
 ))
-handler.setLevel(logging.INFO)
+handler.setLevel(logging.WARNING)  # 将处理器的级别从INFO改为WARNING
 logger.addHandler(handler)
 app.logger = logger
+
+# 禁用其他库的冗余日志
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.dialects').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.orm').setLevel(logging.WARNING)
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
+logging.getLogger('flask_cors').setLevel(logging.WARNING)
 
 # 配置 session
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_123')  # 添加一个默认的密钥
@@ -104,7 +113,7 @@ if not db_uri:
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ECHO'] = not is_production
+app.config['SQLALCHEMY_ECHO'] = False  # 禁用SQLAlchemy的ECHO功能，不管是开发环境还是生产环境
 
 # 初始化数据库
 db.init_app(app)
@@ -189,6 +198,13 @@ def log_exception(e):
         method = request.method if request else "未知方法"
         user_id = current_user.id if current_user and current_user.is_authenticated else None
         
+        # 对静态文件的404错误进行特殊处理，减少日志记录
+        if isinstance(e, werkzeug.exceptions.NotFound) and (path.startswith('/static/') or path == '/favicon.ico'):
+            # 静态文件404不记录详细日志，只在DEBUG模式下记录
+            if app.debug:
+                app.logger.debug(f"静态文件未找到: {path}")
+            return render_template('error.html', error="文件未找到"), 404
+        
         # 记录异常信息
         LogRecord.add_log(
             level="ERROR",
@@ -209,6 +225,23 @@ def log_exception(e):
     
     # 返回通用的错误页面
     return render_template('error.html', error=str(e)), 500
+
+# 添加专门的404错误处理器
+@app.errorhandler(404)
+def page_not_found(e):
+    # 获取请求路径
+    path = request.path
+    
+    # 对静态文件的请求进行特殊处理
+    if path.startswith('/static/') or path == '/favicon.ico':
+        # 静态文件不存在的情况，返回简单的404响应而不记录详细日志
+        return "File not found", 404
+    
+    # 非静态文件的404，记录日志
+    app.logger.warning(f"页面未找到: {request.method} {path}")
+    
+    # 返回自定义404页面
+    return render_template('error.html', error="页面未找到"), 404
 
 # 导入和注册蓝图（在数据库初始化之后）
 from admin import admin_app

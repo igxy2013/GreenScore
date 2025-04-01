@@ -196,13 +196,14 @@
             overflow: hidden;
         }
         
-        .menu-item.loading .progress-bar {
+        .menu-item.loading::before {
+            content: '';
             position: absolute;
             top: 0;
             left: 0;
             height: 100%;
-            width: 0%;
-            background-color: rgba(79, 209, 197, 0.2);
+            width: var(--progress-width, 0%);
+            background-color: rgba(79, 209, 197, 0.3);
             transition: width 0.1s linear;
             z-index: 0;
         }
@@ -358,7 +359,7 @@
                         </picture>
                         <span>智能绿建评价系统</span>
                     </h1>
-                </div>
+                    </div>
                 <nav class="p-4">
                     <div class="space-y-3">
                         <a href="{{ url_for('project_detail', project_id=project.id) }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
@@ -372,7 +373,7 @@
                         </div>
                         <div id="basicMenuContent" class="menu-content">
                             <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}">
-                                <i class="ri-building-line mr-3"></i>
+                                    <i class="ri-building-line mr-3"></i>
                                 <span>建筑</span>
                             </a>
                             <a href="{{ url_for('filter_standards', level='基本级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}">
@@ -397,11 +398,11 @@
                             </a>
                             {% if project and project.standard == '四川省标' %}
                             <a href="{{ url_for('filter_standards', level='基本级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '环境健康与节能' %}active{% endif %}">
-                                <i class="ri-leaf-line mr-3"></i>
-                                <span>环境健康与节能</span>
-                            </a>
-                            {% endif %}
-                        </div>
+                                    <i class="ri-leaf-line mr-3"></i>
+                                    <span>环境健康与节能</span>
+                                </a>
+                                {% endif %}
+                            </div>
                         <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
                             <i class="ri-checkbox-multiple-line mr-3"></i>
                             <span>提高级</span>
@@ -417,7 +418,7 @@
                                 <span>结构</span>
                             </a>
                             <a href="{{ url_for('filter_standards', level='提高级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '给排水' %}active{% endif %}">
-                                <i class="ri-drop-line mr-3"></i>
+                                    <i class="ri-drop-line mr-3"></i>
                                 <span>给排水</span>
                             </a>
                             <a href="{{ url_for('filter_standards', level='提高级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
@@ -430,21 +431,20 @@
                             </a>
                             {% if project and project.standard == '成都市标' or project and project.standard == '四川省标' %}
                             <a href="{{ url_for('filter_standards', level='提高级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
-                                <i class="ri-plant-line mr-3"></i>
+                                    <i class="ri-plant-line mr-3"></i>
                                 <span>景观</span>
                             </a>
                             {% endif %}
                             {% if project and project.standard == '四川省标' %}
                             <a href="{{ url_for('filter_standards', level='提高级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '环境健康与节能' %}active{% endif %}">
                                 <i class="ri-leaf-line mr-3"></i>
-                                <span>环境健康与节能</span>
-                            </a>
-                            {% endif %}
-                        </div>
+                                    <span>环境健康与节能</span>
+                                </a>
+                                {% endif %}
+                            </div>
                         <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" 
                         class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}"
                         id="scoreSummaryMenuItem">
-                         <div class="progress-bar"></div>
                          <i class="ri-bar-chart-line mr-3"></i>
                          <span>评分汇总</span>
                      </a>
@@ -1358,7 +1358,7 @@
                     <!-- 绿色建材计算器内容 -->
                     <div class="green-materials-container">
                         <!-- 使用iframe嵌入绿色建材计算器，添加preload提前加载 -->
-                        <iframe id="myIframe" src="{{ url_for('static', filename='calculator.html') }}" 
+                        <iframe id="myIframe" src="{{ url_for('calculator') }}" 
                             style="width:100%; border:none;overflow:hidden;"
                             title="绿色建材比例计算" loading="eager"></iframe>
                     </div>
@@ -1862,63 +1862,46 @@
                 
                 // 添加加载效果
                 this.classList.add('loading');
-                const progressBar = this.querySelector('.progress-bar');
-                
-                // 创建进度条动画
-                let progress = 0;
-                const progressInterval = setInterval(() => {
-                    progress += 1; // 降低进度增加速度
-                    if (progress > 85) { // 保留更多空间给实际操作
-                        clearInterval(progressInterval);
-                    }
-                    if (progressBar) {
-                        progressBar.style.width = `${progress}%`;
-                    }
-                }, 50);
+                let progressInterval;
                 
                 // 获取项目ID
                 const projectId = document.getElementById('current-project-id').value;
                 if (!projectId) {
                     alert('请先选择项目');
-                    clearInterval(progressInterval);
                     this.classList.remove('loading');
-                    if (progressBar) {
-                        progressBar.style.width = '0%';
-                    }
                     return;
                 }
                 
-                try {
-                    // 直接获取评分汇总数据，不调用计算评分API
-                    progress = 60;
-                    if (progressBar) {
-                        progressBar.style.width = `${progress}%`;
+                // 创建进度条动画，模拟与报审表相同的进度条逻辑
+                let progress = 0;
+                progressInterval = setInterval(() => {
+                    progress += 2;
+                    if (progress > 90) {
+                        clearInterval(progressInterval);
                     }
-                    
+                    // 使用设置CSS变量的方式更新进度条宽度，这样CSS中的::before伪元素可以使用这个变量
+                    this.style.setProperty('--progress-width', `${progress}%`);
+                }, 100);
+                
+                try {
                     // 获取评分汇总数据
                     const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
                     const summaryData = await summaryResponse.json();
                     console.log('获取评分汇总数据:', summaryData);
                     
-                    // 更新进度
-                    progress = 85;
-                    if (progressBar) {
-                        progressBar.style.width = `${progress}%`;
-                    }
-                    
                     // 将数据存储到 sessionStorage
                     sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
                     
-                    // 完成进度条并立即跳转
-                    if (progressBar) {
-                        progressBar.style.width = '100%';
-                        // 使用 requestAnimationFrame 确保进度条动画完成
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                window.location.href = this.getAttribute('href');
-                            });
-                        });
-                    }
+                    // 完成进度条
+                    clearInterval(progressInterval);
+                    this.style.setProperty('--progress-width', '100%');
+                    
+                    // 给进度条完成的动画一点时间，然后跳转
+                    setTimeout(() => {
+                        // 跳转到目标页面
+                        window.location.href = this.getAttribute('href');
+                    }, 300);
+                    
                 } catch (error) {
                     console.error('获取评分数据失败:', error);
                     alert(`获取评分数据失败: ${error.message}`);
@@ -1926,9 +1909,7 @@
                     // 重置进度条
                     clearInterval(progressInterval);
                     this.classList.remove('loading');
-                    if (progressBar) {
-                        progressBar.style.width = '0%';
-                    }
+                    this.style.removeProperty('--progress-width');
                 }
             });
         }
@@ -2612,7 +2593,6 @@
                 if (progress > 90) {
                     clearInterval(progressInterval);
                 }
-                wordMenuItem.style.setProperty('--progress', `${progress}%`);
                 wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
             }, 100);
         }
