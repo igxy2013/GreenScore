@@ -1796,47 +1796,49 @@ def api_get_score_summary():
         
         # 获取项目信息，确定评价标准
         project = get_project(project_id)
+        if not project:
+            return jsonify({'error': f'找不到ID为{project_id}的项目'}), 404
+            
         project_standard = project.standard if project and project.standard else '成都市标'
         
-        # 记录请求信息
-        app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
+        # 只在强制刷新时记录详细日志
+        if force_refresh:
+            app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
         
-        # 清除缓存键
+        # 缓存键
         cache_key = f"score_summary_{project_id}_{project_standard}"
-        if cache.has(cache_key) and force_refresh:
-            cache.delete(cache_key)
-            app.logger.info(f"清除评分汇总缓存: {cache_key}")
         
-        # 清除专业得分缓存
-        for specialty in ['建筑', '结构', '给排水', '电气', '暖通', '景观']:
-            specialty_cache_key = get_scores_cache_key('提高级', specialty, project_id, project_standard)
-            if cache.has(specialty_cache_key):
-                cache.delete(specialty_cache_key)
-                app.logger.info(f"清除专业得分缓存: {specialty_cache_key}")
+        # 如果强制刷新，清除缓存
+        if force_refresh and cache.has(cache_key):
+            cache.delete(cache_key)
+            if app.debug:
+                app.logger.info(f"清除评分汇总缓存: {cache_key}")
         
         # 获取评分汇总数据
         score_summary = get_score_summary(project_id, force_refresh=force_refresh)
         
-        # 检查返回的评分汇总数据评价标准是否与项目标准一致
-        if score_summary.get('project_standard') != project_standard:
-            app.logger.warning(f"评分汇总数据的评价标准({score_summary.get('project_standard')})与项目评价标准({project_standard})不一致，重新获取")
+        # 检查返回的评分汇总数据评价标准是否与项目标准一致（只在强制刷新时检查）
+        if force_refresh and score_summary.get('project_standard') != project_standard:
+            if app.debug:
+                app.logger.warning(f"评分汇总数据的评价标准({score_summary.get('project_standard')})与项目评价标准({project_standard})不一致，重新获取")
             cache.delete(cache_key)
             score_summary = get_score_summary(project_id, force_refresh=True)
         
         # 返回评分汇总数据
         return jsonify(score_summary)
     
+    except ValueError as e:
+        app.logger.error(f"参数错误: {str(e)}")
+        return jsonify({'error': f'参数错误: {str(e)}'}), 400
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        # 返回一个基本的数据结构，而不是隐式返回None
-        return {
-            'specialty_scores': {},
-            'specialty_scores_by_category': {},
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'total_score': 0,
-            'project_standard': '未知'
-        }
+        if app.debug:
+            app.logger.error(traceback.format_exc())
+        # 返回错误信息
+        return jsonify({
+            'error': '获取评分汇总数据失败',
+            'message': str(e) if app.debug else '服务器内部错误'
+        }), 500
 
 # 移除缓存装饰器，确保每次都从数据库获取最新数据
 def get_min_scores():
@@ -1892,6 +1894,44 @@ def check_and_add_missing_columns():
                 logger.info("星级案例表的唯一索引已存在")
         except Exception as e:
             logger.error(f"检查或添加星级案例表的唯一索引时出错: {str(e)}")
+            db.session.rollback()
+
+        # 检查并为得分表添加索引，提高查询速度
+        try:
+            # 先检查索引是否存在
+            result = db.session.execute(text("""
+            SHOW INDEX FROM `得分表` WHERE Key_name = 'IX_得分表_项目ID_评价标准'
+            """))
+            if not result.fetchone():
+                # 创建索引
+                db.session.execute(text("""
+                CREATE INDEX `IX_得分表_项目ID_评价标准` ON `得分表`(`项目ID`, `评价标准`)
+                """))
+                db.session.commit()
+                logger.info("为得分表添加项目ID和评价标准的复合索引成功")
+            else:
+                logger.info("得分表的项目ID和评价标准复合索引已存在")
+        except Exception as e:
+            logger.error(f"为得分表添加索引时出错: {str(e)}")
+            db.session.rollback()
+            
+        # 检查并为得分表添加专业索引，进一步提高查询速度
+        try:
+            # 先检查索引是否存在
+            result = db.session.execute(text("""
+            SHOW INDEX FROM `得分表` WHERE Key_name = 'IX_得分表_专业'
+            """))
+            if not result.fetchone():
+                # 创建索引
+                db.session.execute(text("""
+                CREATE INDEX `IX_得分表_专业` ON `得分表`(`专业`)
+                """))
+                db.session.commit()
+                logger.info("为得分表添加专业索引成功")
+            else:
+                logger.info("得分表的专业索引已存在")
+        except Exception as e:
+            logger.error(f"为得分表添加专业索引时出错: {str(e)}")
             db.session.rollback()
 
         # 其他字段检查...
@@ -4402,92 +4442,79 @@ def validate_invite_code():
 def get_score_summary(project_id, force_refresh=False):
     """获取评分汇总数据的函数"""
     try:
-        # 获取数据库会话
-        session = db.session
-        
         # 获取项目信息，确定评价标准
         project = get_project(project_id)
         project_standard = project.standard if project and project.standard else '成都市标'
         
-        app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
+        # 只在强制刷新或开发环境下记录详细日志
+        if force_refresh or app.debug:
+            app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
         
         # 构建缓存键
         cache_key = f"score_summary_{project_id}_{project_standard}"
         
         # 如果强制刷新或缓存中没有数据，则重新计算
         if force_refresh or not cache.get(cache_key):
-            # 获取得分表中的记录数
-            try:
-                result = db.session.execute(text("SELECT COUNT(*) FROM `得分表`"))
-                count = result.scalar()
-                app.logger.info(f"得分表中共有 {count} 条记录")
-                
-                # 获取得分表中项目ID为当前项目且评价标准匹配的记录数
-                result = db.session.execute(
-                    text("SELECT COUNT(*) FROM `得分表` WHERE `项目ID` = :project_id AND `评价标准` = :standard"),
-                    {"project_id": project_id, "standard": project_standard}
-                )
-                project_count = result.scalar()
-                app.logger.info(f"得分表中项目ID={project_id}，评价标准={project_standard}的记录有 {project_count} 条")
-                
-                # 获取所有专业的得分数据
-                specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
-                
-                # 如果是四川省标，添加环境健康与节能专业
-                if project_standard == '四川省标':
-                    specialties.append('环境健康与节能专业')
-                
-                # 专业名称映射，用于处理数据库中的专业名称与预定义专业名称的不完全匹配
-                specialty_mapping = {
-                    '建筑': '建筑专业',
-                    '结构': '结构专业',
-                    '给排水': '给排水专业',
-                    '电气': '电气专业',
-                    '暖通': '暖通专业',
-                    '景观': '景观专业',
-                    '环境健康与节能': '环境健康与节能专业',
-                    '建筑专业': '建筑专业',
-                    '结构专业': '结构专业',
-                    '给排水专业': '给排水专业',
-                    '电气专业': '电气专业',
-                    '暖通空调专业': '暖通专业',
-                    '暖通专业': '暖通专业',
-                    '景观专业': '景观专业'
+            # 专业名称映射，用于处理数据库中的专业名称与预定义专业名称的不完全匹配
+            specialty_mapping = {
+                '建筑': '建筑专业',
+                '结构': '结构专业',
+                '给排水': '给排水专业',
+                '电气': '电气专业',
+                '暖通': '暖通专业',
+                '景观': '景观专业',
+                '环境健康与节能': '环境健康与节能专业',
+                '建筑专业': '建筑专业',
+                '结构专业': '结构专业',
+                '给排水专业': '给排水专业',
+                '电气专业': '电气专业',
+                '暖通空调专业': '暖通专业',
+                '暖通专业': '暖通专业',
+                '景观专业': '景观专业'
+            }
+            
+            # 获取所有专业的得分数据
+            specialties = ['建筑专业', '结构专业', '给排水专业', '电气专业', '暖通专业', '景观专业']
+            
+            # 如果是四川省标，添加环境健康与节能专业
+            if project_standard == '四川省标':
+                specialties.append('环境健康与节能专业')
+            
+            # 存储各专业得分
+            specialty_scores = {specialty: 0 for specialty in specialties}
+            # 存储各专业按分类的得分
+            specialty_scores_by_category = {}
+            
+            # 初始化各专业的分类得分
+            for specialty in specialties:
+                specialty_scores_by_category[specialty] = {
+                    '安全耐久': 0,
+                    '健康舒适': 0,
+                    '生活便利': 0,
+                    '资源节约': 0,
+                    '环境宜居': 0,
+                    '提高与创新': 0,
+                    '总分': 0
                 }
-                
-                # 存储各专业得分
-                specialty_scores = {specialty: 0 for specialty in specialties}
-                # 存储各专业按分类的得分
-                specialty_scores_by_category = {}
-                
-                # 初始化各专业的分类得分
-                for specialty in specialties:
-                    specialty_scores_by_category[specialty] = {
-                        '安全耐久': 0,
-                        '健康舒适': 0,
-                        '生活便利': 0,
-                        '资源节约': 0,
-                        '环境宜居': 0,
-                        '提高与创新': 0,
-                        '总分': 0
-                    }
-                
-                # 使用参数化查询，包含评价标准的筛选条件
+            
+            try:
+                # 优化SQL查询：一次获取所有需要的数据
                 sql_query = """
                 SELECT `专业`, `分类`, `是否达标`, `得分`, `评价等级`
                 FROM `得分表`
                 WHERE `项目ID` = :project_id AND `评价标准` = :standard
                 """
                 
-                app.logger.info(f"执行SQL查询: {sql_query} 参数: [项目ID={project_id}, 评价标准={project_standard}]")
-                
+                # 执行查询并获取所有结果
                 result = db.session.execute(
                     text(sql_query), 
                     {"project_id": project_id, "standard": project_standard}
                 )
                 rows = result.fetchall()
                 
-                app.logger.info(f"查询结果: {len(rows)} 行")
+                # 减少日志输出，只记录结果行数
+                if app.debug:
+                    app.logger.info(f"查询结果: {len(rows)} 行")
                 
                 # 处理查询结果
                 for row in rows:
@@ -4497,8 +4524,7 @@ def get_score_summary(project_id, force_refresh=False):
                     score = row[3]
                     level = row[4]
                     
-                    app.logger.info(f"处理记录: 专业={specialty}, 分类={category}, 是否达标={is_achieved}, 得分={score}, 级别={level}")
-                    
+                    # 减少日志记录，提高性能
                     # 映射专业名称
                     mapped_specialty = specialty_mapping.get(specialty)
                     if not mapped_specialty:
@@ -4510,7 +4536,8 @@ def get_score_summary(project_id, force_refresh=False):
                     
                     # 如果仍然没有匹配，跳过
                     if not mapped_specialty:
-                        app.logger.warning(f"未能映射专业名称: {specialty}")
+                        if app.debug:
+                            app.logger.warning(f"未能映射专业名称: {specialty}")
                         continue
                     
                     # 处理是否达标字段
@@ -4525,10 +4552,9 @@ def get_score_summary(project_id, force_refresh=False):
                                 score_value = float(score)
                             elif isinstance(score, str) and score.strip():
                                 score_value = float(score)
-                        except (ValueError, TypeError) as e:
-                            app.logger.error(f"得分转换失败: {score}, 错误: {str(e)}")
-                    
-                    app.logger.info(f"映射后: 专业={mapped_specialty}, 是否达标={is_achieved_flag}, 得分={score_value}")
+                        except (ValueError, TypeError):
+                            # 简化错误处理，不记录详细日志
+                            pass
                     
                     # 基本级条文必须达标才计分，提高级条文有得分就计分
                     if (level == '基本级' and is_achieved_flag) or (level == '提高级' and score_value > 0):
@@ -4537,7 +4563,6 @@ def get_score_summary(project_id, force_refresh=False):
                         # 按分类累加得分
                         if category in specialty_scores_by_category[mapped_specialty]:
                             specialty_scores_by_category[mapped_specialty][category] += score_value
-                            app.logger.info(f"累加得分: 专业={mapped_specialty}, 分类={category}, 得分={score_value}, 累计={specialty_scores_by_category[mapped_specialty][category]}")
                 
                 # 计算各专业的总分
                 for specialty in specialties:
@@ -4545,11 +4570,9 @@ def get_score_summary(project_id, force_refresh=False):
                     total_score = sum(score for category, score in category_scores.items() if category != '总分')
                     category_scores['总分'] = total_score
                     specialty_scores[specialty] = total_score  # 更新专业总分
-                    app.logger.info(f"专业总分: {specialty}={total_score}")
                 
                 # 计算总分（所有专业分数之和）
                 total_score = sum(specialty_scores.values())
-                app.logger.info(f"项目总分: {total_score}")
                 
                 # 构建汇总数据
                 summary_data = {
@@ -4560,22 +4583,25 @@ def get_score_summary(project_id, force_refresh=False):
                     'project_standard': project_standard
                 }
                 
-                # 缓存结果
-                cache.set(cache_key, summary_data)
+                # 缓存结果 - 设置较长的过期时间（8小时）
+                cache.set(cache_key, summary_data, timeout=28800)
                 
                 return summary_data
             except Exception as e:
                 app.logger.error(f"查询得分表失败: {str(e)}")
-                app.logger.error(traceback.format_exc())
+                if app.debug:
+                    app.logger.error(traceback.format_exc())
                 return get_test_score_data()
         else:
             # 从缓存中获取数据
-            app.logger.info(f"从缓存中获取评分汇总数据: {cache_key}")
+            if app.debug:
+                app.logger.info(f"从缓存中获取评分汇总数据: {cache_key}")
             return cache.get(cache_key)
     
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
+        if app.debug:
+            app.logger.error(traceback.format_exc())
         # 返回一个基本的数据结构，而不是隐式返回None
         return {
             'specialty_scores': {},
@@ -4655,6 +4681,75 @@ def user_guide():
     except Exception as e:
         app.logger.error(f"访问用户指南页面出错: {str(e)}")
         return render_template('error.html', error=str(e))
+
+@app.route('/api/update_project_scores', methods=['POST'])
+def update_project_scores():
+    """将评分数据更新到projects表中"""
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': '未接收到数据'}), 400
+            
+        # 提取必要字段
+        project_id = data.get('project_id')
+        scores = data.get('scores')
+        
+        if not project_id or not scores:
+            return jsonify({'success': False, 'message': '缺少必要的字段'}), 400
+            
+        # 获取项目记录
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({'success': False, 'message': f'找不到ID为{project_id}的项目'}), 404
+            
+        # 更新项目的评分字段
+        try:
+            # 更新专业评分
+            if 'specialty_scores' in scores:
+                specialty_scores = scores['specialty_scores']
+                project.architecture_score = specialty_scores.get('建筑专业', 0)
+                project.structure_score = specialty_scores.get('结构专业', 0)
+                project.water_supply_score = specialty_scores.get('给排水专业', 0)
+                project.electrical_score = specialty_scores.get('电气专业', 0)
+                project.hvac_score = specialty_scores.get('暖通专业', 0)
+                project.landscape_score = specialty_scores.get('景观专业', 0)
+                project.env_health_energy_score = specialty_scores.get('环境健康与节能专业', 0)
+                
+            # 更新章节评分
+            if 'specialty_scores_by_category' in scores:
+                # 使用第一个专业的章节分数作为代表
+                first_specialty = next(iter(scores['specialty_scores_by_category'].values()), {})
+                project.safety_durability_score = first_specialty.get('安全耐久', 0)
+                project.health_comfort_score = first_specialty.get('健康舒适', 0)
+                project.life_convenience_score = first_specialty.get('生活便利', 0)
+                project.resource_saving_score = first_specialty.get('资源节约', 0)
+                project.environment_livability_score = first_specialty.get('环境宜居', 0)
+                project.improvement_innovation_score = first_specialty.get('提高与创新', 0)
+                
+            # 更新总分
+            project.total_score = scores.get('total_score', 0)
+            
+            # 保存更改
+            db.session.commit()
+            
+            app.logger.info(f"成功更新项目评分: 项目ID={project_id}, 总分={project.total_score}")
+            
+            return jsonify({
+                'success': True, 
+                'message': '成功更新项目评分',
+                'project_id': project_id,
+                'total_score': project.total_score
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"更新项目评分时出错: {str(e)}")
+            return jsonify({'success': False, 'message': f'更新评分失败: {str(e)}'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"处理更新项目评分请求时出错: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
     # 初始化数据库

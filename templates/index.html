@@ -1889,22 +1889,7 @@
                 }
                 
                 try {
-                    // 先调用计算评分的API
-                    progress = 40;
-                    if (progressBar) {
-                        progressBar.style.width = `${progress}%`;
-                    }
-                    
-                    const calcResponse = await fetch(`/api/calculate_scores/${projectId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        }
-                    });
-                    const calcData = await calcResponse.json();
-                    console.log('计算评分结果:', calcData);
-                    
-                    // 更新进度
+                    // 直接获取评分汇总数据，不调用计算评分API
                     progress = 60;
                     if (progressBar) {
                         progressBar.style.width = `${progress}%`;
@@ -1914,6 +1899,15 @@
                     const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
                     const summaryData = await summaryResponse.json();
                     console.log('获取评分汇总数据:', summaryData);
+                    
+                    // 更新进度
+                    progress = 75;
+                    if (progressBar) {
+                        progressBar.style.width = `${progress}%`;
+                    }
+                    
+                    // 更新项目表中的评分数据
+                    await updateProjectScores(projectId, summaryData);
                     
                     // 更新进度
                     progress = 85;
@@ -1954,8 +1948,8 @@
             console.log('找到刷新评分数据按钮，添加点击事件');
             // 使用防抖函数包装点击事件处理函数，避免短时间内多次请求
             const debouncedFetch = debounce(function() {
-                console.log('手动刷新评分数据（防抖）');
-                fetchScoreSummary(true); // 强制刷新
+                console.log('手动获取评分数据（防抖）');
+                fetchScoreSummary(); // 使用修改后的函数直接获取评分数据
             }, 300);
             
             refreshScoreBtn.addEventListener('click', debouncedFetch);
@@ -3409,6 +3403,38 @@
             return projectId;
         }
         
+        // 更新项目评分表的函数
+        async function updateProjectScores(projectId, scoreData) {
+            try {
+                console.log('更新项目表中的评分数据:', projectId, scoreData);
+                
+                // 调用更新项目评分的API
+                const response = await fetch('/api/update_project_scores', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        project_id: projectId,
+                        scores: scoreData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('成功更新项目评分:', result);
+                    return true;
+                } else {
+                    console.error('更新项目评分失败:', result.message);
+                    return false;
+                }
+            } catch (error) {
+                console.error('更新项目评分时出错:', error);
+                return false;
+            }
+        }
+        
         // 获取评分汇总信息的函数
         async function fetchScoreSummary() {
             const projectId = getSelectedProjectId();
@@ -3421,34 +3447,28 @@
             const standardInfoEl = document.getElementById('current-standard-info');
             
             // 显示加载状态
-            summaryContainer.innerHTML = '<div class="text-center p-5"><div class="spinner-border" role="status"></div><p class="mt-3">正在计算项目评分，请稍候...</p></div>';
+            summaryContainer.innerHTML = '<div class="text-center p-5"><div class="spinner-border" role="status"></div><p class="mt-3">正在获取项目评分数据，请稍候...</p></div>';
             standardInfoEl.textContent = '正在加载评价标准信息...';
             
             try {
-                // 先调用计算评分API，确保得分数据是最新的
-                const calculateResponse = await fetch(`/api/calculate_scores/${projectId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+                // 直接调用get_score_summary端点获取评分数据，而不是先计算评分
+                const response = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
                 
-                if (!calculateResponse.ok) {
-                    throw new Error(`评分计算失败: ${calculateResponse.status} ${calculateResponse.statusText}`);
+                if (!response.ok) {
+                    throw new Error(`获取评分数据失败: ${response.status} ${response.statusText}`);
                 }
                 
-                // 解析计算结果响应
-                const calculateData = await calculateResponse.json();
+                // 解析响应数据
+                const data = await response.json();
                 
-                if (!calculateData.success) {
-                    throw new Error(calculateData.message || '评分计算失败');
-                }
+                // 更新项目表中的评分数据
+                await updateProjectScores(projectId, data);
                 
-                // 直接使用计算结果数据，不再需要额外请求
-                displayScoreSummary(calculateData);
+                // 显示评分汇总数据
+                displayScoreSummary(data);
                 
                 // 更新标准信息
-                standardInfoEl.textContent = `当前评价标准: ${calculateData.project_standard || '未知'}, 更新时间: ${calculateData.timestamp || '未知'}`;
+                standardInfoEl.textContent = `当前评价标准: ${data.project_standard || '未知'}, 更新时间: ${data.timestamp || '未知'}`;
                 
             } catch (error) {
                 console.error('获取评分汇总数据出错:', error);
