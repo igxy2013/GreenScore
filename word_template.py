@@ -6,6 +6,7 @@ import os
 from flask import current_app
 from docx.oxml import parse_xml
 from docx.oxml.ns import qn, nsmap
+from docx.shared import Pt
 
 def replace_placeholders(template_path, data):
     try:
@@ -187,8 +188,6 @@ def replace_placeholders(template_path, data):
                             if parent is not None:
                                 parent.replace(bookmark_range, new_run)
                                 processed_field = True
-                                # Optionally remove the bookmark from dict to prevent re-processing? Not strictly necessary with list(keys())
-                                # del bookmarks_dict[bookmark_name]
                         except Exception as e:
                             print(f"处理书签 {bookmark_name} 时出错: {e}")
 
@@ -233,7 +232,7 @@ def replace_placeholders(template_path, data):
                             parent.replace(bookmark_range, new_run)
                             print(f"替换简写书签: {bookmark_name} -> {field_value}")
 
-        # 打印文档中的所有段落，查找占位符
+        # 处理段落中的占位符
         print("\n=== 检查文档中的占位符 ===")
         print("检查段落中的占位符:")
         for i, paragraph in enumerate(doc.paragraphs):
@@ -242,32 +241,34 @@ def replace_placeholders(template_path, data):
                 print(f"\n段落 {i}:")
                 print(f"原始文本: {text}")
                 
-                # 替换整个段落的文本
+                # 使用简单的文本替换方法
                 new_text = text
                 
-                # 处理条文号占位符 {x.x.x} 和 {x.x.x措施}
-                clause_placeholders = re.findall(r'\{(\d+\.\d+\.\d+(?:措施)?)\}', text)
-                if clause_placeholders:
-                    print(f"找到条文号占位符: {clause_placeholders}")
-                    for placeholder in clause_placeholders:
-                        field_value = ''
-                        is_measure = placeholder.endswith('措施')
-                        clause_number = placeholder[:-2] if is_measure else placeholder
-                        
-                        # 在数据中查找对应条文号的记录
-                        if data:
-                            for item in data:
-                                if str(item.get('条文号', '')) == clause_number:
-                                    if is_measure:
-                                        field_value = str(item.get('技术措施', ''))
-                                        print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
-                                    else:
-                                        field_value = str(item.get('得分', ''))
-                                        print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
-                                    break
-                        new_text = new_text.replace('{' + placeholder + '}', field_value)
+                # 查找条文号占位符
+                for match in re.finditer(r'\{(\d+\.\d+\.\d+(?:措施)?)\}', text):
+                    placeholder = match.group(1)
+                    placeholder_with_braces = match.group(0)
+                    
+                    # 获取值
+                    field_value = ''
+                    is_measure = placeholder.endswith('措施')
+                    clause_number = placeholder[:-2] if is_measure else placeholder
+                    
+                    if data:
+                        for item in data:
+                            if str(item.get('条文号', '')) == clause_number:
+                                if is_measure:
+                                    field_value = str(item.get('技术措施', ''))
+                                    print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
+                                else:
+                                    field_value = str(item.get('得分', ''))
+                                    print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
+                                break
+                    
+                    # 替换占位符
+                    new_text = new_text.replace(placeholder_with_braces, field_value)
                 
-                # 遍历所有可能的字段
+                # 查找标准字段占位符
                 for field in project_fields:
                     placeholder = '{' + field + '}'
                     if placeholder in text:
@@ -275,9 +276,11 @@ def replace_placeholders(template_path, data):
                         if data and isinstance(data[0], dict):
                             field_value = str(data[0].get(field, ''))
                             print(f"替换占位符 {placeholder} -> {field_value}")
+                        
+                        # 替换占位符
                         new_text = new_text.replace(placeholder, field_value)
                 
-                # 处理映射的简写字段
+                # 查找映射的简写字段
                 for short_name, full_name in placeholder_mapping.items():
                     placeholder = '{' + short_name + '}'
                     if placeholder in text:
@@ -285,11 +288,28 @@ def replace_placeholders(template_path, data):
                         if data and isinstance(data[0], dict):
                             field_value = str(data[0].get(full_name, ''))
                             print(f"替换简写占位符 {placeholder} -> {field_value}")
+                        
+                        # 替换占位符
                         new_text = new_text.replace(placeholder, field_value)
                 
-                # 更新段落的文本
-                paragraph.text = new_text
-        
+                # 如果文本已更改，创建新段落内容
+                if new_text != text:
+                    # 清空段落
+                    for run in paragraph.runs:
+                        run.text = ""
+                    
+                    # 添加新文本，并应用宋体和指定字号
+                    new_run = paragraph.add_run(new_text)
+                    new_run.font.name = '宋体'
+                    new_run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+                    
+                    # 检查是否包含条文号相关内容或特定的总分字段，如果是则使用小四号，否则使用四号
+                    special_fields = ['安全耐久总分', '健康舒适总分', '生活便利总分', '资源节约总分', '环境宜居总分', '创新总分']
+                    if re.search(r'\d+\.\d+\.\d+(?:措施)?', text) or any(f"{{{field}}}" in text for field in special_fields):
+                        new_run.font.size = Pt(12)  # 小四字体大小为12磅
+                    else:
+                        new_run.font.size = Pt(14)  # 四号字体大小为14磅
+
         # 处理表格中的占位符
         print("\n检查表格中的占位符:")
         for i, table in enumerate(doc.tables):
@@ -301,32 +321,34 @@ def replace_placeholders(template_path, data):
                             print(f"\n表格 {i}, 行 {row_idx}, 列 {cell_idx}:")
                             print(f"原始文本: {text}")
                             
-                            # 替换整个段落的文本
+                            # 使用简单的文本替换方法
                             new_text = text
                             
-                            # 处理条文号占位符 {x.x.x} 和 {x.x.x措施}
-                            clause_placeholders = re.findall(r'\{(\d+\.\d+\.\d+(?:措施)?)\}', text)
-                            if clause_placeholders:
-                                print(f"找到条文号占位符: {clause_placeholders}")
-                                for placeholder in clause_placeholders:
-                                    field_value = ''
-                                    is_measure = placeholder.endswith('措施')
-                                    clause_number = placeholder[:-2] if is_measure else placeholder
-                                    
-                                    # 在数据中查找对应条文号的记录
-                                    if data:
-                                        for item in data:
-                                            if str(item.get('条文号', '')) == clause_number:
-                                                if is_measure:
-                                                    field_value = str(item.get('技术措施', ''))
-                                                    print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
-                                                else:
-                                                    field_value = str(item.get('得分', ''))
-                                                    print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
-                                                break
-                                    new_text = new_text.replace('{' + placeholder + '}', field_value)
+                            # 查找条文号占位符
+                            for match in re.finditer(r'\{(\d+\.\d+\.\d+(?:措施)?)\}', text):
+                                placeholder = match.group(1)
+                                placeholder_with_braces = match.group(0)
+                                
+                                # 获取值
+                                field_value = ''
+                                is_measure = placeholder.endswith('措施')
+                                clause_number = placeholder[:-2] if is_measure else placeholder
+                                
+                                if data:
+                                    for item in data:
+                                        if str(item.get('条文号', '')) == clause_number:
+                                            if is_measure:
+                                                field_value = str(item.get('技术措施', ''))
+                                                print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
+                                            else:
+                                                field_value = str(item.get('得分', ''))
+                                                print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
+                                            break
+                                
+                                # 替换占位符
+                                new_text = new_text.replace(placeholder_with_braces, field_value)
                             
-                            # 遍历所有可能的字段
+                            # 查找标准字段占位符
                             for field in project_fields:
                                 placeholder = '{' + field + '}'
                                 if placeholder in text:
@@ -334,9 +356,11 @@ def replace_placeholders(template_path, data):
                                     if data and isinstance(data[0], dict):
                                         field_value = str(data[0].get(field, ''))
                                         print(f"替换占位符 {placeholder} -> {field_value}")
+                                    
+                                    # 替换占位符
                                     new_text = new_text.replace(placeholder, field_value)
                             
-                            # 处理映射的简写字段
+                            # 查找映射的简写字段
                             for short_name, full_name in placeholder_mapping.items():
                                 placeholder = '{' + short_name + '}'
                                 if placeholder in text:
@@ -344,11 +368,28 @@ def replace_placeholders(template_path, data):
                                     if data and isinstance(data[0], dict):
                                         field_value = str(data[0].get(full_name, ''))
                                         print(f"替换简写占位符 {placeholder} -> {field_value}")
+                                    
+                                    # 替换占位符
                                     new_text = new_text.replace(placeholder, field_value)
                             
-                            # 更新段落的文本
-                            paragraph.text = new_text
-        
+                            # 如果文本已更改，创建新段落内容
+                            if new_text != text:
+                                # 清空段落
+                                for run in paragraph.runs:
+                                    run.text = ""
+                                
+                                # 添加新文本，并应用宋体和指定字号
+                                new_run = paragraph.add_run(new_text)
+                                new_run.font.name = '宋体'
+                                new_run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+                                
+                                # 检查是否包含条文号相关内容或特定的总分字段，如果是则使用小四号，否则使用四号
+                                special_fields = ['安全耐久总分', '健康舒适总分', '生活便利总分', '资源节约总分', '环境宜居总分', '创新总分']
+                                if re.search(r'\d+\.\d+\.\d+(?:措施)?', text) or any(f"{{{field}}}" in text for field in special_fields):
+                                    new_run.font.size = Pt(12)  # 小四字体大小为12磅
+                                else:
+                                    new_run.font.size = Pt(14)  # 四号字体大小为14磅
+
         # 确保temp目录存在
         os.makedirs('temp', exist_ok=True)
         

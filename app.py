@@ -4600,7 +4600,6 @@ def get_score_summary(project_id, force_refresh=False):
                 app.logger.error(f"查询得分表失败: {str(e)}")
                 if app.debug:
                     app.logger.error(traceback.format_exc())
-                summary_data = get_test_score_data()
                 need_update_project = False
         else:
             # 从缓存中获取数据
@@ -4654,7 +4653,7 @@ def update_project_scores_efficient(project_id, scores):
             project.landscape_score = specialty_scores.get('景观专业', 0)
             project.env_health_energy_score = specialty_scores.get('环境健康与节能专业', 0)
             
-        # 更新章节评分 - 使用所有专业的平均分
+        # 更新章节评分
         if 'specialty_scores_by_category' in scores:
             categories = ['安全耐久', '健康舒适', '生活便利', '资源节约', '环境宜居', '提高与创新']
             category_scores = {cat: 0 for cat in categories}
@@ -4667,12 +4666,12 @@ def update_project_scores_efficient(project_id, scores):
                         category_scores[category] += float(specialty_data[category])
             
             if specialty_count > 0:
-                project.safety_durability_score = category_scores['安全耐久'] / specialty_count
-                project.health_comfort_score = category_scores['健康舒适'] / specialty_count
-                project.life_convenience_score = category_scores['生活便利'] / specialty_count
-                project.resource_saving_score = category_scores['资源节约'] / specialty_count
-                project.environment_livability_score = category_scores['环境宜居'] / specialty_count
-                project.improvement_innovation_score = category_scores['提高与创新'] / specialty_count
+                project.safety_durability_score = category_scores['安全耐久'] 
+                project.health_comfort_score = category_scores['健康舒适'] 
+                project.life_convenience_score = category_scores['生活便利']
+                project.resource_saving_score = category_scores['资源节约'] 
+                project.environment_livability_score = category_scores['环境宜居']
+                project.improvement_innovation_score = category_scores['提高与创新'] 
             
         # 更新总分
         project.total_score = scores.get('total_score', 0)
