@@ -580,10 +580,9 @@ class Project(db.Model):
             '项目总分': format_float(self.total_score),
             '评定结果': self.evaluation_result,
         }
-
-# 添加四川省标和通用国标的模型
-class StandardSichuan(db.Model):
-    __tablename__ = '四川省标'
+# 添加评价标准的模型
+class review_standard(db.Model):
+    __tablename__ = '评价标准'
     
     # 使用中文字段名
     序号 = db.Column(db.Integer, primary_key=True)
@@ -594,32 +593,7 @@ class StandardSichuan(db.Model):
     分值 = db.Column(db.String(10))
     审查材料 = db.Column(db.Text)
     属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
-
-class StandardNational(db.Model):
-    __tablename__ = '国标'
-    
-    # 使用中文字段名
-    序号 = db.Column(db.Integer, primary_key=True)
-    条文号 = db.Column(db.String(20))
-    分类 = db.Column(db.String(50))
-    专业 = db.Column(db.String(50))
-    条文内容 = db.Column(db.Text)
-    分值 = db.Column(db.String(10))
-    审查材料 = db.Column(db.Text)
-    属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
-
-class Standard(db.Model):
-    __tablename__ = '成都市标'
-    
-    # 使用中文字段名
-    序号 = db.Column(db.Integer, primary_key=True)
-    条文号 = db.Column(db.String(20))
-    分类 = db.Column(db.String(50))
-    专业 = db.Column(db.String(50))
-    条文内容 = db.Column(db.Text)
-    分值 = db.Column(db.String(10))
-    审查材料 = db.Column(db.Text)
-    属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
+    标准名称 = db.Column(db.String(20))  # 标准名称字段
 
 class FormData(db.Model):
     __tablename__ = 'form_data'
@@ -642,7 +616,7 @@ class FormData(db.Model):
 def get_all_standards():
     print("从数据库获取所有标准数据...")
     start_time = time.time()
-    standards = Standard.query.all()
+    standards = review_standard.query.all()
     end_time = time.time()
     print(f"查询耗时: {end_time - start_time:.2f}秒，获取到 {len(standards)} 条记录")
     return standards
@@ -662,23 +636,18 @@ def get_filtered_standards(level, specialty):
     standard_name = project.standard if project and project.standard else '成都市标'
     print(f"当前评价标准: {standard_name}")
     
-    # 根据标准名称选择对应的模型
-    if standard_name == '成都市标':
-        model_class = Standard
-    elif standard_name == '四川省标':
-        model_class = StandardSichuan
-    elif standard_name == '国标':
-        model_class = StandardNational
-    else:
-        model_class = Standard
+    # 使用新的评价标准模型
+    model_class = review_standard
     
     # 尝试多种筛选方法
     standards = []
     
-    # 方法1: 使用属性字段精确匹配
+    # 方法1: 使用属性字段精确匹配并按标准名称筛选
     if attribute and specialty:
         try:
-            query1 = model_class.query.filter(getattr(model_class, '属性') == attribute).filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query1 = model_class.query.filter(getattr(model_class, '属性') == attribute)
+            query1 = query1.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query1 = query1.filter(getattr(model_class, '标准名称') == standard_name)
             # 添加按序号排序
             query1 = query1.order_by(getattr(model_class, '序号'))
             standards1 = query1.all()
@@ -688,13 +657,14 @@ def get_filtered_standards(level, specialty):
         except Exception as e:
             print(f"方法1查询错误: {str(e)}")
     
-    # 方法2: 使用属性字段模糊匹配
+    # 方法2: 使用属性字段模糊匹配并按标准名称筛选
     if not standards and attribute:
         try:
             query2 = model_class.query
             query2 = query2.filter(getattr(model_class, '属性').like(f'%{attribute}%'))
             if specialty:
                 query2 = query2.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query2 = query2.filter(getattr(model_class, '标准名称') == standard_name)
             # 添加按序号排序
             query2 = query2.order_by(getattr(model_class, '序号'))
             standards2 = query2.all()
@@ -704,10 +674,11 @@ def get_filtered_standards(level, specialty):
         except Exception as e:
             print(f"方法2查询错误: {str(e)}")
     
-    # 方法3: 只按专业筛选
+    # 方法3: 只按专业和标准名称筛选
     if not standards and specialty:
         try:
             query3 = model_class.query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query3 = query3.filter(getattr(model_class, '标准名称') == standard_name)
             # 添加按序号排序
             query3 = query3.order_by(getattr(model_class, '序号'))
             standards3 = query3.all()
@@ -726,6 +697,7 @@ def get_filtered_standards(level, specialty):
                 conditions.append(f"属性 = '{attribute}'")
             if specialty:
                 conditions.append(f"专业 LIKE '%{specialty}%'")
+            conditions.append(f"标准名称 = '{standard_name}'")
             
             if conditions:
                 sql += " WHERE " + " AND ".join(conditions)
@@ -740,10 +712,10 @@ def get_filtered_standards(level, specialty):
         except Exception as e:
             print(f"方法4查询错误: {str(e)}")
     
-    # 如果所有方法都失败，返回所有记录（同样按序号排序）
+    # 如果所有方法都失败，返回当前标准下的所有记录（同样按序号排序）
     if not standards:
         try:
-            standards = model_class.query.order_by(getattr(model_class, '序号')).all()
+            standards = model_class.query.filter(getattr(model_class, '标准名称') == standard_name).order_by(getattr(model_class, '序号')).all()
             print(f"所有筛选方法都失败，返回所有 {len(standards)} 条记录")
         except Exception as e:
             print(f"获取所有记录错误: {str(e)}")
@@ -757,15 +729,7 @@ def get_filtered_standards(level, specialty):
 # 根据标准名称获取对应的标准数据
 def get_standards_by_name(standard_name):
     print(f"获取标准数据: {standard_name}")
-    if standard_name == '成都市标':
-        return Standard.query.all()
-    elif standard_name == '四川省标':
-        return StandardSichuan.query.all()
-    elif standard_name == '通用国标' or standard_name == '国标':
-        return StandardNational.query.all()
-    else:
-        # 默认返回成都市标
-        return Standard.query.all()
+    return review_standard.query.filter(review_standard.标准名称 == standard_name).all()
 
 # 获取项目信息
 def get_project(project_id=None):
@@ -1193,17 +1157,8 @@ def filter_standards():
         # 获取过滤后的标准
         standards = []
         
-        # 根据标准名称选择对应的模型
-        if standard_name == '成都市标':
-            model_class = Standard
-        elif standard_name == '四川省标':
-            model_class = StandardSichuan
-        elif standard_name == '国标':
-            model_class = StandardNational
-        else:
-            # 默认使用成都市标
-            model_class = Standard
-            standard_name = '成都市标'
+        # 使用新的评价标准模型
+        model_class = review_standard
         
         # 获取属性值
         attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
@@ -1215,6 +1170,8 @@ def filter_standards():
                 query = query.filter(getattr(model_class, '属性') == attribute)
             if specialty:
                 query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            # 按标准名称筛选
+            query = query.filter(getattr(model_class, '标准名称') == standard_name)
             
             # 添加按序号排序
             query = query.order_by(getattr(model_class, '序号').asc())
@@ -1230,6 +1187,8 @@ def filter_standards():
                 query = model_class.query
                 if specialty:
                     query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+                # 按标准名称筛选
+                query = query.filter(getattr(model_class, '标准名称') == standard_name)
                 
                 # 添加按序号排序
                 query = query.order_by(getattr(model_class, '序号').asc())
