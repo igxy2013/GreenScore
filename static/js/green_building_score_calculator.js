@@ -301,9 +301,6 @@ function calculateGreenScore(buildingType, greenRate, greenArea, projectType, is
  * @returns {number} - 得分（0 或 8）
  */
 function calculateParkingScore(buildingType, groundParkingCount, totalUnits) {
-    // 参数有效性校验
-    if (typeof groundParkingCount !== 'number' || groundParkingCount < 0) return 0;
-    if (typeof totalUnits !== 'number' || totalUnits <= 0) return 0;
 
     // 计算比率
     const ratio = groundParkingCount / totalUnits;
