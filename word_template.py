@@ -85,7 +85,7 @@ def replace_placeholders(template_path, data):
                         try:
                             # 创建新的文本运行
                             new_text = str(item.get('得分', ''))
-                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{new_text}</w:t></w:r>')
+                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{new_text}</w:t></w:r>')
                             
                             # 替换书签内容
                             if bookmark_range is not None:
@@ -105,7 +105,7 @@ def replace_placeholders(template_path, data):
         for bookmark_name in list(bookmarks_dict.keys()):
             if date_pattern.match(bookmark_name):
                 # 创建新的文本运行
-                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{current_date}</w:t></w:r>')
+                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{current_date}</w:t></w:r>')
                 
                 # 替换书签内容
                 bookmark_range = bookmarks_dict[bookmark_name]
@@ -182,7 +182,7 @@ def replace_placeholders(template_path, data):
 
                         try:
                             # Create new run with the determined value
-                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
+                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
                             bookmark_range = bookmarks_dict[bookmark_name]
                             parent = bookmark_range.getparent()
                             if parent is not None:
@@ -202,7 +202,7 @@ def replace_placeholders(template_path, data):
                 project_score = float(data[0].get('项目总分', '0'))
                 field_value = format((project_score + 400) / 10, '.1f')
             # 创建新的文本运行
-            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{field_value}</w:t></w:r>')
             
             # 替换书签内容
             bookmark_range = bookmarks_dict['成都项目总分']
@@ -222,7 +222,7 @@ def replace_placeholders(template_path, data):
                         field_value = str(data[0].get(full_name, ''))
                         print(f"处理简写书签: {bookmark_name} -> {field_value}")
                     # 创建新的文本运行
-                    new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="20"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                    new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{field_value}</w:t></w:r>')
                     
                     # 替换书签内容
                     bookmark_range = bookmarks_dict[bookmark_name]
@@ -424,12 +424,20 @@ def process_template(data):
         if standard == '国标':
             return None  # 国标不进行任何操作
         
-        # 根据评价标准选择模板文件
-        template_file = 'sichuan_template.docx' if standard == '四川省标' else 'chengdu_template.docx'
+        # 获取星级目标
+        star_rating_target = data[0].get('星级目标', '')
+        
+        # 根据评价标准和星级目标选择模板文件
+        if standard == '四川省标' and star_rating_target == '基本级':
+            template_file = 'sichuan_template-basic.docx'
+        elif standard == '四川省标':
+            template_file = 'sichuan_template.docx'
+        else:
+            template_file = 'chengdu_template.docx'
         
         # 获取模板文件的完整路径
         template_path = os.path.join(current_app.static_folder, 'templates', template_file)
-        print(f"处理模板文件: {template_path}, 评价标准: {standard}")
+        print(f"处理模板文件: {template_path}, 评价标准: {standard}, 星级目标: {star_rating_target}")
         
         # 检查模板文件是否存在
         if not os.path.exists(template_path):
