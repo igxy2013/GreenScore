@@ -42,7 +42,7 @@ import string
 import werkzeug.exceptions
 from flask_sqlalchemy import SQLAlchemy
 from routes import auth_bp
-from admin_routes import admin_bp  # 使用admin_routes.py中的admin_bp
+from admin import admin_app  # 使用admin.py中的admin_app
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
@@ -4760,7 +4760,7 @@ def update_project_scores():
 
 # 注册蓝图
 app.register_blueprint(auth_bp)
-app.register_blueprint(admin_bp)  # 使用admin_bp
+app.register_blueprint(admin_app, url_prefix='/admin')  # 使用admin_app，添加/admin前缀
 
 if __name__ == '__main__':
     # 初始化数据库
