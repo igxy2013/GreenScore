@@ -29,7 +29,15 @@
 .bg-gray-700 { background-color: #374151; }
 .bg-gray-900 { background-color: #111827; }
 .bg-red-500 { background-color: #ef4444; }
+.bg-green-50 { background-color:rgba(16, 185, 129, 0.15) }
 .bg-green-100 { background-color: #dcfce7; }
+.bg-blue-100 { background-color: #dbeafe; }
+.bg-yellow-100 { background-color: #fef9c3; }
+.bg-yellow-200 { background-color: #fef08a; }
+.bg-indigo-100 { background-color: #e0e7ff; }
+.bg-indigo-200 { background-color: #c7d2fe; }
+.bg-purple-100 { background-color: #f3e8ff; }
+.bg-purple-200 { background-color: #e9d5ff; }
 .bg-gradient-to-br { background-image: linear-gradient(to bottom right, #eff6ff, #ffffff); }
 
 
@@ -48,6 +56,9 @@
 .text-green-500 { color: #22c55e; }
 .text-green-800 { color: #166534; }
 .text-blue-800 { color: #1e40af; }
+.text-yellow-800 { color: #854d0e; }
+.text-indigo-800 { color: #3730a3; }
+.text-purple-800 { color: #7e22ce; }
 
 .border-gray-100 { border-color: #f3f4f6; }
 .border-gray-200 { border-color: #e5e7eb; }
@@ -74,6 +85,7 @@
 .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
 .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
 
+.p-2 { padding: 0.5rem; }
 .p-4 { padding: 1rem; }
 .p-6 { padding: 1.5rem; }
 .p-8 { padding: 2rem; }
@@ -106,7 +118,7 @@
 .mr-3 { margin-right: 0.75rem; }
 .mt-1 { margin-top: 0.25rem; }
 .mt-2 { margin-top: 0.5rem; }
-.mt-4 { margin-top: 1rem; }
+.mt-4 { margin-top: 1rem;}
 .mt-6 { margin-top: 1.5rem; }
 .mt-8 { margin-top: 2rem; }
 .ml-3 { margin-left: 0.75rem; }

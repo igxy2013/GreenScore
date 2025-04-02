@@ -252,6 +252,21 @@
         });
     }
     </script>
+    <style>
+        /* 移除伪元素定义，改用背景图像实现进度条 */
+        
+        /* 分类过滤器按钮样式 */
+        .category-filter {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .category-filter.active {
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+            font-weight: 600;
+            transform: translateY(-1px);
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
 
@@ -1205,15 +1220,15 @@
                     </div>
                     </form>
                     <!-- 自动计算得分 --> 
-                    <div class="mt-4">
+                    <div class="mt-4 bg-green-50 rounded-lg px-2" style="display: inline-block;">
                         <label class="text-gray-700">绿建得分自动计算</label>
-                    <div class="text-sm text-gray-700" style="font-style: italic;">
-                        <label id="per_capita_land_score">人均居住用地指标得分：</label>
-                        <label id="plot_ratio_score">公建容积率指标得分：</label>
-                        <label id="underground_score">地下空间开发利用得分：</label>
-                        <label id="green_space_score">绿化用地指标得分：</label>
-                        <label id="parking_score">停车设施得分：</label>
-                    </div>
+                        <div class="text-sm text-gray-700 " style="font-style: italic;">
+                            <label id="per_capita_land_score">人均居住用地指标得分：</label>
+                            <label id="plot_ratio_score">公建容积率指标得分：</label>
+                            <label id="underground_score">地下空间开发利用得分：</label>
+                            <label id="green_space_score">绿化用地指标得分：</label>
+                            <label id="parking_score">停车设施得分：</label>
+                        </div>
                     </div>
                     <script>
                         // 页面加载完成后执行计算和更新
@@ -1301,13 +1316,13 @@
                                 }
                             }
                             // 更新显示
-                            document.getElementById('per_capita_land_score').innerHTML = '人均居住用地指标得分：' + perCapitaLandScore;
-                            document.getElementById('plot_ratio_score').innerHTML = '公建容积率指标得分：' + plotRatioScore;
-                            document.getElementById('underground_score').innerHTML = '地下空间开发利用得分：' + undergroundScore;
-                            document.getElementById('green_space_score').innerHTML = '绿化用地指标得分：' + greenSpaceScore;
-                            document.getElementById('parking_score').innerHTML = '停车设施得分：' + parkingScore;
+                            document.getElementById('per_capita_land_score').innerHTML = '人均居住用地指标得分：' + perCapitaLandScore+' ;';
+                            document.getElementById('plot_ratio_score').innerHTML = '公建容积率指标得分：' + plotRatioScore+' ;';
+                            document.getElementById('underground_score').innerHTML = '地下空间开发利用得分：' + undergroundScore+' ;';
+                            document.getElementById('green_space_score').innerHTML = '绿化用地指标得分：' + greenSpaceScore+' ;';
+                            document.getElementById('parking_score').innerHTML = '停车设施得分：' + parkingScore+' ;';
                             
-                            // 修改多个条文的得分
+                            // 修改多个条文的得分   
                             let standard = document.getElementById('current-project-standard').value || '成都市标';
                             let projectId = document.getElementById('current-project-id').value;
                             
@@ -1379,6 +1394,25 @@
                     
                     <div class="overflow-x-auto ">
                         {% if standards %}
+                        
+                        {% if current_level == '提高级' %}
+                        <!-- 提高级分类过滤器 -->
+                        <div class="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
+                            <div class="flex flex-wrap items-center">
+                                <span class="mr-2 font-medium">分类过滤:</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <button id="filter-all" class="px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium category-filter active">全部</button>
+                                    <button id="filter-安全耐久" data-category="安全耐久" class="px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm font-medium category-filter">安全耐久</button>
+                                    <button id="filter-健康舒适" data-category="健康舒适" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">健康舒适</button>
+                                    <button id="filter-生活便利" data-category="生活便利" class="px-3 py-1 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-sm font-medium category-filter">生活便利</button>
+                                    <button id="filter-资源节约" data-category="资源节约" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">资源节约</button>
+                                    <button id="filter-环境宜居" data-category="环境宜居" class="px-3 py-1 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-sm font-medium category-filter">环境宜居</button>
+                                    <button id="filter-提高与创新" data-category="提高与创新" class="px-3 py-1 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium category-filter">提高与创新</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-primary">
                                 <tr>
@@ -1435,7 +1469,7 @@
                                         {% if standard.分值 == '—' %}
                                         <span class="text-gray-500">—</span>
                                         {% else %}
-                                        <input type="text" name="score" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary" placeholder="得分">
+                                        <input type="text" name="score" data-clause="{{ standard.条文号 }}" data-maxscore="{{ standard.分值 }}" class="w-full rounded focus:border-primary" placeholder="得分">
                                         {% endif %}
                                     </td>
                                     <td class="px-6 py-4 text-base text-gray-700 technical-measures-cell">
@@ -1986,6 +2020,80 @@
         if (floatingSaveBtn) {
             floatingSaveBtn.addEventListener('click', saveScoreData);
         }
+        
+        // 为提高级得分输入框添加验证
+        if ('{{ current_level }}' === '提高级') {
+            // 获取所有得分输入框
+            const scoreInputs = document.querySelectorAll('input[name="score"]');
+            
+            // 为每个输入框添加事件监听
+            scoreInputs.forEach(input => {
+                input.addEventListener('input', function(e) {
+                    // 获取输入值
+                    const scoreValue = parseFloat(this.value);
+                    
+                    // 如果不是数字，不做处理
+                    if (isNaN(scoreValue)) {
+                        return;
+                    }
+                    
+                    // 获取最大分值
+                    const maxScore = parseFloat(this.getAttribute('data-maxscore'));
+                    
+                    // 验证输入值不大于最大分值
+                    if (scoreValue > maxScore) {
+                        // 提示用户
+                        alert(`输入的分数不能大于该条文的分值(${maxScore})`);
+                        // 重置为最大分值
+                        this.value = maxScore;
+                    }
+                    
+                    // 确保不为负数
+                    if (scoreValue < 0) {
+                        this.value = 0;
+                    }
+                });
+                
+                // 添加失焦事件，确保在用户完成输入后格式化值
+                input.addEventListener('blur', function() {
+                    // 如果值为空或不是数字，设为0
+                    if (this.value === '' || isNaN(parseFloat(this.value))) {
+                        this.value = '0';
+                    }
+                });
+            });
+            
+            // 添加分类过滤功能
+            const categoryFilters = document.querySelectorAll('.category-filter');
+            const tableRows = document.querySelectorAll('table tbody tr');
+            
+            categoryFilters.forEach(filter => {
+                filter.addEventListener('click', function() {
+                    // 移除所有过滤器的active状态
+                    categoryFilters.forEach(f => f.classList.remove('active'));
+                    // 为当前过滤器添加active状态
+                    this.classList.add('active');
+                    
+                    const category = this.getAttribute('data-category');
+                    
+                    // 显示或隐藏表格行
+                    tableRows.forEach(row => {
+                        const rowCategory = row.querySelector('td:nth-child(2) span')?.textContent.trim();
+                        
+                        if (category === null || category === undefined || this.id === 'filter-all') {
+                            // 显示所有行
+                            row.style.display = '';
+                        } else if (rowCategory === category) {
+                            // 显示匹配的行
+                            row.style.display = '';
+                        } else {
+                            // 隐藏不匹配的行
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            });
+        }
 
         // 定义保存评分的函数
         function saveScoreData() {
@@ -2135,6 +2243,17 @@
                             const scoreInput = row.querySelector('input[name="score"]');
                             if (scoreInput) {
                                 score = scoreInput.value || '0';
+                                
+                                // 获取分值并验证
+                                const maxScore = parseFloat(scoreValue);
+                                const currentScore = parseFloat(score);
+                                
+                                // 确保得分不超过分值
+                                if (!isNaN(currentScore) && !isNaN(maxScore) && currentScore > maxScore) {
+                                    console.log(`行 ${index+1} - 得分调整: ${score} -> ${maxScore} (超过最大分值)`);
+                                    score = maxScore.toString();
+                                    scoreInput.value = score; // 同时更新输入框
+                                }
                             }
                         }
                         
@@ -3658,5 +3777,57 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // ... existing code ...
+
+        // 为提高级得分输入框添加验证
+        document.addEventListener('DOMContentLoaded', function() {
+            // 如果当前是提高级页面，添加输入验证
+            if ('{{ current_level }}' === '提高级') {
+                // 获取所有得分输入框
+                const scoreInputs = document.querySelectorAll('input[name="score"]');
+                
+                // 为每个输入框添加事件监听
+                scoreInputs.forEach(input => {
+                    input.addEventListener('input', function(e) {
+                        // 获取输入值
+                        const scoreValue = parseFloat(this.value);
+                        
+                        // 如果不是数字，不做处理
+                        if (isNaN(scoreValue)) {
+                            return;
+                        }
+                        
+                        // 获取最大分值
+                        const maxScore = parseFloat(this.getAttribute('data-maxscore'));
+                        
+                        // 验证输入值不大于最大分值
+                        if (scoreValue > maxScore) {
+                            // 提示用户
+                            alert(`输入的分数不能大于该条文的分值(${maxScore})`);
+                            // 重置为最大分值
+                            this.value = maxScore;
+                        }
+                        
+                        // 确保不为负数
+                        if (scoreValue < 0) {
+                            this.value = 0;
+                        }
+                    });
+                    
+                    // 添加失焦事件，确保在用户完成输入后格式化值
+                    input.addEventListener('blur', function() {
+                        // 如果值为空或不是数字，设为0
+                        if (this.value === '' || isNaN(parseFloat(this.value))) {
+                            this.value = '0';
+                        }
+                    });
+                });
+            }
+        });
+        
+        // ... existing code ...
+    </script>
 </body>
 </html>
