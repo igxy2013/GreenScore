@@ -856,7 +856,11 @@ def generate_dwg(request_data):
             else:
                 template_filename = '绿色建筑设计专篇(省标2024).dwg'
         elif standard == '国标':
-            if star_rating_target == '基本级':
+            # 检查是否为内蒙古地区且非基本级
+            location = project_rows[0][6] or ''  # 获取项目地点
+            if '内蒙古' in location and star_rating_target != '基本级':
+                template_filename = '绿色建筑设计专篇-内蒙古.dwg'
+            elif star_rating_target == '基本级':
                 template_filename = '绿色建筑设计专篇(国标基本级2024).dwg'
             else:
                 template_filename = '绿色建筑设计专篇(国标2024).dwg'
