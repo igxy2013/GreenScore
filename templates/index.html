@@ -19,7 +19,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
     <script src="/static/js/green_building_score_calculator.js"></script>
-    <script src="/static/js/exportSelfAssessmentReport.js"></script>
     <!-- 在 head 部分添加对 db_updater.js 的引用 -->
     <script src="/static/js/db_updater.js"></script>
      <!-- 使用Font Awesome图标库 -->
@@ -3198,26 +3197,20 @@
         document.addEventListener('DOMContentLoaded', function() {
             const userIcon = document.getElementById('userIcon');
             const userMenu = document.getElementById('userMenu');
-            const contactUsBtn = document.getElementById('contactUsBtn');
-            const contactModal = document.getElementById('contactModal');
 
             // 点击用户图标时切换菜单显示状态
-            userIcon.addEventListener('click', function() {
-                userMenu.classList.toggle('active');
-            });
+            if (userIcon && userMenu) {
+                userIcon.addEventListener('click', function() {
+                    userMenu.classList.toggle('active');
+                });
 
-            // 点击页面其他区域时隐藏菜单
-            document.addEventListener('click', function(event) {
-                if (!userIcon.contains(event.target) && !userMenu.contains(event.target)) {
-                    userMenu.classList.remove('active');
-                }
-            });
-
-            // 打开联系我们模态窗口
-            contactUsBtn.addEventListener('click', function() {
-                contactModal.classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; // 防止背景滚动
-            });
+                // 点击页面其他区域时隐藏菜单
+                document.addEventListener('click', function(event) {
+                    if (!userIcon.contains(event.target) && !userMenu.contains(event.target)) {
+                        userMenu.classList.remove('active');
+                    }
+                });
+            }
         });
 
         // 关闭联系我们模态窗口
