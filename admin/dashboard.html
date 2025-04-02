@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能绿建管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+        <!-- 使用Font Awesome图标库 -->
+    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex">
+    <!-- 左侧导航栏 -->
+    <nav class="w-64 bg-white shadow-lg h-screen fixed left-0 flex flex-col" id="sideNav">
+        <div class="p-6 border-b">
+            <h1 class="text-2xl font-bold text-primary flex items-center">                
+                <picture>
+                    <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                    <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                    <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+                </picture>
+                <span>智能管理后台</span>
+            </h1>
+        </div>
+        <div class="flex-1 overflow-y-auto py-4">
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="project-management">
+                <i class="fas fa-project-diagram w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">项目管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="user-management">
+                <i class="fas fa-users w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">用户管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="standard-management">
+                <i class="fas fa-book w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">标准管理</span>
+            </a>
+            <a href="#" class="menu-item flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 hover:text-primary transition-colors group" data-target="invite-code-management">
+                <i class="fas fa-ticket-alt w-5 text-gray-400 group-hover:text-primary"></i>
+                <span class="ml-3">邀请码管理</span>
+            </a>
+        </div>
+        <div class="p-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-gray-600">
+                    <i class="fas fa-user-circle text-primary text-xl"></i>
+                    <span class="ml-2">管理员</span>
+                </div>
+                <a href="{{ url_for('admin.admin_logout') }}" class="flex items-center px-3 py-1 text-gray-600 hover:text-red-500 transition-colors">
+                    <i class="fas fa-sign-out-alt mr-1"></i>
+                    <span>退出</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容区域 -->
+    <div class="ml-64 flex-1 p-6 transition-all duration-300" id="mainContent">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- 项目管理卡片 -->
+            <div id="project-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 项目统计面板 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- 总项目数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-project-diagram text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">总项目数</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.total_projects }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 进行中项目 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-tasks text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">进行中项目</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.active_projects }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 已完成项目 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-check-circle text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">已完成项目</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.completed_projects }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 平均项目分数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <i class="fas fa-star text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">平均分数</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.avg_project_score }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1 max-w-sm">
+                            <div class="relative">
+                                <input type="text" id="projectSearchInput" 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索项目名称...">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addProjectBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>添加项目
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 项目列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">项目名称</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">所属用户</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分数</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="projectTableBody">
+                                {% for project in projects %}
+                                <tr class="project-row">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 project-name">{{ project.name }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if project.total_score is not none and project.total_score >= 80 %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.total_score is not none and project.total_score >= 60 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ project.total_score|default('尚未评分', true) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-900 view-project-btn" data-project-id="{{ project.id }}" title="查看详情">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="projectStartIndex">1</span> 到 <span id="projectEndIndex">15</span> 条，共 <span id="projectTotalCount">{{ projects|length }}</span> 条
+                                <span class="ml-4">
+                                    第 <span id="projectCurrentPage">1</span> / <span id="projectTotalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="projectPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="projectNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 用户管理卡片 -->
+            <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 用户统计面板 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <!-- 总用户数 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">总用户数</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 在线用户 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-user-clock text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">在线用户</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.online_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 离线用户 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-gray-100 text-gray-600">
+                                <i class="fas fa-user-slash text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">离线用户</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.offline_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 管理员数量 -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-user-shield text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-500">管理员数量</p>
+                                <p class="text-2xl font-semibold text-gray-900">{{ stats.admin_users }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1 max-w-sm">
+                            <div class="relative">
+                                <input type="text" id="userSearchInput" 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索用户邮箱...">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>添加用户
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 用户列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邮箱</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">角色</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="userTableBody">
+                                {% for user in users %}
+                                <tr class="user-row">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 user-email">{{ user.email }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if user.role == 'admin' %}
+                                                bg-green-100 text-green-800
+                                            {% else %}
+                                                bg-blue-100 text-blue-800
+                                            {% endif %}">
+                                            {{ user.role }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if user.is_online() %}
+                                                bg-green-100 text-green-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ '在线' if user.is_online() else '离线' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}" title="编辑用户">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}" title="删除用户">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
+                                <span class="ml-4">
+                                    第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 邀请码管理卡片 -->
+            <div id="invite-code-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1 max-w-sm">
+                            <div class="relative">
+                                <input type="text" id="inviteCodeSearchInput" 
+                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索邀请码...">
+                                <div class="absolute left-3 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="generateInviteCodeBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>生成邀请码
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邀请码</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用次数</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">剩余次数</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">使用时间</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for code in invite_codes %}
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ code.code }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if code.used_at %}
+                                                bg-gray-100 text-gray-800
+                                            {% else %}
+                                                bg-green-100 text-green-800
+                                            {% endif %}">
+                                            {{ '已使用' if code.used_at else '未使用' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ code.usage_count }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            {% if code.max_usage - code.usage_count <= 0 %}
+                                                bg-red-100 text-red-800
+                                            {% elif code.max_usage - code.usage_count <= 10 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-green-100 text-green-800
+                                            {% endif %}">
+                                            {{ code.max_usage - code.usage_count }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ code.created_at.strftime('%Y-%m-%d %H:%M:%S') if code.created_at else '-' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {{ code.used_at.strftime('%Y-%m-%d %H:%M:%S') if code.used_at else '-' }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="{{ code.id }}" title="删除邀请码">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 标准管理卡片 -->
+            <div id="standard-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
+                <!-- 搜索和操作栏 -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <div class="relative">
+                                <input type="text" id="standardSearchInput" 
+                                       class="w-36 pl-8 pr-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                       placeholder="搜索内容..." title="搜索标准内容">
+                                <div class="absolute left-2 top-2.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <select id="standardMajorFilter" class="w-28 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择专业类别">
+                                    <option value="">所有专业</option>
+                                    <option value="建筑">建筑专业</option>
+                                    <option value="结构">结构专业</option>
+                                    <option value="给排水">给排水专业</option>
+                                    <option value="电气">电气专业</option>
+                                    <option value="暖通">暖通专业</option>
+                                    <option value="其他">其他专业</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="standardNameFilter" class="w-28 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择标准名称">
+                                    <option value="">所有标准</option>
+                                    <!-- 标准名称选项将通过JavaScript动态加载 -->
+                                </select>
+                            </div>
+                            <div>
+                                <select id="standardAttributeFilter" class="w-28 px-2 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" title="选择属性">
+                                    <option value="">所有属性</option>
+                                    <option value="控制项">控制项</option>
+                                    <option value="评分项">评分项</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <label class="relative flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
+                                <i class="fas fa-file-import mr-2"></i>导入标准
+                                <input type="file" id="importStandardFile" accept=".xlsx,.xls,.csv" class="hidden">
+                            </label>
+                            <button id="addStandardBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>添加标准
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 标准列表表格 -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">序号</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">条文号</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">条文内容</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分类</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">专业</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分值</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">属性</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">标准名称</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="standardTableBody">
+                                <!-- 标准记录将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 标准分页控件 -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-700">
+                                显示 <span id="standardStartIndex">0</span> 到 <span id="standardEndIndex">0</span> 条，共 <span id="standardTotalCount">0</span> 条
+                                <span class="ml-4">
+                                    第 <span id="standardCurrentPage">1</span> / <span id="standardTotalPages">1</span> 页
+                                </span>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="standardPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    上一页
+                                </button>
+                                <button id="standardNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    下一页
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 标准表单模态框 -->
+            <div id="standardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold" id="standardModalTitle">添加标准</h3>
+                        <button class="text-gray-500 hover:text-gray-700" onclick="closeStandardModal()" title="关闭">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="standardForm" class="space-y-4">
+                        <input type="hidden" id="standardId" name="standardId">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="standardNum" class="block text-sm font-medium text-gray-700">条文号</label>
+                                <input type="text" id="standardNum" name="standardNum" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardCategory" class="block text-sm font-medium text-gray-700">分类</label>
+                                <input type="text" id="standardCategory" name="standardCategory" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardMajor" class="block text-sm font-medium text-gray-700">专业</label>
+                                <input type="text" id="standardMajor" name="standardMajor" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardScore" class="block text-sm font-medium text-gray-700">分值</label>
+                                <input type="text" id="standardScore" name="standardScore" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                            </div>
+                            <div>
+                                <label for="standardAttribute" class="block text-sm font-medium text-gray-700">属性</label>
+                                <select id="standardAttribute" name="standardAttribute" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                                    <option value="控制项">控制项</option>
+                                    <option value="评分项">评分项</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="standardName" class="block text-sm font-medium text-gray-700">标准名称</label>
+                                <select id="standardName" name="standardName" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                                    <option value="成都市标">成都市标</option>
+                                    <option value="四川省标">四川省标</option>
+                                    <option value="国标">国标</option>
+                                    <!-- 更多选项将通过JavaScript动态加载 -->
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="standardContent" class="block text-sm font-medium text-gray-700">条文内容</label>
+                                <textarea id="standardContent" name="standardContent" rows="3" required
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="standardMaterial" class="block text-sm font-medium text-gray-700">审查材料</label>
+                                <textarea id="standardMaterial" name="standardMaterial" rows="3"
+                                    class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
+                            </div>
+                        </div>
+                        <div class="flex justify-end space-x-3 mt-6">
+                            <button type="button" onclick="closeStandardModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                                取消
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                                确定
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户表单模态框 -->
+    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="modalTitle">添加用户</h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeUserModal()" title="关闭">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="userForm" class="space-y-4">
+                <input type="hidden" id="userId" name="userId">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">邮箱</label>
+                    <input type="email" id="email" name="email" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">密码</label>
+                    <input type="password" id="password" name="password"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                    <p class="mt-1 text-sm text-gray-500" id="passwordHint">编辑时留空表示不修改密码</p>
+                </div>
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700">角色</label>
+                    <select id="role" name="role" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                        <option value="user">普通用户</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeUserModal()"class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                        确定
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 项目表单模态框 -->
+    <div id="projectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="projectModalTitle">添加项目</h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeProjectModal()" title="关闭">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="projectForm" class="space-y-4">
+                <input type="hidden" id="projectId" name="projectId">
+                <div>
+                    <label for="projectName" class="block text-sm font-medium text-gray-700">项目名称</label>
+                    <input type="text" id="projectName" name="projectName" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                </div>
+                <div>
+                    <label for="projectUser" class="block text-sm font-medium text-gray-700">所属用户</label>
+                    <select id="projectUser" name="projectUser" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                        {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.email }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="projectStatus" class="block text-sm font-medium text-gray-700">状态</label>
+                    <select id="projectStatus" name="projectStatus" required
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                        <option value="pending">待处理</option>
+                        <option value="in_progress">进行中</option>
+                        <option value="completed">已完成</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="projectScore" class="block text-sm font-medium text-gray-700">项目分数</label>
+                    <input type="number" id="projectScore" name="projectScore" min="0" max="100"
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                    <p class="mt-1 text-sm text-gray-500">留空表示尚未评分</p>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" onclick="closeProjectModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90">
+                        确定
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 菜单切换功能
+        const menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // 移除所有菜单项的激活状态
+                menuItems.forEach(mi => {
+                    mi.classList.remove('bg-gray-100', 'text-primary');
+                    mi.querySelector('i').classList.add('text-gray-400');
+                });
+                
+                // 添加当前菜单项的激活状态
+                this.classList.add('bg-gray-100', 'text-primary');
+                this.querySelector('i').classList.remove('text-gray-400');
+                
+                // 保存当前激活的菜单项
+                localStorage.setItem('activeMenuItem', this.getAttribute('data-target'));
+                
+                // 根据data-target属性显示对应内容
+                const target = this.getAttribute('data-target');
+                // 隐藏所有内容区域
+                document.querySelectorAll('.content-section').forEach(section => {
+                    section.classList.add('hidden');
+                });
+                // 显示目标内容区域
+                const targetSection = document.querySelector(`#${target}-section`);
+                if (targetSection) {
+                    targetSection.classList.remove('hidden');
+                }
+            });
+        });
+
+        // 恢复上次激活的菜单项，如果没有则激活第一个
+        const activeMenuItem = localStorage.getItem('activeMenuItem');
+        if (activeMenuItem) {
+            const menuItem = document.querySelector(`[data-target="${activeMenuItem}"]`);
+            if (menuItem) {
+                menuItem.click();
+            } else {
+                menuItems[0].click();
+            }
+        } else {
+            menuItems[0].click();
+        }
+
+        // 转换UTC时间为本地时间
+        function convertUTCToLocal() {
+            document.querySelectorAll('td').forEach(td => {
+                const text = td.textContent.trim();
+                if (text.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
+                    const utcDate = new Date(text + ' UTC');
+                    if (!isNaN(utcDate.getTime())) {
+                        td.textContent = utcDate.toLocaleString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            hour12: false
+                        });
+                    }
+                }
+            });
+        }
+
+        // 初始化时转换时间
+        convertUTCToLocal();
+
+        // 添加用户按钮点击事件
+        document.getElementById('addUserBtn').addEventListener('click', function() {
+            openUserModal();
+        });
+
+        // 编辑用户按钮点击事件
+        document.querySelectorAll('.edit-user-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                openUserModal(userId);
+            });
+        });
+
+        // 删除用户按钮点击事件
+        document.querySelectorAll('.delete-user-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                if (confirm('确定要删除此用户吗？')) {
+                    deleteUser(userId);
+                }
+            });
+        });
+
+        // 生成邀请码按钮点击事件
+        document.getElementById('generateInviteCodeBtn').addEventListener('click', function() {
+            generateInviteCode();
+        });
+
+        // 删除邀请码按钮点击事件
+        document.querySelectorAll('.delete-code-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const codeId = this.dataset.codeId;
+                if (confirm('确定要删除此邀请码吗？')) {
+                    deleteInviteCode(codeId);
+                }
+            });
+        });
+
+        // 表单提交事件
+        document.getElementById('userForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userId = document.getElementById('userId').value;
+            if (userId) {
+                updateUser(userId);
+            } else {
+                createUser();
+            }
+        });
+
+        // 分页和搜索功能
+        const itemsPerPage = 15;
+        let currentPage = parseInt(localStorage.getItem('currentUserPage')) || 1;
+        const userRows = document.querySelectorAll('.user-row');
+        const totalPages = Math.ceil(userRows.length / itemsPerPage);
+        
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const startIndexSpan = document.getElementById('startIndex');
+        const endIndexSpan = document.getElementById('endIndex');
+        const totalCountSpan = document.getElementById('totalCount');
+        const currentPageSpan = document.getElementById('currentPage');
+        const totalPagesSpan = document.getElementById('totalPages');
+        const searchInput = document.getElementById('userSearchInput');
+        
+        // 恢复搜索条件
+        const savedSearch = localStorage.getItem('userSearchTerm') || '';
+        searchInput.value = savedSearch;
+        
+        function updatePagination() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const filteredRows = Array.from(userRows).filter(row => {
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                return email.includes(searchTerm) || id.includes(searchTerm);
+            });
+            
+            // 按在线状态对用户进行排序（在线用户优先显示）
+            filteredRows.sort((a, b) => {
+                const statusA = a.querySelector('td:nth-child(4) span').textContent.trim();
+                const statusB = b.querySelector('td:nth-child(4) span').textContent.trim();
+                // 在线状态优先
+                if (statusA === '在线' && statusB !== '在线') return -1;
+                if (statusA !== '在线' && statusB === '在线') return 1;
+                return 0;
+            });
+            
+            const totalFilteredItems = filteredRows.length;
+            const totalFilteredPages = Math.ceil(totalFilteredItems / itemsPerPage);
+            
+            // 确保当前页不超过总页数
+            if (currentPage > totalFilteredPages) {
+                currentPage = totalFilteredPages || 1;
+            }
+            
+            // 更新按钮状态
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalFilteredPages || totalFilteredItems === 0;
+            
+            // 更新显示范围
+            const start = totalFilteredItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+            const end = Math.min(currentPage * itemsPerPage, totalFilteredItems);
+            startIndexSpan.textContent = start;
+            endIndexSpan.textContent = end;
+            totalCountSpan.textContent = totalFilteredItems;
+            
+            // 更新页码显示
+            currentPageSpan.textContent = currentPage;
+            totalPagesSpan.textContent = totalFilteredPages || 1;
+            
+            // 保存当前页码和搜索条件
+            localStorage.setItem('currentUserPage', currentPage);
+            localStorage.setItem('userSearchTerm', searchTerm);
+            
+            // 显示当前页的数据
+            userRows.forEach(row => {
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                const matchesSearch = email.includes(searchTerm) || id.includes(searchTerm);
+                const index = Array.from(userRows).indexOf(row);
+                const isInCurrentPage = index >= (currentPage - 1) * itemsPerPage && index < currentPage * itemsPerPage;
+                
+                row.style.display = matchesSearch && isInCurrentPage ? '' : 'none';
+            });
+        }
+        
+        // 搜索功能
+        searchInput.addEventListener('input', function() {
+            currentPage = 1;
+            updatePagination();
+        });
+        
+        // 上一页
+        prevPageBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                updatePagination();
+            }
+        });
+        
+        // 下一页
+        nextPageBtn.addEventListener('click', function() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const filteredRows = Array.from(userRows).filter(row => {
+                const email = row.querySelector('.user-email').textContent.toLowerCase();
+                const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                return email.includes(searchTerm) || id.includes(searchTerm);
+            });
+            const totalFilteredPages = Math.ceil(filteredRows.length / itemsPerPage);
+            
+            if (currentPage < totalFilteredPages) {
+                currentPage++;
+                updatePagination();
+            }
+        });
+        
+        // 初始化分页
+        updatePagination();
+
+        // 使用AJAX异步刷新用户状态
+        function refreshUserStatus() {
+            fetch('/admin/dashboard', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // 更新用户统计数据
+                const stats = doc.querySelectorAll('.content-section .text-2xl');
+                const currentStats = document.querySelectorAll('.content-section .text-2xl');
+                stats.forEach((stat, index) => {
+                    if (currentStats[index]) {
+                        currentStats[index].textContent = stat.textContent;
+                    }
+                });
+                
+                // 更新用户状态
+                const newRows = doc.querySelectorAll('.user-row');
+                const currentRows = document.querySelectorAll('.user-row');
+                newRows.forEach((newRow, index) => {
+                    if (currentRows[index]) {
+                        const newStatus = newRow.querySelector('td:nth-child(4)').innerHTML;
+                        currentRows[index].querySelector('td:nth-child(4)').innerHTML = newStatus;
+                    }
+                });
+            })
+            .catch(error => console.error('刷新用户状态失败:', error));
+        }
+
+        // 每30秒刷新一次用户状态
+        setInterval(refreshUserStatus, 30000);
+    });
+
+    // 打开用户模态框
+    function openUserModal(userId = null) {
+        const modal = document.getElementById('userModal');
+        const form = document.getElementById('userForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const passwordHint = document.getElementById('passwordHint');
+        const passwordInput = document.getElementById('password');
+
+        // 重置表单
+        form.reset();
+        document.getElementById('userId').value = '';
+
+        if (userId) {
+            modalTitle.textContent = '编辑用户';
+            passwordHint.classList.remove('hidden');
+            passwordInput.required = false;
+            // 获取用户数据
+            fetch(`/admin/api/users/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('userId').value = data.id;
+                    document.getElementById('email').value = data.email;
+                    document.getElementById('role').value = data.role;
+                });
+        } else {
+            modalTitle.textContent = '添加用户';
+            passwordHint.classList.add('hidden');
+            passwordInput.required = true;
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    // 关闭用户模态框
+    function closeUserModal() {
+        document.getElementById('userModal').classList.add('hidden');
+    }
+
+    // 创建用户
+    function createUser() {
+        const formData = {
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            role: document.getElementById('role').value
+        };
+
+        fetch('/admin/api/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('用户创建成功');
+                location.reload();
+            } else {
+                alert(data.message || '创建失败');
+            }
+        })
+        .catch(error => {
+            alert('创建失败: ' + error.message);
+        });
+    }
+
+    // 更新用户
+    function updateUser(userId) {
+        const formData = {
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            role: document.getElementById('role').value
+        };
+
+        fetch(`/admin/api/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('用户更新成功');
+                location.reload();
+            } else {
+                alert(data.message || '更新失败');
+            }
+        })
+        .catch(error => {
+            alert('更新失败: ' + error.message);
+        });
+    }
+
+    // 删除用户
+    function deleteUser(userId) {
+        fetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('用户删除成功');
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('删除用户时出错:', error);
+            alert('删除失败: ' + error.message);
+        });
+    }
+
+    // 生成邀请码
+    function generateInviteCode() {
+        fetch('/admin/api/invite-codes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('服务器返回了非JSON格式的响应');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('邀请码生成成功');
+                // 创建新的表格行
+                const tbody = document.querySelector('#invite-code-management-section table tbody');
+                const tr = document.createElement('tr');
+                const now = new Date().toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${data.code}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">未使用</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">0</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">10</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${now}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-red-600 hover:text-red-900 delete-code-btn" data-code-id="${data.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.insertBefore(tr, tbody.firstChild);
+            } else {
+                alert(data.message || '生成失败');
+            }
+        })
+        .catch(error => {
+            console.error('生成邀请码错误:', error);
+            alert('生成失败: ' + (error.message || '服务器响应格式错误'));
+        });
+    }
+
+    // 删除邀请码
+    function deleteInviteCode(codeId) {
+        fetch(`/admin/api/invite-codes/${codeId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('邀请码删除成功');
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('删除邀请码时出错:', error);
+            alert('删除失败: ' + error.message);
+        });
+    }
+
+    // 项目管理相关功能
+    document.addEventListener('DOMContentLoaded', function() {
+        // 添加项目按钮点击事件
+        const addProjectBtn = document.getElementById('addProjectBtn');
+        if (addProjectBtn) {
+            addProjectBtn.addEventListener('click', function() {
+                openProjectModal();
+            });
+        }
+
+        // 编辑项目按钮点击事件
+        document.querySelectorAll('.edit-project-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const projectId = this.dataset.projectId;
+                openProjectModal(projectId);
+            });
+        });
+
+        // 查看项目按钮点击事件
+        document.querySelectorAll('.view-project-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const projectId = this.dataset.projectId;
+                viewProject(projectId);
+            });
+        });
+
+        // 删除项目按钮点击事件
+        document.querySelectorAll('.delete-project-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const projectId = this.dataset.projectId;
+                if (confirm('确定要删除此项目吗？')) {
+                    deleteProject(projectId);
+                }
+            });
+        });
+
+        // 项目表单提交事件
+        const projectForm = document.getElementById('projectForm');
+        if (projectForm) {
+            projectForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const projectId = document.getElementById('projectId').value;
+                if (projectId) {
+                    updateProject(projectId);
+                } else {
+                    createProject();
+                }
+            });
+        }
+
+        // 项目分页和搜索功能
+        const itemsPerPage = 15;
+        let currentProjectPage = parseInt(localStorage.getItem('currentProjectPage')) || 1;
+        const projectRows = document.querySelectorAll('.project-row');
+        
+        if (projectRows.length > 0) {
+            const totalProjectPages = Math.ceil(projectRows.length / itemsPerPage);
+            
+            const prevProjectPageBtn = document.getElementById('projectPrevPage');
+            const nextProjectPageBtn = document.getElementById('projectNextPage');
+            const startProjectIndexSpan = document.getElementById('projectStartIndex');
+            const endProjectIndexSpan = document.getElementById('projectEndIndex');
+            const totalProjectCountSpan = document.getElementById('projectTotalCount');
+            const currentProjectPageSpan = document.getElementById('projectCurrentPage');
+            const totalProjectPagesSpan = document.getElementById('projectTotalPages');
+            const projectSearchInput = document.getElementById('projectSearchInput');
+            
+            // 恢复搜索条件
+            const savedProjectSearch = localStorage.getItem('projectSearchTerm') || '';
+            if (projectSearchInput) {
+                projectSearchInput.value = savedProjectSearch;
+            }
+            
+            function updateProjectPagination() {
+                if (!projectSearchInput) return;
+                
+                const searchTerm = projectSearchInput.value.toLowerCase().trim();
+                const filteredRows = Array.from(projectRows).filter(row => {
+                    const name = row.querySelector('.project-name').textContent.toLowerCase();
+                    const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                    return name.includes(searchTerm) || id.includes(searchTerm);
+                });
+                
+                const totalFilteredItems = filteredRows.length;
+                const totalFilteredPages = Math.ceil(totalFilteredItems / itemsPerPage);
+                
+                // 确保当前页不超过总页数
+                if (currentProjectPage > totalFilteredPages) {
+                    currentProjectPage = totalFilteredPages || 1;
+                }
+                
+                // 更新按钮状态
+                if (prevProjectPageBtn) {
+                    prevProjectPageBtn.disabled = currentProjectPage === 1;
+                }
+                if (nextProjectPageBtn) {
+                    nextProjectPageBtn.disabled = currentProjectPage === totalFilteredPages || totalFilteredItems === 0;
+                }
+                
+                // 更新显示范围
+                const start = totalFilteredItems > 0 ? (currentProjectPage - 1) * itemsPerPage + 1 : 0;
+                const end = Math.min(currentProjectPage * itemsPerPage, totalFilteredItems);
+                
+                if (startProjectIndexSpan) startProjectIndexSpan.textContent = start;
+                if (endProjectIndexSpan) endProjectIndexSpan.textContent = end;
+                if (totalProjectCountSpan) totalProjectCountSpan.textContent = totalFilteredItems;
+                
+                // 更新页码显示
+                if (currentProjectPageSpan) currentProjectPageSpan.textContent = currentProjectPage;
+                if (totalProjectPagesSpan) totalProjectPagesSpan.textContent = totalFilteredPages || 1;
+                
+                // 保存当前页码和搜索条件
+                localStorage.setItem('currentProjectPage', currentProjectPage);
+                localStorage.setItem('projectSearchTerm', searchTerm);
+                
+                // 显示当前页的数据
+                projectRows.forEach(row => {
+                    const name = row.querySelector('.project-name').textContent.toLowerCase();
+                    const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                    const matchesSearch = name.includes(searchTerm) || id.includes(searchTerm);
+                    const index = Array.from(projectRows).indexOf(row);
+                    const isInCurrentPage = index >= (currentProjectPage - 1) * itemsPerPage && index < currentProjectPage * itemsPerPage;
+                    
+                    row.style.display = matchesSearch && isInCurrentPage ? '' : 'none';
+                });
+            }
+            
+            // 搜索功能
+            if (projectSearchInput) {
+                projectSearchInput.addEventListener('input', function() {
+                    currentProjectPage = 1;
+                    updateProjectPagination();
+                });
+            }
+            
+            // 上一页
+            if (prevProjectPageBtn) {
+                prevProjectPageBtn.addEventListener('click', function() {
+                    if (currentProjectPage > 1) {
+                        currentProjectPage--;
+                        updateProjectPagination();
+                    }
+                });
+            }
+            
+            // 下一页
+            if (nextProjectPageBtn) {
+                nextProjectPageBtn.addEventListener('click', function() {
+                    const searchTerm = projectSearchInput.value.toLowerCase().trim();
+                    const filteredRows = Array.from(projectRows).filter(row => {
+                        const name = row.querySelector('.project-name').textContent.toLowerCase();
+                        const id = row.querySelector('td:first-child').textContent.toLowerCase();
+                        return name.includes(searchTerm) || id.includes(searchTerm);
+                    });
+                    const totalFilteredPages = Math.ceil(filteredRows.length / itemsPerPage);
+                    
+                    if (currentProjectPage < totalFilteredPages) {
+                        currentProjectPage++;
+                        updateProjectPagination();
+                    }
+                });
+            }
+            
+            // 初始化分页
+            updateProjectPagination();
+        }
+    });
+
+    // 打开项目模态框
+    function openProjectModal(projectId = null) {
+        const modal = document.getElementById('projectModal');
+        const form = document.getElementById('projectForm');
+        const modalTitle = document.getElementById('projectModalTitle');
+
+        // 重置表单
+        form.reset();
+        document.getElementById('projectId').value = '';
+
+        if (projectId) {
+            modalTitle.textContent = '编辑项目';
+            // 获取项目数据
+            fetch(`/admin/api/projects/${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('projectId').value = data.id;
+                    document.getElementById('projectName').value = data.name;
+                    document.getElementById('projectUser').value = data.user_id;
+                    document.getElementById('projectStatus').value = data.status;
+                    if (data.total_score) {
+                        document.getElementById('projectScore').value = data.total_score;
+                    }
+                });
+        } else {
+            modalTitle.textContent = '添加项目';
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    // 关闭项目模态框
+    function closeProjectModal() {
+        document.getElementById('projectModal').classList.add('hidden');
+    }
+
+    // 查看项目详情
+    function viewProject(projectId) {
+        // 跳转到项目详情页面
+        window.location.href = `/admin/projects/${projectId}`;
+    }
+
+    // 创建项目
+    function createProject() {
+        const formData = {
+            name: document.getElementById('projectName').value,
+            user_id: document.getElementById('projectUser').value,
+            status: document.getElementById('projectStatus').value,
+            total_score: document.getElementById('projectScore').value || null
+        };
+
+        fetch('/admin/api/projects', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('项目创建成功');
+                location.reload();
+            } else {
+                alert(data.message || '创建失败');
+            }
+        })
+        .catch(error => {
+            alert('创建失败: ' + error.message);
+        });
+    }
+
+    // 更新项目
+    function updateProject(projectId) {
+        const formData = {
+            name: document.getElementById('projectName').value,
+            user_id: document.getElementById('projectUser').value,
+            status: document.getElementById('projectStatus').value,
+            total_score: document.getElementById('projectScore').value || null
+        };
+
+        fetch(`/admin/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('项目更新成功');
+                location.reload();
+            } else {
+                alert(data.message || '更新失败');
+            }
+        })
+        .catch(error => {
+            alert('更新失败: ' + error.message);
+        });
+    }
+
+    // 删除项目
+    function deleteProject(projectId) {
+        fetch(`/admin/api/projects/${projectId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('项目删除成功');
+                location.reload();
+            } else {
+                alert(data.message || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('删除项目时出错:', error);
+            alert('删除失败: ' + error.message);
+        });
+    }
+
+    // 标准管理相关功能
+    document.addEventListener('DOMContentLoaded', function() {
+        let currentStandardPage = 1;
+        const itemsPerPage = 15;
+        let totalStandardPages = 0;
+        let totalStandards = 0;
+        let allStandards = []; // 用于存储所有标准，以便于过滤和分页
+        
+        // 初始化标准管理页面
+        function initStandardManagement() {
+            // 变量定义
+            const standardSearchInput = document.getElementById('standardSearchInput');
+            const standardMajorFilter = document.getElementById('standardMajorFilter');
+            const standardNameFilter = document.getElementById('standardNameFilter');
+            const standardAttributeFilter = document.getElementById('standardAttributeFilter');
+            const standardTableBody = document.getElementById('standardTableBody');
+            const addStandardBtn = document.getElementById('addStandardBtn');
+            const standardForm = document.getElementById('standardForm');
+            const standardModal = document.getElementById('standardModal');
+            const standardPrevPage = document.getElementById('standardPrevPage');
+            const standardNextPage = document.getElementById('standardNextPage');
+            const standardStartIndex = document.getElementById('standardStartIndex');
+            const standardEndIndex = document.getElementById('standardEndIndex');
+            const standardTotalCount = document.getElementById('standardTotalCount');
+            const standardCurrentPage = document.getElementById('standardCurrentPage');
+            const standardTotalPages = document.getElementById('standardTotalPages');
+            const importStandardFile = document.getElementById('importStandardFile');
+            
+            // 状态管理
+            let currentPage = 1;
+            let totalPages = 1;
+            let perPage = 20;
+            let searchQuery = '';
+            let standardName = '';
+            let specialty = '';
+            let attribute = '';
+            
+            // 加载标准名称列表
+            function loadStandardNames() {
+                fetch('/admin/api/standards/names')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 重置标准名称筛选器
+                            standardNameFilter.innerHTML = '<option value="">所有标准</option>';
+                            
+                            // 添加标准名称选项
+                            data.standard_names.forEach(name => {
+                                const option = document.createElement('option');
+                                option.value = name;
+                                option.textContent = name;
+                                standardNameFilter.appendChild(option);
+                            });
+                            
+                            // 同时更新添加/编辑表单中的标准名称选项
+                            const standardNameSelect = document.getElementById('standardName');
+                            standardNameSelect.innerHTML = ''; // 清空现有选项
+                            
+                            // 添加默认选项
+                            const defaultOptions = [
+                                {value: "成都市标", text: "成都市标"},
+                                {value: "四川省标", text: "四川省标"},
+                                {value: "国标", text: "国标"}
+                            ];
+                            
+                            defaultOptions.forEach(opt => {
+                                const option = document.createElement('option');
+                                option.value = opt.value;
+                                option.textContent = opt.text;
+                                standardNameSelect.appendChild(option);
+                            });
+                            
+                            // 添加从API获取的其他选项
+                            data.standard_names.forEach(name => {
+                                // 检查是否已存在该选项
+                                if (!defaultOptions.some(opt => opt.value === name)) {
+                                    const option = document.createElement('option');
+                                    option.value = name;
+                                    option.textContent = name;
+                                    standardNameSelect.appendChild(option);
+                                }
+                            });
+                } else {
+                            console.error('加载标准名称失败:', data.message || '未知错误');
+                            standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准名称失败</td></tr>';
+                }
+            })
+            .catch(error => {
+                        console.error('加载标准名称请求失败:', error);
+                        standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准名称请求失败</td></tr>';
+                    });
+            }
+            
+            // 加载标准数据
+        function loadStandards() {
+                // 显示加载状态
+                standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center">加载中...</td></tr>';
+                
+                // 构建查询参数
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: perPage
+                });
+                
+                if (searchQuery) params.append('query', searchQuery);
+                if (standardName) params.append('standard_name', standardName);
+                if (specialty) params.append('specialty', specialty);
+                if (attribute) params.append('attribute', attribute);
+                
+                // 发起API请求
+                fetch(`/admin/api/standards?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                            // 更新分页信息
+                            totalPages = data.pagination.pages;
+                            currentPage = data.pagination.page;
+                            
+                            const start = (currentPage - 1) * perPage + 1;
+                            const end = Math.min(start + data.standards.length - 1, data.pagination.total);
+                            
+                            standardStartIndex.textContent = data.standards.length > 0 ? start : 0;
+                            standardEndIndex.textContent = end;
+                            standardTotalCount.textContent = data.pagination.total;
+                            standardCurrentPage.textContent = currentPage;
+                            standardTotalPages.textContent = totalPages;
+                            
+                            // 更新分页按钮状态
+                            standardPrevPage.disabled = currentPage <= 1;
+                            standardNextPage.disabled = currentPage >= totalPages;
+                            
+                            // 清空并填充表格
+                            standardTableBody.innerHTML = '';
+                            
+                            if (data.standards.length === 0) {
+                                standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center">没有找到标准数据</td></tr>';
+                return;
+            }
+            
+                            data.standards.forEach(standard => {
+                                const row = document.createElement('tr');
+                                row.className = 'hover:bg-gray-50';
+                                
+                                row.innerHTML = `
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.序号 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.条文号 || '-'}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-900 max-w-xs" title="${standard.条文内容}">${truncateText(standard.条文内容, 20)}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.分类 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.专业 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.分值 || '-'}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                            ${standard.属性 === '控制项' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">
+                                            ${standard.属性 || '-'}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.标准名称 || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button class="text-blue-600 hover:text-blue-900 edit-standard-btn" data-id="${standard.序号}" title="编辑标准">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                                        <button class="text-red-600 hover:text-red-900 delete-standard-btn" data-id="${standard.序号}" title="删除标准">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                
+                                standardTableBody.appendChild(row);
+                            });
+                            
+                            // 绑定编辑和删除按钮事件
+            document.querySelectorAll('.edit-standard-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                                    const standardId = this.getAttribute('data-id');
+                                    editStandard(standardId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-standard-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                                    const standardId = this.getAttribute('data-id');
+                        deleteStandard(standardId);
+                                });
+                            });
+                        } else {
+                            console.error('加载标准失败:', data.message || '未知错误');
+                            standardTableBody.innerHTML = '<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准失败</td></tr>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载标准请求失败:', error);
+                        standardTableBody.innerHTML = `<tr><td colspan="9" class="px-6 py-4 text-center text-red-500">加载标准请求失败: ${error.message}</td></tr>`;
+                    });
+            }
+            
+            // 截断长文本并添加省略号
+            function truncateText(text, maxLength) {
+                if (!text) return '-';
+                if (text.length <= maxLength) return text;
+                return text.substring(0, maxLength) + '...';
+            }
+            
+            // 打开标准添加/编辑模态框
+            function openStandardModal(isEdit = false, standardData = null) {
+                const standardModalTitle = document.getElementById('standardModalTitle');
+                const standardId = document.getElementById('standardId');
+                const standardNum = document.getElementById('standardNum');
+                const standardCategory = document.getElementById('standardCategory');
+                const standardMajor = document.getElementById('standardMajor');
+                const standardScore = document.getElementById('standardScore');
+                const standardContent = document.getElementById('standardContent');
+                const standardMaterial = document.getElementById('standardMaterial');
+                const standardAttribute = document.getElementById('standardAttribute');
+                const standardName = document.getElementById('standardName');
+                
+                // 设置模态框标题
+                standardModalTitle.textContent = isEdit ? '编辑标准' : '添加标准';
+            
+            // 重置表单
+                standardForm.reset();
+                
+                // 如果是编辑，填充表单数据
+                if (isEdit && standardData) {
+                    standardId.value = standardData.序号;
+                    standardNum.value = (standardData.条文号 || '').trim();
+                    standardCategory.value = (standardData.分类 || '').trim();
+                    standardMajor.value = (standardData.专业 || '').trim();
+                    standardScore.value = (standardData.分值 || '').trim();
+                    standardContent.value = (standardData.条文内容 || '').trim();
+                    standardMaterial.value = (standardData.审查材料 || '').trim();
+                    standardAttribute.value = (standardData.属性 || '控制项').trim();
+                    standardName.value = (standardData.标准名称 || '成都市标').trim();
+                    
+                    // 控制台打印数据，帮助调试
+                    console.log('编辑标准数据:', standardData);
+            } else {
+                    // 新增时清空ID
+                    standardId.value = '';
+                }
+                
+                // 显示模态框
+                standardModal.classList.remove('hidden');
+        }
+        
+        // 关闭标准模态框
+        function closeStandardModal() {
+                standardModal.classList.add('hidden');
+            }
+            
+            // 编辑标准
+            function editStandard(id) {
+                // 显示加载状态
+                Swal.fire({
+                    title: '加载中...',
+                    text: '正在获取标准数据',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // 发起API请求获取标准详情
+                fetch(`/admin/api/standards/${id}`, {
+                    method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                    }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                    Swal.close();
+                if (data.success) {
+                        // 使用后端返回的标准数据
+                        const standardData = data.standard;
+                        if (standardData) {
+                            console.log('获取到的标准数据:', standardData);
+                            openStandardModal(true, standardData);
+                } else {
+                            Swal.fire('错误', '未找到标准数据', 'error');
+                        }
+                    } else {
+                        Swal.fire('错误', `获取标准详情失败: ${data.message || '未知错误'}`, 'error');
+                }
+            })
+            .catch(error => {
+                    console.error('获取标准详情失败:', error);
+                    
+                    // 如果通过ID获取失败，尝试从列表中获取
+                    fetch(`/admin/api/standards?page=1&per_page=1000`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                            Swal.close();
+                if (data.success) {
+                                // 查找对应ID的标准
+                                const standardData = data.standards.find(item => item.序号 == id);
+                                if (standardData) {
+                                    console.log('从列表中找到的标准数据:', standardData);
+                                    openStandardModal(true, standardData);
+                } else {
+                                    Swal.fire('错误', '未找到标准数据', 'error');
+                                }
+                            } else {
+                                Swal.fire('错误', `获取标准详情失败: ${data.message || '未知错误'}`, 'error');
+                            }
+                        })
+                        .catch(fallbackError => {
+                            console.error('备用方法获取标准详情失败:', fallbackError);
+                            Swal.fire('错误', `获取标准详情失败: ${error.message}`, 'error');
+                        });
+            });
+        }
+        
+        // 删除标准
+            function deleteStandard(id) {
+                Swal.fire({
+                    title: '确定要删除吗？',
+                    text: '此操作不可恢复！',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: '确定删除',
+                    cancelButtonText: '取消'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // 发起API请求
+                        Swal.fire({
+                            title: '删除中...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+                        
+                        fetch(`/admin/api/standards/${id}`, {
+                method: 'DELETE',
+                headers: {
+                                'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                                Swal.fire('成功', '标准删除成功', 'success');
+                                loadStandards(); // 重新加载列表
+                } else {
+                                Swal.fire('错误', `删除失败: ${data.message || '未知错误'}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('删除标准失败:', error);
+                            Swal.fire('错误', `删除失败: ${error.message}`, 'error');
+                        });
+                    }
+            });
+        }
+        
+        // 导入标准
+        function importStandards(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+                
+                Swal.fire({
+                    title: '导入中...',
+                    text: '正在导入标准数据，请稍候',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            
+            fetch('/admin/api/standards/import', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                        Swal.fire('成功', `导入成功, 共导入 ${data.imported_count || 0} 条记录`, 'success');
+                        loadStandards(); // 重新加载列表
+                } else {
+                        Swal.fire('错误', `导入失败: ${data.message || '未知错误'}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('导入标准失败:', error);
+                    Swal.fire('错误', `导入失败: ${error.message}`, 'error');
+            });
+            
+            // 清空文件输入框，以便于下次选择同一文件
+                importStandardFile.value = '';
+            }
+            
+            // 分页按钮事件
+            standardPrevPage.addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadStandards();
+                }
+            });
+            
+            standardNextPage.addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadStandards();
+                }
+            });
+            
+            // 搜索和筛选事件
+            let searchTimeout;
+            standardSearchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchQuery = this.value.trim();
+                    currentPage = 1;
+                    loadStandards();
+                }, 500);
+            });
+            
+            standardMajorFilter.addEventListener('change', function() {
+                specialty = this.value;
+                currentPage = 1;
+                loadStandards();
+            });
+            
+            standardNameFilter.addEventListener('change', function() {
+                standardName = this.value;
+                currentPage = 1;
+                loadStandards();
+            });
+            
+            standardAttributeFilter.addEventListener('change', function() {
+                attribute = this.value;
+                currentPage = 1;
+                loadStandards();
+            });
+            
+            // 添加标准按钮点击事件
+            addStandardBtn.addEventListener('click', function() {
+                openStandardModal(false);
+            });
+            
+            // 表单提交事件
+            standardForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const standardId = document.getElementById('standardId').value;
+                const isEdit = standardId !== '';
+                
+                // 构建表单数据
+                const formData = {
+                    '条文号': document.getElementById('standardNum').value,
+                    '分类': document.getElementById('standardCategory').value,
+                    '专业': document.getElementById('standardMajor').value,
+                    '条文内容': document.getElementById('standardContent').value,
+                    '分值': document.getElementById('standardScore').value,
+                    '审查材料': document.getElementById('standardMaterial').value,
+                    '属性': document.getElementById('standardAttribute').value,
+                    '标准名称': document.getElementById('standardName').value
+                };
+                
+                // 确定API端点和方法
+                const url = isEdit ? `/admin/api/standards/${standardId}` : '/admin/api/standards';
+                const method = isEdit ? 'PUT' : 'POST';
+                
+                // 显示加载状态
+                Swal.fire({
+                    title: isEdit ? '更新中...' : '添加中...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // 发起API请求
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(formData),
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误，状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('成功', isEdit ? '标准更新成功' : '标准添加成功', 'success');
+                        closeStandardModal();
+                        loadStandards(); // 重新加载列表
+                    } else {
+                        Swal.fire('错误', `${isEdit ? '更新' : '添加'}失败: ${data.message || '未知错误'}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error(isEdit ? '更新标准失败:' : '添加标准失败:', error);
+                    Swal.fire('错误', `${isEdit ? '更新' : '添加'}失败: ${error.message}`, 'error');
+                });
+            });
+            
+            // 导入文件事件
+            importStandardFile.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    importStandards(file);
+                }
+            });
+            
+            // 初始化
+            loadStandardNames();
+            loadStandards();
+            
+            // 暴露全局函数
+        window.openStandardModal = openStandardModal;
+        window.closeStandardModal = closeStandardModal;
+        }
+        
+        // 为标准管理菜单项添加点击事件
+        document.querySelector('[data-target="standard-management"]').addEventListener('click', function() {
+            initStandardManagement();
+        });
+        
+        // 如果当前活动菜单是标准管理，则初始化标准管理
+        if (localStorage.getItem('activeMenuItem') === 'standard-management') {
+            initStandardManagement();
+        }
+    });
+    </script>
+</body>
+</html>

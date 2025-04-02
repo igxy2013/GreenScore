@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能绿建评价系统-用户使用指南</title>
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='image/favicon.ico') }}" type="image/x-icon">
+    
+    <!-- Remixicon图标库 -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.7.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <!-- Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+            scroll-behavior: smooth;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #3176FF 0%, #4FD1C5 100%);
+            color: white;
+            padding: 2rem 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+        
+        .guide-section {
+            margin-bottom: 2.5rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .guide-section:last-child {
+            border-bottom: none;
+        }
+        
+        .guide-section h2 {
+            color: #3176FF;
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3176FF;
+            display: inline-block;
+        }
+        
+        .guide-section h3 {
+            color: #2d3748;
+            font-size: 1.35rem;
+            font-weight: bold;
+            margin-top: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .guide-section p {
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+        
+        .guide-section ul {
+            list-style-type: disc;
+            padding-left: 2.5rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .guide-section ul li {
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+        
+        .guide-section ol {
+            list-style-type: decimal;
+            padding-left: 2.5rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .guide-section ol li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .toc {
+            background-color: #f9fafb;
+            padding: 1.5rem 2rem;
+            border-radius: 0.75rem;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3176FF;
+        }
+        
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+            column-count: 2;
+        }
+        
+        @media (max-width: 768px) {
+            .toc ul {
+                column-count: 1;
+            }
+        }
+        
+        .toc ul li {
+            margin-bottom: 0.75rem;
+            break-inside: avoid-column;
+        }
+        
+        .toc a {
+            color: #3176FF;
+            text-decoration: none;
+            display: inline-block;
+            padding: 0.25rem 0;
+            transition: all 0.2s;
+        }
+        
+        .toc a:hover {
+            color: #4FD1C5;
+            transform: translateX(3px);
+        }
+        
+        .content-box {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+            margin-top: -3rem;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+        
+        .footer {
+            background-color: #2d3748;
+            color: white;
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-img {
+            width: 50px;
+            height: 50px;
+        }
+
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: #3176FF;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            transform: translateY(20px);
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .back-to-top:hover {
+            background-color: #4FD1C5;
+        }
+
+        /* 美化列表项，添加图标 */
+        .guide-section ul li::before {
+            content: "•";
+            color: #3176FF;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .note-box {
+            background-color: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0.5rem;
+        }
+
+        .warning-box {
+            background-color: #fffaf0;
+            border-left: 4px solid #ed8936;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0.5rem;
+        }
+
+        /* 左侧悬浮导航样式 */
+        .side-nav {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            max-width: 250px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 100;
+            transition: all 0.3s ease;
+            display: none; /* 移动端默认隐藏 */
+        }
+        
+        @media (min-width: 1200px) {
+            .side-nav {
+                display: block;
+            }
+            
+            .content-box {
+                margin-left: 260px;
+                max-width: calc(1200px - 260px);
+            }
+            
+            .container {
+                max-width: 1400px;
+            }
+        }
+        
+        .side-nav-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #3176FF;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3176FF;
+        }
+        
+        .side-nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .side-nav li {
+            margin-bottom: 0.75rem;
+        }
+        
+        .side-nav a {
+            display: block;
+            padding: 0.5rem 0.75rem;
+            color: #555;
+            text-decoration: none;
+            font-size: 0.95rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .side-nav a:hover, .side-nav a.active {
+            background-color: #f0f7ff;
+            color: #3176FF;
+            padding-left: 1rem;
+        }
+        
+        .side-nav-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: #3176FF;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 101;
+            display: none;
+        }
+        
+        @media (max-width: 1199px) {
+            .side-nav-toggle {
+                display: flex;
+            }
+            
+            .side-nav.mobile-active {
+                display: block;
+                left: 20px;
+                max-width: 280px;
+            }
+        }
+
+        /* 右上角返回按钮 */
+        .back-to-project {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(49, 118, 255, 0.9);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .back-to-project:hover {
+            background-color: #4FD1C5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .back-to-project span {
+                display: none;
+            }
+            
+            .back-to-project {
+                width: 40px;
+                height: 40px;
+                justify-content: center;
+                padding: 0;
+            }
+            
+            .back-to-project i {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面头部 -->
+    <header class="header">
+        <div class="container">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="logo-img">
+                <h1 class="text-3xl font-bold">智能绿建评价系统</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- 右上角返回项目管理按钮 -->
+    <a href="{{ url_for('project_management') }}" class="back-to-project" title="返回项目管理" style="text-decoration: none;">
+        <i class="fas fa-arrow-left mr-2"></i>
+        <span>返回项目管理</span>
+    </a>
+
+    <!-- 左侧悬浮导航 -->
+    <div class="side-nav">
+        <div class="side-nav-title">章节导航</div>
+        <ul>
+            <li><a href="#overview">一、系统概述</a></li>
+            <li><a href="#login">二、登录与注册</a></li>
+            <li><a href="#project-management">三、项目管理</a></li>
+            <li><a href="#standard-scoring">四、标准评分</a></li>
+            <li><a href="#report-export">五、报告导出</a></li>
+            <li><a href="#navigation">六、界面导航</a></li>
+            <li><a href="#faq">七、常见问题</a></li>
+            <li><a href="#notes">八、注意事项</a></li>
+            <li><a href="#contact">九、联系支持</a></li>
+        </ul>
+    </div>
+    
+    <!-- 移动端显示/隐藏导航按钮 -->
+    <div class="side-nav-toggle" id="sideNavToggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="container">
+        <div class="content-box">
+            <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">用户使用指南</h1>
+            
+            <!-- 目录 -->
+            <div class="toc">
+                <h3 class="text-xl font-semibold mb-4">目录</h3>
+                <ul>
+                    <li><a href="#overview"><i class="fas fa-info-circle mr-2"></i>一、系统概述</a></li>
+                    <li><a href="#login"><i class="fas fa-sign-in-alt mr-2"></i>二、登录与注册</a></li>
+                    <li><a href="#project-management"><i class="fas fa-tasks mr-2"></i>三、项目管理</a></li>
+                    <li><a href="#standard-scoring"><i class="fas fa-star-half-alt mr-2"></i>四、标准评分</a></li>
+                    <li><a href="#report-export"><i class="fas fa-file-export mr-2"></i>五、报告导出</a></li>
+                    <li><a href="#navigation"><i class="fas fa-compass mr-2"></i>六、界面导航</a></li>
+                    <li><a href="#faq"><i class="fas fa-question-circle mr-2"></i>七、常见问题</a></li>
+                    <li><a href="#notes"><i class="fas fa-exclamation-circle mr-2"></i>八、注意事项</a></li>
+                    <li><a href="#contact"><i class="fas fa-headset mr-2"></i>九、联系支持</a></li>
+                </ul>
+            </div>
+            
+            <!-- 系统概述 -->
+            <section id="overview" class="guide-section">
+                <h2>一、系统概述</h2>
+                <p>智能绿建评价系统是一个专业的绿色建筑评估工具，可帮助您根据不同标准（如成都市标、四川省标或国标）对建筑项目进行绿色建筑评价。系统支持项目信息管理、条文评分、生成评估报告等功能。</p>
+                <div class="note-box">
+                    <p><strong>🔔 系统亮点：</strong>本系统支持多种评价标准，能够灵活适应不同地区不同类型的绿色建筑评价需求，为设计、施工和评估提供全面支持。</p>
+                </div>
+            </section>
+            
+            <!-- 登录与注册 -->
+            <section id="login" class="guide-section">
+                <h2>二、登录与注册</h2>
+                
+                <h3>1. 登录系统</h3>
+                <ul>
+                    <li>在浏览器中输入系统网址：acbim.cn</li>
+                    <li>在登录页面输入您的用户名和密码</li>
+                    <li>点击"登录"按钮进入系统</li>
+                </ul>
+                
+                <h3>2. 注册账号</h3>
+                <ul>
+                    <li>如果您是新用户，请点击登录页面的"注册"链接</li>
+                    <li>填写必要的个人信息和邀请码（需要管理员提供）</li>
+                    <li>点击"注册"按钮完成账号创建</li>
+                </ul>
+                
+                <h3>3. 忘记密码</h3>
+                <ul>
+                    <li>如果忘记密码，请点击登录页面的"忘记密码"链接</li>
+                    <li>按照页面提示进行密码重置操作</li>
+                </ul>
+            </section>
+            
+            <!-- 项目管理 -->
+            <section id="project-management" class="guide-section">
+                <h2>三、项目管理</h2>
+                
+                <h3>1. 创建新项目</h3>
+                <ul>
+                    <li>登录后，进入"项目管理"页面</li>
+                    <li>点击"新建项目"按钮，系统将弹出项目创建对话框</li>
+                    <li>填写项目基本信息，包括：
+                        <ul>
+                            <li>项目名称（必填）</li>
+                            <li>评价标准（必填，选择"成都市标"、"四川省标"或"国标"）</li>
+                            <li>建筑类型（必填，选择"居住建筑"、"公共建筑"或"居住+公共建筑"）</li>
+                            <li>目标星级（必填，选择"基本级"、"一星级"、"二星级"或"三星级"）</li>
+                        </ul>
+                    </li>
+                    <li>点击"创建项目"按钮完成项目创建</li>
+                </ul>
+                
+                <h3>2. 查看项目列表</h3>
+                <ul>
+                    <li>在"项目管理"页面可以查看您创建的所有项目</li>
+                    <li>可以通过搜索框快速查找项目</li>
+                    <li>点击项目名称进入项目详情页</li>
+                </ul>
+                
+                <h3>3. 编辑项目信息</h3>
+                <ul>
+                    <li>在项目详情页点击"项目信息"选项</li>
+                    <li>修改项目相关信息，如项目名称、项目编号、建设单位、设计单位、项目地点等</li>
+                    <li>点击"保存项目信息"按钮保存修改</li>
+                </ul>
+                
+                <h3>4. 删除项目</h3>
+                <ul>
+                    <li>在项目列表中找到要删除的项目</li>
+                    <li>点击项目行末尾的"删除"按钮</li>
+                    <li>确认删除操作</li>
+                </ul>
+                <div class="warning-box">
+                    <p><strong>⚠️ 注意：</strong>项目删除后将无法恢复，请谨慎操作！</p>
+                </div>
+            </section>
+            
+            <!-- 标准评分 -->
+            <section id="standard-scoring" class="guide-section">
+                <h2>四、标准评分</h2>
+                
+                <h3>1. 基本级评分</h3>
+                <p>系统提供以下专业的基本级评分：</p>
+                <ul>
+                    <li>建筑</li>
+                    <li>结构</li>
+                    <li>给排水</li>
+                    <li>电气</li>
+                    <li>暖通</li>
+                    <li>景观</li>
+                    <li>环境健康与节能（仅四川省标）</li>
+                </ul>
+                
+                <p>操作步骤：</p>
+                <ul>
+                    <li>进入项目详情页面</li>
+                    <li>在左侧菜单中选择"基本级"下的相应专业</li>
+                    <li>系统将显示该专业下所有条文</li>
+                    <li>对每条条文进行评分：
+                        <ul>
+                            <li>选择"是否达标"</li>
+                            <li>输入具体得分</li>
+                            <li>填写技术措施（可选）</li>
+                        </ul>
+                    </li>
+                    <li>评分会实时保存</li>
+                </ul>
+                
+                <h3>2. 提高级评分</h3>
+                <p>系统提供与基本级相同专业的提高级评分，操作步骤与基本级相同：</p>
+                <ul>
+                    <li>在左侧菜单中选择"提高级"下的相应专业</li>
+                    <li>按条文进行评分</li>
+                    <li>系统自动保存评分结果</li>
+                </ul>
+                
+                <h3>3. 计算评分</h3>
+                <p>完成各专业评分后，您可以计算项目总评分：</p>
+                <ul>
+                    <li>点击页面上的"计算评分"按钮</li>
+                    <li>系统将自动计算并更新以下分数：
+                        <ul>
+                            <li>各专业分数</li>
+                            <li>各章节分数（安全耐久、健康舒适、生活便利、资源节约、环境宜居、提高与创新）</li>
+                            <li>项目总分</li>
+                            <li>评定结果（几星级）</li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="note-box">
+                    <p><strong>💡 提示：</strong>建议在完成所有条文评分后再进行计算评分，以获得最准确的结果。</p>
+                </div>
+            </section>
+            
+            <!-- 报告导出 -->
+            <section id="report-export" class="guide-section">
+                <h2>五、报告导出</h2>
+                
+                <h3>1. 导出报审表</h3>
+                <ul>
+                    <li>在左侧菜单中选择"报告导出"</li>
+                    <li>在展开的子菜单中点击"报审表"</li>
+                    <li>系统将根据项目评分数据生成报审表</li>
+                    <li>生成完成后会自动提供下载链接</li>
+                </ul>
+                
+                <h3>2. 导出绿色建筑设计专篇</h3>
+                <ul>
+                    <li>在"报告导出"菜单中选择"绿色建筑设计专篇"选项</li>
+                    <li>系统将根据项目的评价标准和星级目标选择相应的DWG模板</li>
+                    <li>将项目信息和评分数据填充到DWG文件中</li>
+                    <li>生成完成后可以下载DWG文件</li>
+                    <li>下载的DWG文件可以使用AutoCAD打开查看和编辑</li>
+                </ul>
+                
+                <h3>3. 导出绿色建材应用比例</h3>
+                <ul>
+                    <li>在"报告导出"菜单中选择"绿色建材应用比例"选项</li>
+                    <li>系统将显示绿色建材应用比例计算页面</li>
+                    <li>根据需要输入相关数据和参数</li>
+                    <li>点击"导出Word"按钮生成计算书</li>
+                    <li>可以下载Word格式的绿色建材应用比例计算书</li>
+                </ul>
+                
+                <h3>4. 导出绿建自评估报告（国标项目专用）</h3>
+                <ul>
+                    <li>当项目的评价标准为"国标"时，在"报告导出"菜单中会显示"绿建自评估报告"选项</li>
+                    <li>点击"绿建自评估报告"选项</li>
+                    <li>系统将根据项目评分数据生成自评估报告</li>
+                    <li>生成完成后可以下载Word格式的报告文件</li>
+                </ul>
+            </section>
+            
+            <!-- 界面导航 -->
+            <section id="navigation" class="guide-section">
+                <h2>六、界面导航</h2>
+                
+                <h3>1. 主菜单</h3>
+                <ul>
+                    <li><strong>项目信息</strong>：显示和编辑项目基本信息</li>
+                    <li><strong>基本级</strong>：展开后显示基本级各专业评分选项</li>
+                    <li><strong>提高级</strong>：展开后显示提高级各专业评分选项</li>
+                    <li><strong>评分汇总</strong>：显示各专业和章节的评分汇总情况</li>
+                    <li><strong>报告导出</strong>：展开后显示各种导出选项（报审表、绿色建筑设计专篇、绿色建材应用比例等）</li>
+                </ul>
+                
+                <h3>2. 用户菜单</h3>
+                <ul>
+                    <li>点击右上角的用户图标可以打开用户菜单</li>
+                    <li>菜单选项包括：
+                        <ul>
+                            <li>个人信息</li>
+                            <li>修改密码</li>
+                            <li>返回项目列表</li>
+                            <li>退出登录</li>
+                        </ul>
+                    </li>
+                </ul>
+            </section>
+            
+            <!-- 常见问题 -->
+            <section id="faq" class="guide-section">
+                <h2>七、常见问题</h2>
+                
+                <h3>1. 分数不正确怎么办？</h3>
+                <ul>
+                    <li>检查是否有遗漏未评分的条文</li>
+                    <li>点击"计算评分"按钮重新计算</li>
+                    <li>如问题仍存在，请联系系统管理员</li>
+                </ul>
+                
+                <h3>2. 无法保存评分怎么办？</h3>
+                <ul>
+                    <li>检查网络连接是否正常</li>
+                    <li>刷新页面后重试</li>
+                    <li>确认您有该项目的编辑权限</li>
+                </ul>
+                
+                <h3>3. 报告无法导出怎么办？</h3>
+                <ul>
+                    <li>确保已完成所有必要条文的评分</li>
+                    <li>检查网络连接和浏览器兼容性</li>
+                    <li>等待一段时间后重试</li>
+                    <li>如果是导出DWG文件，请确保进度条显示完成</li>
+                </ul>
+            </section>
+            
+            <!-- 注意事项 -->
+            <section id="notes" class="guide-section">
+                <h2>八、注意事项</h2>
+                <ol>
+                    <li>系统会定期自动保存您的评分数据，但建议在重要更改后手动保存</li>
+                    <li>完成所有条文评分后才能得到准确的项目总分</li>
+                    <li>导出报告前请确保项目信息完整准确</li>
+                    <li>为保证系统安全，长时间不操作将自动退出登录</li>
+                    <li>使用结束后请点击"退出登录"安全退出系统</li>
+                </ol>
+            </section>
+            
+            <!-- 联系支持 -->
+            <section id="contact" class="guide-section">
+                <h2>九、联系支持</h2>
+                <p>如果您在使用过程中遇到任何问题，请通过以下方式联系系统管理员获取帮助：</p>
+                <div class="flex items-center mt-4 mb-2">
+                    <i class="fas fa-envelope text-primary text-xl mr-3">Email：</i>
+                    <div>
+                        <p class="text-gray-700 font-medium">acbim@qq.com</p>
+                    </div>
+                </div>
+                <div class="flex items-center mb-4">
+                    <i class="fab fa-qq text-primary text-xl mr-3">用户服务QQ群：</i>
+                    <div>
+                        <p class="text-gray-700 font-medium">715172744</p>
+                    </div>
+                </div>
+            </section>
+            
+            <div class="mt-10 text-center text-gray-500 text-sm px-4 py-6 bg-gray-50 rounded-lg">
+                <p class="mb-3">希望这份使用指南能帮助您顺利使用智能绿建评价系统。祝您使用愉快！</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="logo-container mb-4 md:mb-0">
+                    <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="w-8 h-8">
+                    <span class="text-xl font-bold">智能绿建评价系统</span>
+                </div>
+                <div class="text-sm">
+                    <p>© 2024 智能绿建评价系统 版权所有</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 返回顶部按钮 -->
+    <div id="backToTop" class="back-to-top" title="返回顶部">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+    
+    <script>
+        // 返回顶部功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const backToTopButton = document.getElementById('backToTop');
+            const sideNav = document.querySelector('.side-nav');
+            const navLinks = document.querySelectorAll('.side-nav a');
+            const sideNavToggle = document.getElementById('sideNavToggle');
+            
+            // 监听滚动事件，显示/隐藏返回顶部按钮
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 300) {
+                    backToTopButton.classList.add('visible');
+                } else {
+                    backToTopButton.classList.remove('visible');
+                }
+                
+                // 根据滚动位置更新侧边导航的当前active状态
+                updateActiveNavItem();
+            });
+            
+            // 点击返回顶部
+            backToTopButton.addEventListener('click', function() {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+            
+            // 移动端显示/隐藏导航
+            sideNavToggle.addEventListener('click', function() {
+                sideNav.classList.toggle('mobile-active');
+                
+                // 切换图标
+                const icon = this.querySelector('i');
+                if (sideNav.classList.contains('mobile-active')) {
+                    icon.classList.remove('fa-bars');
+                    icon.classList.add('fa-times');
+                } else {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
+            });
+            
+            // 点击导航项后关闭移动端导航
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 1200) {
+                        sideNav.classList.remove('mobile-active');
+                        const icon = sideNavToggle.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+            });
+            
+            // 平滑滚动到锚点
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 100,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+            
+            // 更新当前激活的导航项
+            function updateActiveNavItem() {
+                const scrollPosition = window.scrollY + 150;
+                
+                document.querySelectorAll('.guide-section').forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    const sectionId = section.getAttribute('id');
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                        navLinks.forEach(link => {
+                            link.classList.remove('active');
+                            if (link.getAttribute('href') === '#' + sectionId) {
+                                link.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // 初始化激活状态
+            updateActiveNavItem();
+        });
+    </script>
+</body>
+</html> 

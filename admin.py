@@ -53,7 +53,7 @@ def dashboard():
     invite_codes = InvitationCode.query.all()
     
     # 导入Project模型
-    from app import Project, SystemMetric
+    from app import Project
     
     # 获取所有项目
     projects = Project.query.all()
@@ -73,14 +73,7 @@ def dashboard():
         'total_projects': len(valid_projects),
         'active_projects': sum(1 for project in valid_projects if project.total_score is None),
         'completed_projects': sum(1 for project in valid_projects if project.total_score is not None),
-        'avg_project_score': round(sum(project.total_score or 0 for project in valid_projects) / len(valid_projects), 2) if valid_projects else 0,
-        # 添加系统监控统计数据
-        'cpu_usage': SystemMetric.query.filter_by(metric_type='cpu_usage').order_by(SystemMetric.timestamp.desc()).first().value if SystemMetric.query.filter_by(metric_type='cpu_usage').first() else 0,
-        'memory_usage': SystemMetric.query.filter_by(metric_type='memory_usage').order_by(SystemMetric.timestamp.desc()).first().value if SystemMetric.query.filter_by(metric_type='memory_usage').first() else 0,
-        'project_count': SystemMetric.query.filter_by(metric_type='project_count').order_by(SystemMetric.timestamp.desc()).first().value if SystemMetric.query.filter_by(metric_type='project_count').first() else 0,
-        'user_count': SystemMetric.query.filter_by(metric_type='user_count').order_by(SystemMetric.timestamp.desc()).first().value if SystemMetric.query.filter_by(metric_type='user_count').first() else 0,
-        'active_users': SystemMetric.query.filter_by(metric_type='active_users').order_by(SystemMetric.timestamp.desc()).first().value if SystemMetric.query.filter_by(metric_type='active_users').first() else 0,
-        'db_connections': SystemMetric.query.filter_by(metric_type='db_connections').order_by(SystemMetric.timestamp.desc()).first().value if SystemMetric.query.filter_by(metric_type='db_connections').first() else 0
+        'avg_project_score': round(sum(project.total_score or 0 for project in valid_projects) / len(valid_projects), 2) if valid_projects else 0
     }
     
     return render_template('admin/dashboard.html', users=valid_users, invite_codes=valid_invite_codes, projects=valid_projects, stats=stats)

@@ -15,7 +15,6 @@ def start_server():
     if platform.system() == 'Windows':
         # Windows环境使用waitress
         from waitress import serve
-        from flask_sqlalchemy import SQLAlchemy
         from app import app
         print("在Windows环境下使用Waitress服务器启动...")
         serve(app, host='0.0.0.0', port=5050)
@@ -32,7 +31,6 @@ def start_server():
             
         # 使用gunicorn启动
         import gunicorn.app.base
-        from flask_sqlalchemy import SQLAlchemy
         
         class StandaloneApplication(gunicorn.app.base.BaseApplication):
             def __init__(self, app, options=None):

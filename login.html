@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能绿建评价系统-登录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 修改为本地样式 -->
+    <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
+    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+    <!-- 内联 Remix Icon CSS -->
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #E8F0FF 0%, #FFFFFF 100%);
+        }
+        .banner-gradient {
+            background: linear-gradient(90deg, #3176FF 0%, #75A4FF 100%);
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* 复选框样式 */
+        .checkbox-wrapper input[type="checkbox"] {
+            opacity: 0;
+            position: absolute;
+        }
+        .checkbox-wrapper .custom-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #e5e7eb;
+            border-radius: 4px;
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox {
+            background-color: #3176FF;
+            border-color: #3176FF;
+        }
+        .checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox::after {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            width: 5px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .logo-text {
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            font-weight: 600;
+        }
+    </style>
+    <script>
+        // 预加载其他页面
+        window.addEventListener('load', () => {
+            const links = ['/register', '/reset_password', '/calculator'];
+            links.forEach(link => {
+                const prefetchLink = document.createElement('link');
+                prefetchLink.rel = 'prefetch';
+                prefetchLink.href = link;
+                document.head.appendChild(prefetchLink);
+            });
+        });
+
+        // 添加 Tailwind 配置
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3176FF',
+                        secondary: '#6B7280'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '4px',
+                        DEFAULT: '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'xl': '20px',
+                        '2xl': '24px',
+                        '3xl': '32px',
+                        'full': '9999px',
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl">
+        <div class="banner-gradient rounded-lg p-6 mb-8 text-white text-center floating">
+            <div class="flex justify-center gap-8 mb-6">
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-robot text-2xl"></i>
+                    </div>
+                    <span class="text-sm">AI驱动</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-lightbulb text-2xl"></i>
+                    </div>
+                    <span class="text-sm">创新科技</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-2">
+                        <i class="fas fa-gift text-2xl"></i>
+                    </div>
+                    <span class="text-sm">完全免费</span>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold mb-4 text-shadow">国内首个完全基于AI自主开发的智能绿建评价系统</h1>
+            <p class="text-lg opacity-90">拥抱AI，驱动创新，科技平权！</p>
+        </div>
+        <div class="max-w-md w-full bg-white rounded-lg shadow-xl p-8 mx-auto">
+            <div class="text-center mb-8">
+                <h1 class="logo-text text-4xl text-primary mb-2 flex items-center justify-center whitespace-nowrap">
+                    <picture class="inline-block flex-shrink-0">
+                        <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                        <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-10 w-10 mr-2">
+                    </picture>
+                    <span class="text-3xl sm:text-4xl truncate">智能绿建评价系统</span>
+                </h1>
+                <h2 class="text-2xl font-semibold text-gray-900">欢迎回来</h2>
+                <p class="mt-2 text-sm text-gray-600">请输入您的账号和密码进行登录</p>
+            </div>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" id="username" required class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入用户名/邮箱">
+                    </div>
+                    <p class="error-message mt-1 text-sm text-red-600 hidden"></p>
+                </div>
+                <div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="password" required class="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入密码">
+                        <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer">
+                            <i class="fas fa-eye-slash text-gray-400"></i>
+                        </button>
+                    </div>
+                    <p class="error-message mt-1 text-sm text-red-600 hidden"></p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="checkbox-wrapper flex items-center">
+                        <input type="checkbox" id="remember" onchange="handleRememberMe(this.checked)">
+                        <span class="custom-checkbox mr-2"></span>
+                        <span class="text-sm text-gray-600">记住我</span>
+                    </label>
+                    <script>
+                        // 检查是否有保存的登录信息
+                        window.addEventListener('DOMContentLoaded', () => {
+                            const savedUsername = localStorage.getItem('rememberedUsername');
+                            const rememberMe = localStorage.getItem('rememberMe');
+                            
+                            if (rememberMe === 'true' && savedUsername) {
+                                document.getElementById('username').value = savedUsername;
+                                document.getElementById('remember').checked = true;
+                            }
+                        });
+
+                        // 处理记住我选项变化
+                        function handleRememberMe(checked) {
+                            if (!checked) {
+                                localStorage.removeItem('rememberedUsername');
+                                localStorage.removeItem('rememberMe');
+                            }
+                        }
+
+                        // 在登录成功时保存用户信息
+                        document.getElementById('loginForm').addEventListener('submit', (e) => {
+                            const rememberMe = document.getElementById('remember').checked;
+                            const username = document.getElementById('username').value;
+                            
+                            if (rememberMe) {
+                                localStorage.setItem('rememberedUsername', username);
+                                localStorage.setItem('rememberMe', 'true');
+                            }
+                        });
+                    </script>
+                    <a href="/reset_password" class="text-sm text-primary hover:text-primary/80">忘记密码？</a>
+                </div>
+                <button type="submit" id="loginBtn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-button text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary !rounded-button">
+                    <span id="btnText">登录</span>
+                    <svg id="loadingIcon" class="animate-spin h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                    </div>
+                </div>
+                <p class="mt-8 text-center text-sm text-gray-600">
+                    还没有账号？
+                    <a href="/register" class="font-medium text-primary hover:text-primary/80">立即注册</a>
+                </p>
+            </div>
+        </div>
+        <div id="toast" class="fixed top-4 right-4 flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow hidden" role="alert">
+            <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg">
+                <i id="toastIcon" class="ri-checkbox-circle-line"></i>
+            </div>
+            <div id="toastMessage" class="ml-3 text-sm font-normal"></div>
+        </div>
+        <script>
+            document.getElementById('togglePassword').addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const icon = this.querySelector('i');
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.className = 'ri-eye-line text-gray-400';
+                } else {
+                    passwordInput.type = 'password';
+                    icon.className = 'ri-eye-off-line text-gray-400';
+                }
+            });
+            function showToast(message) {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toastMessage');
+                const toastIcon = document.querySelector('#toast .inline-flex');
+                const iconElement = document.getElementById('toastIcon');
+
+                // 重置为默认的绿色成功图标
+                toastIcon.classList.remove('text-red-500', 'bg-red-100');
+                toastIcon.classList.add('text-green-500', 'bg-green-100');
+                iconElement.className = 'ri-checkbox-circle-line';
+
+                toastMessage.textContent = message;
+                toast.classList.remove('hidden');
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                }, 3000);
+            }
+
+            function showErrorToast(message) {
+                showToast(message);
+                const toastIcon = document.querySelector('#toast .inline-flex');
+                const iconElement = document.getElementById('toastIcon');
+                toastIcon.classList.replace('text-green-500', 'text-red-500');
+                toastIcon.classList.replace('bg-green-100', 'bg-red-100');
+                iconElement.className = 'ri-error-warning-line';
+            }
+
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const loginBtn = document.getElementById('loginBtn');
+                const btnText = document.getElementById('btnText');
+                const loadingIcon = document.getElementById('loadingIcon');
+
+                btnText.classList.add('hidden');
+                loadingIcon.classList.remove('hidden');
+                loginBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: username,
+                            password: password
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        showToast('登录成功！');
+                        // 如果记住我被选中，保存用户信息
+                        const rememberMe = document.getElementById('remember').checked;
+                        if (rememberMe) {
+                            localStorage.setItem('rememberedUsername', username);
+                            localStorage.setItem('rememberMe', 'true');
+                        }
+                        setTimeout(() => {
+                            window.location.href = data.redirect || '/calculator';
+                        }, 1000);
+                    } else {
+                        showErrorToast(data.error || '登录失败，请检查用户名和密码');
+                    }
+                } catch (error) {
+                    showErrorToast('登录失败，请稍后重试');
+                } finally {
+                    btnText.classList.remove('hidden');
+                    loadingIcon.classList.add('hidden');
+                    loginBtn.disabled = false;
+                }
+            });
+
+            // 优化页面跳转
+            document.querySelectorAll('a[href]').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    if (link.getAttribute('href').startsWith('/')) {
+                        e.preventDefault();
+                        document.body.style.opacity = '0.5';
+                        document.body.style.transition = 'opacity 0.2s';
+                        setTimeout(() => {
+                            window.location.href = link.getAttribute('href');
+                        }, 100);
+                    }
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>
