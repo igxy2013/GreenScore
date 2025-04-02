@@ -1464,31 +1464,62 @@
 
     // 删除项目
     function deleteProject(projectId) {
-        fetch(`/admin/api/projects/${projectId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        // 使用 SweetAlert2 显示单个确认对话框
+        Swal.fire({
+            title: '确定要删除吗？',
+            text: '此操作不可恢复！',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: '确定删除',
+            cancelButtonText: '取消'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                console.log('开始删除项目:', projectId);
+                
+                // 显示加载状态
+                Swal.fire({
+                    title: '删除中...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                fetch(`/api/projects/${projectId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    console.log('服务器响应状态:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.log('错误响应内容:', text);
+                            throw new Error(`删除失败: ${response.status} - ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('删除响应数据:', data);
+                    if (data.success) {
+                        Swal.fire('成功', '项目删除成功', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('错误', data.message || '删除失败', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('删除项目时出错:', error);
+                    Swal.fire('错误', '删除失败: ' + error.message, 'error');
+                });
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                alert('项目删除成功');
-                location.reload();
-            } else {
-                alert(data.message || '删除失败');
-            }
-        })
-        .catch(error => {
-            console.error('删除项目时出错:', error);
-            alert('删除失败: ' + error.message);
         });
     }
 
@@ -2053,6 +2084,17 @@
         if (localStorage.getItem('activeMenuItem') === 'standard-management') {
             initStandardManagement();
         }
+    });
+
+    // 添加事件监听器
+    document.addEventListener('DOMContentLoaded', function() {
+        // 为所有删除按钮添加点击事件
+        document.querySelectorAll('.delete-project-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const projectId = this.getAttribute('data-project-id');
+                deleteProject(projectId);
+            });
+        });
     });
     </script>
 </body>
