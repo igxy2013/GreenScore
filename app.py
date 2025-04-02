@@ -17,7 +17,7 @@ if not IS_WSL:
         print("警告: pyodbc模块未安装，某些功能可能不可用")
         print("请运行 'pip install pyodbc' 安装所需模块")
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash, current_app
 from flask_caching import Cache
 from flask_migrate import Migrate
 from functools import wraps
@@ -36,10 +36,13 @@ from flask_cors import CORS
 from word_template import process_template
 from export import generate_word, generate_dwg, generate_self_assessment_report
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from models import db, User, InvitationCode, LogRecord  # 导入LogRecord模型
+from models import db, User, InvitationCode, LogRecord, UserActivity  # 导入UserActivity模型
 import random
 import string
 import werkzeug.exceptions
+import psutil
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask_sqlalchemy import SQLAlchemy  # 添加这行导入语句
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
@@ -115,8 +118,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False  # 禁用SQLAlchemy的ECHO功能，不管是开发环境还是生产环境
 
-# 初始化数据库
-db.init_app(app)
+# 配置数据库连接池
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 10,  # 连接池大小
+    'pool_timeout': 30,  # 连接超时时间
+    'pool_recycle': 1800,  # 连接回收时间（30分钟）
+    'max_overflow': 5  # 最大溢出连接数
+}
+
+db = SQLAlchemy(app)
 
 # 初始化数据库迁移
 migrate = Migrate(app, db)
@@ -135,8 +145,30 @@ def load_user(user_id):
 # 添加请求处理器来更新用户的last_seen时间
 @app.before_request
 def update_last_seen():
+    # 记录请求开始时间
+    request.start_time = time.time()
+    
+    # 记录请求次数
+    try:
+        metric_key = f"request_{request.method.lower()}"
+        SystemMetric.record_metric(metric_key, 1)
+    except Exception as e:
+        app.logger.error(f"记录请求指标出错: {str(e)}")
+    
+    # 更新用户最后活动时间并记录用户活动
     if current_user.is_authenticated:
         current_user.last_seen = datetime.utcnow()
+        
+        try:
+            # 记录用户活动
+            UserActivity.record_activity(
+                activity_type='page_view',
+                user_id=current_user.id,
+                details=f"{request.method} {request.path}"
+            )
+        except Exception as e:
+            app.logger.error(f"记录用户活动出错: {str(e)}")
+        
         db.session.commit()
 
 # 添加请求日志中间件
@@ -168,7 +200,32 @@ def log_request_info():
 @app.after_request
 def log_response_info(response):
     try:
-        # 只记录错误响应
+        # 计算请求处理时间
+        if hasattr(request, 'start_time'):
+            request_time = time.time() - request.start_time
+            # 记录请求处理时间
+            try:
+                SystemMetric.record_metric('request_time', request_time)
+            
+                # 记录慢请求
+                if request_time > 1.0:  # 超过1秒的请求被视为慢请求
+                    SystemMetric.record_metric('slow_request', 1)
+                    app.logger.warning(f"慢请求: {request.method} {request.path} ({request_time:.2f}秒)")
+            except Exception as e:
+                app.logger.error(f"记录请求时间指标出错: {str(e)}")
+        
+        # 记录响应状态码
+        try:
+            status_code = response.status_code
+            SystemMetric.record_metric(f"status_{status_code}", 1)
+            
+            # 记录错误响应
+            if status_code >= 400:
+                SystemMetric.record_metric('error_response', 1)
+        except Exception as e:
+            app.logger.error(f"记录状态码指标出错: {str(e)}")
+        
+        # 原有的错误响应日志记录
         if response.status_code >= 400:
             path = request.path
             if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
@@ -193,6 +250,16 @@ def log_response_info(response):
 @app.errorhandler(Exception)
 def log_exception(e):
     try:
+        # 记录异常指标
+        try:
+            SystemMetric.record_metric('exception', 1)
+            
+            # 获取异常类型
+            exception_type = e.__class__.__name__
+            SystemMetric.record_metric(f"exception_{exception_type}", 1)
+        except Exception as metric_err:
+            app.logger.error(f"记录异常指标出错: {str(metric_err)}")
+        
         # 获取请求相关信息
         path = request.path if request else "未知路径"
         method = request.method if request else "未知方法"
@@ -4863,6 +4930,121 @@ def update_project_scores():
     except Exception as e:
         app.logger.error(f"处理更新项目评分请求时出错: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+# 添加监控数据模型
+class SystemMetric(db.Model):
+    __tablename__ = 'system_metrics'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    metric_type = db.Column(db.String(50), nullable=False)  # 指标类型
+    value = db.Column(db.Float, nullable=False)  # 指标值
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())  # 记录时间
+    
+    @staticmethod
+    def record_metric(metric_type, value):
+        """记录系统指标"""
+        try:
+            metric = SystemMetric(
+                metric_type=metric_type,
+                value=value
+            )
+            db.session.add(metric)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"记录系统指标失败: {str(e)}")
+            return False
+
+# 用户活动记录模型
+class UserActivity(db.Model):
+    __tablename__ = 'user_activities'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=True)
+    activity_type = db.Column(db.String(50), nullable=False)  # 活动类型
+    details = db.Column(db.Text, nullable=True)  # 详细信息
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    @staticmethod
+    def record_activity(activity_type, user_id=None, details=None):
+        """记录用户活动"""
+        activity = UserActivity(
+            user_id=user_id,
+            activity_type=activity_type,
+            details=details
+        )
+        db.session.add(activity)
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
+
+# 初始化调度器
+scheduler = BackgroundScheduler()
+
+def collect_system_metrics():
+    """收集系统指标"""
+    with app.app_context():
+        try:
+            # CPU使用率
+            cpu_percent = psutil.cpu_percent(interval=1)
+            SystemMetric.record_metric('cpu_usage', cpu_percent)
+            
+            # 内存使用率
+            memory = psutil.virtual_memory()
+            SystemMetric.record_metric('memory_usage', memory.percent)
+            
+            # 数据库统计
+            try:
+                # 项目总数
+                project_count = Project.query.count()
+                SystemMetric.record_metric('project_count', project_count)
+                
+                # 用户总数
+                user_count = User.query.count()
+                SystemMetric.record_metric('user_count', user_count)
+                
+                # 活跃用户数（15分钟内）
+                active_time = datetime.now() - timedelta(minutes=15)
+                active_users = User.query.filter(User.last_seen >= active_time).count()
+                SystemMetric.record_metric('active_users', active_users)
+                
+                # 数据库连接数
+                engine = db.engine
+                if hasattr(engine, 'pool'):
+                    conn_count = engine.pool.checkedout()
+                    SystemMetric.record_metric('db_connections', conn_count)
+            except Exception as e:
+                app.logger.error(f"收集数据库指标时出错: {str(e)}")
+        except Exception as e:
+            app.logger.error(f"收集系统指标时出错: {str(e)}")
+
+# 添加定时任务，每分钟执行一次
+scheduler.add_job(collect_system_metrics, 'interval', minutes=1)
+
+# 在应用启动时启动调度器
+def start_metrics_scheduler():
+    try:
+        if not scheduler.running:
+            scheduler.start()
+            app.logger.info("系统指标收集调度器已启动")
+    except Exception as e:
+        app.logger.error(f"启动系统指标收集调度器时出错: {str(e)}")
+
+# 启动监控调度器
+with app.app_context():
+    # 确保表已创建
+    db.create_all()
+    # 启动监控调度器
+    start_metrics_scheduler()
+
+# 添加静态文件缓存控制
+@app.after_request
+def add_header(response):
+    if 'Cache-Control' not in response.headers and request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=31536000'  # 1年缓存
+    return response
 
 if __name__ == '__main__':
     # 初始化数据库
