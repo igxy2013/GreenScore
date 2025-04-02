@@ -397,6 +397,8 @@
                                 </a>
                                 {% endif %}
                             </div>
+
+                        {% if not project or project.star_rating_target != '基本级' %}
                         <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
                             <i class="ri-checkbox-multiple-line mr-3"></i>
                             <span>提高级</span>
@@ -436,12 +438,17 @@
                                 </a>
                                 {% endif %}
                             </div>
+                        {% endif %}
+                        
+                        {% if not project or project.star_rating_target != '基本级' %}
                         <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" 
                         class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}"
                         id="scoreSummaryMenuItem">
                          <i class="ri-bar-chart-line mr-3"></i>
                          <span>评分汇总</span>
-                     </a>
+                        </a>
+                        {% endif %}
+                        
                         <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="reportMenuToggle">
                             <i class="ri-file-download-line mr-3"></i>
                             <span>报告导出</span>
@@ -1479,7 +1486,7 @@
     const basicMenuToggle = document.getElementById('basicMenuToggle');
     const basicMenuContent = document.getElementById('basicMenuContent');
     const advancedMenuToggle = document.getElementById('advancedMenuToggle');
-    const advancedMenuContent = document.getElementById('advancedMenuContent');
+    const advancedMenuContent = advancedMenuToggle ? document.getElementById('advancedMenuContent') : null;
     const reportMenuToggle = document.getElementById('reportMenuToggle');
     const reportMenuContent = document.getElementById('reportMenuContent');
     const loadStarCaseBtn = document.getElementById('loadStarCaseBtn');
@@ -1589,13 +1596,15 @@
         }
     });
     
-    advancedMenuToggle.addEventListener('click', function() {
-        advancedMenuContent.classList.toggle('expanded');
-        const arrow = this.querySelector('.ri-arrow-down-s-line');
-        if (arrow) {
-            arrow.style.transform = advancedMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-    });
+    if (advancedMenuToggle) {
+        advancedMenuToggle.addEventListener('click', function() {
+            advancedMenuContent.classList.toggle('expanded');
+            const arrow = this.querySelector('.ri-arrow-down-s-line');
+            if (arrow) {
+                arrow.style.transform = advancedMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+        });
+    }
     
     reportMenuToggle.addEventListener('click', function() {
         reportMenuContent.classList.toggle('expanded');
@@ -1667,14 +1676,15 @@
     
     // 在页面加载完成后获取评分汇总数据
     document.addEventListener('DOMContentLoaded', function() {
-        // 检查当前是否在评分汇总页面
-        if ('{{ current_page }}' === 'score_summary') {
+        // 获取项目星级目标
+        const starRatingTarget = document.getElementById('star_rating_target')?.value || '';
+        
+        // 如果不是基本级且当前是评分汇总页面，才获取评分汇总数据
+        if (starRatingTarget !== '基本级' && '{{ current_page }}' === 'score_summary') {
             console.log('当前在评分汇总页面，获取最新评分汇总数据');
             
             // 获取最新评分汇总数据（自动计算评分）
             fetchScoreSummary(true);
-            
-            // 移除刷新按钮和计算按钮的事件监听（已移除按钮）
         }
         
         // 为项目信息保存按钮添加点击事件
@@ -2835,9 +2845,15 @@
 
     // 页面加载完成后，添加事件监听器
     document.addEventListener('DOMContentLoaded', function() {
-        // 获取评分汇总数据
-        if (document.querySelector('.score-summary-container')) {
-            fetchScoreSummary(true);  // 使用强制刷新选项，确保调用计算API
+        // 获取项目星级目标
+        const starRatingTarget = document.getElementById('star_rating_target')?.value || '';
+        
+        // 如果不是基本级，才加载评分汇总数据
+        if (starRatingTarget !== '基本级') {
+            // 获取评分汇总数据
+            if (document.querySelector('.score-summary-container')) {
+                fetchScoreSummary(true);  // 使用强制刷新选项，确保调用计算API
+            }
         }
         
         // 已移除计算评分按钮和刷新数据按钮的事件监听器
