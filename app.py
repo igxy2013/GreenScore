@@ -672,43 +672,49 @@ def save_project_info(form_data):
         project.location = form_data.get('project_location', '')
         project.climate_zone = form_data.get('climate_zone', '')
         
-        # 如果是详细信息表单，处理更多字段
-        if is_detail_form:
-            # 尝试将表单值转换为浮点数
-            try_parse_float(form_data, 'total_land_area', project, 'total_land_area')
-            try_parse_float(form_data, 'total_building_area', project, 'total_building_area')
-            try_parse_float(form_data, 'above_ground_area', project, 'above_ground_area')
-            try_parse_float(form_data, 'underground_area', project, 'underground_area')
-            try_parse_float(form_data, 'first_floor_underground_area', project, 'underground_floor_area')
-            try_parse_float(form_data, 'plot_ratio', project, 'plot_ratio')
-            try_parse_float(form_data, 'building_base_area', project, 'building_base_area')
-            try_parse_float(form_data, 'building_density', project, 'building_density')
-            try_parse_float(form_data, 'green_area', project, 'green_area')
-            try_parse_float(form_data, 'green_ratio', project, 'green_ratio')
-            try_parse_float(form_data, 'building_height', project, 'building_height')
-            
-            # 尝试将表单值转换为整数
-            try_parse_int(form_data, 'ground_parking_spaces', project, 'ground_parking_spaces')
-            try_parse_int(form_data, 'residential_units', project, 'residential_units')
-            
-            # 设置其他字段
-            project.building_floors = form_data.get('building_floors', '')
-            project.air_conditioning_type = form_data.get('ac_type', '')
-            project.average_floors = form_data.get('avg_floors', '')
-            project.has_garbage_room = form_data.get('has_garbage_room', '')
-            project.has_elevator = form_data.get('has_elevator', '')
-            project.has_underground_garage = form_data.get('has_underground_garage', '')
-            project.construction_type = form_data.get('construction_type', '')
-            project.has_water_landscape = form_data.get('has_water_landscape', '')
-            project.is_fully_decorated = form_data.get('is_fully_decorated', '')
-            project.public_building_type = form_data.get('public_building_type', '')
-            project.public_green_space = form_data.get('public_green_space', '')
+        # 始终处理详细字段，不再依赖is_detail_form标志
+        # 尝试将表单值转换为浮点数
+        try_parse_float(form_data, 'total_land_area', project, 'total_land_area')
+        try_parse_float(form_data, 'total_building_area', project, 'total_building_area')
+        try_parse_float(form_data, 'above_ground_area', project, 'above_ground_area')
+        try_parse_float(form_data, 'underground_area', project, 'underground_area')
+        try_parse_float(form_data, 'first_floor_underground_area', project, 'underground_floor_area')
+        try_parse_float(form_data, 'plot_ratio', project, 'plot_ratio')
+        try_parse_float(form_data, 'building_base_area', project, 'building_base_area')
+        try_parse_float(form_data, 'building_density', project, 'building_density')
+        try_parse_float(form_data, 'green_area', project, 'green_area')
+        try_parse_float(form_data, 'green_ratio', project, 'green_ratio')
+        try_parse_float(form_data, 'building_height', project, 'building_height')
+        
+        # 尝试将表单值转换为整数
+        try_parse_int(form_data, 'ground_parking_spaces', project, 'ground_parking_spaces')
+        try_parse_int(form_data, 'residential_units', project, 'residential_units')
+        
+        # 设置其他字段
+        project.building_floors = form_data.get('building_floors', '')
+        project.air_conditioning_type = form_data.get('ac_type', '')
+        project.average_floors = form_data.get('avg_floors', '')
+        project.has_garbage_room = form_data.get('has_garbage_room', '')
+        project.has_elevator = form_data.get('has_elevator', '')
+        project.has_underground_garage = form_data.get('has_underground_garage', '')
+        project.construction_type = form_data.get('construction_type', '')
+        project.has_water_landscape = form_data.get('has_water_landscape', '')
+        project.is_fully_decorated = form_data.get('is_fully_decorated', '')
+        project.public_building_type = form_data.get('public_building_type', '')
+        project.public_green_space = form_data.get('public_green_space', '')
+        
+        # 记录将要保存的数据内容
+        print(f"正在保存项目信息，详细字段包括：总用地面积={project.total_land_area}, 总建筑面积={project.total_building_area}, 地上建筑面积={project.above_ground_area}, 地下建筑面积={project.underground_area}")
         
         # 保存项目信息到数据库
         db.session.add(project)
         db.session.commit()
+        db.session.refresh(project)  # 刷新对象以获取最新值
         
         print(f"项目信息保存成功: ID={project.id}, 名称={project.name}")
+        # 打印详细字段是否成功保存
+        print(f"详细字段保存结果：总用地面积={project.total_land_area}, 总建筑面积={project.total_building_area}, 地上建筑面积={project.above_ground_area}, 地下建筑面积={project.underground_area}")
+        
         return project
     except Exception as e:
         db.session.rollback()
@@ -949,6 +955,10 @@ def handle_form():
         form_type = request.form.get('form_type', '')
         print(f"接收到表单提交: form_type={form_type}")
         
+        # 检查是否为AJAX请求
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or 'application/json' in request.headers.get('Accept', '')
+        print(f"是否是AJAX请求: {is_ajax}")
+        
         # 打印所有表单字段
         print("表单数据:")
         for key, value in request.form.items():
@@ -968,21 +978,58 @@ def handle_form():
             project = save_project_info(request.form)
             if project:
                 print(f"项目信息保存成功: ID={project.id}, 名称={project.name}, 标准={project.standard}, 绿地向公众开放={project.public_green_space}")
-                # 重定向回项目详情页面
-                return redirect(url_for('project_detail', project_id=project.id))
+                
+                if is_ajax:
+                    # 如果是AJAX请求，返回JSON响应
+                    return jsonify({
+                        'success': True,
+                        'message': '项目信息保存成功',
+                        'project_id': project.id,
+                        'project_name': project.name,
+                        'is_detail_form': is_detail_form  # 添加这个字段以便前端知道是详细表单
+                    })
+                else:
+                    # 如果是传统表单提交，重定向回项目详情页面
+                    return redirect(url_for('project_detail', project_id=project.id))
             else:
-                print("项目信息保存失败，重定向到项目管理页面")
-                # 如果保存失败，重定向到项目管理页面
-                return redirect(url_for('project_management'))
+                print("项目信息保存失败")
+                
+                if is_ajax:
+                    # 如果是AJAX请求，返回错误JSON响应
+                    return jsonify({
+                        'success': False,
+                        'message': '项目信息保存失败'
+                    }), 400
+                else:
+                    # 如果是传统表单提交，重定向到项目管理页面
+                    return redirect(url_for('project_management'))
         else:
             print(f"未知的表单类型: {form_type}")
+            
+            if is_ajax:
+                return jsonify({
+                    'success': False,
+                    'message': f'未知的表单类型: {form_type}'
+                }), 400
         
-        # 如果不是已知的表单类型，返回首页
+        # 如果不是已知的表单类型且不是AJAX请求，返回首页
         return redirect(url_for('index'))
     except Exception as e:
         print(f"处理表单时发生错误: {str(e)}")
         print(traceback.format_exc())
-        return render_template('error.html', error=str(e))
+        
+        # 检查是否为AJAX请求
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or 'application/json' in request.headers.get('Accept', '')
+        
+        if is_ajax:
+            # 如果是AJAX请求，返回错误JSON响应
+            return jsonify({
+                'success': False,
+                'message': f'处理表单时发生错误: {str(e)}'
+            }), 500
+        else:
+            # 如果是传统表单提交，渲染错误页面
+            return render_template('error.html', error=str(e))
 
 @app.route('/filter')
 def filter_standards():

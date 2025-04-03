@@ -2796,6 +2796,14 @@
     
     // 在页面加载完成后获取评分汇总数据
     document.addEventListener('DOMContentLoaded', function() {
+        // 恢复之前保存的滚动位置
+        const savedScrollPosition = sessionStorage.getItem('scrollPosition');
+        if (savedScrollPosition) {
+            window.scrollTo(0, parseInt(savedScrollPosition));
+            // 清除保存的滚动位置，避免影响后续页面加载
+            sessionStorage.removeItem('scrollPosition');
+        }
+        
         // 获取项目星级目标
         const starRatingTarget = document.getElementById('star_rating_target')?.value || '';
         
@@ -2828,9 +2836,63 @@
                     return;
                 }
                 
-                // 提交表单
-                console.log('提交项目信息表单');
-                form.submit();
+                // 使用FormData获取表单数据
+                const formData = new FormData(form);
+                
+                // 添加详细表单标志
+                formData.append('detail_form', '1');
+                
+                // 保存当前滚动位置
+                const scrollPosition = window.scrollY;
+                
+                // 使用AJAX提交表单，防止页面刷新
+                fetch('/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('提交失败，请稍后重试');
+                    }
+                    return response.json().catch(() => {
+                        console.log('返回值不是JSON格式，可能是重定向响应');
+                        // 如果服务器返回了重定向响应，我们手动重载页面并保留滚动位置
+                        sessionStorage.setItem('scrollPosition', scrollPosition);
+                        window.location.reload();
+                        throw new Error('服务器返回了非JSON响应');
+                    });
+                })
+                .then(result => {
+                    // 恢复按钮状态
+                    saveProjectInfoBtn.textContent = originalText;
+                    saveProjectInfoBtn.disabled = false;
+                    
+                    // 显示成功消息
+                    alert('项目信息保存成功');
+                    
+                    // 刷新页面但保持滚动位置
+                    sessionStorage.setItem('scrollPosition', scrollPosition);
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('保存项目信息出错:', error);
+                    
+                    // 恢复按钮状态
+                    saveProjectInfoBtn.textContent = originalText;
+                    saveProjectInfoBtn.disabled = false;
+                    
+                    // 显示错误消息，但不是重定向错误
+                    if (!error.message.includes('非JSON响应')) {
+                        alert('保存失败: ' + error.message);
+                    }
+                });
+                
+                // 不使用传统的form.submit()，防止页面刷新
+                // 注释掉原来的代码: form.submit();
                 calculateAndUpdateScores();
             });
         } else {
