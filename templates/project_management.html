@@ -146,6 +146,96 @@
         transform: scale(1);
         pointer-events: auto;
     }
+
+    /* 修改表格容器样式 */
+    .table-container {
+        position: relative;
+        z-index: 1;
+        min-height: 600px;
+        padding-bottom: 100px;
+        flex: 1;
+        overflow: visible;
+    }
+
+    /* 修改表格行样式 */
+    .table-container tr {
+        position: relative;
+    }
+
+    /* 修改表格列宽度 */
+    .table-container table th:first-child {
+        width: 30%;  /* 项目名称列宽度 */
+        max-width: 400px;
+    }
+
+    .table-container table th:nth-child(2),
+    .table-container table th:nth-child(3),
+    .table-container table th:nth-child(4),
+    .table-container table th:nth-child(5),
+    .table-container table th:nth-child(6) {
+        width: 10%;  /* 其他列宽度 */
+    }
+
+    .table-container table th:last-child {
+        width: 20%;  /* 操作列宽度 */
+        min-width: 250px;
+    }
+
+    /* 确保文本溢出时显示省略号 */
+    .table-container td:first-child {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* 修改最后一列（操作列）的样式 */
+    .table-container td:last-child {
+        position: relative;
+        min-width: 250px;
+        width: 25%;
+        padding-right: 1rem;
+    }
+
+    /* 修改下拉菜单容器样式 */
+    [data-dropdown-container] {
+        position: relative;
+        display: inline-block;
+    }
+
+    /* 修改下拉菜单样式 */
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 0;  /* 改为与触发按钮同高 */
+        transform: translateX(100%);  /* 向右偏移100% */
+        margin-left: 0.5rem;  /* 与触发按钮保持一定距离 */
+        z-index: 50;
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        min-width: 150px;
+        transform-origin: left center;  /* 从左侧中心开始变换 */
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .dropdown-menu.hidden {
+        opacity: 0;
+        transform: translateX(100%) scale(0.95);
+        pointer-events: none;
+    }
+
+    /* 修改主容器样式 */
+    .page-container {
+        min-height: calc(100vh - 2rem);
+        margin-bottom: 2rem;
+    }
+
+    .content-card {
+        min-height: 700px;
+        display: flex;
+        flex-direction: column;
+    }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -223,7 +313,7 @@
             </div>
         </div>
 
-        <div class="max-w-[70%] mx-auto px-4 py-8">
+        <div class="page-container max-w-[70%] mx-auto px-4 py-8">
             <h1 class="text-3xl font-bold text-primary mb-6">    
                 <picture>
                     <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
@@ -242,7 +332,7 @@
                     </a>
                 </div>
             </div>
-            <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div class="content-card bg-white rounded-lg shadow-sm p-6 mb-8">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-semibold">现有项目</h3>
                     <!-- 添加新建项目按钮 -->
@@ -262,6 +352,19 @@
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
                     </div>
+                </div>
+
+                <!-- 添加状态过滤器 -->
+                <div class="mb-4 flex items-center space-x-4">
+                    <label class="text-gray-700">项目状态：</label>
+                    <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary" title="项目状态过滤器">
+                        <option value="进行中">进行中</option>
+                        <option value="all">全部</option>
+                        <option value="规划中">规划中</option>
+                        <option value="已完成">已完成</option>
+                        <option value="已暂停">已暂停</option>
+                        <option value="已取消">已取消</option>
+                    </select>
                 </div>
                 
                 <div class="relative w-full overflow-x-auto max-h-[500px] overflow-y-auto table-container">
@@ -570,6 +673,15 @@
                     });
                 }
             });
+
+            // 添加状态过滤器的事件监听
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.addEventListener('change', function() {
+                    currentPage = 1; // 重置到第一页
+                    fetchProjects();
+                });
+            }
         });
         
         // 分页变量
@@ -594,28 +706,36 @@
                     // 检查HTTP状态码
                     if (!response.ok) {
                         if (response.status === 401) {
-                            // 未登录
                             throw new Error('用户未登录，请重新登录');
                         } else if (response.status === 500) {
-                            // 服务器错误
                             throw new Error('服务器错误，可能是数据库连接问题');
                         } else {
-                            // 其他错误
                             throw new Error(`服务器返回错误状态码: ${response.status}`);
                         }
                     }
                     return response.json();
                 })
                 .then(data => {
+                    // 添加调试信息
+                    console.log('API返回的项目数据:', data);
+                    
                     if (data.success && Array.isArray(data.projects)) {
+                        // 检查每个项目的状态字段
+                        data.projects.forEach(project => {
+                            console.log(`项目 ${project.name} 的状态:`, project.status);
+                        });
+                        
                         // 保存所有项目数据
                         allProjects = data.projects;
                         
                         // 应用搜索过滤
                         const searchTerm = document.getElementById('projectSearchInput').value.toLowerCase();
-                        const filteredProjects = allProjects.filter(project => 
-                            project.name && project.name.toLowerCase().includes(searchTerm)
-                        );
+                        const statusFilter = document.getElementById('statusFilter').value;
+                        const filteredProjects = allProjects.filter(project => {
+                            const nameMatch = project.name && project.name.toLowerCase().includes(searchTerm);
+                            const statusMatch = statusFilter === 'all' || (project.status === statusFilter);
+                            return nameMatch && statusMatch;
+                        });
                         
                         // 计算分页信息
                         totalPages = Math.ceil(filteredProjects.length / pageSize);
@@ -642,7 +762,7 @@
                         // 显示项目列表
                         displayProjects(currentPageProjects);
                     } else {
-                        // 显示无项目提示
+                        console.error('API返回数据格式错误:', data);
                         displayNoProjects();
                     }
                 })
@@ -751,8 +871,38 @@
                 // 清空加载提示
                 projectList.innerHTML = '';
                 
+                // 获取过滤条件
+                const searchTerm = document.getElementById('projectSearchInput').value.toLowerCase();
+                const statusFilter = document.getElementById('statusFilter').value;
+                
+                // 过滤项目
+                const filteredProjects = projects.filter(project => {
+                    const nameMatch = project.name && project.name.toLowerCase().includes(searchTerm);
+                    const statusMatch = statusFilter === 'all' || (project.status === statusFilter);
+                    return nameMatch && statusMatch;
+                });
+                
+                if (filteredProjects.length === 0) {
+                    projectList.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                未找到匹配的项目
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // 更新分页信息
+                    document.getElementById('pageStart').textContent = '0';
+                    document.getElementById('pageEnd').textContent = '0';
+                    document.getElementById('totalRecords').textContent = '0';
+                    document.getElementById('prevPageBtn').disabled = true;
+                    document.getElementById('nextPageBtn').disabled = true;
+                    document.getElementById('pageNumbers').innerHTML = '';
+                    return;
+                }
+                
                 // 添加项目列表
-                projects.forEach((project, index) => {
+                filteredProjects.forEach((project, index) => {
                     const row = document.createElement('tr');
                     row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                     
@@ -790,33 +940,33 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at ? new Date(project.created_at).toLocaleDateString() : '未知'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm flex space-x-2 relative">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm flex items-center space-x-2">
                             <a href="/project/${project.id}" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
                                 进入项目
                             </a>
-                            <div class="relative" data-dropdown-container>
+                            <div class="relative inline-block" data-dropdown-container>
                                 <button type="button" 
-                                    class="px-6 py-2 text-gray-500 hover:bg-gray-100 rounded-button transition-colors cursor-pointer dropdown-trigger"
+                                    class="px-3 py-2 text-gray-500 hover:bg-gray-100 rounded-button transition-colors cursor-pointer dropdown-trigger"
                                     data-project-id="${project.id}">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
-                                <div class="hidden absolute right-0 top-0 ml-2 w-36 bg-white rounded-lg shadow-lg z-50 py-1 dropdown-menu">
-                                    <!-- 状态修改选项 -->
-                                    <button type="button" 
-                                        class="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-blue-100/80 rounded-lg transition-colors flex items-center space-x-2 group update-status-btn"
-                                        data-project-id="${project.id}" 
-                                        data-project-name="${project.name || ''}">
-                                        <i class="fas fa-edit text-blue-500 group-hover:text-blue-600 transition-colors"></i>
-                                        <span class="group-hover:text-blue-600 transition-colors">修改状态</span>
-                                    </button>
-                                    <!-- 删除项目选项 -->
-                                    <button type="button" 
-                                        class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-100/80 rounded-lg transition-colors flex items-center space-x-2 group delete-project-btn"
-                                        data-project-id="${project.id}" 
-                                        data-project-name="${project.name || ''}">
-                                        <i class="fas fa-trash-alt text-red-500 group-hover:text-red-600 transition-colors"></i>
-                                        <span class="group-hover:text-red-600 transition-colors">删除</span>
-                                    </button>
+                                <div class="hidden dropdown-menu">
+                                    <div class="py-1">
+                                        <button type="button" 
+                                            class="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-blue-100/80 transition-colors flex items-center space-x-2 group update-status-btn"
+                                            data-project-id="${project.id}" 
+                                            data-project-name="${project.name || ''}">
+                                            <i class="fas fa-edit text-blue-500 group-hover:text-blue-600 transition-colors"></i>
+                                            <span class="group-hover:text-blue-600 transition-colors">修改状态</span>
+                                        </button>
+                                        <button type="button" 
+                                            class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-100/80 transition-colors flex items-center space-x-2 group delete-project-btn"
+                                            data-project-id="${project.id}" 
+                                            data-project-name="${project.name || ''}">
+                                            <i class="fas fa-trash-alt text-red-500 group-hover:text-red-600 transition-colors"></i>
+                                            <span class="group-hover:text-red-600 transition-colors">删除</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -824,6 +974,18 @@
                     
                     projectList.appendChild(row);
                 });
+                
+                // 更新分页信息
+                document.getElementById('pageStart').textContent = filteredProjects.length > 0 ? 1 : 0;
+                document.getElementById('pageEnd').textContent = filteredProjects.length;
+                document.getElementById('totalRecords').textContent = filteredProjects.length;
+                
+                // 更新分页按钮状态
+                document.getElementById('prevPageBtn').disabled = true;
+                document.getElementById('nextPageBtn').disabled = true;
+                
+                // 生成页码按钮
+                generatePageNumbers(1, 1);
             } else {
                 displayNoProjects();
             }
@@ -944,17 +1106,20 @@
                     // 显示成功消息
                     showNotification('项目状态更新成功', 'success');
                     
-                    // 更新本地缓存中的项目状态
-                    if (allProjects && allProjects.length > 0) {
-                        const projectIndex = allProjects.findIndex(p => p.id == projectId);
-                        if (projectIndex !== -1) {
-                            allProjects[projectIndex].status = newStatus;
-                        }
-                    }
+                    // 强制清空缓存的项目数据
+                    allProjects = [];
                     
-                    // 重新加载项目列表
-                    fetchProjects();
-                    return data;
+                    // 立即重新获取最新的项目数据
+                    return fetch('/api/projects')
+                        .then(response => response.json())
+                        .then(newData => {
+                            if (newData.success && Array.isArray(newData.projects)) {
+                                allProjects = newData.projects;
+                                // 重新渲染项目列表
+                                fetchProjects();
+                            }
+                            return data;
+                        });
                 } else {
                     showNotification('状态更新失败: ' + data.error, 'error');
                     throw new Error(data.error || '状态更新失败');
