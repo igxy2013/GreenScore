@@ -4863,8 +4863,73 @@ def extract_project_info_api():
             app.logger.info(f"处理图片文件: {file.filename}")
             
             # 使用图像提取函数处理图片
-            from utils.image_extractor import extract_image_info
-            project_info = extract_image_info(file)
+            try:
+                from utils.image_extractor import extract_image_info_with_raw_text
+                result = extract_image_info_with_raw_text(file)
+                
+                # 解析结果
+                if result and 'raw_text' in result:
+                    raw_text = result['raw_text']
+                    project_info = result['project_info']
+                else:
+                    raw_text = ""
+                    project_info = {}
+                
+                # 无论是否成功提取项目信息，都记录原始文本
+                if raw_text:
+                    app.logger.info("OCR提取的原始文本长度: " + str(len(raw_text)))
+                    app.logger.info("OCR文本前200字符: " + raw_text[:200].replace('\n', ' '))
+                    # 将完整文本记录到文件中以便分析
+                    try:
+                        log_dir = 'logs'
+                        os.makedirs(log_dir, exist_ok=True)
+                        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                        log_file = os.path.join(log_dir, f"ocr_text_{timestamp}.txt")
+                        with open(log_file, 'w', encoding='utf-8') as f:
+                            f.write(raw_text)
+                        app.logger.info(f"OCR完整文本已保存到: {log_file}")
+                    except Exception as e:
+                        app.logger.warning(f"保存OCR文本到文件失败: {str(e)}")
+                else:
+                    app.logger.warning("未能提取到任何文本")
+                    
+                if not project_info:
+                    app.logger.warning(f"未能从图片中提取到有效信息")
+                    return jsonify({
+                        'success': False, 
+                        'message': '未能从图片中识别到项目信息，请尝试使用更清晰的图片或确保图片中包含项目相关文字'
+                    }), 400
+                    
+                # 记录成功提取的信息
+                app.logger.info(f"成功从图片提取到信息: {len(project_info)} 项")
+                app.logger.debug(f"提取的信息内容: {project_info}")
+                
+                # 不在返回值中包含原始文本
+                # project_info['raw_text'] = raw_text[:1000] if raw_text else ""
+                
+            except RuntimeError as e:
+                # 捕获OCR引擎相关错误
+                error_msg = str(e)
+                app.logger.error(f"OCR引擎错误: {error_msg}")
+                if "PaddleOCR" in error_msg:
+                    return jsonify({
+                        'success': False, 
+                        'message': '图像识别引擎错误: PaddleOCR初始化失败，请检查模型和依赖库是否正确安装.'
+                    }), 500
+                else:
+                    return jsonify({'success': False, 'message': f'图像处理错误: {error_msg}'}), 500
+            except ImportError as e:
+                # 捕获依赖库导入错误
+                error_msg = str(e)
+                app.logger.error(f"OCR依赖库错误: {error_msg}")
+                return jsonify({
+                    'success': False, 
+                    'message': f'图像处理库加载错误: {error_msg}，请确保已安装所有依赖'
+                }), 500
+            except Exception as e:
+                error_msg = str(e)
+                app.logger.error(f"图片处理出现未知错误: {error_msg}")
+                return jsonify({'success': False, 'message': f'处理图片时出错: {error_msg}'}), 500
         
         # 处理base64图片数据（从剪贴板粘贴的图片）
         elif request.json and 'image_data' in request.json:
@@ -4879,12 +4944,70 @@ def extract_project_info_api():
             import base64
             from io import BytesIO
             
-            image_bytes = base64.b64decode(image_data)
-            image_file = BytesIO(image_bytes)
-            
-            # 调用图像处理函数
-            from utils.image_extractor import extract_image_info
-            project_info = extract_image_info(image_file)
+            try:
+                image_bytes = base64.b64decode(image_data)
+                image_file = BytesIO(image_bytes)
+                
+                # 调用图像处理函数，获取原始文本和解析结果
+                from utils.image_extractor import extract_image_info_with_raw_text
+                result = extract_image_info_with_raw_text(image_file)
+                
+                # 解析结果
+                if result and 'raw_text' in result:
+                    raw_text = result['raw_text']
+                    project_info = result['project_info']
+                else:
+                    raw_text = ""
+                    project_info = {}
+                
+                # 无论是否成功提取项目信息，都记录原始文本
+                if raw_text:
+                    app.logger.info("OCR提取的原始文本长度: " + str(len(raw_text)))
+                    app.logger.info("OCR文本前200字符: " + raw_text[:200].replace('\n', ' '))
+                    # 将完整文本记录到文件中以便分析
+                    try:
+                        log_dir = 'logs'
+                        os.makedirs(log_dir, exist_ok=True)
+                        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                        log_file = os.path.join(log_dir, f"ocr_text_{timestamp}.txt")
+                        with open(log_file, 'w', encoding='utf-8') as f:
+                            f.write(raw_text)
+                        app.logger.info(f"OCR完整文本已保存到: {log_file}")
+                    except Exception as e:
+                        app.logger.warning(f"保存OCR文本到文件失败: {str(e)}")
+                else:
+                    app.logger.warning("未能提取到任何文本")
+                    project_info = {}
+                
+                if not project_info:
+                    app.logger.warning(f"未能从粘贴的图片中提取到有效信息")
+                    return jsonify({
+                        'success': False, 
+                        'message': '未能从粘贴的图片中识别到项目信息，请尝试使用更清晰的图片或确保图片中包含项目相关文字'
+                    }), 400
+                    
+                # 记录成功提取的信息
+                app.logger.info(f"成功从粘贴图片提取到信息: {len(project_info)} 项")
+                app.logger.debug(f"提取的信息内容: {project_info}")
+                
+                # 不在返回值中包含原始文本
+                # project_info['raw_text'] = raw_text[:1000] if raw_text else ""
+                
+            except RuntimeError as e:
+                # 捕获Tesseract相关错误
+                error_msg = str(e)
+                app.logger.error(f"Tesseract错误: {error_msg}")
+                if "Tesseract" in error_msg:
+                    return jsonify({
+                        'success': False, 
+                        'message': '图像识别引擎错误: 请确保已安装Tesseract OCR并添加到系统路径'
+                    }), 500
+                else:
+                    return jsonify({'success': False, 'message': f'图像处理错误: {error_msg}'}), 500
+            except Exception as e:
+                error_msg = str(e)
+                app.logger.error(f"处理粘贴图片时出现未知错误: {error_msg}")
+                return jsonify({'success': False, 'message': f'处理粘贴图片时出错: {error_msg}'}), 500
         
         if project_info:
             app.logger.info(f"成功提取项目信息: {project_info}")

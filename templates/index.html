@@ -1819,6 +1819,8 @@
                                     // 显示提取的信息
                                     let infoHtml = '';
                                     for (const [key, value] of Object.entries(data.info)) {
+                                        // 跳过原始文本字段
+                                        if (key === 'raw_text') continue;
                                         infoHtml += `<div><strong>${key}:</strong> ${value}</div>`;
                                     }
                                     document.getElementById('extractedInfo').innerHTML = infoHtml;
