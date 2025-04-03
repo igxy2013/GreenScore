@@ -1996,6 +1996,20 @@
                                 document.getElementById('green_ratio').value = ratio;
                             }
                             
+                            // 处理基底面积
+                            if (info['building_base_area'] || info['基底面积']) {
+                                const baseArea = (info['building_base_area'] || info['基底面积']).toString().replace(/[,\s平方米㎡m²]/g, '');
+                                document.getElementById('building_base_area').value = baseArea;
+                                console.log('设置基底面积:', baseArea);
+                            }
+                            
+                            // 处理绿地面积
+                            if (info['green_area'] || info['绿地面积']) {
+                                const greenArea = (info['green_area'] || info['绿地面积']).toString().replace(/[,\s平方米㎡m²]/g, '');
+                                document.getElementById('green_area').value = greenArea;
+                                console.log('设置绿地面积:', greenArea);
+                            }
+                            
                             // 关闭模态框
                             closeAiExtractModal();
                             
