@@ -1284,6 +1284,62 @@
                             from { transform: rotate(0deg); }
                             to { transform: rotate(360deg); }
                         }
+                        
+                        /* Tab切换按钮样式 */
+                        .tab-btn {
+                            transition: all 0.3s ease;
+                        }
+                        
+                        .tab-btn.active {
+                            background: rgba(139, 92, 246, 0.2);
+                            color: #f3f4f6;
+                            font-weight: 500;
+                            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+                        }
+                        
+                        /* 图片上传区域样式 */
+                        #imageDropArea {
+                            transition: all 0.3s ease;
+                            min-height: 150px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        
+                        #imageDropArea:hover, .word-upload-area:hover {
+                            border-color: #a78bfa;
+                            background-color: rgba(30, 41, 59, 0.8);
+                            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+                        }
+                        
+                        #previewContainer {
+                            width: 100%;
+                            display: flex;
+                            justify-content: center;
+                            position: relative;
+                        }
+                        
+                        /* 选择文件后的文件名显示 */
+                        #wordFileName {
+                            font-style: italic;
+                            color: #a78bfa;
+                        }
+                        
+                        /* 上传区域悬停效果 */
+                        .word-upload-area {
+                            transition: all 0.3s ease;
+                        }
+                        
+                        /* 动画效果 */
+                        @keyframes fadeIn {
+                            from { opacity: 0; transform: translateY(10px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        
+                        #wordUploadTab, #imageUploadTab {
+                            animation: fadeIn 0.3s ease-out;
+                        }
                     </style>
                     
                     <!-- AI提取项目信息模态框 -->
@@ -1295,10 +1351,56 @@
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                            <div class="mb-6">
-                                <p class="text-gray-300 mb-3">请上传Word文档，系统将自动提取项目信息</p>
-                                <input type="file" id="wordFileInput" accept=".doc,.docx" class="w-full px-4 py-3 border border-purple-500 rounded-md bg-gray-800 text-white">
+                            
+                            <!-- Tab切换按钮 -->
+                            <div class="flex mb-6 bg-gray-800 rounded-lg p-1">
+                                <button id="wordTabBtn" onclick="switchTab('word')" class="tab-btn active flex-1 py-2 rounded-md text-center text-gray-300 transition-all">
+                                    <i class="fas fa-file-word mr-2"></i>Word文档
+                                </button>
+                                <button id="imageTabBtn" onclick="switchTab('image')" class="tab-btn flex-1 py-2 rounded-md text-center text-gray-300 transition-all">
+                                    <i class="fas fa-image mr-2"></i>图片识别
+                                </button>
                             </div>
+                            
+                            <!-- Word文档上传区域 -->
+                            <div id="wordUploadTab" class="mb-6">
+                                <label for="wordFileInput" class="block cursor-pointer">
+                                    <div id="wordDropArea" class="text-center py-4 border-2 border-dashed border-purple-500 rounded-lg hover:border-purple-300 transition-all bg-gray-800 word-upload-area">
+                                        <i class="fas fa-file-word text-purple-400 text-4xl mb-3"></i>
+                                        <p class="text-gray-300 mb-1">点击或拖放Word文档到此处</p>
+                                        <p class="text-gray-400 text-sm">支持.doc和.docx格式</p>
+                                    </div>
+                                </label>
+                                <input type="file" id="wordFileInput" accept=".doc,.docx" class="hidden">
+                                <div id="wordFileName" class="mt-2 text-sm text-center text-gray-400 hidden"></div>
+                            </div>
+                            
+                            <!-- 图片上传和粘贴区域 -->
+                            <div id="imageUploadTab" class="mb-6 hidden">
+                                <label for="imageFileInput" class="block cursor-pointer" id="imageDropLabel">
+                                    <div id="imageDropArea" class="border-2 border-dashed border-purple-500 rounded-lg p-4 mb-3 text-center bg-gray-800 hover:border-purple-300 transition-all relative overflow-hidden">
+                                        <div id="dropAreaText">
+                                            <i class="fas fa-cloud-upload-alt text-purple-400 text-3xl mb-2"></i>
+                                            <p class="text-gray-300">点击或拖放图片到此处</p>
+                                            <p class="text-gray-400 text-sm">支持 JPG, JPEG, PNG, BMP 格式</p>
+                                        </div>
+                                        <div id="previewContainer" class="hidden">
+                                            <img id="imagePreview" class="max-h-40 mx-auto mb-2" />
+                                            <button type="button" onclick="clearImagePreview(event)" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </label>
+                                <input type="file" id="imageFileInput" accept=".jpg,.jpeg,.png,.bmp" class="hidden">
+                                <div class="flex justify-between items-center">
+                                    <p class="text-gray-400 text-sm"><i class="fas fa-info-circle mr-1"></i> 提示：您也可以直接按 Ctrl+V 粘贴剪贴板中的图片</p>
+                                    <button type="button" id="clearImageBtn" class="text-sm text-red-400 hover:text-red-300 hidden">
+                                        <i class="fas fa-trash-alt mr-1"></i>移除图片
+                                    </button>
+                                </div>
+                            </div>
+                            
                             <div id="extractResult" class="mb-6 hidden">
                                 <h4 class="font-bold text-purple-300 mb-2">提取结果:</h4>
                                 <div id="extractedInfo" class="p-4 bg-gray-800 rounded-md text-sm max-h-56 overflow-y-auto"></div>
@@ -1324,31 +1426,194 @@
                     </div>
                     
                     <script>
+                        // 全局变量存储粘贴的图片
+                        let pastedImage = null;
+                        let currentTab = 'word'; // 当前激活的标签页
+                        
+                        // 切换标签页
+                        function switchTab(tabName) {
+                            currentTab = tabName;
+                            const wordTab = document.getElementById('wordUploadTab');
+                            const imageTab = document.getElementById('imageUploadTab');
+                            const wordBtn = document.getElementById('wordTabBtn');
+                            const imageBtn = document.getElementById('imageTabBtn');
+                            
+                            // 重置提取结果
+                            document.getElementById('extractResult').classList.add('hidden');
+                            document.getElementById('applyButton').classList.add('hidden');
+                            
+                            if (tabName === 'word') {
+                                wordTab.classList.remove('hidden');
+                                imageTab.classList.add('hidden');
+                                wordBtn.classList.add('active');
+                                imageBtn.classList.remove('active');
+                            } else {
+                                wordTab.classList.add('hidden');
+                                imageTab.classList.remove('hidden');
+                                wordBtn.classList.remove('active');
+                                imageBtn.classList.add('active');
+                            }
+                        }
+                        
+                        // 清除图片预览
+                        function clearImagePreview(event) {
+                            // 阻止事件冒泡，防止触发文件选择
+                            if (event) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                            }
+                            
+                            // 完全清除图片状态
+                            const previewContainer = document.getElementById('previewContainer');
+                            const dropAreaText = document.getElementById('dropAreaText');
+                            const imageFileInput = document.getElementById('imageFileInput');
+                            const clearImageBtn = document.getElementById('clearImageBtn');
+                            const imagePreview = document.getElementById('imagePreview');
+                            
+                            // 重置图片元素
+                            previewContainer.classList.add('hidden');
+                            dropAreaText.classList.remove('hidden');
+                            clearImageBtn.classList.add('hidden');
+                            imageFileInput.value = '';
+                            imagePreview.src = '';
+                            
+                            // 清除粘贴的图片数据
+                            pastedImage = null;
+                            
+                            console.log('图片已清除');
+                        }
+                        
+                        // 处理图片预览
+                        function handleImagePreview(file) {
+                            if (!file || !file.type || !file.type.match('image.*')) {
+                                alert('请选择图片文件');
+                                return;
+                            }
+                            
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                const img = document.getElementById('imagePreview');
+                                img.src = e.target.result;
+                                document.getElementById('previewContainer').classList.remove('hidden');
+                                document.getElementById('dropAreaText').classList.add('hidden');
+                                document.getElementById('clearImageBtn').classList.remove('hidden');
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                        
+                        // 显示Word文件名
+                        function showWordFileName(file) {
+                            const fileNameDiv = document.getElementById('wordFileName');
+                            if (file) {
+                                fileNameDiv.textContent = `已选择: ${file.name}`;
+                                fileNameDiv.classList.remove('hidden');
+                            } else {
+                                fileNameDiv.classList.add('hidden');
+                            }
+                        }
+                        
                         // AI提取项目信息相关函数
                         function showAiExtractModal() {
                             const modal = document.getElementById('aiExtractModal');
                             modal.classList.add('show');
+                            
+                            // 重置所有状态
                             document.getElementById('extractResult').classList.add('hidden');
                             document.getElementById('extractLoading').classList.add('hidden');
                             document.getElementById('applyButton').classList.add('hidden');
                             document.getElementById('wordFileInput').value = '';
+                            document.getElementById('wordFileName').classList.add('hidden');
+                            clearImagePreview();
                             
                             // 添加ESC键监听
                             document.addEventListener('keydown', handleEscKeyForModal);
+                            // 添加粘贴监听
+                            document.addEventListener('paste', handlePasteImage);
                         }
                         
                         function closeAiExtractModal() {
                             const modal = document.getElementById('aiExtractModal');
                             modal.classList.remove('show');
                             
+                            // 强制重置所有状态
+                            const resetElements = {
+                                'wordFileInput': el => el.value = '',
+                                'wordFileName': el => el.classList.add('hidden'),
+                                'imageFileInput': el => el.value = '',
+                                'imagePreview': el => el.src = '',
+                                'previewContainer': el => el.classList.add('hidden'),
+                                'dropAreaText': el => el.classList.remove('hidden'),
+                                'clearImageBtn': el => el.classList.add('hidden'),
+                                'extractResult': el => el.classList.add('hidden'),
+                                'applyButton': el => el.classList.add('hidden')
+                            };
+                            
+                            // 应用所有重置
+                            for (const [id, resetFn] of Object.entries(resetElements)) {
+                                const element = document.getElementById(id);
+                                if (element) resetFn(element);
+                            }
+                            
+                            // 清除粘贴的图片数据
+                            pastedImage = null;
+                            
                             // 移除ESC键监听
                             document.removeEventListener('keydown', handleEscKeyForModal);
+                            // 移除粘贴监听
+                            document.removeEventListener('paste', handlePasteImage);
+                            
+                            console.log('模态窗口已关闭，所有状态已重置');
                         }
                         
                         // 处理ESC键按下事件
                         function handleEscKeyForModal(event) {
                             if (event.key === 'Escape') {
                                 closeAiExtractModal();
+                            }
+                        }
+                        
+                        // 处理粘贴图片事件
+                        function handlePasteImage(event) {
+                            // 检查当前是否在图片标签页
+                            if (currentTab !== 'image') return;
+                            
+                            const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+                            let hasImage = false;
+                            
+                            for (let index in items) {
+                                const item = items[index];
+                                
+                                if (item.kind === 'file') {
+                                    const blob = item.getAsFile();
+                                    if (blob && blob.type.indexOf('image') !== -1) {
+                                        event.preventDefault();
+                                        
+                                        // 先清除之前的图片
+                                        clearImagePreview();
+                                        
+                                        // 设置新的图片
+                                        pastedImage = blob;
+                                        handleImagePreview(blob);
+                                        
+                                        // 创建新的FileList对象
+                                        try {
+                                            const dataTransfer = new DataTransfer();
+                                            dataTransfer.items.add(blob);
+                                            const imageFileInput = document.getElementById('imageFileInput');
+                                            imageFileInput.files = dataTransfer.files;
+                                        } catch (error) {
+                                            console.error('设置文件列表失败:', error);
+                                        }
+                                        
+                                        hasImage = true;
+                                        console.log('已粘贴新图片');
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (!hasImage) {
+                                console.log('粘贴内容中没有找到图片');
                             }
                         }
                         
@@ -1362,25 +1627,176 @@
                                     closeAiExtractModal();
                                 }
                             });
+                            
+                            // 设置移除图片按钮事件监听
+                            const clearImageBtn = document.getElementById('clearImageBtn');
+                            if (clearImageBtn) {
+                                clearImageBtn.addEventListener('click', function(event) {
+                                    clearImagePreview(event);
+                                    console.log('通过移除按钮清除图片');
+                                });
+                            }
+                            
+                            // Word文件选择处理
+                            const wordFileInput = document.getElementById('wordFileInput');
+                            if (wordFileInput) {
+                                wordFileInput.addEventListener('change', function() {
+                                    if (this.files && this.files[0]) {
+                                        showWordFileName(this.files[0]);
+                                    }
+                                });
+                            }
+                            
+                            // 图片文件选择处理
+                            const imageFileInput = document.getElementById('imageFileInput');
+                            if (imageFileInput) {
+                                imageFileInput.addEventListener('change', function() {
+                                    if (this.files && this.files[0]) {
+                                        handleImagePreview(this.files[0]);
+                                    }
+                                });
+                            }
+                            
+                            // 防止整个文档的默认拖放行为
+                            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                                document.addEventListener(eventName, preventDefaults, false);
+                            });
+                            
+                            function preventDefaults(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                            
+                            // 设置Word文档拖放区域处理
+                            const wordDropArea = document.getElementById('wordDropArea');
+                            if (wordDropArea) {
+                                // 拖放高亮效果
+                                ['dragenter', 'dragover'].forEach(eventName => {
+                                    wordDropArea.addEventListener(eventName, function() {
+                                        wordDropArea.classList.add('border-purple-300');
+                                    });
+                                });
+                                
+                                ['dragleave', 'drop'].forEach(eventName => {
+                                    wordDropArea.addEventListener(eventName, function() {
+                                        wordDropArea.classList.remove('border-purple-300');
+                                    });
+                                });
+                                
+                                // 处理Word文档拖放
+                                wordDropArea.addEventListener('drop', function(e) {
+                                    e.preventDefault();
+                                    const dt = e.dataTransfer;
+                                    const file = dt.files[0];
+                                    
+                                    if (file && (file.name.endsWith('.doc') || file.name.endsWith('.docx'))) {
+                                        // 设置文件输入
+                                        const fileInput = document.getElementById('wordFileInput');
+                                        
+                                        // 创建新的FileList对象
+                                        const dataTransfer = new DataTransfer();
+                                        dataTransfer.items.add(file);
+                                        fileInput.files = dataTransfer.files;
+                                        
+                                        // 显示文件名
+                                        showWordFileName(file);
+                                    } else {
+                                        alert('请选择Word文档 (.doc 或 .docx 格式)');
+                                    }
+                                });
+                            }
+                            
+                            // 设置图片拖放区域处理
+                            const imageDropArea = document.getElementById('imageDropArea');
+                            if (imageDropArea) {
+                                // 拖放高亮效果
+                                ['dragenter', 'dragover'].forEach(eventName => {
+                                    imageDropArea.addEventListener(eventName, function() {
+                                        imageDropArea.classList.add('border-purple-300');
+                                    });
+                                });
+                                
+                                ['dragleave', 'drop'].forEach(eventName => {
+                                    imageDropArea.addEventListener(eventName, function() {
+                                        imageDropArea.classList.remove('border-purple-300');
+                                    });
+                                });
+                                
+                                // 处理图片拖放
+                                imageDropArea.addEventListener('drop', function(e) {
+                                    e.preventDefault();
+                                    const dt = e.dataTransfer;
+                                    const file = dt.files[0];
+                                    
+                                    if (file && file.type.indexOf('image') !== -1) {
+                                        // 设置图片预览
+                                        handleImagePreview(file);
+                                        
+                                        // 创建新的FileList对象
+                                        const dataTransfer = new DataTransfer();
+                                        dataTransfer.items.add(file);
+                                        imageFileInput.files = dataTransfer.files;
+                                        
+                                        // 显示清除按钮
+                                        document.getElementById('clearImageBtn').classList.remove('hidden');
+                                    } else {
+                                        alert('请选择图片文件');
+                                    }
+                                });
+                            }
                         });
                         
                         function extractProjectInfo() {
-                            const fileInput = document.getElementById('wordFileInput');
-                            const file = fileInput.files[0];
-                            
-                            if (!file) {
-                                alert('请先选择Word文档');
-                                return;
+                            // 根据当前选择的标签页确定处理方式
+                            if (currentTab === 'word') {
+                                // Word文档提取
+                                const fileInput = document.getElementById('wordFileInput');
+                                const file = fileInput.files[0];
+                                
+                                if (!file) {
+                                    alert('请先选择Word文档');
+                                    return;
+                                }
+                                
+                                // 显示加载状态
+                                document.getElementById('extractLoading').classList.remove('hidden');
+                                document.getElementById('extractButton').disabled = true;
+                                
+                                // 准备FormData
+                                const formData = new FormData();
+                                formData.append('word_file', file);
+                                
+                                // 发送请求到后端
+                                sendExtractRequest(formData);
+                            } else {
+                                // 图片提取
+                                const fileInput = document.getElementById('imageFileInput');
+                                let file = fileInput.files[0];
+                                
+                                // 优先使用粘贴的图片
+                                if (pastedImage) {
+                                    file = pastedImage;
+                                }
+                                
+                                if (!file) {
+                                    alert('请先选择或粘贴图片');
+                                    return;
+                                }
+                                
+                                // 显示加载状态
+                                document.getElementById('extractLoading').classList.remove('hidden');
+                                document.getElementById('extractButton').disabled = true;
+                                
+                                // 准备FormData
+                                const formData = new FormData();
+                                formData.append('image_file', file);
+                                
+                                // 发送请求到后端
+                                sendExtractRequest(formData);
                             }
-                            
-                            // 显示加载状态
-                            document.getElementById('extractLoading').classList.remove('hidden');
-                            document.getElementById('extractButton').disabled = true;
-                            
-                            // 准备FormData
-                            const formData = new FormData();
-                            formData.append('word_file', file);
-                            
+                        }
+                        
+                        function sendExtractRequest(formData) {
                             // 发送请求到后端
                             fetch('/api/extract_project_info', {
                                 method: 'POST',
@@ -1422,17 +1838,17 @@
                             if (!info) return;
                             
                             // 应用提取的信息到表单
-                            if (info['项目名称']) document.getElementById('project_name').value = info['项目名称'];
-                            if (info['建设单位']) document.getElementById('construction_unit').value = info['建设单位'];
-                            if (info['设计单位']) document.getElementById('design_unit').value = info['设计单位'];
+                            if (info['项目名称'] || info['name']) document.getElementById('project_name').value = info['项目名称'] || info['name'];
+                            if (info['建设单位'] || info['construction_unit']) document.getElementById('construction_unit').value = info['建设单位'] || info['construction_unit'];
+                            if (info['设计单位'] || info['design_unit']) document.getElementById('design_unit').value = info['设计单位'] || info['design_unit'];
                             
                             // 处理项目地点
-                            if (info['项目地点']) {
-                                document.getElementById('project_location').value = info['项目地点'];
+                            if (info['项目地点'] || info['location']) {
+                                const location = info['项目地点'] || info['location'];
+                                document.getElementById('project_location').value = location;
                                 // 触发省市选择器更新
                                 try {
                                     // 如果是省市区格式，尝试自动选择省市
-                                    const location = info['项目地点'];
                                     const provinceSelect = document.getElementById('province');
                                     const citySelect = document.getElementById('city');
                                     
@@ -1487,20 +1903,22 @@
                             }
                             
                             // 处理建筑分类
-                            if (info['建筑分类']) {
-                                const type = info['建筑分类'];
+                            if (info['建筑分类'] || info['building_type']) {
+                                const type = info['建筑分类'] || info['building_type'];
                                 if (type.includes('居住') && type.includes('公共')) {
                                     document.getElementById('building_type').value = '居住+公共建筑';
                                 } else if (type.includes('居住')) {
                                     document.getElementById('building_type').value = '居住建筑';
                                 } else if (type.includes('公共')) {
                                     document.getElementById('building_type').value = '公共建筑';
+                                } else {
+                                    document.getElementById('building_type').value = type;
                                 }
                             }
                             
                             // 处理气候分区
-                            if (info['气候分区']) {
-                                const zone = info['气候分区'];
+                            if (info['气候分区'] || info['climate_zone']) {
+                                const zone = info['气候分区'] || info['climate_zone'];
                                 if (zone.includes('I') || zone.includes('i') || zone.includes('1') || zone.includes('一')) {
                                     document.getElementById('climate_zone').value = 'I';
                                 } else if (zone.includes('II') || zone.includes('ii') || zone.includes('2') || zone.includes('二')) {
@@ -1511,139 +1929,78 @@
                                     document.getElementById('climate_zone').value = 'IV';
                                 } else if (zone.includes('V') || zone.includes('v') || zone.includes('5') || zone.includes('五')) {
                                     document.getElementById('climate_zone').value = 'V';
+                                } else {
+                                    document.getElementById('climate_zone').value = zone;
                                 }
                             }
                             
-                            // 处理建筑面积
-                            if (info['建筑面积']) {
-                                // 移除逗号和空格
-                                const area = info['建筑面积'].replace(/[,\s]/g, '');
-                                // 提取数字
-                                const match = area.match(/^(\d+(\.\d+)?)$/);
-                                if (match) {
-                                    document.getElementById('total_building_area').value = match[1];
-                                }
+                            // 处理建筑面积数据
+                            // 如果有总建筑面积
+                            if (info['total_building_area'] || info['总建筑面积']) {
+                                const area = (info['total_building_area'] || info['总建筑面积']).toString().replace(/[,\s]/g, '');
+                                document.getElementById('total_building_area').value = area;
+                            }
+                            
+                            // 如果有地上建筑面积
+                            if (info['above_ground_area'] || info['地上建筑面积']) {
+                                const area = (info['above_ground_area'] || info['地上建筑面积']).toString().replace(/[,\s]/g, '');
+                                document.getElementById('above_ground_area').value = area;
+                            }
+                            
+                            // 如果有地下建筑面积
+                            if (info['underground_area'] || info['地下建筑面积']) {
+                                const area = (info['underground_area'] || info['地下建筑面积']).toString().replace(/[,\s]/g, '');
+                                document.getElementById('underground_area').value = area;
                             }
                             
                             // 处理建筑层数
-                            if (info['建筑层数']) {
-                                // 完全重写建筑层数提取逻辑
+                            if (info['building_floors'] || info['建筑层数']) {
+                                const floors = info['building_floors'] || info['建筑层数'];
+                                document.getElementById('building_floors').value = floors;
+                                
+                                // 解析层数信息，尝试提取地上/地下层数
                                 try {
-                                    const layerText = info['建筑层数'];
-                                    console.log('原始建筑层数文本:', layerText);
-                                    
-                                    let aboveGround = null;
-                                    let underground = null;
-                                    
-                                    // 尝试提取地下层数
-                                    const undergroundMatch = layerText.match(/地下[：:\s]*(\d+)[层\s]/);
-                                    if (undergroundMatch) {
-                                        underground = parseInt(undergroundMatch[1]);
-                                        console.log('提取到地下层数:', underground);
-                                    }
-                                    
-                                    // 尝试提取地上层数
-                                    const aboveGroundMatch = layerText.match(/地上[：:\s]*(\d+)[层\s]/);
-                                    if (aboveGroundMatch) {
-                                        aboveGround = parseInt(aboveGroundMatch[1]);
-                                        console.log('提取到地上层数:', aboveGround);
-                                    } else {
-                                        // 尝试匹配开头的数字作为地上层数
-                                        const simpleMatch = layerText.match(/^(\d+)/);
-                                        if (simpleMatch) {
-                                            aboveGround = parseInt(simpleMatch[1]);
-                                            console.log('提取到简单地上层数:', aboveGround);
-                                        }
-                                    }
-                                    
-                                    // 尝试匹配"X/Y"格式
-                                    const slashMatch = layerText.match(/(\d+)[\/\\](\d+)/);
-                                    if (slashMatch) {
-                                        aboveGround = parseInt(slashMatch[1]);
-                                        underground = parseInt(slashMatch[2]);
-                                        console.log('提取到斜杠格式层数:', aboveGround, underground);
-                                    }
-                                    
-                                    // 创建纯数字格式的层数字符串
-                                    let formattedLayers = "";
-                                    if (aboveGround !== null && underground !== null) {
-                                        formattedLayers = `${aboveGround}/${underground}`;
-                                    } else if (aboveGround !== null) {
-                                        formattedLayers = `${aboveGround}`;
-                                    } else if (underground !== null) {
-                                        formattedLayers = `0/${underground}`;
-                                    } else {
-                                        // 如果上面的匹配都失败，尝试提取所有数字
-                                        const allNumbers = layerText.match(/\d+/g);
-                                        if (allNumbers && allNumbers.length > 0) {
-                                            if (allNumbers.length >= 2) {
-                                                formattedLayers = `${allNumbers[0]}/${allNumbers[1]}`;
-                                            } else {
-                                                formattedLayers = allNumbers[0];
-                                            }
-                                            console.log('提取到所有数字:', allNumbers, '格式化为:', formattedLayers);
-                                        }
-                                    }
-                                    
-                                    console.log('最终格式化层数:', formattedLayers);
-                                    
-                                    // 更新表单
-                                    if (formattedLayers) {
-                                        document.getElementById('building_floors').value = formattedLayers;
-                                    }
-                                    
-                                    // 设置其他相关字段
-                                    if (aboveGround !== null) {
-                                        // 如果提取到了地上层数，可以用于估算建筑高度
-                                        if (!document.getElementById('building_height').value) {
-                                            // 假设每层3米高度
-                                            document.getElementById('building_height').value = (aboveGround * 3).toString();
-                                        }
-                                    }
-                                    
-                                    if (underground !== null && underground > 0) {
-                                        // 如果提取到了地下层数，可以设置地下相关字段
+                                    const floorParts = floors.split('/');
+                                    if (floorParts.length > 1 && parseInt(floorParts[1]) > 0) {
+                                        // 如果有地下层
                                         document.getElementById('has_underground_garage').value = '有';
                                     }
                                 } catch (e) {
-                                    console.error('解析建筑层数时出错:', e);
-                                    // 出错时也尝试提取纯数字
-                                    const allNumbers = info['建筑层数'].match(/\d+/g);
-                                    if (allNumbers && allNumbers.length > 0) {
-                                        if (allNumbers.length >= 2) {
-                                            document.getElementById('building_floors').value = `${allNumbers[0]}/${allNumbers[1]}`;
-                                        } else {
-                                            document.getElementById('building_floors').value = allNumbers[0];
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 处理地下层数
-                            if (info['地下层数']) {
-                                const underground = parseInt(info['地下层数']);
-                                if (underground > 0) {
-                                    document.getElementById('has_underground_garage').value = '有';
+                                    console.error('解析建筑层数失败:', e);
                                 }
                             }
                             
                             // 处理建筑高度
-                            if (info['建筑高度']) {
-                                // 移除逗号、空格和单位
-                                const height = info['建筑高度'].replace(/[,\s米m]/g, '');
-                                // 提取数字
-                                const match = height.match(/^(\d+(\.\d+)?)$/);
-                                if (match) {
-                                    document.getElementById('building_height').value = match[1];
-                                }
+                            if (info['building_height'] || info['建筑高度']) {
+                                const height = (info['building_height'] || info['建筑高度']).toString().replace(/[,\s米m]/g, '');
+                                document.getElementById('building_height').value = height;
+                            }
+                            
+                            // 处理容积率
+                            if (info['plot_ratio'] || info['容积率']) {
+                                const ratio = (info['plot_ratio'] || info['容积率']).toString();
+                                document.getElementById('plot_ratio').value = ratio;
+                            }
+                            
+                            // 处理建筑密度
+                            if (info['building_density'] || info['建筑密度']) {
+                                const density = (info['building_density'] || info['建筑密度']).toString();
+                                document.getElementById('building_density').value = density;
+                            }
+                            
+                            // 处理绿地率
+                            if (info['green_ratio'] || info['绿地率']) {
+                                const ratio = (info['green_ratio'] || info['绿地率']).toString();
+                                document.getElementById('green_ratio').value = ratio;
                             }
                             
                             // 关闭模态框
                             closeAiExtractModal();
                             
                             // 触发得分计算
-                            calculateAndUpdateScores();
-                            
+                            if (typeof calculateAndUpdateScores === 'function') {
+                                calculateAndUpdateScores();
+                            }
                         }
                     </script>
                     

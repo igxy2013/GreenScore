@@ -4812,51 +4812,89 @@ def extract_project_info_api():
     """提取Word文档中的项目信息并返回"""
     try:
         # 检查是否有文件上传
-        if 'word_file' not in request.files:
-            app.logger.error("未找到上传的Word文件")
+        if 'word_file' not in request.files and 'image_file' not in request.files:
+            app.logger.error("未找到上传的文件")
             return jsonify({'success': False, 'message': '未找到上传的文件'}), 400
+        
+        if 'word_file' in request.files:
+            file = request.files['word_file']
+            if file.filename == '':
+                app.logger.error("未选择Word文件")
+                return jsonify({'success': False, 'message': '未选择文件'}), 400
+                
+            # 检查文件扩展名
+            if not file.filename.endswith(('.doc', '.docx')):
+                app.logger.error(f"不支持的文件格式: {file.filename}")
+                return jsonify({'success': False, 'message': '仅支持.doc和.docx格式的Word文档'}), 400
+                
+            # 创建临时目录（如果不存在）
+            temp_dir = os.path.join('static', 'temp')
+            os.makedirs(temp_dir, exist_ok=True)
             
-        file = request.files['word_file']
-        if file.filename == '':
-            app.logger.error("未选择Word文件")
-            return jsonify({'success': False, 'message': '未选择文件'}), 400
+            # 保存上传的文件
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            file_path = os.path.join(temp_dir, f"{timestamp}_{werkzeug.utils.secure_filename(file.filename)}")
+            file.save(file_path)
             
-        # 检查文件扩展名
-        if not file.filename.endswith(('.doc', '.docx')):
-            app.logger.error(f"不支持的文件格式: {file.filename}")
-            return jsonify({'success': False, 'message': '仅支持.doc和.docx格式的Word文档'}), 400
+            app.logger.info(f"已保存Word文件: {file_path}")
             
-        # 创建临时目录（如果不存在）
-        temp_dir = os.path.join('static', 'temp')
-        os.makedirs(temp_dir, exist_ok=True)
+            # 调用extract_doc_info函数提取信息
+            from utils.word_extractor import extract_doc_info
+            project_info = extract_doc_info(file_path)
+            
+            # 文件使用完毕后删除
+            try:
+                os.remove(file_path)
+                app.logger.info(f"已删除临时文件: {file_path}")
+            except Exception as e:
+                app.logger.warning(f"删除临时文件失败: {str(e)}")
         
-        # 保存上传的文件
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        file_path = os.path.join(temp_dir, f"{timestamp}_{werkzeug.utils.secure_filename(file.filename)}")
-        file.save(file_path)
+        elif 'image_file' in request.files:
+            file = request.files['image_file']
+            if file.filename == '':
+                app.logger.error("未选择图片文件")
+                return jsonify({'success': False, 'message': '未选择文件'}), 400
+                
+            # 检查文件扩展名
+            if not file.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tiff')):
+                app.logger.error(f"不支持的图片格式: {file.filename}")
+                return jsonify({'success': False, 'message': '仅支持JPG、PNG、BMP和TIFF格式的图片'}), 400
+            
+            app.logger.info(f"处理图片文件: {file.filename}")
+            
+            # 使用图像提取函数处理图片
+            from utils.image_extractor import extract_image_info
+            project_info = extract_image_info(file)
         
-        app.logger.info(f"已保存Word文件: {file_path}")
-        
-        # 调用extract_doc_info函数提取信息
-        from utils.word_extractor import extract_doc_info
-        project_info = extract_doc_info(file_path)
-        
-        # 文件使用完毕后删除
-        try:
-            os.remove(file_path)
-            app.logger.info(f"已删除临时文件: {file_path}")
-        except Exception as e:
-            app.logger.warning(f"删除临时文件失败: {str(e)}")
+        # 处理base64图片数据（从剪贴板粘贴的图片）
+        elif request.json and 'image_data' in request.json:
+            image_data = request.json['image_data']
+            
+            # 从Base64字符串获取图片数据
+            if image_data.startswith('data:image'):
+                # 移除Base64前缀
+                image_data = image_data.split(',')[1]
+            
+            # 解码Base64数据
+            import base64
+            from io import BytesIO
+            
+            image_bytes = base64.b64decode(image_data)
+            image_file = BytesIO(image_bytes)
+            
+            # 调用图像处理函数
+            from utils.image_extractor import extract_image_info
+            project_info = extract_image_info(image_file)
         
         if project_info:
             app.logger.info(f"成功提取项目信息: {project_info}")
             return jsonify({'success': True, 'info': project_info})
         else:
             app.logger.error("提取项目信息失败")
-            return jsonify({'success': False, 'message': '无法从文档中提取项目信息'}), 400
+            return jsonify({'success': False, 'message': '无法从文件中提取项目信息'}), 400
             
     except Exception as e:
-        app.logger.error(f"处理Word文档时出错: {str(e)}")
+        app.logger.error(f"处理文件时出错: {str(e)}")
         return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
