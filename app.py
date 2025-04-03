@@ -671,6 +671,8 @@ def save_project_info(form_data):
         project.design_unit = form_data.get('design_unit', '')
         project.location = form_data.get('project_location', '')
         project.climate_zone = form_data.get('climate_zone', '')
+        # 设置项目状态为"进行中"
+        project.status = '进行中'
         
         # 始终处理详细字段，不再依赖is_detail_form标志
         # 尝试将表单值转换为浮点数
