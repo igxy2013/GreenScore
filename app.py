@@ -615,7 +615,7 @@ def get_project(project_id=None):
 def save_project_info(form_data):
     try:
         # 获取项目ID
-        project_id = form_data.get('project_id')
+        project_id = form_data.get('project_id', '')
         if project_id:
             try:
                 project_id = int(project_id)
@@ -638,95 +638,77 @@ def save_project_info(form_data):
         
         # 获取新的项目名称
         new_project_name = form_data.get('project_name', '')
+        if not new_project_name:
+            print("错误：未提供项目名称")
+            return None
         
-        # 如果不是详细信息表单，则更新基本信息
-        if not is_detail_form:
-            # 更新项目属性 - 基本信息
-            project.name = new_project_name
-            project.code = form_data.get('project_code', '')
-            project.construction_unit = form_data.get('construction_unit', '')
-            project.design_unit = form_data.get('design_unit', '')
-            project.location = form_data.get('project_location', '')
-            project.building_type = form_data.get('building_type', '')
-            project.standard = form_data.get('standard_selection', '')  # 保存评价标准
-            project.climate_zone = form_data.get('climate_zone', '')
-            project.star_rating_target = form_data.get('star_rating_target', '')
+        # 获取当前登录用户的ID
+        user_id = session.get('user_id')
+        if not user_id:
+            print("错误：用户未登录")
+            return None
+        
+        # 检查项目标准
+        standard = form_data.get('standard_selection', '')
+        if not standard:
+            print("错误：未提供评价标准")
+            return None
             
-            # 如果项目名称发生变化，更新得分表中的项目名称
-            if project_id and new_project_name:
-                try:
-                    # 使用SQLAlchemy执行更新操作
-                    result = db.session.execute(
-                        text("UPDATE `得分表` SET `项目名称` = :project_name WHERE `项目ID` = :project_id"),
-                        {"project_name": new_project_name, "project_id": project_id}
-                    )
-                    db.session.commit()
-                    print(f"更新得分表中项目 {project_id} 的项目名称为: {new_project_name}")
-                except Exception as e:
-                    print(f"更新得分表项目名称时出错: {str(e)}")
-                    print(traceback.format_exc())
+        # 检查建筑类型
+        building_type = form_data.get('building_type', '')
         
-        # 处理数值字段 - 建筑面积相关（无论是哪种表单都处理这些字段）
-        try_parse_float(form_data, 'building_area', project, 'building_area')
-        try_parse_float(form_data, 'total_land_area', project, 'total_land_area')
-        try_parse_float(form_data, 'total_building_area', project, 'total_building_area')
-        try_parse_float(form_data, 'above_ground_area', project, 'above_ground_area')
-        try_parse_float(form_data, 'underground_area', project, 'underground_area')
-        try_parse_float(form_data, 'first_floor_underground_area', project, 'underground_floor_area')  # 注意字段名不同
-        try_parse_float(form_data, 'plot_ratio', project, 'plot_ratio')
-        try_parse_float(form_data, 'building_base_area', project, 'building_base_area')
-        try_parse_float(form_data, 'building_density', project, 'building_density')
-        try_parse_float(form_data, 'green_area', project, 'green_area')
-        try_parse_float(form_data, 'green_ratio', project, 'green_ratio')
-        try_parse_float(form_data, 'building_height', project, 'building_height')
+        # 检查星级目标
+        star_rating_target = form_data.get('star_rating_target', '')
         
-        # 处理整数字段
-        try_parse_int(form_data, 'ground_parking_spaces', project, 'ground_parking_spaces')
-        try_parse_int(form_data, 'residential_units', project, 'residential_units')
+        # 基本信息表单数据
+        project.name = new_project_name
+        project.user_id = user_id
+        project.standard = standard
+        project.building_type = building_type
+        project.star_rating_target = star_rating_target
+        project.code = form_data.get('project_code', '')
+        project.construction_unit = form_data.get('construction_unit', '')
+        project.design_unit = form_data.get('design_unit', '')
+        project.location = form_data.get('project_location', '')
+        project.climate_zone = form_data.get('climate_zone', '')
         
-        # 处理字符串字段
-        project.building_floors = form_data.get('building_floors', '')
-        
-        # 处理选择字段（如果不是详细信息表单，star_rating_target已在上面处理）
+        # 如果是详细信息表单，处理更多字段
         if is_detail_form:
-            # 详细信息表单中不更新star_rating_target，因为它属于基本信息
-            pass
+            # 尝试将表单值转换为浮点数
+            try_parse_float(form_data, 'total_land_area', project, 'total_land_area')
+            try_parse_float(form_data, 'total_building_area', project, 'total_building_area')
+            try_parse_float(form_data, 'above_ground_area', project, 'above_ground_area')
+            try_parse_float(form_data, 'underground_area', project, 'underground_area')
+            try_parse_float(form_data, 'first_floor_underground_area', project, 'underground_floor_area')
+            try_parse_float(form_data, 'plot_ratio', project, 'plot_ratio')
+            try_parse_float(form_data, 'building_base_area', project, 'building_base_area')
+            try_parse_float(form_data, 'building_density', project, 'building_density')
+            try_parse_float(form_data, 'green_area', project, 'green_area')
+            try_parse_float(form_data, 'green_ratio', project, 'green_ratio')
+            try_parse_float(form_data, 'building_height', project, 'building_height')
+            
+            # 尝试将表单值转换为整数
+            try_parse_int(form_data, 'ground_parking_spaces', project, 'ground_parking_spaces')
+            try_parse_int(form_data, 'residential_units', project, 'residential_units')
+            
+            # 设置其他字段
+            project.building_floors = form_data.get('building_floors', '')
+            project.air_conditioning_type = form_data.get('ac_type', '')
+            project.average_floors = form_data.get('avg_floors', '')
+            project.has_garbage_room = form_data.get('has_garbage_room', '')
+            project.has_elevator = form_data.get('has_elevator', '')
+            project.has_underground_garage = form_data.get('has_underground_garage', '')
+            project.construction_type = form_data.get('construction_type', '')
+            project.has_water_landscape = form_data.get('has_water_landscape', '')
+            project.is_fully_decorated = form_data.get('is_fully_decorated', '')
+            project.public_building_type = form_data.get('public_building_type', '')
+            project.public_green_space = form_data.get('public_green_space', '')
         
-        project.air_conditioning_type = form_data.get('ac_type', '')  # 注意字段名不同
-        project.average_floors = form_data.get('avg_floors', '')  # 注意字段名不同
-        project.has_garbage_room = form_data.get('has_garbage_room', '')
-        project.has_elevator = form_data.get('has_elevator', '')
-        project.has_underground_garage = form_data.get('has_underground_garage', '')
-        project.construction_type = form_data.get('construction_type', '')
-        project.has_water_landscape = form_data.get('has_water_landscape', '')
-        project.is_fully_decorated = form_data.get('is_fully_decorated', '')
-        project.public_building_type = form_data.get('public_building_type', '')
-        
-        # 处理public_green_space字段
-        public_green_space = form_data.get('public_green_space', '')
-        print(f"处理public_green_space字段: {public_green_space}")
-        project.public_green_space = public_green_space
-        
-        # 打印调试信息
-        print(f"保存项目信息: ID={project.id}, 名称={project.name}, 评价标准={project.standard}, 公建类型={project.public_building_type}, 绿地向公众开放={project.public_green_space}")
-        
-        # 保存到数据库
+        # 保存项目信息到数据库
         db.session.add(project)
         db.session.commit()
         
-        print(f"项目保存成功: ID={project.id}")
-        
-        # 清除项目缓存文件
-        try:
-            import os
-            cache_file = os.path.join('temp', f'project_{project.id}_cache.json')
-            if os.path.exists(cache_file):
-                os.remove(cache_file)
-                print(f"已清除项目缓存: {cache_file}")
-        except Exception as e:
-            print(f"清除项目缓存失败: {str(e)}")
-            # 不影响项目保存，继续执行
-        
+        print(f"项目信息保存成功: ID={project.id}, 名称={project.name}")
         return project
     except Exception as e:
         db.session.rollback()
@@ -736,28 +718,31 @@ def save_project_info(form_data):
 
 # 辅助函数：尝试解析浮点数
 def try_parse_float(form_data, form_field, model_obj, model_field):
-    value = form_data.get(form_field, '')
-    if value:
-        try:
-            # 转换为浮点数并保留2位小数
-            float_value = float(value)
-            # 对于面积相关字段，保留2位小数
-            if 'area' in model_field or 'ratio' in model_field or 'density' in model_field or 'height' in model_field:
-                float_value = round(float_value, 2)
-            setattr(model_obj, model_field, float_value)
-        except ValueError as ve:
-            print(f"{form_field}转换错误: {str(ve)}")
-            pass
+    """尝试将表单字段解析为浮点数并赋值给模型对象"""
+    try:
+        value = form_data.get(form_field, '')
+        if value is not None and value != '':
+            model_obj.__setattr__(model_field, float(value))
+        else:
+            model_obj.__setattr__(model_field, None)
+    except (ValueError, TypeError) as e:
+        print(f"无法将字段 {form_field} 转换为浮点数: {str(e)}")
+        # 如果转换失败，设置为None
+        model_obj.__setattr__(model_field, None)
 
 # 辅助函数：尝试解析整数
 def try_parse_int(form_data, form_field, model_obj, model_field):
-    value = form_data.get(form_field, '')
-    if value:
-        try:
-            setattr(model_obj, model_field, int(value))
-        except ValueError as ve:
-            print(f"{form_field}转换错误: {str(ve)}")
-            pass
+    """尝试将表单字段解析为整数并赋值给模型对象"""
+    try:
+        value = form_data.get(form_field, '')
+        if value is not None and value != '':
+            model_obj.__setattr__(model_field, int(value))
+        else:
+            model_obj.__setattr__(model_field, None)
+    except (ValueError, TypeError) as e:
+        print(f"无法将字段 {form_field} 转换为整数: {str(e)}")
+        # 如果转换失败，设置为None
+        model_obj.__setattr__(model_field, None)
 
 # 项目管理页面路由
 @app.route('/projects')
@@ -1178,21 +1163,21 @@ def get_project_info():
         def format_float(value):
             if value is not None:
                 return round(value, 2)
-            return None
+            return ''
         
         result = {
-            'projectName': project.name if project else '',
-            'projectCode': project.code if project else '',
-            'constructionUnit': project.construction_unit if project else '',
-            'designUnit': project.design_unit if project else '',
-            'projectLocation': project.location if project else '',
+            'projectName': project.name if project and project.name is not None else '',
+            'projectCode': project.code if project and project.code is not None else '',
+            'constructionUnit': project.construction_unit if project and project.construction_unit is not None else '',
+            'designUnit': project.design_unit if project and project.design_unit is not None else '',
+            'projectLocation': project.location if project and project.location is not None else '',
             'buildingArea': format_float(project.building_area) if project else '',
-            'buildingType': project.building_type if project else '',  # 添加建筑类型
-            'buildingNo': form_data.building_no if form_data else '',
-            'designNo': form_data.design_no if form_data else '',
-            'standardSelection': form_data.standard_selection if form_data else 'municipal',
+            'buildingType': project.building_type if project and project.building_type is not None else '',  # 添加建筑类型
+            'buildingNo': form_data.building_no if form_data and form_data.building_no is not None else '',
+            'designNo': form_data.design_no if form_data and form_data.design_no is not None else '',
+            'standardSelection': form_data.standard_selection if form_data and form_data.standard_selection is not None else 'municipal',
             'buildingHeight': format_float(project.building_height) if project else '',
-            'buildingFloors': project.building_floors if project else ''
+            'buildingFloors': project.building_floors if project and project.building_floors is not None else ''
         }
         
         return jsonify(result)
