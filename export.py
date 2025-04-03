@@ -842,7 +842,7 @@ def generate_dwg(request_data):
         print(f"获取到项目数据: {project_rows[0]}")
         
         standard = project_rows[0][8]  # 使用数据库中的评价标准
-        star_rating_target = project_rows[0][7] or ''  # 星级目标
+        star_rating_target = project_rows[0][12] or ''  # 星级目标
         
         print(f"项目评价标准: {standard}, 星级目标: {star_rating_target}")
         
