@@ -50,42 +50,51 @@ def extract_project_info(file_path):
                 
             try:
                 import win32com.client
-                word = win32com.client.Dispatch("Word.Application")
-                word.Visible = False
-                doc = word.Documents.Open(os.path.abspath(file_path))
+                import pythoncom
                 
-                # 提取段落信息
-                all_paragraphs = []
-                for i in range(1, doc.Paragraphs.Count + 1):
-                    all_paragraphs.append(doc.Paragraphs(i).Range.Text.strip())
+                # 初始化COM组件
+                pythoncom.CoInitialize()
                 
-                # 提取表格信息
-                tables_data = []
-                for i in range(1, doc.Tables.Count + 1):
-                    table = doc.Tables(i)
-                    table_data = []
-                    for row_idx in range(1, table.Rows.Count + 1):
-                        row_data = []
-                        for col_idx in range(1, table.Columns.Count + 1):
-                            try:
-                                cell_text = table.Cell(row_idx, col_idx).Range.Text.strip()
-                                cell_text = cell_text.replace('\r', '').replace('\n', ' ').replace('\x07', '')
-                                row_data.append(cell_text)
-                            except:
-                                row_data.append("")
-                        table_data.append(row_data)
-                    tables_data.append(table_data)
-                
-                # 关闭文档和Word应用
-                doc.Close(False)
-                word.Quit()
-                
-                # 处理提取的文本内容
-                extract_from_paragraphs(all_paragraphs, project_info)
-                extract_from_tables(tables_data, project_info)
+                try:
+                    word = win32com.client.Dispatch("Word.Application")
+                    word.Visible = False
+                    doc = word.Documents.Open(os.path.abspath(file_path))
+                    
+                    # 提取段落信息
+                    all_paragraphs = []
+                    for i in range(1, doc.Paragraphs.Count + 1):
+                        all_paragraphs.append(doc.Paragraphs(i).Range.Text.strip())
+                    
+                    # 提取表格信息
+                    tables_data = []
+                    for i in range(1, doc.Tables.Count + 1):
+                        table = doc.Tables(i)
+                        table_data = []
+                        for row_idx in range(1, table.Rows.Count + 1):
+                            row_data = []
+                            for col_idx in range(1, table.Columns.Count + 1):
+                                try:
+                                    cell_text = table.Cell(row_idx, col_idx).Range.Text.strip()
+                                    cell_text = cell_text.replace('\r', '').replace('\n', ' ').replace('\x07', '')
+                                    row_data.append(cell_text)
+                                except:
+                                    row_data.append("")
+                            table_data.append(row_data)
+                        tables_data.append(table_data)
+                    
+                    # 关闭文档和Word应用
+                    doc.Close(False)
+                    word.Quit()
+                    
+                    # 处理提取的文本内容
+                    extract_from_paragraphs(all_paragraphs, project_info)
+                    extract_from_tables(tables_data, project_info)
+                finally:
+                    # 确保在函数结束时释放COM资源
+                    pythoncom.CoUninitialize()
                 
             except ImportError:
-                logger.error("处理.doc文件需要pywin32库，请安装: pip install pywin32")
+                logger.error("处理.doc文件需要pywin32和pythoncom库，请安装: pip install pywin32")
                 return None
             except Exception as e:
                 logger.error(f"处理.doc文件时出错: {str(e)}")

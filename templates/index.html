@@ -1076,6 +1076,419 @@
                     <!-- 项目信息表单 -->
                     <!-- <h1 class="text-xl font-medium text-primary mb-6 text-center">项目信息</h1> -->
                     
+                    <!-- AI提取项目信息悬浮按钮 -->
+                    <div class="fixed left-[22rem] top-24 z-50">
+                        <button id="aiExtractButton" onclick="showAiExtractModal()" class="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all">
+                            <i class="fas fa-robot mr-2"></i>
+                            <span>AI提取项目信息</span>
+                        </button>
+                    </div>
+                    
+                    <!-- AI提取项目信息模态框样式 -->
+                    <style>
+                        .modal-backdrop {
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background-color: rgba(0, 0, 0, 0.5);
+                            backdrop-filter: blur(2px);
+                            z-index: 999;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            opacity: 0;
+                            visibility: hidden;
+                            transition: opacity 0.3s ease, visibility 0.3s ease;
+                        }
+                        
+                        .modal-backdrop.show {
+                            opacity: 1;
+                            visibility: visible;
+                        }
+                        
+                        .modal-content {
+                            background: white;
+                            border-radius: 0.5rem;
+                            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                            width: 100%;
+                            max-width: 480px;
+                            padding: 1.5rem;
+                            transform: translateY(-20px);
+                            transition: transform 0.3s ease;
+                            position: relative;
+                            max-height: 90vh;
+                            overflow-y: auto;
+                            margin: 0 1rem;
+                        }
+                        
+                        .modal-backdrop.show .modal-content {
+                            transform: translateY(0);
+                        }
+                    </style>
+                    
+                    <!-- AI提取项目信息模态框 -->
+                    <div id="aiExtractModal" class="modal-backdrop">
+                        <div class="modal-content">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-bold">AI提取项目信息</h3>
+                                <button class="text-gray-500 hover:text-gray-700" onclick="closeAiExtractModal()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-gray-700 mb-2">请上传Word文档，系统将自动提取项目信息</p>
+                                <input type="file" id="wordFileInput" accept=".doc,.docx" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+                            <div id="extractResult" class="mb-4 hidden">
+                                <h4 class="font-bold text-purple-600 mb-2">提取结果:</h4>
+                                <div id="extractedInfo" class="p-3 bg-gray-50 rounded-md text-sm max-h-48 overflow-y-auto"></div>
+                            </div>
+                            <div id="extractLoading" class="mb-4 hidden">
+                                <div class="flex items-center justify-center">
+                                    <i class="fas fa-spinner fa-spin text-purple-600 text-2xl mr-2"></i>
+                                    <span>正在提取信息，请稍候...</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-end space-x-3">
+                                <button type="button" onclick="closeAiExtractModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                    取消
+                                </button>
+                                <button type="button" id="extractButton" onclick="extractProjectInfo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                    提取信息
+                                </button>
+                                <button type="button" id="applyButton" onclick="applyExtractedInfo()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 hidden">
+                                    应用到表单
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <script>
+                        // AI提取项目信息相关函数
+                        function showAiExtractModal() {
+                            const modal = document.getElementById('aiExtractModal');
+                            modal.classList.add('show');
+                            document.getElementById('extractResult').classList.add('hidden');
+                            document.getElementById('extractLoading').classList.add('hidden');
+                            document.getElementById('applyButton').classList.add('hidden');
+                            document.getElementById('wordFileInput').value = '';
+                            
+                            // 添加ESC键监听
+                            document.addEventListener('keydown', handleEscKeyForModal);
+                        }
+                        
+                        function closeAiExtractModal() {
+                            const modal = document.getElementById('aiExtractModal');
+                            modal.classList.remove('show');
+                            
+                            // 移除ESC键监听
+                            document.removeEventListener('keydown', handleEscKeyForModal);
+                        }
+                        
+                        // 处理ESC键按下事件
+                        function handleEscKeyForModal(event) {
+                            if (event.key === 'Escape') {
+                                closeAiExtractModal();
+                            }
+                        }
+                        
+                        // 页面加载完成后初始化事件监听
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // 点击模态窗口外部区域关闭模态窗口
+                            const modal = document.getElementById('aiExtractModal');
+                            modal.addEventListener('click', function(event) {
+                                // 如果点击的是模态窗口背景（而不是内容区域），则关闭模态窗口
+                                if (event.target === modal) {
+                                    closeAiExtractModal();
+                                }
+                            });
+                        });
+                        
+                        function extractProjectInfo() {
+                            const fileInput = document.getElementById('wordFileInput');
+                            const file = fileInput.files[0];
+                            
+                            if (!file) {
+                                alert('请先选择Word文档');
+                                return;
+                            }
+                            
+                            // 显示加载状态
+                            document.getElementById('extractLoading').classList.remove('hidden');
+                            document.getElementById('extractButton').disabled = true;
+                            
+                            // 准备FormData
+                            const formData = new FormData();
+                            formData.append('word_file', file);
+                            
+                            // 发送请求到后端
+                            fetch('/api/extract_project_info', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                // 隐藏加载状态
+                                document.getElementById('extractLoading').classList.add('hidden');
+                                document.getElementById('extractButton').disabled = false;
+                                
+                                if (data.success) {
+                                    // 显示提取结果
+                                    document.getElementById('extractResult').classList.remove('hidden');
+                                    document.getElementById('applyButton').classList.remove('hidden');
+                                    
+                                    // 存储提取的数据
+                                    window.extractedProjectInfo = data.info;
+                                    
+                                    // 显示提取的信息
+                                    let infoHtml = '';
+                                    for (const [key, value] of Object.entries(data.info)) {
+                                        infoHtml += `<div><strong>${key}:</strong> ${value}</div>`;
+                                    }
+                                    document.getElementById('extractedInfo').innerHTML = infoHtml;
+                                } else {
+                                    alert('提取信息失败: ' + data.message);
+                                }
+                            })
+                            .catch(error => {
+                                document.getElementById('extractLoading').classList.add('hidden');
+                                document.getElementById('extractButton').disabled = false;
+                                alert('提取信息出错: ' + error);
+                            });
+                        }
+                        
+                        function applyExtractedInfo() {
+                            const info = window.extractedProjectInfo;
+                            if (!info) return;
+                            
+                            // 应用提取的信息到表单
+                            if (info['项目名称']) document.getElementById('project_name').value = info['项目名称'];
+                            if (info['建设单位']) document.getElementById('construction_unit').value = info['建设单位'];
+                            if (info['设计单位']) document.getElementById('design_unit').value = info['设计单位'];
+                            
+                            // 处理项目地点
+                            if (info['项目地点']) {
+                                document.getElementById('project_location').value = info['项目地点'];
+                                // 触发省市选择器更新
+                                try {
+                                    // 如果是省市区格式，尝试自动选择省市
+                                    const location = info['项目地点'];
+                                    const provinceSelect = document.getElementById('province');
+                                    const citySelect = document.getElementById('city');
+                                    
+                                    // 常见城市列表
+                                    const cityMap = {
+                                        '成都市': '四川省',
+                                        '北京市': '北京市',
+                                        '上海市': '上海市',
+                                        '广州市': '广东省',
+                                        '深圳市': '广东省',
+                                        '重庆市': '重庆市',
+                                        '武汉市': '湖北省',
+                                        '南京市': '江苏省',
+                                        '杭州市': '浙江省',
+                                        '西安市': '陕西省',
+                                        '成都': '四川省'
+                                    };
+                                    
+                                    // 尝试根据城市选择省份
+                                    if (provinceSelect && citySelect) {
+                                        for (const city in cityMap) {
+                                            if (location.includes(city)) {
+                                                const province = cityMap[city];
+                                                // 设置省份
+                                                for (let i = 0; i < provinceSelect.options.length; i++) {
+                                                    if (provinceSelect.options[i].text.includes(province)) {
+                                                        provinceSelect.selectedIndex = i;
+                                                        // 触发省份变更事件
+                                                        const event = new Event('change');
+                                                        provinceSelect.dispatchEvent(event);
+                                                        
+                                                        // 设置城市
+                                                        setTimeout(() => {
+                                                            for (let j = 0; j < citySelect.options.length; j++) {
+                                                                if (citySelect.options[j].text.includes(city)) {
+                                                                    citySelect.selectedIndex = j;
+                                                                    citySelect.dispatchEvent(new Event('change'));
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }, 300);
+                                                        break;
+                                                    }
+                                                }
+                                                break;
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.error('省市选择器处理失败:', e);
+                                }
+                            }
+                            
+                            // 处理建筑分类
+                            if (info['建筑分类']) {
+                                const type = info['建筑分类'];
+                                if (type.includes('居住') && type.includes('公共')) {
+                                    document.getElementById('building_type').value = '居住+公共建筑';
+                                } else if (type.includes('居住')) {
+                                    document.getElementById('building_type').value = '居住建筑';
+                                } else if (type.includes('公共')) {
+                                    document.getElementById('building_type').value = '公共建筑';
+                                }
+                            }
+                            
+                            // 处理气候分区
+                            if (info['气候分区']) {
+                                const zone = info['气候分区'];
+                                if (zone.includes('I') || zone.includes('i') || zone.includes('1') || zone.includes('一')) {
+                                    document.getElementById('climate_zone').value = 'I';
+                                } else if (zone.includes('II') || zone.includes('ii') || zone.includes('2') || zone.includes('二')) {
+                                    document.getElementById('climate_zone').value = 'II';
+                                } else if (zone.includes('III') || zone.includes('iii') || zone.includes('3') || zone.includes('三')) {
+                                    document.getElementById('climate_zone').value = 'III';
+                                } else if (zone.includes('IV') || zone.includes('iv') || zone.includes('4') || zone.includes('四')) {
+                                    document.getElementById('climate_zone').value = 'IV';
+                                } else if (zone.includes('V') || zone.includes('v') || zone.includes('5') || zone.includes('五')) {
+                                    document.getElementById('climate_zone').value = 'V';
+                                }
+                            }
+                            
+                            // 处理建筑面积
+                            if (info['建筑面积']) {
+                                // 移除逗号和空格
+                                const area = info['建筑面积'].replace(/[,\s]/g, '');
+                                // 提取数字
+                                const match = area.match(/^(\d+(\.\d+)?)$/);
+                                if (match) {
+                                    document.getElementById('total_building_area').value = match[1];
+                                }
+                            }
+                            
+                            // 处理建筑层数
+                            if (info['建筑层数']) {
+                                // 完全重写建筑层数提取逻辑
+                                try {
+                                    const layerText = info['建筑层数'];
+                                    console.log('原始建筑层数文本:', layerText);
+                                    
+                                    let aboveGround = null;
+                                    let underground = null;
+                                    
+                                    // 尝试提取地下层数
+                                    const undergroundMatch = layerText.match(/地下[：:\s]*(\d+)[层\s]/);
+                                    if (undergroundMatch) {
+                                        underground = parseInt(undergroundMatch[1]);
+                                        console.log('提取到地下层数:', underground);
+                                    }
+                                    
+                                    // 尝试提取地上层数
+                                    const aboveGroundMatch = layerText.match(/地上[：:\s]*(\d+)[层\s]/);
+                                    if (aboveGroundMatch) {
+                                        aboveGround = parseInt(aboveGroundMatch[1]);
+                                        console.log('提取到地上层数:', aboveGround);
+                                    } else {
+                                        // 尝试匹配开头的数字作为地上层数
+                                        const simpleMatch = layerText.match(/^(\d+)/);
+                                        if (simpleMatch) {
+                                            aboveGround = parseInt(simpleMatch[1]);
+                                            console.log('提取到简单地上层数:', aboveGround);
+                                        }
+                                    }
+                                    
+                                    // 尝试匹配"X/Y"格式
+                                    const slashMatch = layerText.match(/(\d+)[\/\\](\d+)/);
+                                    if (slashMatch) {
+                                        aboveGround = parseInt(slashMatch[1]);
+                                        underground = parseInt(slashMatch[2]);
+                                        console.log('提取到斜杠格式层数:', aboveGround, underground);
+                                    }
+                                    
+                                    // 创建纯数字格式的层数字符串
+                                    let formattedLayers = "";
+                                    if (aboveGround !== null && underground !== null) {
+                                        formattedLayers = `${aboveGround}/${underground}`;
+                                    } else if (aboveGround !== null) {
+                                        formattedLayers = `${aboveGround}`;
+                                    } else if (underground !== null) {
+                                        formattedLayers = `0/${underground}`;
+                                    } else {
+                                        // 如果上面的匹配都失败，尝试提取所有数字
+                                        const allNumbers = layerText.match(/\d+/g);
+                                        if (allNumbers && allNumbers.length > 0) {
+                                            if (allNumbers.length >= 2) {
+                                                formattedLayers = `${allNumbers[0]}/${allNumbers[1]}`;
+                                            } else {
+                                                formattedLayers = allNumbers[0];
+                                            }
+                                            console.log('提取到所有数字:', allNumbers, '格式化为:', formattedLayers);
+                                        }
+                                    }
+                                    
+                                    console.log('最终格式化层数:', formattedLayers);
+                                    
+                                    // 更新表单
+                                    if (formattedLayers) {
+                                        document.getElementById('building_floors').value = formattedLayers;
+                                    }
+                                    
+                                    // 设置其他相关字段
+                                    if (aboveGround !== null) {
+                                        // 如果提取到了地上层数，可以用于估算建筑高度
+                                        if (!document.getElementById('building_height').value) {
+                                            // 假设每层3米高度
+                                            document.getElementById('building_height').value = (aboveGround * 3).toString();
+                                        }
+                                    }
+                                    
+                                    if (underground !== null && underground > 0) {
+                                        // 如果提取到了地下层数，可以设置地下相关字段
+                                        document.getElementById('has_underground_garage').value = '有';
+                                    }
+                                } catch (e) {
+                                    console.error('解析建筑层数时出错:', e);
+                                    // 出错时也尝试提取纯数字
+                                    const allNumbers = info['建筑层数'].match(/\d+/g);
+                                    if (allNumbers && allNumbers.length > 0) {
+                                        if (allNumbers.length >= 2) {
+                                            document.getElementById('building_floors').value = `${allNumbers[0]}/${allNumbers[1]}`;
+                                        } else {
+                                            document.getElementById('building_floors').value = allNumbers[0];
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 处理地下层数
+                            if (info['地下层数']) {
+                                const underground = parseInt(info['地下层数']);
+                                if (underground > 0) {
+                                    document.getElementById('has_underground_garage').value = '有';
+                                }
+                            }
+                            
+                            // 处理建筑高度
+                            if (info['建筑高度']) {
+                                // 移除逗号、空格和单位
+                                const height = info['建筑高度'].replace(/[,\s米m]/g, '');
+                                // 提取数字
+                                const match = height.match(/^(\d+(\.\d+)?)$/);
+                                if (match) {
+                                    document.getElementById('building_height').value = match[1];
+                                }
+                            }
+                            
+                            // 关闭模态框
+                            closeAiExtractModal();
+                            
+                            // 触发得分计算
+                            calculateAndUpdateScores();
+                            
+                        }
+                    </script>
+                    
                     <form action="{{ url_for('index') }}" method="post" class="space-y-6">
                         <input type="hidden" name="form_type" value="project_info">
                         <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">

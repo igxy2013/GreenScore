@@ -4822,6 +4822,58 @@ def extract_word_info():
         app.logger.error(f"处理Word文档提取请求时出错: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/extract_project_info', methods=['POST'])
+def extract_project_info_api():
+    """提取Word文档中的项目信息并返回"""
+    try:
+        # 检查是否有文件上传
+        if 'word_file' not in request.files:
+            app.logger.error("未找到上传的Word文件")
+            return jsonify({'success': False, 'message': '未找到上传的文件'}), 400
+            
+        file = request.files['word_file']
+        if file.filename == '':
+            app.logger.error("未选择Word文件")
+            return jsonify({'success': False, 'message': '未选择文件'}), 400
+            
+        # 检查文件扩展名
+        if not file.filename.endswith(('.doc', '.docx')):
+            app.logger.error(f"不支持的文件格式: {file.filename}")
+            return jsonify({'success': False, 'message': '仅支持.doc和.docx格式的Word文档'}), 400
+            
+        # 创建临时目录（如果不存在）
+        temp_dir = os.path.join('static', 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # 保存上传的文件
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        file_path = os.path.join(temp_dir, f"{timestamp}_{werkzeug.utils.secure_filename(file.filename)}")
+        file.save(file_path)
+        
+        app.logger.info(f"已保存Word文件: {file_path}")
+        
+        # 调用extract_doc_info函数提取信息
+        from utils.word_extractor import extract_doc_info
+        project_info = extract_doc_info(file_path)
+        
+        # 文件使用完毕后删除
+        try:
+            os.remove(file_path)
+            app.logger.info(f"已删除临时文件: {file_path}")
+        except Exception as e:
+            app.logger.warning(f"删除临时文件失败: {str(e)}")
+        
+        if project_info:
+            app.logger.info(f"成功提取项目信息: {project_info}")
+            return jsonify({'success': True, 'info': project_info})
+        else:
+            app.logger.error("提取项目信息失败")
+            return jsonify({'success': False, 'message': '无法从文档中提取项目信息'}), 400
+            
+    except Exception as e:
+        app.logger.error(f"处理Word文档时出错: {str(e)}")
+        return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
+
 if __name__ == '__main__':
     # 初始化数据库
     init_db()
