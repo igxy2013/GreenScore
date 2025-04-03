@@ -48,6 +48,7 @@ class Project(db.Model):
     is_fully_decorated = db.Column(db.String(10))  # 是否为全装修项目
     public_building_type = db.Column(db.String(50))  # 公建类型
     public_green_space = db.Column(db.String(10))  # 绿地向公众开放
+    status = db.Column(db.String(20), default='规划中')  # 项目状态：规划中、进行中、已完成、已暂停等
     
     # 新增评分字段（使用英文字段名）
     architecture_score = db.Column(db.Float)  # 建筑总分
@@ -89,6 +90,7 @@ class Project(db.Model):
             'standard': self.standard,
             'building_type': self.building_type,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'status': self.status,
             # 新增字段
             'climate_zone': self.climate_zone,
             'star_rating_target': self.star_rating_target,

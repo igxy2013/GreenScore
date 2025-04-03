@@ -4692,6 +4692,77 @@ def user_guide():
         app.logger.error(f"访问用户指南页面出错: {str(e)}")
         return render_template('error.html', error=str(e))
 
+@app.route('/api/projects/<int:project_id>/update_status', methods=['PUT'])
+def update_project_status(project_id):
+    """更新项目状态
+    
+    请求参数:
+    {
+        "status": "进行中"  // 新的项目状态
+    }
+    
+    响应:
+    {
+        "success": true,
+        "message": "项目状态更新成功",
+        "data": {
+            "id": 1,
+            "name": "项目名称",
+            "status": "进行中"
+        }
+    }
+    """
+    try:
+        # 检查用户是否登录
+        if 'user_id' not in session:
+            app.logger.warning("未登录用户尝试更新项目状态")
+            return jsonify({'success': False, 'message': '请先登录'}), 401
+            
+        # 获取用户ID和角色
+        user_id = session.get('user_id')
+        user_role = session.get('role', 'user')
+        
+        # 获取请求数据
+        data = request.get_json()
+        if not data or 'status' not in data:
+            return jsonify({'success': False, 'message': '请提供新的项目状态'}), 400
+            
+        new_status = data['status']
+        
+        # 获取项目
+        project = Project.query.get(project_id)
+        if not project:
+            app.logger.warning(f"项目 {project_id} 不存在")
+            return jsonify({'success': False, 'message': '项目不存在'}), 404
+            
+        app.logger.info(f"找到项目: {project.name}, 所属用户ID: {project.user_id}")
+            
+        # 检查权限：管理员可以更新任何项目，普通用户只能更新自己的项目
+        if user_role != 'admin' and project.user_id != user_id:
+            app.logger.warning(f"用户 {user_id} 无权限更新项目 {project_id}")
+            return jsonify({'success': False, 'message': '无权限更新此项目'}), 403
+        
+        # 更新项目状态
+        project.status = new_status
+        db.session.commit()
+        app.logger.info(f"项目 {project_id} 状态更新为 {new_status}")
+        
+        return jsonify({
+            'success': True,
+            'message': '项目状态更新成功',
+            'data': {
+                'id': project.id,
+                'name': project.name,
+                'status': project.status
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"更新项目状态失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'更新项目状态失败: {str(e)}'}), 500
+
 @app.route('/api/update_project_scores', methods=['POST'])
 def update_project_scores():
     """将评分数据更新到projects表中"""

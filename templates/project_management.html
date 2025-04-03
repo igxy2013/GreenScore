@@ -223,7 +223,7 @@
             </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="max-w-[70%] mx-auto px-4 py-8">
             <h1 class="text-3xl font-bold text-primary mb-6">    
                 <picture>
                     <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
@@ -264,7 +264,7 @@
                     </div>
                 </div>
                 
-                <div class="relative w-full overflow-x-auto">
+                <div class="relative w-full overflow-x-auto max-h-[500px] overflow-y-auto table-container">
                     <table class="w-full table-auto divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -272,6 +272,7 @@
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">目标星级</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">建筑类型</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">评价标准</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">项目状态</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">创建时间</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider relative">操作</th>
                             </tr>
@@ -365,6 +366,22 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <div>
+                                <label for="project_status" class="block text-base font-medium text-gray-700 mb-1">项目状态</label>
+                                <div class="relative">
+                                    <select id="project_status" name="project_status" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" title="项目状态">
+                                        <option value="规划中">规划中</option>
+                                        <option value="进行中">进行中</option>
+                                        <option value="已完成">已完成</option>
+                                        <option value="已暂停">已暂停</option>
+                                        <option value="已取消">已取消</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                        <i class="fas fa-chevron-down text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="mt-6 flex justify-center">
@@ -374,6 +391,41 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+        
+        <!-- 项目状态修改模态窗口 -->
+        <div id="updateStatusModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+                <button id="closeStatusModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" title="关闭">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">修改项目状态</h3>
+                
+                <form id="updateStatusForm" class="space-y-6">
+                    <input type="hidden" id="statusProjectId" name="statusProjectId">
+                    <div>
+                        <label for="projectStatusSelect" class="block text-base font-medium text-gray-700 mb-1">项目状态 <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <select id="projectStatusSelect" name="projectStatusSelect" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="项目状态">
+                                <option value="规划中">规划中</option>
+                                <option value="进行中">进行中</option>
+                                <option value="已完成">已完成</option>
+                                <option value="已暂停">已暂停</option>
+                                <option value="已取消">已取消</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                <i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-center">
+                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                            保存修改
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -468,8 +520,9 @@
                 }
             });
             
-            // 添加删除项目的事件委托
+            // 添加项目操作的事件委托（删除和修改状态）
             document.getElementById('projectList').addEventListener('click', function(e) {
+                // 处理删除按钮点击
                 const deleteBtn = e.target.closest('.delete-project-btn');
                 if (deleteBtn) {
                     const projectId = deleteBtn.getAttribute('data-project-id');
@@ -479,7 +532,20 @@
                         deleteProject(projectId);
                     }
                 }
+                
+                // 处理修改状态按钮点击
+                const updateStatusBtn = e.target.closest('.update-status-btn');
+                if (updateStatusBtn) {
+                    const projectId = updateStatusBtn.getAttribute('data-project-id');
+                    const projectName = updateStatusBtn.getAttribute('data-project-name');
+                    
+                    // 打开状态修改模态框
+                    openUpdateStatusModal(projectId, projectName);
+                }
             });
+            
+            // 初始化状态修改模态框
+            initUpdateStatusModal();
             
             // 处理下拉菜单的显示和隐藏
             document.addEventListener('click', function(e) {
@@ -517,7 +583,7 @@
             // 显示加载中提示
             document.getElementById('projectList').innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                         <i class="fas fa-sync fa-spin mr-2"></i> 正在加载项目列表...
                     </td>
                 </tr>
@@ -585,7 +651,7 @@
                     // 显示更友好的错误信息
                     document.getElementById('projectList').innerHTML = `
                         <tr>
-                            <td colspan="6" class="px-6 py-4">
+                            <td colspan="7" class="px-6 py-4">
                                 <div class="text-center">
                                     <div class="text-red-500 font-bold mb-2">
                                         <i class="fas fa-exclamation-triangle mr-2"></i> 获取项目列表失败
@@ -696,12 +762,34 @@
                         buildingType = project.building_type;
                     }
                     
+                    // 根据项目状态设置不同的样式
+                    let statusClass = 'bg-gray-100 text-gray-600';
+                    let statusText = project.status || '规划中';
+                    
+                    // 根据状态设置不同的颜色
+                    if (statusText === '规划中') {
+                        statusClass = 'bg-blue-100 text-blue-600';
+                    } else if (statusText === '进行中') {
+                        statusClass = 'bg-green-100 text-green-600';
+                    } else if (statusText === '已完成') {
+                        statusClass = 'bg-purple-100 text-purple-600';
+                    } else if (statusText === '已暂停') {
+                        statusClass = 'bg-yellow-100 text-yellow-600';
+                    } else if (statusText === '已取消') {
+                        statusClass = 'bg-red-100 text-red-600';
+                    }
+                    
                     row.innerHTML = `
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${project.name || '未设置'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.star_rating_target || '未设置'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${buildingType}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.standard || '未设置'}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at || '未知'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at ? new Date(project.created_at).toLocaleDateString() : '未知'}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm flex space-x-2 relative">
                             <a href="/project/${project.id}" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
                                 进入项目
@@ -712,7 +800,16 @@
                                     data-project-id="${project.id}">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
-                                <div class="hidden absolute right-0 bottom-full mb-1 w-24 bg-white rounded-lg shadow-lg z-50 py-1 dropdown-menu">
+                                <div class="hidden absolute right-0 top-0 ml-2 w-36 bg-white rounded-lg shadow-lg z-50 py-1 dropdown-menu">
+                                    <!-- 状态修改选项 -->
+                                    <button type="button" 
+                                        class="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-blue-100/80 rounded-lg transition-colors flex items-center space-x-2 group update-status-btn"
+                                        data-project-id="${project.id}" 
+                                        data-project-name="${project.name || ''}">
+                                        <i class="fas fa-edit text-blue-500 group-hover:text-blue-600 transition-colors"></i>
+                                        <span class="group-hover:text-blue-600 transition-colors">修改状态</span>
+                                    </button>
+                                    <!-- 删除项目选项 -->
                                     <button type="button" 
                                         class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-100/80 rounded-lg transition-colors flex items-center space-x-2 group delete-project-btn"
                                         data-project-id="${project.id}" 
@@ -752,6 +849,121 @@
             .catch(error => {
                 console.error('删除项目失败:', error);
                 showNotification('删除失败，请稍后重试', 'error');
+            });
+        }
+        
+        // 初始化状态修改模态框
+        function initUpdateStatusModal() {
+            const statusModal = document.getElementById('updateStatusModal');
+            const closeStatusModalBtn = document.getElementById('closeStatusModalBtn');
+            const statusForm = document.getElementById('updateStatusForm');
+            
+            // 关闭模态框
+            closeStatusModalBtn.addEventListener('click', function() {
+                statusModal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+            
+            // 点击模态框外部关闭
+            statusModal.addEventListener('click', function(e) {
+                if (e.target === statusModal) {
+                    statusModal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // 提交状态修改表单
+            statusForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const projectId = document.getElementById('statusProjectId').value;
+                const newStatus = document.getElementById('projectStatusSelect').value;
+                
+                // 显示加载中状态
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>处理中...';
+                
+                // 发送更新请求
+                updateProjectStatus(projectId, newStatus)
+                    .then(() => {
+                        // 恢复按钮状态
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                        
+                        // 关闭模态框
+                        statusModal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                    })
+                    .catch(() => {
+                        // 恢复按钮状态
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    });
+            });
+        }
+        
+        // 打开状态修改模态框
+        function openUpdateStatusModal(projectId, projectName) {
+            const statusModal = document.getElementById('updateStatusModal');
+            document.getElementById('statusProjectId').value = projectId;
+            
+            // 查找当前项目的状态并设置为默认选中
+            const currentProject = allProjects.find(p => p.id == projectId);
+            if (currentProject && currentProject.status) {
+                document.getElementById('projectStatusSelect').value = currentProject.status;
+            } else {
+                document.getElementById('projectStatusSelect').value = '规划中';
+            }
+            
+            // 显示模态框
+            statusModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // 更新项目状态
+        function updateProjectStatus(projectId, newStatus) {
+            return fetch(`/api/projects/${projectId}/update_status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: newStatus
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 显示成功消息
+                    showNotification('项目状态更新成功', 'success');
+                    
+                    // 更新本地缓存中的项目状态
+                    if (allProjects && allProjects.length > 0) {
+                        const projectIndex = allProjects.findIndex(p => p.id == projectId);
+                        if (projectIndex !== -1) {
+                            allProjects[projectIndex].status = newStatus;
+                        }
+                    }
+                    
+                    // 重新加载项目列表
+                    fetchProjects();
+                    return data;
+                } else {
+                    showNotification('状态更新失败: ' + data.error, 'error');
+                    throw new Error(data.error || '状态更新失败');
+                }
+            })
+            .catch(error => {
+                console.error('更新项目状态失败:', error);
+                showNotification('状态更新失败，请稍后重试', 'error');
+                throw error;
             });
         }
         
@@ -800,7 +1012,7 @@
         function displayNoProjects() {
             document.getElementById('projectList').innerHTML = `
                 <tr>
-                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                         暂无项目，请创建新项目
                     </td>
                 </tr>
@@ -821,6 +1033,11 @@
             const closeModalBtn = document.getElementById('closeModalBtn');
             const modal = document.getElementById('createProjectModal');
             const modalForm = document.getElementById('modalProjectForm');
+            
+            // 状态修改模态框元素
+            const statusModal = document.getElementById('updateStatusModal');
+            const closeStatusModalBtn = document.getElementById('closeStatusModalBtn');
+            const statusForm = document.getElementById('updateStatusForm');
             
             // 打开模态窗口
             openModalBtn.addEventListener('click', function() {
