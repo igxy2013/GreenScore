@@ -43,6 +43,7 @@ import werkzeug.exceptions
 from flask_sqlalchemy import SQLAlchemy
 from routes import auth_bp
 from admin import admin_app  # 使用admin.py中的admin_app
+from utils.extract_word_info import extract_project_info  # 导入Word信息提取函数
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
@@ -4761,6 +4762,65 @@ def update_project_scores():
 # 注册蓝图
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_app, url_prefix='/admin')  # 使用admin_app，添加/admin前缀
+
+@app.route('/api/extract_word_info', methods=['POST'])
+def extract_word_info():
+    """处理Word文档并提取项目信息"""
+    try:
+        # 检查是否有文件上传
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': '未找到上传的文件'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': '未选择文件'}), 400
+            
+        # 检查文件扩展名
+        if not file.filename.endswith(('.doc', '.docx')):
+            return jsonify({'success': False, 'error': '仅支持.doc和.docx格式的Word文档'}), 400
+            
+        # 创建临时目录（如果不存在）
+        temp_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # 保存上传的文件
+        file_path = os.path.join(temp_dir, werkzeug.utils.secure_filename(file.filename))
+        file.save(file_path)
+        
+        # 提取项目信息
+        try:
+            project_info = extract_project_info(file_path)
+            
+            # 删除临时文件
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                app.logger.warning(f"删除临时文件失败: {str(e)}")
+            
+            if project_info:
+                # 确保地下层数默认为0
+                if not project_info.get("地下层数"):
+                    project_info["地下层数"] = "0"
+                    
+                return jsonify({
+                    'success': True,
+                    'info': project_info
+                })
+            else:
+                return jsonify({'success': False, 'error': '无法从文档中提取项目信息'}), 500
+                
+        except Exception as e:
+            app.logger.error(f"提取项目信息时出错: {str(e)}")
+            # 尝试删除临时文件
+            try:
+                os.remove(file_path)
+            except:
+                pass
+            return jsonify({'success': False, 'error': f'提取项目信息失败: {str(e)}'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"处理Word文档提取请求时出错: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     # 初始化数据库
