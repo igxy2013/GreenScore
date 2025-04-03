@@ -1077,23 +1077,101 @@
                     <!-- <h1 class="text-xl font-medium text-primary mb-6 text-center">项目信息</h1> -->
                     
                     <!-- AI提取项目信息悬浮按钮 -->
-                    <div class="fixed left-[22rem] top-24 z-50">
-                        <button id="aiExtractButton" onclick="showAiExtractModal()" class="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all">
-                            <i class="fas fa-robot mr-2"></i>
-                            <span>AI提取项目信息</span>
+                    <div class="fixed top-20 z-50">
+                        <button id="aiExtractButton" onclick="showAiExtractModal()" class="ai-extract-btn flex items-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white px-5 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] group">
+                            <i class="fas fa-robot mr-3 text-xl ai-icon"></i>
+                            <span class="font-medium text-lg">AI提取项目信息</span>
+                            <div class="ai-pulse"></div>
                         </button>
                     </div>
                     
-                    <!-- AI提取项目信息模态框样式 -->
+                    <!-- AI提取项目信息按钮和模态框样式 -->
                     <style>
+                        /* 按钮样式 */
+                        .ai-extract-btn {
+                            position: relative;
+                            overflow: hidden;
+                            border: 1px solid rgba(255, 255, 255, 0.2);
+                            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 20px rgba(139, 92, 246, 0.2);
+                            transition: all 0.3s cubic-bezier(0.215, 0.61, 0.355, 1);
+                        }
+                        
+                        /* 按钮悬停效果 */
+                        .ai-extract-btn:hover {
+                            border-color: rgba(255, 255, 255, 0.4);
+                            animation: pulse 1.5s infinite;
+                        }
+                        
+                        /* 按钮脉冲动画 */
+                        @keyframes pulse {
+                            0% {
+                                box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 0 0 rgba(139, 92, 246, 0.4);
+                            }
+                            70% {
+                                box-shadow: 0 4px 15px rgba(79, 70, 229, 0.6), 0 0 0 10px rgba(139, 92, 246, 0);
+                            }
+                            100% {
+                                box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 0 0 rgba(139, 92, 246, 0);
+                            }
+                        }
+                        
+                        /* 机器人图标动画 */
+                        .ai-icon {
+                            transition: transform 0.3s ease;
+                        }
+                        
+                        .ai-extract-btn:hover .ai-icon {
+                            animation: shake 1s ease infinite;
+                        }
+                        
+                        @keyframes shake {
+                            0%, 100% { transform: rotate(0deg); }
+                            20% { transform: rotate(-10deg); }
+                            40% { transform: rotate(10deg); }
+                            60% { transform: rotate(-5deg); }
+                            80% { transform: rotate(5deg); }
+                        }
+                        
+                        /* 按钮背景脉冲效果 */
+                        .ai-pulse {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: linear-gradient(90deg, 
+                                rgba(255, 255, 255, 0) 0%, 
+                                rgba(255, 255, 255, 0.2) 50%, 
+                                rgba(255, 255, 255, 0) 100%);
+                            opacity: 0;
+                            z-index: 1;
+                            pointer-events: none;
+                            animation: wave 2s infinite;
+                        }
+                        
+                        @keyframes wave {
+                            0% {
+                                transform: translateX(-100%);
+                                opacity: 0;
+                            }
+                            50% {
+                                opacity: 0.5;
+                            }
+                            100% {
+                                transform: translateX(100%);
+                                opacity: 0;
+                            }
+                        }
+                        
+                        /* 模态框样式 */
                         .modal-backdrop {
                             position: fixed;
                             top: 0;
                             left: 0;
                             width: 100%;
                             height: 100%;
-                            background-color: rgba(0, 0, 0, 0.5);
-                            backdrop-filter: blur(2px);
+                            background-color: rgba(0, 0, 0, 0.7);
+                            backdrop-filter: blur(5px);
                             z-index: 999;
                             display: flex;
                             align-items: center;
@@ -1109,14 +1187,17 @@
                         }
                         
                         .modal-content {
-                            background: white;
-                            border-radius: 0.5rem;
-                            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                            background: linear-gradient(135deg, #1e293b, #0f172a);
+                            color: white;
+                            border-radius: 1rem;
+                            border: 1px solid rgba(139, 92, 246, 0.3);
+                            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+                                       0 0 30px rgba(139, 92, 246, 0.3);
                             width: 100%;
-                            max-width: 480px;
-                            padding: 1.5rem;
-                            transform: translateY(-20px);
-                            transition: transform 0.3s ease;
+                            max-width: 500px;
+                            padding: 2rem;
+                            transform: translateY(-30px) scale(0.95);
+                            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                             position: relative;
                             max-height: 90vh;
                             overflow-y: auto;
@@ -1124,41 +1205,118 @@
                         }
                         
                         .modal-backdrop.show .modal-content {
-                            transform: translateY(0);
+                            transform: translateY(0) scale(1);
+                        }
+                        
+                        /* 模态框内容样式 */
+                        .modal-content h3 {
+                            color: #d8b4fe;
+                            margin-bottom: 1rem;
+                            font-size: 1.5rem;
+                            position: relative;
+                            padding-bottom: 0.5rem;
+                        }
+                        
+                        .modal-content h3:after {
+                            content: '';
+                            position: absolute;
+                            bottom: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 2px;
+                            background: linear-gradient(90deg, #d8b4fe, transparent);
+                        }
+                        
+                        .modal-content p {
+                            color: #cbd5e1;
+                        }
+                        
+                        /* 文件上传区域样式 */
+                        #wordFileInput {
+                            background: rgba(30, 41, 59, 0.7);
+                            border: 1px dashed rgba(139, 92, 246, 0.5);
+                            border-radius: 0.5rem;
+                            color: #e2e8f0;
+                            transition: all 0.3s ease;
+                        }
+                        
+                        #wordFileInput:hover, #wordFileInput:focus {
+                            border-color: rgba(139, 92, 246, 0.8);
+                            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+                        }
+                        
+                        /* 按钮样式 */
+                        .modal-content button {
+                            position: relative;
+                            overflow: hidden;
+                            transition: all 0.3s ease;
+                        }
+                        
+                        .modal-content button:after {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 0;
+                            height: 100%;
+                            background: rgba(255, 255, 255, 0.1);
+                            transition: width 0.4s ease;
+                        }
+                        
+                        .modal-content button:hover:after {
+                            width: 100%;
+                        }
+                        
+                        /* 提取结果区域样式 */
+                        #extractedInfo {
+                            background: rgba(30, 41, 59, 0.6);
+                            border-radius: 0.5rem;
+                            border: 1px solid rgba(139, 92, 246, 0.2);
+                            color: #e2e8f0;
+                        }
+                        
+                        /* 加载动画样式 */
+                        #extractLoading i {
+                            animation: spin 1s infinite linear;
+                        }
+                        
+                        @keyframes spin {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
                         }
                     </style>
                     
                     <!-- AI提取项目信息模态框 -->
                     <div id="aiExtractModal" class="modal-backdrop">
                         <div class="modal-content">
-                            <div class="flex justify-between items-center mb-4">
+                            <div class="flex justify-between items-center mb-6">
                                 <h3 class="text-xl font-bold">AI提取项目信息</h3>
-                                <button class="text-gray-500 hover:text-gray-700" onclick="closeAiExtractModal()">
+                                <button class="text-purple-300 hover:text-purple-100 p-1 rounded-full hover:bg-purple-900 transition-all" onclick="closeAiExtractModal()">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                            <div class="mb-4">
-                                <p class="text-gray-700 mb-2">请上传Word文档，系统将自动提取项目信息</p>
-                                <input type="file" id="wordFileInput" accept=".doc,.docx" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <div class="mb-6">
+                                <p class="text-gray-300 mb-3">请上传Word文档，系统将自动提取项目信息</p>
+                                <input type="file" id="wordFileInput" accept=".doc,.docx" class="w-full px-4 py-3 border border-purple-500 rounded-md bg-gray-800 text-white">
                             </div>
-                            <div id="extractResult" class="mb-4 hidden">
-                                <h4 class="font-bold text-purple-600 mb-2">提取结果:</h4>
-                                <div id="extractedInfo" class="p-3 bg-gray-50 rounded-md text-sm max-h-48 overflow-y-auto"></div>
+                            <div id="extractResult" class="mb-6 hidden">
+                                <h4 class="font-bold text-purple-300 mb-2">提取结果:</h4>
+                                <div id="extractedInfo" class="p-4 bg-gray-800 rounded-md text-sm max-h-56 overflow-y-auto"></div>
                             </div>
-                            <div id="extractLoading" class="mb-4 hidden">
-                                <div class="flex items-center justify-center">
-                                    <i class="fas fa-spinner fa-spin text-purple-600 text-2xl mr-2"></i>
-                                    <span>正在提取信息，请稍候...</span>
+                            <div id="extractLoading" class="mb-6 hidden">
+                                <div class="flex items-center justify-center p-4 bg-gray-800 rounded-md">
+                                    <i class="fas fa-spinner text-purple-400 text-2xl mr-3"></i>
+                                    <span class="text-gray-300">智能提取中，请稍候...</span>
                                 </div>
                             </div>
                             <div class="flex justify-end space-x-3">
-                                <button type="button" onclick="closeAiExtractModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                <button type="button" onclick="closeAiExtractModal()" class="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-all">
                                     取消
                                 </button>
-                                <button type="button" id="extractButton" onclick="extractProjectInfo()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                <button type="button" id="extractButton" onclick="extractProjectInfo()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all">
                                     提取信息
                                 </button>
-                                <button type="button" id="applyButton" onclick="applyExtractedInfo()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 hidden">
+                                <button type="button" id="applyButton" onclick="applyExtractedInfo()" class="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg hover:from-green-700 hover:to-teal-700 transition-all hidden">
                                     应用到表单
                                 </button>
                             </div>
