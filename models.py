@@ -213,3 +213,26 @@ class LogRecord(db.Model):
         except Exception:
             db.session.rollback()
             return False
+
+class ClimateZone(db.Model):
+    """气候区划表模型"""
+    __tablename__ = '气候区划'
+    
+    
+    id = db.Column(db.Integer, primary_key=True)
+    省 = db.Column(db.String(50), primary_key=True, nullable=False)
+    地级市 = db.Column(db.String(50), primary_key=True, nullable=False)
+    分区名称 = db.Column(db.String(50), nullable=False)
+    气候区划 = db.Column(db.String(50), nullable=False)
+    
+    def __repr__(self):
+        return f'<ClimateZone {self.省}-{self.地级市}-{self.分区名称}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'province': self.省,
+            'city': self.地级市,
+            'district': self.分区名称,
+            'climate_zone': self.气候区划
+        }

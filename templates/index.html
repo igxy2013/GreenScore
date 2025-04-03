@@ -9,6 +9,8 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- 加载loader.js -->
     <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
+    <!-- 加载气候区划查询工具 -->
+    <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
@@ -564,6 +566,12 @@
             box-sizing: border-box !important;
         }
     </style>
+    <!-- 添加climate_zone.js引用，放在页面头部的script标签之前 -->
+    <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
+    <script>
+        // 页面变量
+        // ... existing code ...
+    </script>
 </head>
 <body class="bg-gray-100">
 
@@ -4327,6 +4335,7 @@
             const provinceSelect = document.getElementById('province');
             const citySelect = document.getElementById('city');
             const projectLocationInput = document.getElementById('project_location');
+            const climateZoneSelect = document.getElementById('climate_zone');
             
             if (!provinceSelect || !citySelect || !projectLocationInput) return;
             
@@ -4353,7 +4362,32 @@
             if (cityName && cityName !== '请选择城市') location.push(cityName);
             
             projectLocationInput.value = location.join(' ');
+            
+            // 更新气候区划
+            if (climateZoneSelect && provinceName && cityName && 
+                provinceName !== '请选择省份' && provinceName !== '加载中...' && 
+                cityName !== '请选择城市') {
+                
+                const zoneInfo = getClimateZone(provinceName, cityName);
+                if (zoneInfo) {
+                    // 设置气候区划选择框的值
+                    for (let i = 0; i < climateZoneSelect.options.length; i++) {
+                        if (climateZoneSelect.options[i].value === zoneInfo.气候区划) {
+                            climateZoneSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
         }
+        
+        // 在页面加载完成后执行的函数
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化省市选择器
+            initializeProvinceCitySelectors();
+            
+            // 其他初始化代码...
+        });
     </script>
 
     <script>
