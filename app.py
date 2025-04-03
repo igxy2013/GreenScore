@@ -2591,8 +2591,9 @@ def get_star_case_scores():
             app.logger.info(f"获取项目 {target_project_id} 适用的条文列表")
             result = db.session.execute(text(f"""
                 SELECT 条文号 
-                FROM {standard}
-            """))
+                FROM 评价标准 
+                WHERE 标准名称 = :standard_name
+            """), {"standard_name": standard})
             valid_clauses = set([row[0] for row in result.fetchall()])
             app.logger.info(f"找到 {len(valid_clauses)} 条适用的条文")
 
