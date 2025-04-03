@@ -842,7 +842,7 @@
                     <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative" style="z-index: 10000;">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-xl font-bold">选择头像</h3>
-                            <button class="text-gray-500 hover:text-gray-700" onclick="closeAvatarModal()">
+                            <button class="text-gray-500 hover:text-gray-700" onclick="closeAvatarModal()" title="关闭">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
@@ -1321,6 +1321,7 @@
                             height: 100%;
                             background-color: rgba(0, 0, 0, 0.7);
                             backdrop-filter: blur(5px);
+                            -webkit-backdrop-filter: blur(5px);
                             z-index: 999;
                             display: flex;
                             align-items: center;
@@ -2207,10 +2208,10 @@
                             <div class="mb-4 px-3">
                                 <label for="project_location" class="block text-base font-medium text-primary mb-2">项目地点</label>
                                 <div class="flex space-x-2 province-city-container">
-                                    <select id="province" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()">
+                                    <select id="province" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()" title="省份">
                                         <option value="">正在加载...</option>
                                     </select>
-                                    <select id="city" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()">
+                                    <select id="city" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()" title="城市">
                                         <option value="">请选择城市</option>
                                     </select>
                                     <input type="hidden" id="project_location" name="project_location" value="{{ project.location if project and project.location is not none else '' }}">
@@ -2243,9 +2244,14 @@
                             </div>
                             
                             <div class="mb-4 px-3">
-                                <label for="climate_zone" class="block text-base font-medium text-primary mb-2">建筑气候区划</label>
+                                <div class="flex items-center justify-between mb-2">
+                                    <label for="climate_zone" class="block text-base font-medium text-primary">建筑气候区划</label>
+                                    <a href="{{ url_for('static', filename='image/气候区划.png') }}" target="_blank" class="underline text-blue-600 px-2 py-1 rounded-md transition-all duration-300 hover:bg-blue-50 hover:text-purple-600 hover:shadow-sm text-sm">
+                                        <i class="fas fa-external-link-alt text-blue-500 mr-1"></i>查看气候区划图
+                                    </a>
+                                </div>
                                 <div class="relative">
-                                    <select id="climate_zone" name="climate_zone" class="w-full px-4 py-2 border border-gray-300 rounded-button appearance-none pr-8">
+                                    <select id="climate_zone" name="climate_zone" class="w-full px-4 py-2 border border-gray-300 rounded-button appearance-none pr-8" title="建筑气候区划">
                                         <option value="">请选择建筑气候区划</option>
                                         <option value="I" {% if project and project.climate_zone == 'I' %}selected{% endif %}>I</option>
                                         <option value="II" {% if project and project.climate_zone == 'II' %}selected{% endif %}>II</option>
@@ -2719,7 +2725,7 @@
                                     
                                     {% if current_level == '基本级' %}
                                     <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
-                                        <select name="is_achieved" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary is-achieved-select">
+                                        <select name="is_achieved" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary is-achieved-select" title="符合性判断">
                                             <option value="是">是</option>
                                             <option value="否">否</option>
                                             <option value="不参评">不参评</option>
