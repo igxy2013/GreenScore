@@ -339,6 +339,19 @@ def parse_project_info_from_text(text):
     
     # 定义需要提取的信息模式
     info_patterns = {
+        "总用地面积": [
+            r"规划用地面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"总用地面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"用地面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"净用地面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"总用地面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"用地总面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"项目用地面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"总用地\D*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"用地面积约\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"用地范围内面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"占地面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?"
+        ],
         "总建筑面积": [
             r"总建筑面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
             r"建筑总面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
@@ -347,7 +360,9 @@ def parse_project_info_from_text(text):
         ],
         "地上建筑面积": [
             r"地上(?:建筑)?面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?", 
-            r"地上部分[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?"
+            r"地上部分[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"地上建筑面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"计容建筑面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?"
         ],
         "地下建筑面积": [
             r"地下(?:建筑)?面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?", 
@@ -382,11 +397,30 @@ def parse_project_info_from_text(text):
             r"绿地面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
             r"绿地面积\s*([0-9,.]+)(?:m²|m2|㎡|平方米)?",
             r"绿化面积[:：]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?"
+        ],
+        "地面停车位": [
+            r"地面停车位[数量个]?[:：]?\s*(\d+)\s*(?:个|辆)?",
+            r"地面停车位[数量个]?[为是]?\s*(\d+)\s*(?:个|辆)?",
+            r"(?:地面|室外)停车位?[数量个]?[:：]?\s*(\d+)\s*(?:个|辆)?",
+            r"停车位[数量个]?[:：]?\s*(\d+)\s*(?:个|辆)?",
+            r"实际建设车位\s*(\d+)\s*(?:个|辆)?",
+            r"地面机动车停车位\s*(\d+)\s*(?:个|辆)?",
+            r"地上停车位\s*(\d+)\s*(?:个|辆)?",
+            r"地面规划停车位\s*(\d+)\s*(?:个|辆)?",
+            r"(?:配置|配建|设置)(?:地面)?停车位\s*(\d+)\s*(?:个|辆)?",
+            r"停车位共[计]?(\d+)[个辆]",
+            r"机动车停车位[数量个]?[:：]?\s*(\d+)\s*(?:个|辆)?"
         ]
     }
     
     # 表格样式匹配模式（处理表格中的数据）
     table_patterns = {
+        "总用地面积": [
+            r"规划用地面积\D+(\d+[,.\d]*)",
+            r"总用地面积\D+(\d+[,.\d]*)",
+            r"用地面积\D+(\d+[,.\d]*)",
+            r"净用地面积\D+(\d+[,.\d]*)",
+        ],
         "总建筑面积": [
             r"总[计建]?[筑建]?面积\D+(\d+[,.\d]*)",
             r"规划总建筑面积\D+(\d+[,.\d]*)",
@@ -549,7 +583,251 @@ def parse_project_info_from_text(text):
                 project_info['绿地面积'] = numbers[0] + " 平方米"
                 logger.debug(f"从上下文推断绿地面积: {project_info['绿地面积']}")
     
-    return project_info
+    # 特别处理总用地面积
+    if '总用地面积' not in project_info:
+        # 尝试从更复杂的描述中提取
+        land_area_patterns = [
+            r"本项目用地面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"项目总用地[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"规划总用地[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"总占地面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"总用地面积约[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"用地红线面积[为是]?\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?"
+        ]
+        for pattern in land_area_patterns:
+            match = re.search(pattern, text)
+            if match:
+                project_info['总用地面积'] = match.group(1) + " 平方米"
+                logger.debug(f"从复杂描述中提取到总用地面积: {project_info['总用地面积']}")
+                break
+
+    # 特别处理停车位信息
+    if '地面停车位' not in project_info:
+        # 尝试从更复杂的描述中提取
+        parking_patterns = [
+            r"实际建设车位\s*(\d+)\s*(?:个|辆)?",
+            r"停车位共[计]?(\d+)[个辆]",
+            r"地面停车(\d+)[个辆]",
+            r"室外停车(\d+)[个辆]",
+            r"地面机动车停车位(\d+)[个辆]",
+            r"地上停车位(\d+)[个辆]",
+            r"地面规划停车位(\d+)[个辆]",
+            r"(?:配置|配建|设置)(?:地面)?停车位(\d+)[个辆]",
+            r"机动车停车位[数量个]?[:：]?\s*(\d+)\s*(?:个|辆)?",
+            r"(?:其中)?地面停车位?数[为是]?(\d+)[个辆]",
+            r"地面设置停车位(\d+)[个辆]"
+        ]
+        
+        # 首先尝试匹配"实际建设车位"
+        actual_parking_match = re.search(r"实际建设车位\s*(\d+)\s*(?:个|辆)?", text)
+        if actual_parking_match:
+            project_info['地面停车位'] = actual_parking_match.group(1)
+            logger.debug(f"从实际建设车位提取到地面停车位: {project_info['地面停车位']}")
+        else:
+            # 如果没有找到实际建设车位，尝试其他模式
+            for pattern in parking_patterns:
+                match = re.search(pattern, text)
+                if match:
+                    project_info['地面停车位'] = match.group(1)
+                    logger.debug(f"从复杂描述中提取到地面停车位: {project_info['地面停车位']}")
+                    break
+
+        # 如果还是没有找到，尝试从段落中提取
+        if '地面停车位' not in project_info:
+            # 查找包含"停车"的段落
+            parking_sections = re.findall(r'[^。]*停车[^。]*。', text)
+            for section in parking_sections:
+                # 优先查找实际建设车位
+                actual_match = re.search(r"实际建设车位\s*(\d+)\s*(?:个|辆)?", section)
+                if actual_match:
+                    project_info['地面停车位'] = actual_match.group(1)
+                    logger.debug(f"从段落中提取到实际建设车位: {project_info['地面停车位']}")
+                    break
+                    
+                # 如果没有实际建设车位，查找其他数字
+                numbers = re.findall(r'(\d+)[个辆]', section)
+                if numbers and '地面' in section:
+                    project_info['地面停车位'] = numbers[0]
+                    logger.debug(f"从段落中提取到地面停车位: {project_info['地面停车位']}")
+                    break
+
+    # 确保数值的完整性
+    for key in ['总用地面积', '地上建筑面积', '地下建筑面积', '总建筑面积']:
+        if key in project_info:
+            value = project_info[key]
+            # 处理末尾有小数点但没有小数位的情况
+            if value.endswith('.'):
+                value = value + '0'
+            # 添加单位（如果没有）
+            if not any(unit in str(value) for unit in ['平方米', '㎡', 'm²', 'm2']):
+                value = str(value) + ' 平方米'
+            project_info[key] = value
+            logger.debug(f"处理后的{key}: {value}")
+
+    # 字段名称映射（双向映射）
+    field_mapping = {
+        '总用地面积': 'total_land_area',
+        '总建筑面积': 'total_building_area',
+        '地上建筑面积': 'above_ground_area',
+        '地下建筑面积': 'underground_area',
+        '建筑高度': 'building_height',
+        '容积率': 'plot_ratio',
+        '建筑密度': 'building_density',
+        '绿地面积': 'green_area',
+        '绿地率': 'green_ratio',
+        '地面停车位': 'ground_parking_spaces'
+    }
+
+    # 直接添加总用地面积
+    if '总用地面积' not in project_info:
+        logger.warning("未找到总用地面积，将使用替代方法")
+        # 尝试从其他字段推断
+        for key in project_info.keys():
+            if ('用地' in key or '占地' in key) and '面积' in key and key != '总用地面积':
+                logger.info(f"使用替代字段作为总用地面积: {key}={project_info[key]}")
+                project_info['总用地面积'] = project_info[key]
+                break
+        
+        # 如果仍然找不到，添加默认值
+        if '总用地面积' not in project_info:
+            logger.warning("无法找到任何相关字段，添加默认总用地面积")
+            project_info['总用地面积'] = "0 平方米"
+
+    # 创建新的字典，只保存中文键
+    mapped_info = {}
+    
+    # 确保总用地面积一定会被处理
+    if '总用地面积' in project_info:
+        total_land_area_value = project_info['总用地面积']
+        logger.info(f"处理总用地面积: 原始值={total_land_area_value}")
+        
+        # 提取数值部分
+        number_match = re.search(r'([-+]?\d*\.?\d+)', str(total_land_area_value))
+        if number_match:
+            clean_value = number_match.group(1)
+            logger.info(f"总用地面积数值提取: {clean_value}")
+            
+            try:
+                # 转换为数值
+                numeric_value = float(clean_value)
+                # 格式化
+                if numeric_value.is_integer():
+                    clean_value = str(int(numeric_value))
+                else:
+                    clean_value = str(numeric_value)
+                    
+                # 直接添加到结果中
+                mapped_info['total_land_area'] = clean_value
+                mapped_info['总用地面积'] = f"{clean_value} 平方米"
+                logger.info(f"总用地面积处理完成: {mapped_info['总用地面积']}")
+            except Exception as e:
+                logger.error(f"处理总用地面积数值时出错: {str(e)}")
+                # 即使出错，也添加一个默认值
+                mapped_info['total_land_area'] = "0" 
+                mapped_info['总用地面积'] = "0 平方米"
+        else:
+            logger.error(f"无法从总用地面积中提取数值: {total_land_area_value}")
+            # 添加默认值
+            mapped_info['total_land_area'] = "0"
+            mapped_info['总用地面积'] = "0 平方米"
+    else:
+        logger.error("总用地面积字段不存在")
+        # 添加默认值
+        mapped_info['total_land_area'] = "0"
+        mapped_info['总用地面积'] = "0 平方米"
+    
+    # 处理提取的信息
+    for key, value in project_info.items():
+        try:
+            # 跳过已处理的总用地面积和无效键
+            if key == '总用地面积' or not isinstance(key, str) or not value:
+                continue
+                
+            # 跳过不规范的键（包含异常文本）
+            if len(key) > 20 or '注' in key or '备注' in key:
+                continue
+                
+            # 清理数值
+            if isinstance(value, str):
+                # 提取数值部分
+                number_match = re.search(r'([-+]?\d*\.?\d+)', value)
+                if number_match:
+                    clean_value = number_match.group(1)
+                else:
+                    clean_value = value.replace('平方米', '').replace('㎡', '').replace('m²', '').replace('m2', '').replace('%', '').replace('个', '').replace('辆', '').strip()
+                
+                try:
+                    # 转换为数值
+                    numeric_value = float(clean_value)
+                    # 如果是整数，去掉小数部分
+                    if numeric_value.is_integer():
+                        clean_value = str(int(numeric_value))
+                    else:
+                        clean_value = str(numeric_value)
+                except ValueError:
+                    # 如果无法转换为数值，跳过此字段
+                    logger.warning(f"无法将值 '{clean_value}' 转换为数值，跳过字段 '{key}'")
+                    continue
+
+                # 获取中文键
+                cn_key = key if key in field_mapping else None
+                if not cn_key:
+                    # 如果找不到对应的中文键，跳过此字段
+                    continue
+                    
+                try:
+                    eng_key = field_mapping[cn_key]
+                    # 添加英文键和中文键的映射
+                    if eng_key in ['total_land_area', 'total_building_area', 'above_ground_area', 'underground_area']:
+                        # 面积字段保留原始精度
+                        mapped_info[eng_key] = clean_value
+                        mapped_info[cn_key] = f"{clean_value} 平方米"
+                        # 特别处理总用地面积
+                        if eng_key == 'total_land_area':
+                            logger.debug(f"处理总用地面积: 原始值={value}, 清理后={clean_value}")
+                            mapped_info['total_land_area'] = clean_value
+                            mapped_info['总用地面积'] = f"{clean_value} 平方米"
+                    elif eng_key == 'ground_parking_spaces':
+                        # 停车位转为整数
+                        try:
+                            parking_value = str(int(float(clean_value)))
+                            mapped_info[eng_key] = parking_value
+                            mapped_info[cn_key] = f"{parking_value} 个"
+                        except ValueError:
+                            mapped_info[eng_key] = "0"
+                            mapped_info[cn_key] = "0 个"
+                    else:
+                        # 其他字段
+                        mapped_info[eng_key] = clean_value
+                        # 添加适当的单位
+                        if '高度' in cn_key:
+                            mapped_info[cn_key] = f"{clean_value} 米"
+                        elif eng_key in ['building_density', 'green_ratio']:
+                            mapped_info[cn_key] = f"{clean_value}%"
+                        else:
+                            mapped_info[cn_key] = clean_value
+                except Exception as e:
+                    logger.warning(f"处理字段 '{key}' 时出错: {str(e)}")
+                    continue
+                    
+        except Exception as e:
+            logger.warning(f"处理字段 '{key}' 时出错: {str(e)}")
+            continue
+
+    # 记录最终映射结果并再次确认总用地面积存在
+    valid_fields = len(mapped_info) // 2  # 因为每个字段都有中英文两个键
+    logger.info(f"成功提取并映射了 {valid_fields} 个有效字段")
+    logger.info(f"最终映射的总用地面积: {mapped_info.get('总用地面积', '未找到')}")  
+    logger.info(f"最终映射的total_land_area: {mapped_info.get('total_land_area', '未找到')}")
+    logger.debug(f"最终映射结果: {mapped_info}")
+    
+    # 最终检查并确保总用地面积存在
+    if '总用地面积' not in mapped_info or 'total_land_area' not in mapped_info:
+        logger.error("最终检查时发现总用地面积缺失，添加默认值")
+        mapped_info['总用地面积'] = "0 平方米"
+        mapped_info['total_land_area'] = "0"
+    
+    return mapped_info
 
 def extract_image_info(image_path):
     """
@@ -577,14 +855,25 @@ def extract_image_info(image_path):
         # 如果结果为None或者不是字典，返回空字典
         if not result or not isinstance(result, dict) or 'project_info' not in result:
             logger.error("提取项目信息格式错误")
-            return {}
+            return {'总用地面积': '0 平方米', 'total_land_area': '0'}
             
+        project_info = result['project_info'] or {}
+        
+        # 确保总用地面积存在于结果中
+        if '总用地面积' not in project_info or 'total_land_area' not in project_info:
+            logger.warning("返回前发现总用地面积缺失，添加默认值")
+            project_info['总用地面积'] = '0 平方米'
+            project_info['total_land_area'] = '0'
+        
+        logger.info(f"最终返回项目信息包含字段: {list(project_info.keys())}")
+        logger.info(f"总用地面积: {project_info.get('总用地面积', '未找到')}; 英文键: {project_info.get('total_land_area', '未找到')}")
+        
         # 返回项目信息
-        return result['project_info'] or {}
+        return project_info
         
     except Exception as e:
         logger.error(f"提取图像信息时出错: {str(e)}")
-        return {}
+        return {'总用地面积': '0 平方米', 'total_land_area': '0'}
 
 # 辅助函数：评估提取的文本质量
 def evaluate_text_quality(text):

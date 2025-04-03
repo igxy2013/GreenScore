@@ -27,3 +27,4 @@ pywin32>=306; sys_platform == 'win32'
 opencv-python
 paddleocr
 pillow
+paddlepaddle

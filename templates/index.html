@@ -423,6 +423,147 @@
             }
         }
     </style>
+    <style>
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+.bounce-animation {
+    animation: bounce 2s ease-in-out infinite;
+}
+
+.bounce-animation:hover {
+    animation-play-state: paused;
+}
+
+.ai-icon {
+    animation: shake 3s ease infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-10deg); }
+    40% { transform: rotate(10deg); }
+    60% { transform: rotate(-5deg); }
+    80% { transform: rotate(5deg); }
+}
+
+.ai-pulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.2) 50%, 
+        rgba(255, 255, 255, 0) 100%);
+    opacity: 0;
+    z-index: 1;
+    pointer-events: none;
+    animation: wave 2s infinite;
+}
+
+@keyframes wave {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.ai-extract-btn {
+    animation: float 2s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 20px rgba(139, 92, 246, 0.2);
+    transition: all 0.3s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+.ai-extract-btn:hover {
+    animation-play-state: paused;
+    transform: scale(1.05);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.6);
+}
+
+.ai-icon {
+    animation: shake 3s ease infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-10deg); }
+    40% { transform: rotate(10deg); }
+    60% { transform: rotate(-5deg); }
+    80% { transform: rotate(5deg); }
+}
+
+.ai-pulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.2) 50%, 
+        rgba(255, 255, 255, 0) 100%);
+    opacity: 0;
+    z-index: 1;
+    pointer-events: none;
+    animation: wave 2s infinite;
+}
+
+@keyframes wave {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+</style>
+    <style>
+        .detail-table {
+            table-layout: fixed !important;
+            width: 100% !important;
+        }
+        .detail-table td {
+            width: 16.66% !important;
+        }
+        .detail-table input,
+        .detail-table select {
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
 
@@ -1943,6 +2084,13 @@
                                 document.getElementById('total_building_area').value = area;
                             }
                             
+                            // 如果有总用地面积
+                            if (info['total_land_area'] || info['总用地面积']) {
+                                const area = (info['total_land_area'] || info['总用地面积']).toString().replace(/[,\s平方米㎡m²]/g, '');
+                                document.getElementById('total_land_area').value = area;
+                                console.log('设置总用地面积:', area);
+                            }
+                            
                             // 如果有地上建筑面积
                             if (info['above_ground_area'] || info['地上建筑面积']) {
                                 const area = (info['above_ground_area'] || info['地上建筑面积']).toString().replace(/[,\s]/g, '');
@@ -2027,28 +2175,28 @@
                         
                         <!-- 基本信息部分 -->
                         <h3 class="text-lg font-medium text-primary mb-4">基本信息</h3>
-                        <div class="grid grid-cols-3 gap-c-1">
-                            <div class="mb-4">
+                        <div class="bg-white overflow-x-auto rounded-lg grid grid-cols-3 gap-c-1">
+                            <div class="mb-4 px-3 ">
                                 <label for="project_name" class="block text-base font-medium text-primary mb-2">项目名称 <span class="text-red-500">*</span></label>
                                 <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button " placeholder="请输入项目名称" value="{{ project.name if project else '' }}" required>
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="project_code" class="block text-base font-medium text-primary mb-2">项目编号</label>
                                 <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button" placeholder="请输入项目编号" value="{{ project.code if project and project.code is not none else '' }}">
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="construction_unit" class="block text-base font-medium text-primary mb-2">建设单位</label>
                                 <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button " placeholder="请输入建设单位名称" value="{{ project.construction_unit if project and project.construction_unit is not none else '' }}">
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="design_unit" class="block text-base font-medium text-primary mb-2">设计单位</label>
                                 <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button  " placeholder="请输入设计单位名称" value="{{ project.design_unit if project and project.design_unit is not none else '' }}">
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="project_location" class="block text-base font-medium text-primary mb-2">项目地点</label>
                                 <div class="flex space-x-2 province-city-container">
                                     <select id="province" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()">
@@ -2061,19 +2209,20 @@
                                 </div>
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="building_type" class="block text-base font-medium text-primary mb-2">建筑类型</label>
                                 <div class="relative">
-                                    <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button  appearance-none pr-8">
+                                    <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="建筑类型">
                                         <option value="">请选择建筑类型</option>
                                         <option value="居住建筑" {% if project and project.building_type == '居住建筑' %}selected{% endif %}>居住建筑</option>
                                         <option value="公共建筑" {% if project and project.building_type == '公共建筑' %}selected{% endif %}>公共建筑</option>
+                                        <option value="工业建筑" {% if project and project.building_type == '工业建筑' %}selected{% endif %}>工业建筑</option>
                                         <option value="居住+公共建筑" {% if project and project.building_type == '居住+公共建筑' %}selected{% endif %}>居住+公共建筑</option>
                                     </select>
                                 </div>
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="standard_selection" class="block text-base font-medium text-primary mb-2">评价标准</label>
                                 <div class="mt-2">
                                     <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button">
@@ -2085,7 +2234,7 @@
                                 </div>
                             </div>
                             
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="climate_zone" class="block text-base font-medium text-primary mb-2">建筑气候区划</label>
                                 <div class="relative">
                                     <select id="climate_zone" name="climate_zone" class="w-full px-4 py-2 border border-gray-300 rounded-button appearance-none pr-8">
@@ -2100,7 +2249,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="mb-4">
+                            <div class="mb-4 px-3">
                                 <label for="star_rating_target" class="block text-base font-medium text-primary mb-2">星级目标</label>
                                 <div class="relative">
                                     <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button appearance-none pr-8">
@@ -2115,74 +2264,82 @@
                         
                         <div class="mt-8">
                         <h3 class="text-xl font-medium text-primary mb-4 mt-8">详细信息</h3>
-                        <div class="bg-white overflow-x-auto rounded-lg ">
-                            <table class="min-w-full divide-y divide-gray-200">
+                        <div class="bg-white overflow-x-auto rounded-lg">
+                            <table class="min-w-full detail-table divide-y divide-gray-200">
+                                <colgroup>
+                                    <col style="width: 16.66%;">
+                                    <col style="width: 16.66%;">
+                                    <col style="width: 16.66%;">
+                                    <col style="width: 16.66%;">
+                                    <col style="width: 16.66%;">
+                                    <col style="width: 16.66%;">
+                                </colgroup>
                                 <tbody class="bg-white divide-y divide-gray-200">
                                     <!-- 第一行 -->
                                     <tr>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="total_land_area" class="block text-sm font-medium text-gray-700 mb-1">总用地面积（平方米）</label>
                                             <input type="number" step="0.01" id="total_land_area" name="total_land_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.total_land_area) if project and project.total_land_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="total_building_area" class="block text-sm font-medium text-gray-700 mb-1">总建筑面积（平方米）</label>
                                             <input type="number" step="0.01" id="total_building_area" name="total_building_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.total_building_area) if project and project.total_building_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="above_ground_area" class="block text-sm font-medium text-gray-700 mb-1">地上建筑面积（平方米）</label>
                                             <input type="number" step="0.01" id="above_ground_area" name="above_ground_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.above_ground_area) if project and project.above_ground_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="underground_area" class="block text-sm font-medium text-gray-700 mb-1">地下建筑面积（平方米）</label>
                                             <input type="number" step="0.01" id="underground_area" name="underground_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.underground_area) if project and project.underground_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="first_floor_underground_area" class="block text-sm font-medium text-gray-700 mb-1">地下一层建筑面积（平方米）</label>
                                             <input type="number" step="0.01" id="first_floor_underground_area" name="first_floor_underground_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.underground_floor_area) if project and project.underground_floor_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="ground_parking_spaces" class="block text-sm font-medium text-gray-700 mb-1">地面停车位数量</label>
                                             <input type="number" id="ground_parking_spaces" name="ground_parking_spaces" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ project.ground_parking_spaces if project and project.ground_parking_spaces is not none else '' }}">
                                         </td>
                                     </tr>
                                     <!-- 第二行 -->
                                     <tr>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="plot_ratio" class="block text-sm font-medium text-gray-700 mb-1">容积率</label>
                                             <input type="number" step="0.01" id="plot_ratio" name="plot_ratio" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ project.plot_ratio if project and project.plot_ratio is not none else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="building_base_area" class="block text-sm font-medium text-gray-700 mb-1">建筑基底面积（平方米）</label>
                                             <input type="number" step="0.01" id="building_base_area" name="building_base_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.building_base_area) if project and project.building_base_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="building_density" class="block text-sm font-medium text-gray-700 mb-1">建筑密度（%）</label>
                                             <input type="number" step="0.01" id="building_density" name="building_density" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ project.building_density if project and project.building_density is not none else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="green_area" class="block text-sm font-medium text-gray-700 mb-1">绿地面积（平方米）</label>
                                             <input type="number" step="0.01" id="green_area" name="green_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ '%.2f'|format(project.green_area) if project and project.green_area else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="green_ratio" class="block text-sm font-medium text-gray-700 mb-1">绿地率（%）</label>
                                             <input type="number" step="0.01" id="green_ratio" name="green_ratio" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ project.green_ratio if project and project.green_ratio is not none else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="residential_units" class="block text-sm font-medium text-gray-700 mb-1">住宅户数</label>
                                             <input type="number" id="residential_units" name="residential_units" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ project.residential_units if project and project.residential_units is not none else '' }}">
                                         </td>
                                     </tr>
                                     <!-- 第三行 -->
                                     <tr>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="building_floors" class="block text-sm font-medium text-gray-700 mb-1">建筑层数（地上/地下）</label>
                                             <input type="text" id="building_floors" name="building_floors" class="w-full px-2 py-1 border border-gray-300 rounded-md" placeholder="例如：18/2" value="{{ project.building_floors if project and project.building_floors is not none else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="building_height" class="block text-sm font-medium text-gray-700 mb-1">建筑高度（米）</label>
                                             <input type="number" step="0.01" id="building_height" name="building_height" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{{ project.building_height if project and project.building_height is not none else '' }}">
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="ac_type" class="block text-sm font-medium text-gray-700 mb-1">空调形式</label>
                                             <div class="relative">
                                                 <select id="ac_type" name="ac_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2196,7 +2353,7 @@
                                           
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="avg_floors" class="block text-sm font-medium text-gray-700 mb-1">住宅平均层数</label>
                                             <div class="relative">
                                                 <select id="avg_floors" name="avg_floors" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2210,7 +2367,7 @@
                                                 
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="has_garbage_room" class="block text-sm font-medium text-gray-700 mb-1">有无垃圾用房</label>
                                             <div class="relative">
                                                 <select id="has_garbage_room" name="has_garbage_room" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2221,7 +2378,7 @@
                               
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="has_elevator" class="block text-sm font-medium text-gray-700 mb-1">有无电梯或扶梯</label>
                                             <div class="relative">
                                                 <select id="has_elevator" name="has_elevator" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2235,7 +2392,7 @@
                                     </tr>
                                     <!-- 第四行 -->
                                     <tr>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="has_underground_garage" class="block text-sm font-medium text-gray-700 mb-1">有无地下车库</label>
                                             <div class="relative">
                                                 <select id="has_underground_garage" name="has_underground_garage" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2246,7 +2403,7 @@
                                             
                                             </div>
                                         </td>
-                                        <td class="px-4 py-3 whitespace-nowrap">
+                                        <td class="px-4 py-3 whitespace-nowrap w-1/6">
                                             <label for="construction_type" class="block text-sm font-medium text-gray-700 mb-1">项目建设情况</label>
                                             <div class="relative">
                                                 <select id="construction_type" name="construction_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2256,7 +2413,7 @@
                                                 </select>
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="has_water_landscape" class="block text-sm font-medium text-gray-700 mb-1">有无景观水体</label>
                                             <div class="relative">
                                                 <select id="has_water_landscape" name="has_water_landscape" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2266,7 +2423,7 @@
                                                 </select>
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="is_fully_decorated" class="block text-sm font-medium text-gray-700 mb-1">是否为全装修项目</label>
                                             <div class="relative">
                                                 <select id="is_fully_decorated" name="is_fully_decorated" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2276,7 +2433,7 @@
                                                 </select>
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="public_building_type" class="block text-sm font-medium text-gray-700 mb-1">公建类型</label>
                                             <div class="relative">
                                                 <select id="public_building_type" name="public_building_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2295,7 +2452,7 @@
                                                 </select>
                                             </div>
                                         </td>
-                                        <td class="px-3 py-2 whitespace-nowrap">
+                                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
                                             <label for="public_green_space" class="block text-sm font-medium text-gray-700 mb-1">绿地向公众开发</label>
                                             <div class="relative">
                                                 <select id="public_green_space" name="public_green_space" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
@@ -2513,7 +2670,7 @@
                         </div>
                         {% endif %}
                         
-                        <table class="min-w-full divide-y divide-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200 table-fixed">
                             <thead class="bg-primary">
                                 <tr>
                                     {% if current_level == '基本级' %}
