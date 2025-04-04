@@ -36,7 +36,6 @@ __pycache__/*.pyc
 static/templates/*.dwl
 __pycache__/*.pyc
 /migrations/
-/.env
 venv/lib64
 venv/pyvenv.cfg
 venv/bin/activate

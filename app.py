@@ -684,7 +684,13 @@ def save_project_info(form_data):
         try_parse_float(form_data, 'plot_ratio', project, 'plot_ratio')
         try_parse_float(form_data, 'building_base_area', project, 'building_base_area')
         try_parse_float(form_data, 'building_density', project, 'building_density')
+        
+        # 特别记录绿地面积的处理
+        green_area_value = form_data.get('green_area', '')
+        print(f"处理绿地面积字段: 原始值={green_area_value}")
         try_parse_float(form_data, 'green_area', project, 'green_area')
+        print(f"绿地面积处理后的值: {project.green_area}")
+        
         try_parse_float(form_data, 'green_ratio', project, 'green_ratio')
         try_parse_float(form_data, 'building_height', project, 'building_height')
         
@@ -730,11 +736,21 @@ def try_parse_float(form_data, form_field, model_obj, model_field):
     try:
         value = form_data.get(form_field, '')
         if value is not None and value != '':
-            model_obj.__setattr__(model_field, float(value))
+            # 清理数值字符串，移除可能的非数字字符
+            clean_value = str(value).replace(',', '').strip()
+            # 尝试转换为浮点数
+            float_value = float(clean_value)
+            # 确保值为0也被正确保存，而不是被当作空值处理
+            model_obj.__setattr__(model_field, float_value)
+            
+            if form_field == 'green_area':
+                print(f"成功将绿地面积 '{value}' 转换为浮点数: {float_value}")
         else:
+            if form_field == 'green_area':
+                print(f"绿地面积字段为空或无效: '{value}'")
             model_obj.__setattr__(model_field, None)
     except (ValueError, TypeError) as e:
-        print(f"无法将字段 {form_field} 转换为浮点数: {str(e)}")
+        print(f"无法将字段 {form_field} 值 '{value}' 转换为浮点数: {str(e)}")
         # 如果转换失败，设置为None
         model_obj.__setattr__(model_field, None)
 
@@ -744,11 +760,18 @@ def try_parse_int(form_data, form_field, model_obj, model_field):
     try:
         value = form_data.get(form_field, '')
         if value is not None and value != '':
-            model_obj.__setattr__(model_field, int(value))
+            # 清理数值字符串，移除可能的非数字字符
+            clean_value = str(value).replace(',', '').strip()
+            # 尝试转换为整数
+            int_value = int(float(clean_value))  # 先转为float再转为int，处理可能的小数点
+            # 确保值为0也被正确保存，而不是被当作空值处理
+            model_obj.__setattr__(model_field, int_value)
+            print(f"成功将字段 {form_field} 值 '{value}' 转换为整数: {int_value}")
         else:
             model_obj.__setattr__(model_field, None)
+            print(f"字段 {form_field} 为空，设置为None")
     except (ValueError, TypeError) as e:
-        print(f"无法将字段 {form_field} 转换为整数: {str(e)}")
+        print(f"无法将字段 {form_field} 值 '{value}' 转换为整数: {str(e)}")
         # 如果转换失败，设置为None
         model_obj.__setattr__(model_field, None)
 

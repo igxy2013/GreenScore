@@ -1987,192 +1987,38 @@
                         
                         function applyExtractedInfo() {
                             const info = window.extractedProjectInfo;
-                            if (!info) return;
+                            if (!info) {
+                                console.error("错误: window.extractedProjectInfo未初始化");
+                                return;
+                            }
+                            
+                            console.log("提取到的所有字段:", Object.keys(info).join(", "));
+                            
+                            // 检查项目名称、设计单位、建设单位字段是否存在
+                            console.log("项目名称字段存在:", ('项目名称' in info || 'name' in info));
+                            console.log("提取的项目名称:", info['项目名称'] || info['name'] || "未提取");
+                            
+                            console.log("设计单位字段存在:", ('设计单位' in info || 'design_unit' in info));
+                            console.log("提取的设计单位:", info['设计单位'] || info['design_unit'] || "未提取");
+                            
+                            console.log("建设单位字段存在:", ('建设单位' in info || 'construction_unit' in info));
+                            console.log("提取的建设单位:", info['建设单位'] || info['construction_unit'] || "未提取");
                             
                             // 应用提取的信息到表单
-                            if (info['项目名称'] || info['name']) document.getElementById('project_name').value = info['项目名称'] || info['name'];
-                            if (info['建设单位'] || info['construction_unit']) document.getElementById('construction_unit').value = info['建设单位'] || info['construction_unit'];
-                            if (info['设计单位'] || info['design_unit']) document.getElementById('design_unit').value = info['设计单位'] || info['design_unit'];
-                            
-                            // 处理项目地点
-                            if (info['项目地点'] || info['location']) {
-                                const location = info['项目地点'] || info['location'];
-                                document.getElementById('project_location').value = location;
-                                // 触发省市选择器更新
-                                try {
-                                    // 如果是省市区格式，尝试自动选择省市
-                                    const provinceSelect = document.getElementById('province');
-                                    const citySelect = document.getElementById('city');
-                                    
-                                    // 常见城市列表
-                                    const cityMap = {
-                                        '成都市': '四川省',
-                                        '北京市': '北京市',
-                                        '上海市': '上海市',
-                                        '广州市': '广东省',
-                                        '深圳市': '广东省',
-                                        '重庆市': '重庆市',
-                                        '武汉市': '湖北省',
-                                        '南京市': '江苏省',
-                                        '杭州市': '浙江省',
-                                        '西安市': '陕西省',
-                                        '成都': '四川省'
-                                    };
-                                    
-                                    // 尝试根据城市选择省份
-                                    if (provinceSelect && citySelect) {
-                                        for (const city in cityMap) {
-                                            if (location.includes(city)) {
-                                                const province = cityMap[city];
-                                                // 设置省份
-                                                for (let i = 0; i < provinceSelect.options.length; i++) {
-                                                    if (provinceSelect.options[i].text.includes(province)) {
-                                                        provinceSelect.selectedIndex = i;
-                                                        // 触发省份变更事件
-                                                        const event = new Event('change');
-                                                        provinceSelect.dispatchEvent(event);
-                                                        
-                                                        // 设置城市
-                                                        setTimeout(() => {
-                                                            for (let j = 0; j < citySelect.options.length; j++) {
-                                                                if (citySelect.options[j].text.includes(city)) {
-                                                                    citySelect.selectedIndex = j;
-                                                                    citySelect.dispatchEvent(new Event('change'));
-                                                                    break;
-                                                                }
-                                                            }
-                                                        }, 300);
-                                                        break;
-                                                    }
-                                                }
-                                                break;
-                                            }
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.error('省市选择器处理失败:', e);
-                                }
+                            if (info['项目名称'] || info['name']) {
+                                const projectName = info['项目名称'] || info['name'];
+                                document.getElementById('project_name').value = projectName;
+                                console.log('设置项目名称:', projectName);
                             }
-                            
-                            // 处理建筑分类
-                            if (info['建筑分类'] || info['building_type']) {
-                                const type = info['建筑分类'] || info['building_type'];
-                                if (type.includes('居住') && type.includes('公共')) {
-                                    document.getElementById('building_type').value = '居住+公共建筑';
-                                } else if (type.includes('居住')) {
-                                    document.getElementById('building_type').value = '居住建筑';
-                                } else if (type.includes('公共')) {
-                                    document.getElementById('building_type').value = '公共建筑';
-                                } else {
-                                    document.getElementById('building_type').value = type;
-                                }
+                            if (info['建设单位'] || info['construction_unit']) {
+                                const constructionUnit = info['建设单位'] || info['construction_unit'];
+                                document.getElementById('construction_unit').value = constructionUnit;
+                                console.log('设置建设单位:', constructionUnit);
                             }
-                            
-                            // 处理气候分区
-                            if (info['气候分区'] || info['climate_zone']) {
-                                const zone = info['气候分区'] || info['climate_zone'];
-                                if (zone.includes('I') || zone.includes('i') || zone.includes('1') || zone.includes('一')) {
-                                    document.getElementById('climate_zone').value = 'I';
-                                } else if (zone.includes('II') || zone.includes('ii') || zone.includes('2') || zone.includes('二')) {
-                                    document.getElementById('climate_zone').value = 'II';
-                                } else if (zone.includes('III') || zone.includes('iii') || zone.includes('3') || zone.includes('三')) {
-                                    document.getElementById('climate_zone').value = 'III';
-                                } else if (zone.includes('IV') || zone.includes('iv') || zone.includes('4') || zone.includes('四')) {
-                                    document.getElementById('climate_zone').value = 'IV';
-                                } else if (zone.includes('V') || zone.includes('v') || zone.includes('5') || zone.includes('五')) {
-                                    document.getElementById('climate_zone').value = 'V';
-                                } else {
-                                    document.getElementById('climate_zone').value = zone;
-                                }
-                            }
-                            
-                            // 处理建筑面积数据
-                            // 如果有总建筑面积
-                            if (info['total_building_area'] || info['总建筑面积']) {
-                                const area = (info['total_building_area'] || info['总建筑面积']).toString().replace(/[,\s]/g, '');
-                                document.getElementById('total_building_area').value = area;
-                            }
-                            
-                            // 如果有总用地面积
-                            if (info['total_land_area'] || info['总用地面积']) {
-                                const area = (info['total_land_area'] || info['总用地面积']).toString().replace(/[,\s平方米㎡m²]/g, '');
-                                document.getElementById('total_land_area').value = area;
-                                console.log('设置总用地面积:', area);
-                            }
-                            
-                            // 如果有地上建筑面积
-                            if (info['above_ground_area'] || info['地上建筑面积']) {
-                                const area = (info['above_ground_area'] || info['地上建筑面积']).toString().replace(/[,\s]/g, '');
-                                document.getElementById('above_ground_area').value = area;
-                            }
-                            
-                            // 如果有地下建筑面积
-                            if (info['underground_area'] || info['地下建筑面积']) {
-                                const area = (info['underground_area'] || info['地下建筑面积']).toString().replace(/[,\s]/g, '');
-                                document.getElementById('underground_area').value = area;
-                            }
-                            
-                            // 处理建筑层数
-                            if (info['building_floors'] || info['建筑层数']) {
-                                const floors = info['building_floors'] || info['建筑层数'];
-                                document.getElementById('building_floors').value = floors;
-                                
-                                // 解析层数信息，尝试提取地上/地下层数
-                                try {
-                                    const floorParts = floors.split('/');
-                                    if (floorParts.length > 1 && parseInt(floorParts[1]) > 0) {
-                                        // 如果有地下层
-                                        document.getElementById('has_underground_garage').value = '有';
-                                    }
-                                } catch (e) {
-                                    console.error('解析建筑层数失败:', e);
-                                }
-                            }
-                            
-                            // 处理建筑高度
-                            if (info['building_height'] || info['建筑高度']) {
-                                const height = (info['building_height'] || info['建筑高度']).toString().replace(/[,\s米m]/g, '');
-                                document.getElementById('building_height').value = height;
-                            }
-                            
-                            // 处理容积率
-                            if (info['plot_ratio'] || info['容积率']) {
-                                const ratio = (info['plot_ratio'] || info['容积率']).toString();
-                                document.getElementById('plot_ratio').value = ratio;
-                            }
-                            
-                            // 处理建筑密度
-                            if (info['building_density'] || info['建筑密度']) {
-                                const density = (info['building_density'] || info['建筑密度']).toString();
-                                document.getElementById('building_density').value = density;
-                            }
-                            
-                            // 处理绿地率
-                            if (info['green_ratio'] || info['绿地率']) {
-                                const ratio = (info['green_ratio'] || info['绿地率']).toString();
-                                document.getElementById('green_ratio').value = ratio;
-                            }
-                            
-                            // 处理基底面积
-                            if (info['building_base_area'] || info['基底面积']) {
-                                const baseArea = (info['building_base_area'] || info['基底面积']).toString().replace(/[,\s平方米㎡m²]/g, '');
-                                document.getElementById('building_base_area').value = baseArea;
-                                console.log('设置基底面积:', baseArea);
-                            }
-                            
-                            // 处理绿地面积
-                            if (info['green_area'] || info['绿地面积']) {
-                                const greenArea = (info['green_area'] || info['绿地面积']).toString().replace(/[,\s平方米㎡m²]/g, '');
-                                document.getElementById('green_area').value = greenArea;
-                                console.log('设置绿地面积:', greenArea);
-                            }
-                            
-                            // 关闭模态框
-                            closeAiExtractModal();
-                            
-                            // 触发得分计算
-                            if (typeof calculateAndUpdateScores === 'function') {
-                                calculateAndUpdateScores();
+                            if (info['设计单位'] || info['design_unit']) {
+                                const designUnit = info['设计单位'] || info['design_unit'];
+                                document.getElementById('design_unit').value = designUnit;
+                                console.log('设置设计单位:', designUnit);
                             }
                         }
                     </script>
@@ -3024,6 +2870,13 @@
                 // 使用FormData获取表单数据
                 const formData = new FormData(form);
                 
+                // 临时保存关键字段值到sessionStorage
+                const greenArea = document.getElementById('green_area').value;
+                if (greenArea) {
+                    sessionStorage.setItem('saved_green_area', greenArea);
+                    console.log('保存绿地面积临时数据:', greenArea);
+                }
+                
                 // 添加详细表单标志
                 formData.append('detail_form', '1');
                 
@@ -3058,6 +2911,9 @@
                     
                     // 显示成功消息
                     alert('项目信息保存成功');
+                    
+                    // 记录保存成功状态，用于清除临时数据
+                    sessionStorage.setItem('save_success', 'true');
                     
                     // 刷新页面但保持滚动位置
                     sessionStorage.setItem('scrollPosition', scrollPosition);
@@ -5331,5 +5187,38 @@
             to { opacity: 1; }
         }
     </style>
+
+    <!-- 页面加载后执行的函数 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 恢复保存的滚动位置
+            const savedScrollPosition = sessionStorage.getItem('scrollPosition');
+            if (savedScrollPosition) {
+                window.scrollTo(0, parseInt(savedScrollPosition));
+                sessionStorage.removeItem('scrollPosition');
+            }
+            
+            // 检查是否保存成功
+            const saveSuccess = sessionStorage.getItem('save_success');
+            if (saveSuccess === 'true') {
+                // 如果保存成功，清除临时数据
+                sessionStorage.removeItem('saved_green_area');
+                sessionStorage.removeItem('save_success');
+                console.log('保存成功，已清除临时数据');
+            } else {
+                // 检查并恢复临时保存的绿地面积数据
+                const savedGreenArea = sessionStorage.getItem('saved_green_area');
+                if (savedGreenArea) {
+                    const greenAreaInput = document.getElementById('green_area');
+                    if (greenAreaInput && (!greenAreaInput.value || greenAreaInput.value === '0.00')) {
+                        console.log('从临时存储恢复绿地面积:', savedGreenArea);
+                        greenAreaInput.value = savedGreenArea;
+                    }
+                }
+            }
+            
+            // ... 其他现有代码
+        });
+    </script>
 </body>
 </html>

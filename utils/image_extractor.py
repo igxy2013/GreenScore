@@ -11,32 +11,61 @@ from PIL import Image
 from loguru import logger
 import subprocess
 import sys
+import base64
+import requests
+from dotenv import load_dotenv
 
-# 检查PaddleOCR是否可用
-PADDLE_OCR_AVAILABLE = False
-paddle_ocr = None
+# 加载环境变量
+load_dotenv()
 
+# 检查百度OCR API是否可用
+BAIDU_OCR_AVAILABLE = False
+baidu_ocr_client = None
+
+# 获取百度OCR API配置
+BAIDU_API_KEY = os.getenv('BAIDU_API_KEY', '')
+BAIDU_SECRET_KEY = os.getenv('BAIDU_SECRET_KEY', '')
+
+def get_baidu_access_token():
+    """
+    获取百度AI开放平台的access_token
+    """
+    url = "https://aip.baidubce.com/oauth/2.0/token"
+    params = {
+        "grant_type": "client_credentials",
+        "client_id": BAIDU_API_KEY,
+        "client_secret": BAIDU_SECRET_KEY
+    }
+    try:
+        response = requests.post(url, params=params)
+        result = response.json()
+        if 'access_token' in result:
+            return result['access_token']
+        else:
+            logger.error(f"获取百度access_token失败: {result}")
+            return None
+    except Exception as e:
+        logger.error(f"获取百度access_token异常: {str(e)}")
+        return None
+
+# 初始化百度OCR客户端
 try:
-    logger.info("正在初始化PaddleOCR...")
-    from paddleocr import PaddleOCR
-    # 使用国内源加速下载
-    paddle_ocr = PaddleOCR(
-        use_angle_cls=True, 
-        lang="ch", 
-        show_log=False,
-        use_gpu=False,
-        enable_mkldnn=True,
-        # 使用国内镜像加速
-        download_from_url=True,
-        locale='ch'
-    )
-    PADDLE_OCR_AVAILABLE = True
-    logger.info("PaddleOCR已成功加载")
-except ImportError as e:
-    logger.error(f"导入PaddleOCR时出错: {str(e)}")
-    logger.warning("请安装PaddleOCR: pip install paddleocr")
+    logger.info("正在初始化百度OCR API...")
+    if BAIDU_API_KEY and BAIDU_SECRET_KEY:
+        access_token = get_baidu_access_token()
+        if access_token:
+            baidu_ocr_client = {
+                'access_token': access_token,
+                'expires_time': None  # 可以添加过期时间管理
+            }
+            BAIDU_OCR_AVAILABLE = True
+            logger.info("百度OCR API已成功加载")
+        else:
+            logger.error("获取百度access_token失败")
+    else:
+        logger.error("百度OCR API密钥未配置")
 except Exception as e:
-    logger.error(f"初始化PaddleOCR时出错: {str(e)}")
+    logger.error(f"初始化百度OCR API时出错: {str(e)}")
     logger.error(f"错误类型: {type(e).__name__}")
     
     # 尝试查看详细错误
@@ -44,48 +73,27 @@ except Exception as e:
     error_details = traceback.format_exc()
     logger.error(f"详细错误信息:\n{error_details}")
 
-def check_paddle_ocr_available():
-    """检查PaddleOCR是否可用"""
-    global PADDLE_OCR_AVAILABLE, paddle_ocr
+def check_baidu_ocr_available():
+    """检查百度OCR API是否可用"""
+    global BAIDU_OCR_AVAILABLE, baidu_ocr_client
     try:
-        if PADDLE_OCR_AVAILABLE and paddle_ocr:
-            # 执行一个简单操作验证PaddleOCR是否可用
-            try:
-                logger.info("测试PaddleOCR是否正常工作...")
-                # 尝试获取模型信息
-                model_info = paddle_ocr.model_info
-                logger.info("PaddleOCR状态正常")
-                return True
-            except Exception as e:
-                logger.error(f"PaddleOCR初始化成功但测试失败: {str(e)}")
-                # 尝试重新初始化
-                try:
-                    paddle_ocr = PaddleOCR(
-                        use_angle_cls=True, 
-                        lang="ch", 
-                        show_log=False,
-                        use_gpu=False,
-                        enable_mkldnn=True
-                    )
-                    logger.info("PaddleOCR重新初始化成功")
-                    return True
-                except Exception as re_init_error:
-                    logger.error(f"PaddleOCR重新初始化失败: {str(re_init_error)}")
-                    PADDLE_OCR_AVAILABLE = False
-                    return False
+        if BAIDU_OCR_AVAILABLE and baidu_ocr_client:
+            # 验证access_token是否有效
+            # 如果需要，可以在这里添加token过期检查和刷新逻辑
+            return True
         else:
-            logger.warning("PaddleOCR不可用")
+            logger.warning("百度OCR API不可用")
             return False
     except Exception as e:
-        logger.error(f"检查PaddleOCR可用性时出错: {str(e)}")
+        logger.error(f"检查百度OCR API可用性时出错: {str(e)}")
         return False
 
-# 启动时检查PaddleOCR是否可用
-if not PADDLE_OCR_AVAILABLE:
-    logger.warning("⚠️ PaddleOCR不可用，图像识别功能将无法正常工作")
-    logger.warning("请安装PaddleOCR: pip install paddleocr")
+# 启动时检查百度OCR API是否可用
+if not BAIDU_OCR_AVAILABLE:
+    logger.warning("⚠️ 百度OCR API不可用，图像识别功能将无法正常工作")
+    logger.warning("请在.env文件中配置BAIDU_API_KEY和BAIDU_SECRET_KEY")
 else:
-    logger.info("✅ PaddleOCR已就绪，图像识别功能可以正常使用")
+    logger.info("✅ 百度OCR API已就绪，图像识别功能可以正常使用")
 
 def preprocess_image(image):
     """预处理图像用于OCR识别，特别针对中文文档优化"""
@@ -122,74 +130,68 @@ def preprocess_image(image):
     
     return scaled
 
-def extract_text_using_paddle_ocr(image_path):
+def extract_text_using_baidu_ocr(image_path):
     """
-    仅使用PaddleOCR从图像中提取文本
+    使用百度OCR API从图像中提取文本
     
     Args:
-        image_path: 图像路径
+        image_path: 图像路径或文件对象
         
     Returns:
         提取的文本字符串，如果提取失败则返回空字符串
     """
     logger = logging.getLogger('GreenScore')
     
-    # 检查PaddleOCR是否可用
-    if not PADDLE_OCR_AVAILABLE:
-        error_msg = "PaddleOCR未正确安装或初始化失败"
+    # 检查百度OCR API是否可用
+    if not BAIDU_OCR_AVAILABLE:
+        error_msg = "百度OCR API未正确配置或初始化失败"
         logger.error(error_msg)
-        raise RuntimeError(f"PaddleOCR: {error_msg}")
+        raise RuntimeError(f"百度OCR API: {error_msg}")
     
     try:
-        logger.info(f"使用PaddleOCR处理图像: {type(image_path)}")
+        logger.info(f"使用百度OCR API处理图像: {type(image_path)}")
         
-        # 使用PaddleOCR处理图像
+        # 准备图像数据
         if hasattr(image_path, 'read'):
             # 如果是文件对象，获取字节数据
             image_data = image_path.read()
             image_path.seek(0)  # 重置文件指针
-            
-            # 保存到临时文件
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
-                temp_path = temp_file.name
-                temp_file.write(image_data)
-            
-            logger.info(f"将图像数据保存到临时文件: {temp_path}")
-            result = paddle_ocr.ocr(temp_path, cls=True)
-            
-            # 处理完成后删除临时文件
-            try:
-                os.unlink(temp_path)
-            except Exception as e:
-                logger.warning(f"删除临时文件时出错: {str(e)}")
         else:
-            # 直接处理图像路径
-            result = paddle_ocr.ocr(image_path, cls=True)
+            # 如果是文件路径，读取文件内容
+            with open(image_path, 'rb') as f:
+                image_data = f.read()
+        
+        # 进行Base64编码
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # 调用百度OCR API
+        url = f"https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic?access_token={baidu_ocr_client['access_token']}"
+        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+        data = {
+            'image': image_base64,
+            'language_type': 'CHN_ENG',  # 中英文混合
+            'detect_direction': 'true',  # 检测文字方向
+            'paragraph': 'true',         # 输出段落信息
+            'probability': 'true'        # 返回识别结果中每一行的置信度
+        }
+        
+        response = requests.post(url, headers=headers, data=data)
+        result = response.json()
         
         # 检查结果
-        if not result or len(result) == 0:
-            logger.warning("PaddleOCR未返回任何结果")
+        if 'error_code' in result:
+            logger.error(f"百度OCR API返回错误: {result['error_code']} - {result.get('error_msg', '')}")
+            return ""
+            
+        if 'words_result' not in result or len(result['words_result']) == 0:
+            logger.warning("百度OCR API未返回任何结果")
             return ""
             
         # 提取文本
         extracted_text = ""
-        for line in result:
-            if not line:
-                continue
-                
-            for word_info in line:
-                if len(word_info) < 2:
-                    continue
-                    
-                # word_info结构: [[[x1,y1],[x2,y2],[x3,y3],[x4,y4]], (text, confidence)]
-                try:
-                    text = word_info[1][0]  # 提取文本内容
-                    if text:
-                        extracted_text += text + " "
-                except (IndexError, TypeError) as e:
-                    logger.warning(f"处理OCR结果时出错: {str(e)}, word_info: {word_info}")
-                    continue
+        for word_info in result['words_result']:
+            if 'words' in word_info:
+                extracted_text += word_info['words'] + " "
         
         # 去除多余空格并整理文本
         extracted_text = extracted_text.strip()
@@ -205,7 +207,7 @@ def extract_text_using_paddle_ocr(image_path):
         return extracted_text
         
     except Exception as e:
-        logger.error(f"使用PaddleOCR提取文本时出错: {str(e)}")
+        logger.error(f"使用百度OCR API提取文本时出错: {str(e)}")
         return ""
 
 def detect_table_structure(text_blocks):
@@ -294,7 +296,7 @@ def process_table_text(text_blocks):
 
 def extract_text(image):
     """
-    从图像中提取文本，仅使用PaddleOCR
+    从图像中提取文本，使用百度OCR API
     
     Args:
         image: 图像路径、PIL图像对象或OpenCV图像数组
@@ -305,27 +307,27 @@ def extract_text(image):
     logger = logging.getLogger('GreenScore')
     
     try:
-        # 检查PaddleOCR是否可用
-        if not PADDLE_OCR_AVAILABLE:
-            error_msg = "PaddleOCR不可用，OCR功能无法使用"
+        # 检查百度OCR API是否可用
+        if not BAIDU_OCR_AVAILABLE:
+            error_msg = "百度OCR API不可用，OCR功能无法使用"
             logger.error(error_msg)
-            raise RuntimeError(f"PaddleOCR: {error_msg}")
+            raise RuntimeError(f"百度OCR API: {error_msg}")
             
-        # 使用PaddleOCR提取文本
-        text = extract_text_using_paddle_ocr(image)
+        # 使用百度OCR API提取文本
+        text = extract_text_using_baidu_ocr(image)
         if text:
             return text
         else:
-            logger.error("PaddleOCR提取文本失败")
+            logger.error("百度OCR API提取文本失败")
             return ""
             
     except Exception as e:
         error_msg = str(e)
         logger.error(f"提取文本时出错: {error_msg}")
         
-        if "PaddleOCR" in error_msg:
-            logger.error(f"PaddleOCR错误: {error_msg}")
-            raise RuntimeError(f"PaddleOCR: {error_msg}")
+        if "百度OCR API" in error_msg:
+            logger.error(f"百度OCR API错误: {error_msg}")
+            raise RuntimeError(f"百度OCR API: {error_msg}")
         
         return ""
 
@@ -336,6 +338,170 @@ def parse_project_info_from_text(text):
     
     # 记录OCR文本长度
     logger.info(f"开始从文本内容中解析项目信息, 文本长度: {len(text)}")
+    
+    # 提取项目信息
+    project_info = {}
+    
+    # 新增表格特有字段匹配模式
+    table_specific_fields = {
+        "项目名称": [
+            r"项目名称[：:]*\s*(.+?)(?:\s+建筑类型|\s+公共建筑|\s*$)",
+            r"项目名称\s*(.+?)(?:\s*$|\n)"
+        ],
+        "建筑类型": [
+            r"建筑类型[：:]*\s*([^:：\n]{2,15})(?:\s+公建类型|\s*$)",
+            r"建筑类型\s*([^:：\n]{2,15})(?:\s+公建类型|\s*$)",
+            r"建筑类型[：:]*\s*(居住建筑|公共建筑)"
+        ],
+        "公建类型": [
+            r"公建类型[：:]*\s*([^:：\n]{2,15})(?:\s+气候区划|\s*$)",
+            r"公建类型\s*([^:：\n]{2,15})(?:\s+气候区划|\s*$)",
+            r"公共建筑类型[：:]*\s*([^:：\n]{2,15})(?:\s+气候区划|\s*$)",
+            r"公建类型[：:]*\s*(办公|商业|医疗|教育|文化|体育|交通|其他)"
+        ],
+        "气候区划": [
+            r"气候区划[：:]*\s*([IVX]{1,3})(?:\s|$)",
+            r"建筑气候区划[：:]*\s*([IVX]{1,3})(?:\s|$)",
+            r"气候分区[：:]*\s*([IVX]{1,3})(?:\s|$)",
+            r"区划\s*([IVX]{1,3})(?:\s|$)"
+        ],
+        "集中绿地面积": [
+            r"集中绿地面积[：:]*\s*([0-9,.]+)\s*(?:平方米|㎡|m²|m2)?",
+            r"集中绿地\s*([0-9,.]+)(?:m²|m2|㎡|平方米)?"
+        ],
+        "建筑层数": [
+            r"建筑层数\s*(\d+)(?:层)?(?:/地下)?",
+            r"建筑层数[：:]*\s*(\d+)(?:层)?(?:/地下)?",
+            r"层数[：:]*\s*(\d+)(?:层)?(?:/地下)?"
+        ],
+        "绿地率": [
+            r"绿地率[：:]*\s*([0-9,.]+)\s*%?(?:\s|$)",
+            r"绿地率\s*([0-9,.]+)%?(?:\s|$)",
+            r"绿化率[：:]*\s*([0-9,.]+)\s*%?(?:\s|$)"
+        ],
+        "规划绿地率指标要求": [
+            r"规划绿地率指标要求[：:]*\s*([0-9,.]+)\s*%?",
+            r"规划绿地率指标\s*([0-9,.]+)%?"
+        ],
+        "有无电梯": [
+            r"有无电梯[：:]*\s*([有无是否])(?:\s|$)",
+            r"电梯[：:]*\s*([有无是否])(?:\s|$)",
+            r"有无电梯\s+([有无是否])(?:\s|$)"
+        ],
+        "有无地下车库": [
+            r"有无地下车库[：:]*\s*([有无是否])(?:\s|$)",
+            r"地下车库[：:]*\s*([有无是否])(?:\s|$)"
+        ],
+        "有无景观水体": [
+            r"有无景观水体[：:]*\s*([有无是否])(?:\s|$)",
+            r"景观水体[：:]*\s*([有无是否])(?:\s|$)",
+            r"水体\s*([有无是否])(?:\s|$)"
+        ],
+        "绿地向公众开放": [
+            r"绿地向公众开放[：:]*\s*([有无是否])(?:\s|$)",
+            r"公众开放[：:]*\s*([有无是否])(?:\s|$)"
+        ],
+        "是否为全装修项目": [
+            r"是否为全装修项目[：:]*\s*([有无是否])(?:\s|$)",
+            r"全装修项目[：:]*\s*([有无是否])(?:\s|$)",
+            r"全装修[：:]*\s*([有无是否])(?:\s|$)"
+        ],
+        "空调形式": [
+            r"空调形式[：:]*\s*([^:：\n]{2,15})(?:\s+有无电梯|\s*$)",
+            r"空调[：:]*\s*([^:：\n]{2,15})(?:\s+有无电梯|\s*$)",
+            r"空调形式[：:]*\s*(集中式|分体式|中央|风冷|水冷|无|分体式空调)"
+        ],
+        "项目建设情况": [
+            r"项目建设情况[：:]*\s*([^:：\n]{2,15})(?:\s+水体|\s*$)",
+            r"建设情况[：:]*\s*([^:：\n]{2,15})(?:\s+水体|\s*$)",
+            r"项目建设情况[：:]*\s*(新区建设|改建|扩建|旧区改建)"
+        ]
+    }
+    
+    # 首先处理表格特有字段
+    for key, patterns in table_specific_fields.items():
+        for pattern in patterns:
+            try:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    value = match.group(1).strip()
+                    if value and len(value) > 0:
+                        # 对提取的值进行清理和检查
+                        # 检查是否包含其他字段的关键词(如"建筑气候"中混入了"办公")
+                        if key == "气候区划" and len(value) > 3:
+                            # 只保留罗马数字部分
+                            roman_match = re.search(r'([IVX]{1,3})', value)
+                            if roman_match:
+                                value = roman_match.group(1)
+                        elif key == "公建类型" and "气候" in value:
+                            # 去除混入的"气候"关键词
+                            value = re.sub(r'气候.*', '', value).strip()
+                        elif key == "建筑类型" and "公建类型" in value:
+                            # 去除混入的"公建类型"关键词
+                            value = re.sub(r'公建类型.*', '', value).strip()
+                        elif key == "空调形式" and "有无电梯" in value:
+                            # 去除混入的"有无电梯"关键词
+                            value = re.sub(r'有无电梯.*', '', value).strip()
+                        elif key == "项目建设情况" and "水体" in value:
+                            # 去除混入的"水体"关键词
+                            value = re.sub(r'水体.*', '', value).strip()
+                        
+                        # 进一步针对有无景观水体进行优化
+                        if key == "有无景观水体" and value in ["无", "是", "否"]:
+                            project_info[key] = value
+                            logger.debug(f"通过表格特定模式提取到{key}: {value}")
+                            break
+                        
+                        # 其他通用的清理逻辑 
+                        if value and len(value) > 0:
+                            project_info[key] = value
+                            logger.debug(f"通过表格特定模式提取到{key}: {value}")
+                            break
+            except Exception as e:
+                logger.warning(f"匹配表格中{key}的模式{pattern}出错: {str(e)}")
+    
+    # 表格后处理：处理混合在一起的字段
+    mixed_fields = {
+        "公建类型": ["建筑气候", "办公"],
+        "气候区划": ["III", "I", "II", "IV", "V", "VI", "VII"],
+        "建筑类型": ["公共建筑", "居住建筑"],
+        "有无电梯": ["有", "无"],
+        "有无景观水体": ["有", "无"]
+    }
+    
+    # 检查并纠正混合的字段
+    for field, keywords in mixed_fields.items():
+        # 跳过已经正确处理的字段
+        if field in project_info and len(project_info[field]) <= 5:
+            continue
+            
+        # 创建待处理字段列表，避免在遍历时修改字典
+        fields_to_process = list(project_info.keys())
+        
+        # 处理混合在一起的字段
+        for other_field in fields_to_process:
+            if other_field != field and field not in project_info:
+                for keyword in keywords:
+                    if keyword in project_info[other_field]:
+                        # 将关键词提取出来作为单独的字段
+                        project_info[field] = keyword
+                        logger.debug(f"从混合字段 {other_field} 中提取 {field}: {keyword}")
+                        # 从原字段中移除这个关键词
+                        project_info[other_field] = re.sub(r'\s*' + re.escape(keyword) + r'\s*', ' ', project_info[other_field]).strip()
+                        break
+    
+    # 特殊处理：如果公建类型只提取到了"办公"
+    if "公建类型" in project_info and project_info["公建类型"] == "办公":
+        project_info["公建类型"] = "办公建筑"
+        
+    # 特殊处理：如果水体被提取为独立字段但值是"无"
+    if "水体" in project_info and project_info["水体"] == "无":
+        project_info["有无景观水体"] = "无"
+        del project_info["水体"]
+        
+    # 特殊处理：如果提取到工程地点但没有有效内容，删除它
+    if "工程地点" in project_info and len(project_info["工程地点"].strip()) < 2:
+        del project_info["工程地点"]
     
     # 定义需要提取的信息模式
     info_patterns = {
@@ -377,7 +543,14 @@ def parse_project_info_from_text(text):
         ],
         "建筑高度": [
             r"(?:建筑高度|建筑物高度)[:：]?\s*([0-9,.]+)\s*(?:米|m)?",
-            r"高度[:：]?\s*([0-9,.]+)\s*(?:米|m)?"
+            r"高度[:：]?\s*([0-9,.]+)\s*(?:米|m)?",
+            r"建筑高度[为是]?\s*([0-9,.]+)\s*(?:米|m)?",
+            r"建筑[物的]?高度约[为]?\s*([0-9,.]+)\s*(?:米|m)?",
+            r"设计高度[为]?\s*([0-9,.]+)\s*(?:米|m)?",
+            r"(?:建筑|楼|建筑物)?高(?:度)?[为是约]?\s*([0-9,.]+)\s*(?:米|m)?",
+            r"建筑物(?:高度)?[为是]?\s*([0-9,.]+)\s*(?:米|m)?",
+            r"建筑高度\D+(\d+[,.\d]*)",
+            r"(?:^|\s)高度\D*([0-9,.]+)\s*(?:米|m)?"
         ],
         "容积率": [
             r"容积率[:：]?\s*([0-9,.]+)",
@@ -413,57 +586,6 @@ def parse_project_info_from_text(text):
         ]
     }
     
-    # 表格样式匹配模式（处理表格中的数据）
-    table_patterns = {
-        "总用地面积": [
-            r"规划用地面积\D+(\d+[,.\d]*)",
-            r"总用地面积\D+(\d+[,.\d]*)",
-            r"用地面积\D+(\d+[,.\d]*)",
-            r"净用地面积\D+(\d+[,.\d]*)",
-        ],
-        "总建筑面积": [
-            r"总[计建]?[筑建]?面积\D+(\d+[,.\d]*)",
-            r"规划总建筑面积\D+(\d+[,.\d]*)",
-            r"总建筑面积\D+(\d+[,.\d]*)",
-            r"总面积\D+(\d+[,.\d]*)",
-        ],
-        "地上建筑面积": [
-            r"地上[总计建筑]*面积\D+(\d+[,.\d]*)",
-            r"计容建筑面积\D+(\d+[,.\d]*)",
-        ],
-        "地下建筑面积": [
-            r"地下[总计建筑]*面积\D+(\d+[,.\d]*)",
-            r"地下室面积\D+(\d+[,.\d]*)",
-
-        ],
-        "建筑层数": [
-            r"地上(\d+)层[,，]?地下(\d+)层",
-            r"(\d+)(?:层|F)(?:/|、|-)?(?:地下)?(\d+)(?:层|F)"
-        ],
-        "容积率": [
-
-            r"容积率\D+(\d+[,.\d]*)"
-        ],
-        "建筑密度": [
-            r"建筑密度\D+(\d+[,.\d]*)"
-        ],
-        "绿地率": [
-
-            r"绿地率\D+(\d+[,.\d]*)"
-        ],
-        "基底面积": [
-
-            r"基底面积\D+(\d+[,.\d]*)"
-        ],
-        "绿地面积": [
-
-            r"绿地面积\D+(\d+[,.\d]*)"
-        ]
-    }
-    
-    # 提取项目信息
-    project_info = {}
-    
     # 使用标准正则表达式匹配
     for key, patterns in info_patterns.items():
         for pattern in patterns:
@@ -477,6 +599,59 @@ def parse_project_info_from_text(text):
                         break
             except Exception as e:
                 logger.warning(f"匹配{key}的模式{pattern}出错: {str(e)}")
+    
+    # 表格样式匹配模式（处理表格中的数据）
+    table_patterns = {
+        "总用地面积": [
+            r"规划用地面积\D+(\d+[,.\d]*)",
+            r"总用地面积\D+(\d+[,.\d]*)",
+            r"用地面积\D+(\d+[,.\d]*)",
+            r"净用地面积\D+(\d+[,.\d]*)",
+            r"公共建筑用地面积\D+(\d+[,.\d]*)"
+        ],
+        "总建筑面积": [
+            r"总[计建]?[筑建]?面积\D+(\d+[,.\d]*)",
+            r"规划总建筑面积\D+(\d+[,.\d]*)",
+            r"总建筑面积\D+(\d+[,.\d]*)",
+            r"总面积\D+(\d+[,.\d]*)",
+            r"公共建筑总建筑面积\D+(\d+[,.\d]*)"
+        ],
+        "地上建筑面积": [
+            r"地上[总计建筑]*面积\D+(\d+[,.\d]*)",
+            r"计容建筑面积\D+(\d+[,.\d]*)",
+            r"地上\D+(\d+[,.\d]*)"
+        ],
+        "地下建筑面积": [
+            r"地下[总计建筑]*面积\D+(\d+[,.\d]*)",
+            r"地下室面积\D+(\d+[,.\d]*)",
+            r"地下\D+(\d+[,.\d]*)"
+        ],
+        "建筑层数": [
+            r"地上(\d+)层[,，]?地下(\d+)层",
+            r"(\d+)(?:层|F)(?:/|、|-)?(?:地下)?(\d+)(?:层|F)"
+        ],
+        "容积率": [
+            r"容积率\D+(\d+[,.\d]*)"
+        ],
+        "建筑密度": [
+            r"建筑密度\D+(\d+[,.\d]*)"
+        ],
+        "绿地率": [
+            r"绿地率\D+(\d+[,.\d]*)"
+        ],
+        "基底面积": [
+            r"基底面积\D+(\d+[,.\d]*)"
+        ],
+        "绿地面积": [
+            r"绿地面积\D+(\d+[,.\d]*)"
+        ],
+        "建筑高度": [
+            r"建筑高度\D+(\d+[,.\d]*)",
+            r"m\s+(\d+[,.\d]*)",  # 匹配表格中的 m 23.7 格式
+            r"建筑高度.*?(\d+\.\d+)\s*米?",
+            r"高度\D+(\d+[,.\d]*)"
+        ]
+    }
     
     # 使用表格样式匹配
     for key, patterns in table_patterns.items():
@@ -492,6 +667,37 @@ def parse_project_info_from_text(text):
                             break
                 except Exception as e:
                     logger.warning(f"匹配表格中{key}的模式{pattern}出错: {str(e)}")
+    
+    # 特别处理表格中的建筑高度（通常位于表格末尾）
+    if '建筑高度' not in project_info:
+        try:
+            # 查找类似"建筑高度 m 23.7"这样的模式
+            height_match = re.search(r'建筑高度\s*m\s*(\d+\.?\d*)', text, re.IGNORECASE)
+            if height_match:
+                value = height_match.group(1).strip()
+                project_info['建筑高度'] = value + " 米"
+                logger.debug(f"从表格末尾提取到建筑高度: {project_info['建筑高度']}")
+            # 针对特定表格格式：最后一行包含"建筑高度" "m" "23.7"的格式
+            elif "建筑高度" in text and "m" in text:
+                # 尝试查找建筑高度附近的数字
+                height_lines = [line for line in text.split('\n') if '建筑高度' in line or ('高度' in line and 'm' in line)]
+                for height_line in height_lines:
+                    number_match = re.search(r'(\d+\.?\d*)', height_line)
+                    if number_match:
+                        value = number_match.group(1).strip()
+                        project_info['建筑高度'] = value + " 米"
+                        logger.debug(f"从包含'建筑高度'的行提取到: {project_info['建筑高度']}")
+                        break
+            # 最后尝试直接搜索表格样式
+            else:
+                # 寻找数字+m的组合，通常在表格的数据列
+                table_value_match = re.search(r'(\d+\.\d+)\s*(?:米|m)', text, re.IGNORECASE)
+                if table_value_match:
+                    value = table_value_match.group(1).strip()
+                    project_info['建筑高度'] = value + " 米"
+                    logger.debug(f"从表格数据列提取到建筑高度: {project_info['建筑高度']}")
+        except Exception as e:
+            logger.warning(f"特别处理表格中的建筑高度时出错: {str(e)}")
     
     # 使用通用模式提取键值对
     # 寻找"xxxx: yyyy"或"xxxx：yyyy"模式的文本
@@ -675,7 +881,18 @@ def parse_project_info_from_text(text):
         '建筑密度': 'building_density',
         '绿地面积': 'green_area',
         '绿地率': 'green_ratio',
-        '地面停车位': 'ground_parking_spaces'
+        '地面停车位': 'ground_parking_spaces',
+        # 新增表格特有字段映射
+        '建筑类型': 'building_type',
+        '公建类型': 'public_building_type',
+        '气候区划': 'climate_zone',
+        '有无电梯': 'has_elevator',
+        '有无地下车库': 'has_underground_garage',
+        '有无景观水体': 'has_water_landscape',
+        '绿地向公众开放': 'public_green_space',
+        '是否为全装修项目': 'is_fully_decorated',
+        '空调形式': 'air_conditioning_type',
+        '项目建设情况': 'construction_type'
     }
 
     # 直接添加总用地面积
@@ -746,8 +963,33 @@ def parse_project_info_from_text(text):
             # 跳过不规范的键（包含异常文本）
             if len(key) > 20 or '注' in key or '备注' in key:
                 continue
+            
+            # 获取中文键
+            cn_key = key if key in field_mapping else None
+            if not cn_key:
+                # 如果找不到对应的中文键，跳过此字段
+                continue
+
+            # 获取英文键
+            eng_key = field_mapping.get(cn_key)
+            if not eng_key:
+                continue
                 
-            # 清理数值
+            # 检查是否为文本类字段，不需要数值转换的字段
+            text_fields = ['building_type', 'public_building_type', 'climate_zone', 
+                          'has_elevator', 'has_underground_garage', 'has_water_landscape',
+                          'public_green_space', 'is_fully_decorated', 'air_conditioning_type',
+                          'construction_type']
+                
+            if eng_key in text_fields:
+                # 文本字段直接保存，不尝试转换为数值
+                clean_value = value.strip()
+                mapped_info[eng_key] = clean_value
+                mapped_info[cn_key] = clean_value
+                logger.debug(f"处理文本字段 '{key}': {clean_value}")
+                continue
+                    
+            # 处理数值字段
             if isinstance(value, str):
                 # 提取数值部分
                 number_match = re.search(r'([-+]?\d*\.?\d+)', value)
@@ -768,15 +1010,8 @@ def parse_project_info_from_text(text):
                     # 如果无法转换为数值，跳过此字段
                     logger.warning(f"无法将值 '{clean_value}' 转换为数值，跳过字段 '{key}'")
                     continue
-
-                # 获取中文键
-                cn_key = key if key in field_mapping else None
-                if not cn_key:
-                    # 如果找不到对应的中文键，跳过此字段
-                    continue
                     
                 try:
-                    eng_key = field_mapping[cn_key]
                     # 添加英文键和中文键的映射
                     if eng_key in ['total_land_area', 'total_building_area', 'above_ground_area', 'underground_area']:
                         # 面积字段保留原始精度
@@ -831,7 +1066,7 @@ def parse_project_info_from_text(text):
 
 def extract_image_info(image_path):
     """
-    仅使用PaddleOCR从图像中提取项目信息
+    使用百度OCR API从图像中提取项目信息
     
     Args:
         image_path: 图像文件路径
@@ -841,9 +1076,9 @@ def extract_image_info(image_path):
     """
     logger = logging.getLogger('GreenScore')
     
-    # 检查PaddleOCR是否可用
-    if not PADDLE_OCR_AVAILABLE:
-        error_msg = "PaddleOCR未正确安装或初始化失败"
+    # 检查百度OCR API是否可用
+    if not BAIDU_OCR_AVAILABLE:
+        error_msg = "百度OCR API未正确配置或初始化失败"
         logger.error(error_msg)
         # 不抛出异常，返回空字典
         return {}
@@ -875,49 +1110,9 @@ def extract_image_info(image_path):
         logger.error(f"提取图像信息时出错: {str(e)}")
         return {'总用地面积': '0 平方米', 'total_land_area': '0'}
 
-# 辅助函数：评估提取的文本质量
-def evaluate_text_quality(text):
-    """简单评估文本质量的函数"""
-    if not text:
-        return 0
-        
-    # 计算中文字符比例
-    chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
-    text_length = len(text.strip())
-    
-    if text_length == 0:
-        return 0
-        
-    chinese_ratio = chinese_chars / text_length
-    
-    # 评分标准：考虑文本长度和中文比例
-    score = text_length * 0.3 + chinese_ratio * 100
-    
-    # 加分：如果包含关键词
-    keywords = ["项目名称", "建设单位", "设计单位", "总建筑面积", "地址", "容积率", "面积"]
-    for keyword in keywords:
-        if keyword in text:
-            score += 20
-            
-    return score
-
-# 辅助函数：仅应用CLAHE对比度增强
-def clahe_only(image):
-    """仅应用CLAHE对比度增强"""
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    return clahe.apply(gray)
-    
-# 辅助函数：二值化处理
-def binarize_only(image):
-    """仅应用二值化处理"""
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return binary
-
 def extract_image_info_with_raw_text(image_path):
     """
-    仅使用PaddleOCR从图像中提取项目信息和原始文本
+    使用百度OCR API从图像中提取项目信息和原始文本
     
     Args:
         image_path: 图像文件路径
@@ -935,16 +1130,16 @@ def extract_image_info_with_raw_text(image_path):
     # 防止返回None导致的解包错误
     default_return = {'project_info': {}, 'raw_text': ''}
     
-    # 检查PaddleOCR是否可用
-    if not PADDLE_OCR_AVAILABLE:
-        error_msg = "PaddleOCR未正确安装或初始化失败"
+    # 检查百度OCR API是否可用
+    if not BAIDU_OCR_AVAILABLE:
+        error_msg = "百度OCR API未正确配置或初始化失败"
         logger.error(error_msg)
         # 不抛出异常，而是返回默认值
         return default_return
     
     try:
-        # 使用PaddleOCR提取文本
-        extracted_text = extract_text_using_paddle_ocr(image_path)
+        # 使用百度OCR API提取文本
+        extracted_text = extract_text_using_baidu_ocr(image_path)
         
         if not extracted_text:
             logger.warning("文本提取失败，无法提取项目信息")
@@ -1024,4 +1219,44 @@ def extract_image_info_with_raw_text(image_path):
     except Exception as e:
         logger.error(f"提取图像信息时出错: {str(e)}")
         # 返回默认值而不是None，避免解包错误
-        return default_return 
+        return default_return
+
+# 辅助函数：评估提取的文本质量
+def evaluate_text_quality(text):
+    """简单评估文本质量的函数"""
+    if not text:
+        return 0
+        
+    # 计算中文字符比例
+    chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+    text_length = len(text.strip())
+    
+    if text_length == 0:
+        return 0
+        
+    chinese_ratio = chinese_chars / text_length
+    
+    # 评分标准：考虑文本长度和中文比例
+    score = text_length * 0.3 + chinese_ratio * 100
+    
+    # 加分：如果包含关键词
+    keywords = ["项目名称", "建设单位", "设计单位", "总建筑面积", "地址", "容积率", "面积"]
+    for keyword in keywords:
+        if keyword in text:
+            score += 20
+            
+    return score
+
+# 辅助函数：仅应用CLAHE对比度增强
+def clahe_only(image):
+    """仅应用CLAHE对比度增强"""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    return clahe.apply(gray)
+    
+# 辅助函数：二值化处理
+def binarize_only(image):
+    """仅应用二值化处理"""
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return binary 
