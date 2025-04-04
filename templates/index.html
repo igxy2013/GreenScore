@@ -1986,39 +1986,81 @@
                         }
                         
                         function applyExtractedInfo() {
-                            const info = window.extractedProjectInfo;
-                            if (!info) {
-                                console.error("错误: window.extractedProjectInfo未初始化");
-                                return;
-                            }
-                            
-                            console.log("提取到的所有字段:", Object.keys(info).join(", "));
-                            
-                            // 检查项目名称、设计单位、建设单位字段是否存在
-                            console.log("项目名称字段存在:", ('项目名称' in info || 'name' in info));
-                            console.log("提取的项目名称:", info['项目名称'] || info['name'] || "未提取");
-                            
-                            console.log("设计单位字段存在:", ('设计单位' in info || 'design_unit' in info));
-                            console.log("提取的设计单位:", info['设计单位'] || info['design_unit'] || "未提取");
-                            
-                            console.log("建设单位字段存在:", ('建设单位' in info || 'construction_unit' in info));
-                            console.log("提取的建设单位:", info['建设单位'] || info['construction_unit'] || "未提取");
-                            
-                            // 应用提取的信息到表单
-                            if (info['项目名称'] || info['name']) {
-                                const projectName = info['项目名称'] || info['name'];
-                                document.getElementById('project_name').value = projectName;
-                                console.log('设置项目名称:', projectName);
-                            }
-                            if (info['建设单位'] || info['construction_unit']) {
-                                const constructionUnit = info['建设单位'] || info['construction_unit'];
-                                document.getElementById('construction_unit').value = constructionUnit;
-                                console.log('设置建设单位:', constructionUnit);
-                            }
-                            if (info['设计单位'] || info['design_unit']) {
-                                const designUnit = info['设计单位'] || info['design_unit'];
-                                document.getElementById('design_unit').value = designUnit;
-                                console.log('设置设计单位:', designUnit);
+                            try {
+                                console.log("开始应用提取的信息到表单...");
+                                const info = window.extractedProjectInfo;
+                                if (!info) {
+                                    console.error("没有可用的提取信息");
+                                    alert("没有可用的提取信息，请先提取数据");
+                                    return;
+                                }
+                                
+                                console.log("提取到的所有字段:", Object.keys(info).join(", "));
+                                
+                                // 应用提取的信息到表单
+                                if (info['项目名称'] || info['name']) {
+                                    const projectName = info['项目名称'] || info['name'];
+                                    document.getElementById('project_name').value = projectName;
+                                    console.log('设置项目名称:', projectName);
+                                }
+                                if (info['建设单位'] || info['construction_unit']) {
+                                    const constructionUnit = info['建设单位'] || info['construction_unit'];
+                                    document.getElementById('construction_unit').value = constructionUnit;
+                                    console.log('设置建设单位:', constructionUnit);
+                                }
+                                if (info['设计单位'] || info['design_unit']) {
+                                    const designUnit = info['设计单位'] || info['design_unit'];
+                                    document.getElementById('design_unit').value = designUnit;
+                                    console.log('设置设计单位:', designUnit);
+                                }
+                                
+                                // 最后确保关闭模态窗口
+                                console.log("所有字段处理完毕，准备关闭模态窗口");
+                                
+                                // 使用setTimeout确保UI有时间响应
+                                setTimeout(() => {
+                                    try {
+                                        closeAiExtractModal();
+                                        console.log("模态窗口已关闭");
+                                    } catch (closeError) {
+                                        console.error("关闭模态窗口时出错:", closeError);
+                                        
+                                        // 如果标准关闭方法失败，尝试直接操作DOM
+                                        try {
+                                            const modal = document.getElementById('aiExtractModal');
+                                            if (modal) {
+                                                modal.classList.remove('show');
+                                                console.log("通过直接操作DOM关闭模态窗口");
+                                            }
+                                        } catch (domError) {
+                                            console.error("通过DOM操作关闭模态窗口时出错:", domError);
+                                        }
+                                    }
+                                }, 100);
+                                
+                                // 在完全关闭前不要触发得分计算
+                                setTimeout(() => {
+                                    // 触发得分计算
+                                    if (typeof calculateAndUpdateScores === 'function') {
+                                        try {
+                                            calculateAndUpdateScores();
+                                            console.log("已触发得分计算");
+                                        } catch (calcError) {
+                                            console.error("计算得分时出错:", calcError);
+                                        }
+                                    }
+                                }, 300);
+                                
+                            } catch (error) {
+                                console.error("应用提取信息到表单时出错:", error);
+                                alert("应用信息时出错: " + error.message);
+                                
+                                // 确保发生错误时也关闭模态窗口
+                                try {
+                                    closeAiExtractModal();
+                                } catch (e) {
+                                    console.error("关闭模态窗口时出错:", e);
+                                }
                             }
                         }
                     </script>
