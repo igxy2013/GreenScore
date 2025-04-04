@@ -8282,3 +8282,4 @@ create_log_records_table.py
 create_system_metrics_table.py
 .env
 inference/
+__pycache__/*.pyc
