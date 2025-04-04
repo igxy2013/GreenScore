@@ -2379,14 +2379,36 @@
                     </div>
                     </form>
                     <!-- 自动计算得分 --> 
-                    <div class="mt-4 bg-green-50 rounded-lg px-2" style="display: inline-block;">
-                        <label class="text-gray-700">绿建得分自动计算</label>
-                        <div class="text-sm text-gray-700 " style="font-style: italic;">
-                            <label id="per_capita_land_score">人均居住用地指标得分：</label>
-                            <label id="plot_ratio_score">公建容积率指标得分：</label>
-                            <label id="underground_score">地下空间开发利用得分：</label>
-                            <label id="green_space_score">绿化用地指标得分：</label>
-                            <label id="parking_score">停车设施得分：</label>
+                    <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                        <div class="flex items-center mb-3">
+                            <div class="w-5 h-5 text-primary mr-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-medium text-primary">绿建得分自动计算</h3>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div class="bg-green-50 rounded-md p-3">
+                                <div class="text-sm text-gray-600 mb-1">人均居住用地指标</div>
+                                <div id="per_capita_land_score" class="font-semibold text-gray-800">0分</div>
+                            </div>
+                            <div class="bg-blue-50 rounded-md p-3">
+                                <div class="text-sm text-gray-600 mb-1">公建容积率指标</div>
+                                <div id="plot_ratio_score" class="font-semibold text-gray-800">0分</div>
+                            </div>
+                            <div class="bg-purple-50 rounded-md p-3">
+                                <div class="text-sm text-gray-600 mb-1">地下空间开发利用</div>
+                                <div id="underground_score" class="font-semibold text-gray-800">0分</div>
+                            </div>
+                            <div class="bg-yellow-50 rounded-md p-3">
+                                <div class="text-sm text-gray-600 mb-1">绿化用地指标</div>
+                                <div id="green_space_score" class="font-semibold text-gray-800">0分</div>
+                            </div>
+                            <div class="bg-indigo-50 rounded-md p-3">
+                                <div class="text-sm text-gray-600 mb-1">停车设施指标</div>
+                                <div id="parking_score" class="font-semibold text-gray-800">0分</div>
+                            </div>
                         </div>
                     </div>
                     <script>
@@ -2475,11 +2497,11 @@
                                 }
                             }
                             // 更新显示
-                            document.getElementById('per_capita_land_score').innerHTML = '人均居住用地指标得分：' + perCapitaLandScore+' ;';
-                            document.getElementById('plot_ratio_score').innerHTML = '公建容积率指标得分：' + plotRatioScore+' ;';
-                            document.getElementById('underground_score').innerHTML = '地下空间开发利用得分：' + undergroundScore+' ;';
-                            document.getElementById('green_space_score').innerHTML = '绿化用地指标得分：' + greenSpaceScore+' ;';
-                            document.getElementById('parking_score').innerHTML = '停车设施得分：' + parkingScore+' ;';
+                            document.getElementById('per_capita_land_score').innerHTML = perCapitaLandScore+' 分';
+                            document.getElementById('plot_ratio_score').innerHTML = plotRatioScore+' 分';
+                            document.getElementById('underground_score').innerHTML = undergroundScore+' 分';
+                            document.getElementById('green_space_score').innerHTML = greenSpaceScore+' 分';
+                            document.getElementById('parking_score').innerHTML = parkingScore+' 分';
                             
                             // 修改多个条文的得分   
                             let standard = document.getElementById('current-project-standard').value || '成都市标';
