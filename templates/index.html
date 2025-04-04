@@ -2057,7 +2057,7 @@
                                 
                                 // 确保发生错误时也关闭模态窗口
                                 try {
-                                    closeAiExtractModal();
+                            closeAiExtractModal();
                                 } catch (e) {
                                     console.error("关闭模态窗口时出错:", e);
                                 }
@@ -2388,26 +2388,26 @@
                             </div>
                             <h3 class="text-lg font-medium text-primary">绿建得分自动计算</h3>
                         </div>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            <div class="bg-green-50 rounded-md p-3">
-                                <div class="text-sm text-gray-600 mb-1">人均居住用地指标</div>
-                                <div id="per_capita_land_score" class="font-semibold text-gray-800">0分</div>
+                        <div class="flex flex-row gap-4 w-full">
+                            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                                <div class="text-sm text-gray-600">人均居住用地指标</div>
+                                <div id="per_capita_land_score" class="font-semibold text-gray-800 text-center">0分</div>
                             </div>
-                            <div class="bg-blue-50 rounded-md p-3">
-                                <div class="text-sm text-gray-600 mb-1">公建容积率指标</div>
-                                <div id="plot_ratio_score" class="font-semibold text-gray-800">0分</div>
+                            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                                <div class="text-sm text-gray-600">公建容积率指标</div>
+                                <div id="plot_ratio_score" class="font-semibold text-gray-800 text-center">0分</div>
                             </div>
-                            <div class="bg-purple-50 rounded-md p-3">
-                                <div class="text-sm text-gray-600 mb-1">地下空间开发利用</div>
-                                <div id="underground_score" class="font-semibold text-gray-800">0分</div>
+                            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                                <div class="text-sm text-gray-600">地下空间开发利用</div>
+                                <div id="underground_score" class="font-semibold text-gray-800 text-center">0分</div>
                             </div>
-                            <div class="bg-yellow-50 rounded-md p-3">
-                                <div class="text-sm text-gray-600 mb-1">绿化用地指标</div>
-                                <div id="green_space_score" class="font-semibold text-gray-800">0分</div>
+                            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                                <div class="text-sm text-gray-600">绿化用地指标</div>
+                                <div id="green_space_score" class="font-semibold text-gray-800 text-center">0分</div>
                             </div>
-                            <div class="bg-indigo-50 rounded-md p-3">
-                                <div class="text-sm text-gray-600 mb-1">停车设施指标</div>
-                                <div id="parking_score" class="font-semibold text-gray-800">0分</div>
+                            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                                <div class="text-sm text-gray-600">停车设施指标</div>
+                                <div id="parking_score" class="font-semibold text-gray-800 text-center">0分</div>
                             </div>
                         </div>
                     </div>
