@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能绿建评价系统</title>
-    
+    <script src="/static/js/iframe-resizer.js"></script>
     <!-- 先加载Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- 加载loader.js -->
@@ -572,6 +572,13 @@
         // 页面变量
         // ... existing code ...
     </script>
+    <!-- 引入Chart.js用于数据可视化 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/green_building_score_calculator.js"></script>
+    <!-- 在 head 部分添加对 db_updater.js 的引用 -->
+    <script src="/static/js/db_updater.js"></script>
+    <!-- 引入iframe-resizer.js用于iframe高度自适应 -->
+    <script src="{{ url_for('static', filename='js/iframe-resizer.js') }}"></script>
 </head>
 <body class="bg-gray-100">
 
@@ -2561,37 +2568,21 @@
                     {% elif current_page == 'green_materials' %}
                     <!-- 绿色建材计算器内容 -->
                     <div class="green-materials-container">
-                        <!-- 使用iframe嵌入绿色建材计算器，添加preload提前加载 -->
+                        <!-- 使用iframe嵌入绿色建材计算器，并使用iframe-resizer.js管理高度 -->
                         <iframe id="myIframe" src="{{ url_for('calculator') }}" 
-                            style="width:100%; border:none;overflow:hidden;"
+                            style="width:100%; border:none;" scrolling="no"
                             title="绿色建材比例计算" loading="eager"></iframe>
                     </div>
-                    <script>
-                        function resizeIframe() {
-                          const iframe = document.getElementById('myIframe');
-                          iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
-                        }
-                      
-                        window.onload = resizeIframe;
-                        window.onresize = resizeIframe;
-                      </script>
+                    <!-- 移除旧的iframe调整脚本，使用iframe-resizer.js替代 -->
                     {% elif current_page == 'solar_calculator' %}
                     <!-- 太阳能计算器内容 -->
                     <div class="solar-calculator-container">
-                        <!-- 使用iframe嵌入太阳能计算器，添加preload提前加载，并传递项目ID参数 -->
+                        <!-- 使用iframe嵌入太阳能计算器，并使用iframe-resizer.js管理高度 -->
                         <iframe id="solarIframe" src="{{ url_for('solar_calculator', project_id=project.id if project else '') }}" 
-                            style="width:100%; border:none;overflow:hidden;"
+                            style="width:100%; border:none;" scrolling="no"
                             title="太阳能计算" loading="eager"></iframe>
                     </div>
-                    <script>
-                        function resizeSolarIframe() {
-                          const iframe = document.getElementById('solarIframe');
-                          iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
-                        }
-                      
-                        window.onload = resizeSolarIframe;
-                        window.onresize = resizeSolarIframe;
-                      </script>
+                    <!-- 移除旧的iframe调整脚本，使用iframe-resizer.js替代 -->
                     {% elif current_page == 'specialty' %}
                     <!-- 标准列表内容 -->
                     <!-- 添加隐藏的项目ID字段 -->
