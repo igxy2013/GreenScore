@@ -33,19 +33,43 @@ function initMap() {
     map.centerAndZoom(point, 12);
     map.enableScrollWheelZoom(true);
     
+    // 设置地图区域的鼠标样式为默认箭头
+    document.getElementById("map").style.cursor = "default";
+    
     // 添加控件
     map.addControl(new BMap.NavigationControl());
     map.addControl(new BMap.ScaleControl());
     
-    // 创建标记
-    var marker = new BMap.Marker(point);
-    map.addOverlay(marker);
+    // 创建自定义图标
+    var myIcon = new BMap.Icon("https://api.map.baidu.com/images/marker_red.png", new BMap.Size(39, 50), {
+        anchor: new BMap.Size(10, 27)  // 调整锚点位置到图标中心
+    });
     
-    // 点击地图更新坐标
+    // 创建标记，使用自定义图标
+    var marker = new BMap.Marker(point, {icon: myIcon});
+    map.addOverlay(marker);
+
+    // 初始化海拔显示为待选择
+    document.getElementById("elevation").textContent = "请选择或搜索位置";
+    
+    // 点击地图更新坐标和地点信息
     map.addEventListener("click", function(e) {
         marker.setPosition(e.point);
-        document.getElementById("longitude").value = e.point.lng.toFixed(6);
-        document.getElementById("latitude").value = e.point.lat.toFixed(6);
+        document.getElementById("longitude").textContent = e.point.lng.toFixed(6);
+        document.getElementById("latitude").textContent = e.point.lat.toFixed(6);
+        
+        // 使用逆地理编码获取地点名称
+        var geoc = new BMap.Geocoder();
+        geoc.getLocation(e.point, function(rs){
+            if (rs) {
+                var addComp = rs.addressComponents;
+                var location = addComp.province + addComp.city + addComp.district + addComp.street + addComp.streetNumber;
+                document.getElementById("location").value = location;
+                
+                // 获取海拔数据
+                getElevation(e.point.lat, e.point.lng);
+            }
+        });
     });
     
     // 搜索位置按钮事件
@@ -57,8 +81,8 @@ function initMap() {
                 if (point) {
                     map.centerAndZoom(point, 12);
                     marker.setPosition(point);
-                    document.getElementById("longitude").value = point.lng.toFixed(6);
-                    document.getElementById("latitude").value = point.lat.toFixed(6);
+                    document.getElementById("longitude").textContent = point.lng.toFixed(6);
+                    document.getElementById("latitude").textContent = point.lat.toFixed(6);
                     // 获取海拔数据
                     getElevation(point.lat, point.lng);
                 } else {
@@ -75,11 +99,61 @@ function initMap() {
 }
 
 // 获取海拔数据
-function getElevation(lat, lng) {
-    // 这里可以调用高程API获取海拔
-    // 由于百度地图API不直接提供海拔数据，这里使用模拟数据
-    // 实际项目中可以使用其他API如Google Elevation API
-    document.getElementById("elevation").value = Math.floor(Math.random() * 1000 + 500);
+async function getElevation(lat, lng) {
+    // 显示加载状态
+    document.getElementById("elevation").textContent = '正在获取...';
+    
+    try {
+        // 使用Open-Elevation API获取真实海拔数据
+        // 这是一个开源的海拔数据服务，提供全球海拔数据
+        const url = `/api/elevation?lat=${lat}&lng=${lng}`;
+        
+        // 调用后端代理API，避免CORS问题
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`API响应错误: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.elevation !== undefined) {
+            // 显示真实海拔数据
+            document.getElementById("elevation").textContent = data.elevation.toFixed(0) + ' m';
+            return;
+        } 
+        
+        // 如果后端API失败，尝试其他方法获取海拔
+        // 使用Google Maps Elevation API (需要代理以避免客户端暴露API密钥)
+        const googleUrl = `/api/google_elevation?lat=${lat}&lng=${lng}`;
+        const googleResponse = await fetch(googleUrl);
+        
+        if (!googleResponse.ok) {
+            throw new Error(`Google API响应错误: ${googleResponse.status}`);
+        }
+        
+        const googleData = await googleResponse.json();
+        
+        if (googleData.elevation !== undefined) {
+            document.getElementById("elevation").textContent = googleData.elevation.toFixed(0) + ' m';
+            return;
+        }
+        
+        throw new Error('无法获取真实海拔数据');
+    } catch (error) {
+        console.error('获取海拔数据失败:', error);
+        document.getElementById("elevation").textContent = '获取失败';
+        
+        // 添加重试按钮
+        const elevationElement = document.getElementById("elevation");
+        if (!elevationElement.nextElementSibling || !elevationElement.nextElementSibling.classList.contains('retry-button')) {
+            const retryButton = document.createElement('button');
+            retryButton.textContent = '重试';
+            retryButton.className = 'ml-2 px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 retry-button';
+            retryButton.onclick = () => getElevation(lat, lng);
+            elevationElement.parentNode.appendChild(retryButton);
+        }
+    }
 }
 
 // 从NASA POWER API获取太阳能辐射数据
@@ -145,18 +219,19 @@ async function getSolarRadiationData(lat, lng, year) {
 }
 
 // 计算发电量
-function calculateGeneration(radiation, area, efficiency) {
+function calculateGeneration(radiation, area, systemEfficiency, firstYearDegradation) {
     // 转换效率从百分比转为小数
-    const efficiencyDecimal = efficiency / 100;
-    // 计算发电量 (kWh) = 辐射量 (kWh/m²) * 面积 (m²) * 效率
-    return radiation * area * efficiencyDecimal;
+    const systemEfficiencyDecimal = systemEfficiency / 100;
+    const degradationDecimal = firstYearDegradation / 100;
+    // 计算发电量 (kWh) = 辐射量 (kWh/m²) * 面积 (m²) * 系统效率 * (1 - 首年衰减)
+    return radiation * area * systemEfficiencyDecimal * (1 - degradationDecimal);
 }
 
 // 更新图表
-function updateCharts(monthlyData, area, efficiency) {
+function updateCharts(monthlyData, area, efficiency, firstYearDegradation) {
     const months = monthlyData.map(item => item.month);
     const radiationValues = monthlyData.map(item => item.radiation);
-    const generationValues = monthlyData.map(item => calculateGeneration(item.radiation, area, efficiency));
+    const generationValues = monthlyData.map(item => calculateGeneration(item.radiation, area, efficiency, firstYearDegradation));
     
     // 计算年度总值
     const annualRadiation = radiationValues.reduce((sum, val) => sum + val, 0);
@@ -292,11 +367,12 @@ document.addEventListener("DOMContentLoaded", async function() {
     
     // 年度汇总按钮事件
     document.getElementById("calculateAnnual").addEventListener("click", async function() {
-        const lat = parseFloat(document.getElementById("latitude").value);
-        const lng = parseFloat(document.getElementById("longitude").value);
+        const lat = parseFloat(document.getElementById("latitude").textContent);
+        const lng = parseFloat(document.getElementById("longitude").textContent);
         const year = document.getElementById("year").value;
         const area = parseFloat(document.getElementById("panelArea").value);
-        const efficiency = parseFloat(document.getElementById("efficiency").value);
+        const systemEfficiency = parseFloat(document.getElementById("systemEfficiency").value);
+        const firstYearDegradation = parseFloat(document.getElementById("firstYearDegradation").value);
         
         if (isNaN(lat) || isNaN(lng)) {
             alert("请先选择或输入有效的地理坐标");
@@ -308,8 +384,13 @@ document.addEventListener("DOMContentLoaded", async function() {
             return;
         }
         
-        if (isNaN(efficiency) || efficiency <= 0 || efficiency > 100) {
-            alert("请输入有效的光伏板效率(0-100%)");
+        if (isNaN(systemEfficiency) || systemEfficiency <= 0 || systemEfficiency > 100) {
+            alert("请输入有效的系统综合效率(0-100%)");
+            return;
+        }
+        
+        if (isNaN(firstYearDegradation) || firstYearDegradation < 0 || firstYearDegradation > 100) {
+            alert("请输入有效的组件首年衰减(0-100%)");
             return;
         }
         
@@ -317,7 +398,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         const monthlyData = await getSolarRadiationData(lat, lng, year);
         if (monthlyData) {
             // 更新图表
-            const result = updateCharts(monthlyData, area, efficiency);
+            const result = updateCharts(monthlyData, area, systemEfficiency, firstYearDegradation);
             // 隐藏月度数据表格
             document.getElementById("monthlyData").style.display = "none";
         }
@@ -325,11 +406,12 @@ document.addEventListener("DOMContentLoaded", async function() {
     
     // 月度详细统计按钮事件
     document.getElementById("calculateMonthly").addEventListener("click", async function() {
-        const lat = parseFloat(document.getElementById("latitude").value);
-        const lng = parseFloat(document.getElementById("longitude").value);
+        const lat = parseFloat(document.getElementById("latitude").textContent);
+        const lng = parseFloat(document.getElementById("longitude").textContent);
         const year = document.getElementById("year").value;
         const area = parseFloat(document.getElementById("panelArea").value);
-        const efficiency = parseFloat(document.getElementById("efficiency").value);
+        const systemEfficiency = parseFloat(document.getElementById("systemEfficiency").value);
+        const firstYearDegradation = parseFloat(document.getElementById("firstYearDegradation").value);
         
         if (isNaN(lat) || isNaN(lng)) {
             alert("请先选择或输入有效的地理坐标");
@@ -341,8 +423,13 @@ document.addEventListener("DOMContentLoaded", async function() {
             return;
         }
         
-        if (isNaN(efficiency) || efficiency <= 0 || efficiency > 100) {
-            alert("请输入有效的光伏板效率(0-100%)");
+        if (isNaN(systemEfficiency) || systemEfficiency <= 0 || systemEfficiency > 100) {
+            alert("请输入有效的系统综合效率(0-100%)");
+            return;
+        }
+        
+        if (isNaN(firstYearDegradation) || firstYearDegradation < 0 || firstYearDegradation > 100) {
+            alert("请输入有效的组件首年衰减(0-100%)");
             return;
         }
         
@@ -350,7 +437,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         const monthlyData = await getSolarRadiationData(lat, lng, year);
         if (monthlyData) {
             // 更新图表
-            const result = updateCharts(monthlyData, area, efficiency);
+            const result = updateCharts(monthlyData, area, systemEfficiency, firstYearDegradation);
             // 更新月度数据表格
             updateMonthlyTable(result.monthlyData);
         }

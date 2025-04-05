@@ -5128,6 +5128,98 @@ def extract_project_info_api():
         app.logger.error(f"处理文件时出错: {str(e)}")
         return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
 
+# 添加获取真实海拔数据的API端点
+@app.route('/api/elevation', methods=['GET'])
+def get_elevation():
+    try:
+        lat = request.args.get('lat')
+        lng = request.args.get('lng')
+        
+        if not lat or not lng:
+            return jsonify({'error': '缺少经纬度参数'}), 400
+        
+        # 调用Open-Elevation API获取真实海拔数据
+        import requests
+        
+        # 使用Open-Elevation公共API
+        url = f"https://api.open-elevation.com/api/v1/lookup?locations={lat},{lng}"
+        
+        app.logger.info(f"请求Open-Elevation API: {url}")
+        
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data and 'results' in data and len(data['results']) > 0:
+                elevation = data['results'][0]['elevation']
+                app.logger.info(f"获取到海拔数据: {elevation}米")
+                return jsonify({'elevation': elevation})
+        
+        # 如果Open-Elevation失败，尝试其他免费海拔API
+        backup_url = f"https://elevation-api.io/api/elevation?points=({lat},{lng})"
+        app.logger.info(f"请求备用海拔API: {backup_url}")
+        
+        backup_response = requests.get(backup_url, timeout=5)
+        if backup_response.status_code == 200:
+            backup_data = backup_response.json()
+            if backup_data and 'elevations' in backup_data and len(backup_data['elevations']) > 0:
+                elevation = backup_data['elevations'][0]['elevation']
+                app.logger.info(f"从备用API获取到海拔数据: {elevation}米")
+                return jsonify({'elevation': elevation})
+        
+        # 如果所有API都失败，使用SRTM数据集（如果可用）
+        try:
+            from srtm import get_data
+            srtm_data = get_data()
+            elevation = srtm_data.get_elevation(float(lat), float(lng))
+            if elevation is not None:
+                app.logger.info(f"从SRTM数据集获取到海拔数据: {elevation}米")
+                return jsonify({'elevation': elevation})
+        except Exception as srtm_error:
+            app.logger.error(f"SRTM数据获取失败: {str(srtm_error)}")
+        
+        # 所有方法都失败
+        return jsonify({'error': '无法获取海拔数据'}), 500
+    except Exception as e:
+        app.logger.error(f"获取海拔数据时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+
+@app.route('/api/google_elevation', methods=['GET'])
+def get_google_elevation():
+    try:
+        lat = request.args.get('lat')
+        lng = request.args.get('lng')
+        
+        if not lat or not lng:
+            return jsonify({'error': '缺少经纬度参数'}), 400
+        
+        # 从环境变量获取Google Maps API密钥
+        api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+        
+        if not api_key:
+            return jsonify({'error': '未配置Google Maps API密钥'}), 500
+        
+        # 调用Google Maps Elevation API
+        import requests
+        
+        url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={lat},{lng}&key={api_key}"
+        
+        app.logger.info(f"请求Google Elevation API")
+        
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data['status'] == 'OK' and len(data['results']) > 0:
+                elevation = data['results'][0]['elevation']
+                app.logger.info(f"从Google API获取到海拔数据: {elevation}米")
+                return jsonify({'elevation': elevation})
+        
+        return jsonify({'error': '无法从Google获取海拔数据'}), 500
+    except Exception as e:
+        app.logger.error(f"获取Google海拔数据时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+
 if __name__ == '__main__':
     # 初始化数据库
     init_db()

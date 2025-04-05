@@ -48,20 +48,23 @@
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            padding: 1rem;
         }
         .data-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
         .chart-container {
-            height: 300px;
-            width: 100%;
+            height: 30px;
+            width: 50px;
         }
         .gradient-bg {
             background: linear-gradient(135deg, #4f9cf9, #2c7be5);
         }
         .input-container input, .input-container select {
             transition: all 0.3s ease;
+            height: 42px; /* 统一输入框高度 */
+            width: 100%;
         }
         .input-container input:focus, .input-container select:focus {
             border-color: #4f9cf9;
@@ -76,9 +79,32 @@
             background-color: #1a68d1;
             transform: translateY(-2px);
         }
+        /* 布局优化 */
+        .input-grid {
+            grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+        }
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .button-group button {
+                width: 100%;
+            }
+        }
+        /* 优化输入框组样式 */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+        .input-group label {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
     </style>
 </head>
-<body class="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+<body class="min-h-screen py-12 px-4 sm:px-6 lg:px-8 ">
     <div class="max-w-7xl mx-auto">
         <div class="text-center mb-10">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">太阳能光伏发电量计算</h1>
@@ -86,16 +112,17 @@
         </div>
 
         <div class="bg-white rounded-lg shadow-xl p-8 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">项目地点</label>
+            <!-- 第一行：项目地点和查询 -->
+            <div class="grid grid-cols-2 gap-6 mb-8 input-grid">
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">项目地点</label>
                     <div class="input-container">
                         <input type="text" id="location" placeholder="省/市/区" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
                     </div>
                 </div>
 
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">查询年份</label>
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">查询年份</label>
                     <div class="input-container">
                         <select id="year" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
                             <option value="2024">2024</option>
@@ -106,33 +133,35 @@
                         </select>
                     </div>
                 </div>
-
-                <div class="col-span-1 flex items-end">
-                    <button id="searchLocation" class="btn-primary w-full px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        查找位置
-                    </button>
-                </div>
+            </div>
+            
+            <!-- 查找位置按钮 -->
+            <div class="mb-8">
+                <button id="searchLocation" class="btn-primary w-full px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    查找位置
+                </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">经度</label>
-                    <div class="input-container">
-                        <input type="text" id="longitude" placeholder="经度" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+            <!-- 第二行：经纬度和海拔 -->
+            <div class="grid grid-cols-3 gap-6 mb-8 input-grid">
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">经度</label>
+                    <div class="value-display">
+                        <span id="longitude" class="block px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700">--</span>
                     </div>
                 </div>
 
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">纬度</label>
-                    <div class="input-container">
-                        <input type="text" id="latitude" placeholder="纬度" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">纬度</label>
+                    <div class="value-display">
+                        <span id="latitude" class="block px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700">--</span>
                     </div>
                 </div>
-
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">海拔(米)</label>
-                    <div class="input-container">
-                        <input type="number" id="elevation" placeholder="海拔" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">海拔(米)</label>
+                    <div class="value-display">
+                        <span id="elevation" class="block px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm text-gray-700">--</span>
                     </div>
                 </div>
             </div>
@@ -140,23 +169,31 @@
             <!-- 地图容器 -->
             <div class="map-container mb-8" id="map"></div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">太阳能光伏板面积(m²)</label>
+            <!-- 第三行：太阳能参数 -->
+            <div class="grid grid-cols-2 gap-6 mb-8 input-grid">
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">太阳能光伏板面积(m²)</label>
                     <div class="input-container">
                         <input type="number" id="panelArea" placeholder="面积" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
                     </div>
                 </div>
 
-                <div class="col-span-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">光伏板效率(%)</label>
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">系统综合效率(%)</label>
                     <div class="input-container">
-                        <input type="number" id="efficiency" placeholder="效率" value="17" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                        <input type="number" id="systemEfficiency" placeholder="效率" value="80" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+                <div class="col-span-1 input-group">
+                    <label class="block text-sm font-medium text-gray-700">组件首年衰减(%)</label>
+                    <div class="input-container">
+                        <input type="number" id="firstYearDegradation" placeholder="衰减" value="2" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-between">
+            <!-- 按钮组 -->
+            <div class="flex justify-between button-group">
                 <button id="calculateAnnual" class="btn-primary px-6 py-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     年度汇总
                 </button>

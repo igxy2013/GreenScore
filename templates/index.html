@@ -2861,13 +2861,6 @@
         }
     });
     
-    specialCalcMenuToggle.addEventListener('click', function() {
-        specialCalcMenuContent.classList.toggle('expanded');
-        const arrow = this.querySelector('.ri-arrow-down-s-line');
-        if (arrow) {
-            arrow.style.transform = specialCalcMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-    });
     
     // 获取评分汇总数据
     function fetchScoreSummary(forceRefresh = false) {
@@ -4190,7 +4183,15 @@
                 if (arrow) {
                     arrow.style.transform = specialCalcMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
                 }
+                console.log('专项计算菜单点击事件触发', specialCalcMenuContent.classList.contains('expanded') ? '菜单已展开' : '菜单已折叠');
             });
+            
+            // 检查菜单样式
+            if (window.getComputedStyle(specialCalcMenuContent).display === 'none') {
+                console.log('专项计算菜单默认为隐藏状态');
+            } else {
+                console.log('专项计算菜单默认为显示状态');
+            }
         }
         
         // 已移除计算评分按钮和刷新数据按钮的事件监听器
