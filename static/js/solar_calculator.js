@@ -3,6 +3,15 @@
  * 基于NASA POWER API数据
  */
 
+// 定义全局变量，用于存储地图对象
+window.mapObj = null;
+
+// 定义百度地图API加载完成后的回调函数
+window.baiduMapLoaded = function() {
+    console.log('百度地图API加载完成回调被触发');
+    startApp();
+};
+
 // 获取项目地点信息
 async function getProjectLocation(projectId) {
     if (!projectId) return null;
@@ -26,76 +35,98 @@ async function getProjectLocation(projectId) {
 
 // 初始化地图
 function initMap() {
-    // 创建地图实例
-    var map = new BMap.Map("map");
-    // 初始中心点设为成都
-    var point = new BMap.Point(104.06, 30.67);
-    map.centerAndZoom(point, 12);
-    map.enableScrollWheelZoom(true);
+    // 如果BMap不存在，显示提示信息并返回null
+    if (typeof BMap === 'undefined') {
+        console.error('百度地图API未加载成功，无法初始化地图');
+        // 在地图容器中显示错误信息
+        const mapContainer = document.getElementById("map");
+        if (mapContainer) {
+            mapContainer.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图API加载失败，请刷新页面重试</div>';
+        }
+        return null;
+    }
     
-    // 设置地图区域的鼠标样式为默认箭头
-    document.getElementById("map").style.cursor = "default";
+    console.log('初始化地图组件');
     
-    // 添加控件
-    map.addControl(new BMap.NavigationControl());
-    map.addControl(new BMap.ScaleControl());
-    
-    // 创建自定义图标
-    var myIcon = new BMap.Icon("https://api.map.baidu.com/images/marker_red.png", new BMap.Size(39, 50), {
-        anchor: new BMap.Size(10, 27)  // 调整锚点位置到图标中心
-    });
-    
-    // 创建标记，使用自定义图标
-    var marker = new BMap.Marker(point, {icon: myIcon});
-    map.addOverlay(marker);
-
-    // 初始化海拔显示为待选择
-    document.getElementById("elevation").textContent = "请选择或搜索位置";
-    
-    // 点击地图更新坐标和地点信息
-    map.addEventListener("click", function(e) {
-        marker.setPosition(e.point);
-        document.getElementById("longitude").textContent = e.point.lng.toFixed(6);
-        document.getElementById("latitude").textContent = e.point.lat.toFixed(6);
+    try {
+        // 创建地图实例
+        var map = new BMap.Map("map");
+        // 初始中心点设为成都
+        var point = new BMap.Point(104.06, 30.67);
+        map.centerAndZoom(point, 12);
+        map.enableScrollWheelZoom(true);
         
-        // 使用逆地理编码获取地点名称
-        var geoc = new BMap.Geocoder();
-        geoc.getLocation(e.point, function(rs){
-            if (rs) {
-                var addComp = rs.addressComponents;
-                var location = addComp.province + addComp.city + addComp.district + addComp.street + addComp.streetNumber;
-                document.getElementById("location").value = location;
-                
-                // 获取海拔数据
-                getElevation(e.point.lat, e.point.lng);
+        // 设置地图区域的鼠标样式为默认箭头
+        document.getElementById("map").style.cursor = "default";
+        
+        // 添加控件
+        map.addControl(new BMap.NavigationControl());
+        map.addControl(new BMap.ScaleControl());
+        
+        // 创建自定义图标 - 使用代理API加载图标，确保不直接访问百度服务器
+        var myIcon = new BMap.Icon("/api/map_proxy?service_path=images/marker_red.png", new BMap.Size(39, 50), {
+            anchor: new BMap.Size(10, 27)  // 调整锚点位置到图标中心
+        });
+        
+        // 创建标记，使用自定义图标
+        var marker = new BMap.Marker(point, {icon: myIcon});
+        map.addOverlay(marker);
+
+        // 初始化海拔显示为待选择
+        document.getElementById("elevation").textContent = "请选择或搜索位置";
+        
+        // 点击地图更新坐标和地点信息
+        map.addEventListener("click", function(e) {
+            marker.setPosition(e.point);
+            document.getElementById("longitude").textContent = e.point.lng.toFixed(6);
+            document.getElementById("latitude").textContent = e.point.lat.toFixed(6);
+            
+            // 使用逆地理编码获取地点名称
+            var geoc = new BMap.Geocoder();
+            geoc.getLocation(e.point, function(rs){
+                if (rs) {
+                    var addComp = rs.addressComponents;
+                    var location = addComp.province + addComp.city + addComp.district + addComp.street + addComp.streetNumber;
+                    document.getElementById("location").value = location;
+                    
+                    // 获取海拔数据
+                    getElevation(e.point.lat, e.point.lng);
+                }
+            });
+        });
+        
+        // 搜索位置按钮事件
+        document.getElementById("searchLocation").addEventListener("click", function() {
+            var location = document.getElementById("location").value;
+            if (location) {
+                var myGeo = new BMap.Geocoder();
+                myGeo.getPoint(location, function(point) {
+                    if (point) {
+                        map.centerAndZoom(point, 12);
+                        marker.setPosition(point);
+                        document.getElementById("longitude").textContent = point.lng.toFixed(6);
+                        document.getElementById("latitude").textContent = point.lat.toFixed(6);
+                        // 获取海拔数据
+                        getElevation(point.lat, point.lng);
+                    } else {
+                        alert("未找到该地点");
+                    }
+                }, location);
             }
         });
-    });
-    
-    // 搜索位置按钮事件
-    document.getElementById("searchLocation").addEventListener("click", function() {
-        var location = document.getElementById("location").value;
-        if (location) {
-            var myGeo = new BMap.Geocoder();
-            myGeo.getPoint(location, function(point) {
-                if (point) {
-                    map.centerAndZoom(point, 12);
-                    marker.setPosition(point);
-                    document.getElementById("longitude").textContent = point.lng.toFixed(6);
-                    document.getElementById("latitude").textContent = point.lat.toFixed(6);
-                    // 获取海拔数据
-                    getElevation(point.lat, point.lng);
-                } else {
-                    alert("未找到该地点");
-                }
-            }, location);
+        
+        return {
+            map: map,
+            marker: marker
+        };
+    } catch (error) {
+        console.error('初始化地图时出错:', error);
+        const mapContainer = document.getElementById("map");
+        if (mapContainer) {
+            mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图初始化错误: ${error.message}</div>`;
         }
-    });
-    
-    return {
-        map: map,
-        marker: marker
-    };
+        return null;
+    }
 }
 
 // 获取海拔数据
@@ -333,36 +364,30 @@ function updateMonthlyTable(monthlyData) {
     document.getElementById("monthlyData").style.display = "block";
 }
 
-// 导出函数
-window.solarCalculator = {
-    initMap,
-    getSolarRadiationData,
-    calculateGeneration,
-    updateCharts,
-    updateMonthlyTable
-};
-
-// 页面加载完成后初始化
-document.addEventListener("DOMContentLoaded", async function() {
+// 启动应用主函数
+function startApp() {
+    console.log('启动应用...');
+    
     // 获取项目信息
     const { projectId } = window.getProjectInfo ? window.getProjectInfo() : { projectId: null };
     
     console.log('当前项目ID:', projectId);
     
     // 初始化地图
-    const mapObj = initMap();
+    window.mapObj = initMap();
     
     // 如果有项目ID，获取项目地点并自动填充
     if (projectId) {
-        const projectLocation = await getProjectLocation(projectId);
-        if (projectLocation) {
-            // 填充地点输入框
-            const locationInput = document.getElementById("location");
-            locationInput.value = projectLocation;
-            
-            // 自动触发地点搜索
-            document.getElementById("searchLocation").click();
-        }
+        getProjectLocation(projectId).then(projectLocation => {
+            if (projectLocation && window.mapObj) {
+                // 填充地点输入框
+                const locationInput = document.getElementById("location");
+                locationInput.value = projectLocation;
+                
+                // 自动触发地点搜索
+                document.getElementById("searchLocation").click();
+            }
+        });
     }
     
     // 年度汇总按钮事件
@@ -447,4 +472,40 @@ document.addEventListener("DOMContentLoaded", async function() {
     document.getElementById("calculateDaily").addEventListener("click", function() {
         alert("单日查询功能正在开发中，敬请期待！");
     });
+}
+
+// 导出函数
+window.solarCalculator = {
+    initMap,
+    getSolarRadiationData,
+    calculateGeneration,
+    updateCharts,
+    updateMonthlyTable
+};
+
+// 页面加载完成后初始化
+document.addEventListener("DOMContentLoaded", function() {
+    console.log('页面加载完成');
+    
+    // 检查百度地图API是否已加载完成
+    if (typeof BMap !== 'undefined') {
+        // 如果已加载，直接启动应用
+        console.log('百度地图API已存在，直接启动应用');
+        startApp();
+    } else {
+        console.log('百度地图API尚未加载，等待加载完成');
+        // 否则等待百度地图API加载完成后的回调
+        // baiduMapLoaded函数将在API加载完成后被调用
+        
+        // 添加5秒超时保障
+        setTimeout(function() {
+            if (typeof BMap === 'undefined') {
+                console.error('百度地图API加载超时');
+                const mapContainer = document.getElementById("map");
+                if (mapContainer) {
+                    mapContainer.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图API加载超时，请刷新页面重试</div>';
+                }
+            }
+        }, 5000);
+    }
 });

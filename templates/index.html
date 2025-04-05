@@ -880,12 +880,7 @@
 
                 <div class="max-w-7xl mx-auto px-4 py-8">
                     <!-- 添加项目管理按钮 -->
-                    {% if current_page == 'green_materials' %}
-                    <!-- 绿色建材页面特殊布局 -->
-                    <div class="flex flex-col items-center">
-                        <h1 class="text-3xl font-bold text-primary ">绿色建材应用比例计算</h1>
-                    </div>
-                    {% else %}
+
                     <div class="flex justify-between items-center mb-6">
                         <div class="flex items-center gap-4">
                             {% if current_page == 'score_summary' %}
@@ -910,7 +905,7 @@
                                 </div>
                             </div>
                             {% else %}
-                            <h2 class="text-2xl font-bold">绿色建筑评价系统</h2>
+
                             {% endif %}
                         </div>
                         <div class="flex items-center gap-4">
@@ -926,7 +921,6 @@
                             </a>
                         </div>
                     </div>
-                    {% endif %}
 
                     <!-- 添加隐藏的项目名称字段，在所有页面都可用 -->
                     <input type="hidden" id="current_project_name" value="{{ project.name if project else '' }}">
@@ -2587,7 +2581,7 @@
                         <!-- 使用iframe嵌入太阳能计算器，添加preload提前加载，并传递项目ID参数 -->
                         <iframe id="solarIframe" src="{{ url_for('solar_calculator', project_id=project.id if project else '') }}" 
                             style="width:100%; border:none;overflow:hidden;"
-                            title="太阳能光伏发电量计算" loading="eager"></iframe>
+                            title="太阳能计算" loading="eager"></iframe>
                     </div>
                     <script>
                         function resizeSolarIframe() {

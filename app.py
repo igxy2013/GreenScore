@@ -17,7 +17,7 @@ if not IS_WSL:
         print("警告: pyodbc模块未安装，某些功能可能不可用")
         print("请运行 'pip install pyodbc' 安装所需模块")
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash, Response
 from flask_caching import Cache
 from flask_migrate import Migrate
 from functools import wraps
@@ -5219,6 +5219,116 @@ def get_google_elevation():
         app.logger.error(f"获取Google海拔数据时出错: {str(e)}")
         app.logger.error(traceback.format_exc())
         return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+
+# 添加获取百度地图API密钥的API端点
+@app.route('/api/map_api_key', methods=['GET'])
+def get_map_api_key():
+    try:
+        # 从环境变量获取百度地图API密钥
+        api_key = os.environ.get('BAIDU_MAP_API_KEY', 'J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL')  # 使用环境变量中的密钥，提供一个默认值
+        
+        # 返回API密钥
+        return jsonify({'api_key': api_key})
+    except Exception as e:
+        app.logger.error(f"获取地图API密钥时出错: {str(e)}")
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
+
+# 添加百度地图API代理
+@app.route('/api/map_proxy', methods=['GET', 'POST'])
+def map_api_proxy():
+    try:
+        app.logger.info(f"百度地图API代理请求: {request.url}")
+        
+        # 获取百度地图API密钥
+        api_key = os.environ.get('BAIDU_MAP_API_KEY', 'J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL')
+        
+        # 获取所有请求参数
+        params = request.args.to_dict()
+        
+        # 获取服务路径
+        service_path = params.pop('service_path', 'api')
+        
+        # 判断是否是静态资源请求（图片等）
+        is_static_resource = service_path.endswith(('.png', '.jpg', '.jpeg', '.gif', '.css', '.js'))
+        
+        # 如果不是静态资源请求，则添加API密钥
+        if not is_static_resource:
+            params['ak'] = api_key
+        
+        # 构建百度地图API请求URL
+        base_url = f"https://api.map.baidu.com/{service_path}"
+        app.logger.info(f"代理到URL: {base_url}, 参数: {params}")
+        
+        # 发送请求
+        import requests
+        
+        if request.method == 'GET':
+            response = requests.get(base_url, params=params, timeout=10)
+        else:  # POST请求
+            post_data = request.get_data()
+            headers = {'Content-Type': request.headers.get('Content-Type', 'application/x-www-form-urlencoded')}
+            response = requests.post(base_url, params=params, data=post_data, headers=headers, timeout=10)
+        
+        # 根据不同的资源类型设置不同的Content-Type
+        content_type = response.headers.get('Content-Type')
+        if is_static_resource:
+            if service_path.endswith('.png'):
+                content_type = 'image/png'
+            elif service_path.endswith('.jpg') or service_path.endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            elif service_path.endswith('.gif'):
+                content_type = 'image/gif'
+            elif service_path.endswith('.css'):
+                content_type = 'text/css'
+            elif service_path.endswith('.js'):
+                content_type = 'application/javascript'
+        
+        app.logger.info(f"代理响应状态码: {response.status_code}, Content-Type: {content_type}")
+        
+        # 返回百度地图API的响应
+        return Response(
+            response.content, 
+            status=response.status_code,
+            content_type=content_type or 'application/json'
+        )
+    except Exception as e:
+        app.logger.error(f"百度地图API代理出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'代理请求失败: {str(e)}'}), 500
+
+# 添加百度地图JavaScript API代理
+@app.route('/api/map_js_api', methods=['GET'])
+def map_js_api_proxy():
+    try:
+        # 获取百度地图API密钥
+        api_key = os.environ.get('BAIDU_MAP_API_KEY', 'J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL')
+        
+        # 获取请求参数
+        params = request.args.to_dict()
+        
+        # 添加API密钥
+        params['ak'] = api_key
+        
+        # 构建百度地图JavaScript API的URL
+        url = "https://api.map.baidu.com/api"
+        
+        # 发送请求
+        import requests
+        response = requests.get(url, params=params, timeout=10)
+        
+        # 返回JavaScript内容
+        return Response(
+            response.content, 
+            status=response.status_code,
+            content_type='application/javascript'
+        )
+    except Exception as e:
+        app.logger.error(f"百度地图JavaScript API代理出错: {str(e)}")
+        return Response(
+            f"console.error('加载地图API失败: {str(e)}');", 
+            status=500,
+            content_type='application/javascript'
+        )
 
 if __name__ == '__main__':
     # 初始化数据库
