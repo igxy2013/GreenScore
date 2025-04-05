@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能绿建评价系统-太阳能发电量计算</title>
+
+    <!-- 立即加载CSS文件，避免闪烁 -->
+    <link href="/static/css/tailwind.min.css" rel="stylesheet">
+    <!-- 引入地图API -->
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=3.0&ak=J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL"></script>
+    <!-- 引入Chart.js用于数据可视化 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/solar_calculator.js" defer></script>
+    
+    <!-- 获取当前项目ID和标准 -->
+    <script>
+        // 从父窗口获取项目ID和标准
+        function getProjectInfo() {
+            try {
+                if (window.parent && window.parent.document) {
+                    const projectIdElement = window.parent.document.getElementById('current-project-id');
+                    const projectStandardElement = window.parent.document.getElementById('current-project-standard');
+                    
+                    if (projectIdElement) {
+                        return {
+                            projectId: projectIdElement.value,
+                            projectStandard: projectStandardElement ? projectStandardElement.value : ''
+                        };
+                    }
+                }
+            } catch (e) {
+                console.error('获取项目信息失败:', e);
+            }
+            return { projectId: null, projectStandard: null };
+        }
+    </script>
+    <style>
+        .map-container {
+            height: 400px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .data-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        .data-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .chart-container {
+            height: 300px;
+            width: 100%;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #4f9cf9, #2c7be5);
+        }
+        .input-container input, .input-container select {
+            transition: all 0.3s ease;
+        }
+        .input-container input:focus, .input-container select:focus {
+            border-color: #4f9cf9;
+            box-shadow: 0 0 0 3px rgba(79, 156, 249, 0.3);
+        }
+        .btn-primary {
+            background-color: #2c7be5;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #1a68d1;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="min-h-screen py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+    <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">太阳能光伏发电量计算</h1>
+            <p class="text-gray-600">基于NASA POWER数据的太阳能光伏发电量估算工具</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-xl p-8 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">项目地点</label>
+                    <div class="input-container">
+                        <input type="text" id="location" placeholder="省/市/区" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">查询年份</label>
+                    <div class="input-container">
+                        <select id="year" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-span-1 flex items-end">
+                    <button id="searchLocation" class="btn-primary w-full px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        查找位置
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">经度</label>
+                    <div class="input-container">
+                        <input type="text" id="longitude" placeholder="经度" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">纬度</label>
+                    <div class="input-container">
+                        <input type="text" id="latitude" placeholder="纬度" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">海拔(米)</label>
+                    <div class="input-container">
+                        <input type="number" id="elevation" placeholder="海拔" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 地图容器 -->
+            <div class="map-container mb-8" id="map"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">太阳能光伏板面积(m²)</label>
+                    <div class="input-container">
+                        <input type="number" id="panelArea" placeholder="面积" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">光伏板效率(%)</label>
+                    <div class="input-container">
+                        <input type="number" id="efficiency" placeholder="效率" value="17" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-400">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between">
+                <button id="calculateAnnual" class="btn-primary px-6 py-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    年度汇总
+                </button>
+                <button id="calculateMonthly" class="btn-primary px-6 py-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    月度详细统计
+                </button>
+                <button id="calculateDaily" class="btn-primary px-6 py-3 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    单日查询
+                </button>
+            </div>
+        </div>
+
+        <!-- 结果展示区域 -->
+        <div id="results" class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8" style="display: none;">
+            <!-- 年度太阳能辐射量卡片 -->
+            <div class="data-card p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">年度太阳能辐射量</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-600">总辐射量:</span>
+                    <span class="text-2xl font-bold text-blue-600" id="annualRadiation">0</span>
+                </div>
+                <div class="text-sm text-gray-500 mb-2">单位: kWh/m²/年</div>
+                <div class="chart-container">
+                    <canvas id="radiationChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 年度发电量卡片 -->
+            <div class="data-card p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4">年度发电量估算</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-gray-600">总发电量:</span>
+                    <span class="text-2xl font-bold text-green-600" id="annualGeneration">0</span>
+                </div>
+                <div class="text-sm text-gray-500 mb-2">单位: kWh/年</div>
+                <div class="chart-container">
+                    <canvas id="generationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 月度详细数据表格 -->
+        <div id="monthlyData" class="bg-white rounded-lg shadow-xl p-8 mb-8" style="display: none;">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">月度详细数据</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">月份</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">太阳能辐射量 (kWh/m²)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">发电量 (kWh)</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日均辐射量 (kWh/m²)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="monthlyTableBody">
+                        <!-- 数据将通过JavaScript动态填充 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript代码已移至/static/js/solar_calculator.js -->
+</body>
+</html>

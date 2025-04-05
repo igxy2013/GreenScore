@@ -784,16 +784,30 @@
                                     <i class="ri-leaf-line mr-3"></i>
                                     <span>绿色建筑设计专篇</span>
                                 </a>
-                                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
-                                    <i class="ri-calculator-line mr-3"></i>
-                                    <span>绿色建材应用比例</span>
-                                </a>
                                 {% if project and project.standard == '国标' %}
                                 <a href="javascript:void(0)" onclick="generateSelfAssessmentReport(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
                                     <i class="ri-book-line mr-3"></i>
                                     <span>绿建自评估报告</span>
                                 </a>
                                 {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="specialCalcMenuToggle">
+                            <i class="ri-calculator-line mr-3"></i>
+                            <span>专项计算</span>
+                            <i class="ri-arrow-down-s-line ml-auto"></i>
+                        </div>
+                        <div id="specialCalcMenuContent" class="menu-content">
+                            <div class="submenu-group" id="specialCalcSubmenu">
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='solar_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'solar_calculator' %}active{% endif %}">
+                                    <i class="ri-flashlight-line mr-3"></i>
+                                    <span>太阳能计算</span>
+                                </a>
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                                    <i class="ri-calculator-line mr-3"></i>
+                                    <span>绿色建材应用比例</span>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -2567,6 +2581,23 @@
                         window.onload = resizeIframe;
                         window.onresize = resizeIframe;
                       </script>
+                    {% elif current_page == 'solar_calculator' %}
+                    <!-- 太阳能计算器内容 -->
+                    <div class="solar-calculator-container">
+                        <!-- 使用iframe嵌入太阳能计算器，添加preload提前加载，并传递项目ID参数 -->
+                        <iframe id="solarIframe" src="{{ url_for('solar_calculator', project_id=project.id if project else '') }}" 
+                            style="width:100%; border:none;overflow:hidden;"
+                            title="太阳能光伏发电量计算" loading="eager"></iframe>
+                    </div>
+                    <script>
+                        function resizeSolarIframe() {
+                          const iframe = document.getElementById('solarIframe');
+                          iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
+                        }
+                      
+                        window.onload = resizeSolarIframe;
+                        window.onresize = resizeSolarIframe;
+                      </script>
                     {% elif current_page == 'specialty' %}
                     <!-- 标准列表内容 -->
                     <!-- 添加隐藏的项目ID字段 -->
@@ -2703,6 +2734,8 @@
     const advancedMenuContent = advancedMenuToggle ? document.getElementById('advancedMenuContent') : null;
     const reportMenuToggle = document.getElementById('reportMenuToggle');
     const reportMenuContent = document.getElementById('reportMenuContent');
+    const specialCalcMenuToggle = document.getElementById('specialCalcMenuToggle');
+    const specialCalcMenuContent = document.getElementById('specialCalcMenuContent');
     const loadStarCaseBtn = document.getElementById('loadStarCaseBtn');
     const saveStarCaseBtn = document.getElementById('saveStarCaseBtn');
 
@@ -2825,6 +2858,14 @@
         const arrow = this.querySelector('.ri-arrow-down-s-line');
         if (arrow) {
             arrow.style.transform = reportMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+    });
+    
+    specialCalcMenuToggle.addEventListener('click', function() {
+        specialCalcMenuContent.classList.toggle('expanded');
+        const arrow = this.querySelector('.ri-arrow-down-s-line');
+        if (arrow) {
+            arrow.style.transform = specialCalcMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
         }
     });
     
@@ -3023,9 +3064,18 @@
         }
         
         // 如果当前页面是报告导出相关页面，展开报告导出菜单
-        if (currentPage === 'report_table' || currentPage === 'green_materials') {
+        if (currentPage === 'report_table') {
             reportMenuContent.classList.add('expanded');
             const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+            if (arrow) {
+                arrow.style.transform = 'rotate(180deg)';
+            }
+        }
+        
+        // 如果当前页面是专项计算相关页面，展开专项计算菜单
+        if (currentPage === 'solar_calculator' || currentPage === 'green_materials') {
+            specialCalcMenuContent.classList.add('expanded');
+            const arrow = specialCalcMenuToggle.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
                 arrow.style.transform = 'rotate(180deg)';
             }
@@ -4127,6 +4177,20 @@
             if (document.querySelector('.score-summary-container')) {
                 fetchScoreSummary(true);  // 使用强制刷新选项，确保调用计算API
             }
+        }
+        
+        // 为专项计算菜单添加点击事件
+        const specialCalcMenuToggle = document.getElementById('specialCalcMenuToggle');
+        const specialCalcMenuContent = document.getElementById('specialCalcMenuContent');
+        
+        if (specialCalcMenuToggle && specialCalcMenuContent) {
+            specialCalcMenuToggle.addEventListener('click', function() {
+                specialCalcMenuContent.classList.toggle('expanded');
+                const arrow = this.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = specialCalcMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+                }
+            });
         }
         
         // 已移除计算评分按钮和刷新数据按钮的事件监听器

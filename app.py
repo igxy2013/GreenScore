@@ -1143,6 +1143,19 @@ def filter_standards():
 def calculator():
     return render_template('calculator.html')
 
+@app.route('/solar_calculator')
+@login_required
+def solar_calculator():
+    # 获取项目ID参数
+    project_id = request.args.get('project_id')
+    project = None
+    
+    # 如果提供了项目ID，获取项目信息
+    if project_id:
+        project = Project.query.get(project_id)
+    
+    return render_template('solar_calculator.html', project=project)
+
 # 添加清除缓存的路由（可选，用于管理员手动刷新缓存）
 @app.route('/clear_cache')
 def clear_cache():
@@ -1224,9 +1237,17 @@ def load_form():
 
 @app.route('/api/project_info', methods=['GET'])
 def get_project_info():
+    from flask import request
     try:
-        # 获取项目信息
-        project = Project.query.first()
+        # 获取项目ID参数
+        project_id = request.args.get('project_id')
+        
+        # 根据项目ID获取项目信息
+        if project_id:
+            project = Project.query.filter_by(id=project_id).first()
+        else:
+            # 如果没有提供项目ID，则获取第一个项目
+            project = Project.query.first()
         
         # 获取最新的表单数据
         form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
