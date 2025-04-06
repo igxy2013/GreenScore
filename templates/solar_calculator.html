@@ -50,10 +50,32 @@
             }
             return { projectId: null, projectStandard: null };
         }
+        
+        // 页面加载完成后，触发自动调整高度
+        window.addEventListener('DOMContentLoaded', function() {
+            // 延迟执行，确保所有内容都已渲染
+            setTimeout(function() {
+                // 如果iframe-resizer提供的parentIFrame对象存在，调用其size方法
+                if (window.parentIFrame) {
+                    window.parentIFrame.size(); // 自动计算高度并发送给父页面
+                    console.log('已向父页面发送高度信息');
+                }
+            }, 500);
+        });
+        
+        // 监听内容变化，自动更新高度
+        document.addEventListener('click', function() {
+            // 点击后稍微延迟，等待内容变化
+            setTimeout(function() {
+                if (window.parentIFrame) {
+                    window.parentIFrame.size();
+                }
+            }, 300);
+        });
     </script>
     <style>
         html, body {
-            overflow: hidden; /* 允许页面滚动 */
+            overflow: visible; /* 允许内容溢出滚动 */
             height: auto; /* 自适应高度 */
             width: 100%;
             margin: 0;
@@ -62,8 +84,7 @@
         .container-wrapper {
             padding: 12px;
             overflow: visible;
-            min-height: 1200px; /* 设置最小高度 */
-            max-height: none; /* 不限制最大高度 */
+            min-height: 1250px; /* 使用自动高度 */
         }
         .map-container {
             height: 400px;
@@ -211,7 +232,7 @@
             <p class="text-gray-600">基于NASA POWER数据的太阳能光伏发电量估算工具</p>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
             <!-- 第一行：项目地点和查询 -->
             <div class="grid grid-cols-2 gap-6 mb-8 input-grid">
                 <div class="col-span-1 input-group">
