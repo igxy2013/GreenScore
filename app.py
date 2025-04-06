@@ -4919,12 +4919,17 @@ def extract_word_info():
 def extract_project_info_api():
     """提取Word文档中的项目信息并返回"""
     try:
+        app.logger.info("收到提取项目信息请求")
+        app.logger.info(f"请求表单数据: {request.form.keys()}")
+        app.logger.info(f"请求文件: {request.files.keys()}")
+        
         # 检查是否有文件上传
-        if 'word_file' not in request.files and 'image_file' not in request.files:
+        if 'word_file' not in request.files and 'image_file' not in request.files and 'file' not in request.files:
             app.logger.error("未找到上传的文件")
             return jsonify({'success': False, 'message': '未找到上传的文件'}), 400
         
         if 'word_file' in request.files:
+            # Word文件处理逻辑保持不变...
             file = request.files['word_file']
             if file.filename == '':
                 app.logger.error("未选择Word文件")
@@ -4957,8 +4962,11 @@ def extract_project_info_api():
             except Exception as e:
                 app.logger.warning(f"删除临时文件失败: {str(e)}")
         
-        elif 'image_file' in request.files:
-            file = request.files['image_file']
+        elif 'image_file' in request.files or 'file' in request.files:
+            # 支持 'image_file' 或 'file' 参数名
+            file = request.files.get('image_file') or request.files.get('file')
+            app.logger.info(f"处理图片文件: {file.filename if file else 'None'}")
+            
             if file.filename == '':
                 app.logger.error("未选择图片文件")
                 return jsonify({'success': False, 'message': '未选择文件'}), 400
@@ -4968,18 +4976,21 @@ def extract_project_info_api():
                 app.logger.error(f"不支持的图片格式: {file.filename}")
                 return jsonify({'success': False, 'message': '仅支持JPG、PNG、BMP和TIFF格式的图片'}), 400
             
-            app.logger.info(f"处理图片文件: {file.filename}")
-            
             # 使用图像提取函数处理图片
             try:
                 from utils.image_extractor import extract_image_info_with_raw_text
+                app.logger.info("调用图像提取函数...")
                 result = extract_image_info_with_raw_text(file)
+                app.logger.info(f"图像提取函数返回结果: {result.keys() if result else 'None'}")
                 
                 # 解析结果
                 if result and 'raw_text' in result:
                     raw_text = result['raw_text']
                     project_info = result['project_info']
+                    app.logger.info(f"成功提取到文本，长度: {len(raw_text)}")
+                    app.logger.info(f"提取到项目信息: {len(project_info)} 项")
                 else:
+                    app.logger.warning("图像提取函数返回无效结果，没有raw_text字段")
                     raw_text = ""
                     project_info = {}
                 
@@ -5012,110 +5023,11 @@ def extract_project_info_api():
                 app.logger.info(f"成功从图片提取到信息: {len(project_info)} 项")
                 app.logger.debug(f"提取的信息内容: {project_info}")
                 
-                # 不在返回值中包含原始文本
-                # project_info['raw_text'] = raw_text[:1000] if raw_text else ""
-                
-            except RuntimeError as e:
-                # 捕获OCR引擎相关错误
-                error_msg = str(e)
-                app.logger.error(f"OCR引擎错误: {error_msg}")
-                if "PaddleOCR" in error_msg:
-                    return jsonify({
-                        'success': False, 
-                        'message': '图像识别引擎错误: PaddleOCR初始化失败，请检查模型和依赖库是否正确安装.'
-                    }), 500
-                else:
-                    return jsonify({'success': False, 'message': f'图像处理错误: {error_msg}'}), 500
-            except ImportError as e:
-                # 捕获依赖库导入错误
-                error_msg = str(e)
-                app.logger.error(f"OCR依赖库错误: {error_msg}")
-                return jsonify({
-                    'success': False, 
-                    'message': f'图像处理库加载错误: {error_msg}，请确保已安装所有依赖'
-                }), 500
             except Exception as e:
                 error_msg = str(e)
-                app.logger.error(f"图片处理出现未知错误: {error_msg}")
+                app.logger.error(f"图片处理出现错误: {error_msg}")
+                app.logger.error(traceback.format_exc())
                 return jsonify({'success': False, 'message': f'处理图片时出错: {error_msg}'}), 500
-        
-        # 处理base64图片数据（从剪贴板粘贴的图片）
-        elif request.json and 'image_data' in request.json:
-            image_data = request.json['image_data']
-            
-            # 从Base64字符串获取图片数据
-            if image_data.startswith('data:image'):
-                # 移除Base64前缀
-                image_data = image_data.split(',')[1]
-            
-            # 解码Base64数据
-            import base64
-            from io import BytesIO
-            
-            try:
-                image_bytes = base64.b64decode(image_data)
-                image_file = BytesIO(image_bytes)
-                
-                # 调用图像处理函数，获取原始文本和解析结果
-                from utils.image_extractor import extract_image_info_with_raw_text
-                result = extract_image_info_with_raw_text(image_file)
-                
-                # 解析结果
-                if result and 'raw_text' in result:
-                    raw_text = result['raw_text']
-                    project_info = result['project_info']
-                else:
-                    raw_text = ""
-                    project_info = {}
-                
-                # 无论是否成功提取项目信息，都记录原始文本
-                if raw_text:
-                    app.logger.info("OCR提取的原始文本长度: " + str(len(raw_text)))
-                    app.logger.info("OCR文本前200字符: " + raw_text[:200].replace('\n', ' '))
-                    # 将完整文本记录到文件中以便分析
-                    try:
-                        log_dir = 'logs'
-                        os.makedirs(log_dir, exist_ok=True)
-                        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-                        log_file = os.path.join(log_dir, f"ocr_text_{timestamp}.txt")
-                        with open(log_file, 'w', encoding='utf-8') as f:
-                            f.write(raw_text)
-                        app.logger.info(f"OCR完整文本已保存到: {log_file}")
-                    except Exception as e:
-                        app.logger.warning(f"保存OCR文本到文件失败: {str(e)}")
-                else:
-                    app.logger.warning("未能提取到任何文本")
-                    project_info = {}
-                
-                if not project_info:
-                    app.logger.warning(f"未能从粘贴的图片中提取到有效信息")
-                    return jsonify({
-                        'success': False, 
-                        'message': '未能从粘贴的图片中识别到项目信息，请尝试使用更清晰的图片或确保图片中包含项目相关文字'
-                    }), 400
-                    
-                # 记录成功提取的信息
-                app.logger.info(f"成功从粘贴图片提取到信息: {len(project_info)} 项")
-                app.logger.debug(f"提取的信息内容: {project_info}")
-                
-                # 不在返回值中包含原始文本
-                # project_info['raw_text'] = raw_text[:1000] if raw_text else ""
-                
-            except RuntimeError as e:
-                # 捕获Tesseract相关错误
-                error_msg = str(e)
-                app.logger.error(f"Tesseract错误: {error_msg}")
-                if "Tesseract" in error_msg:
-                    return jsonify({
-                        'success': False, 
-                        'message': '图像识别引擎错误: 请确保已安装Tesseract OCR并添加到系统路径'
-                    }), 500
-                else:
-                    return jsonify({'success': False, 'message': f'图像处理错误: {error_msg}'}), 500
-            except Exception as e:
-                error_msg = str(e)
-                app.logger.error(f"处理粘贴图片时出现未知错误: {error_msg}")
-                return jsonify({'success': False, 'message': f'处理粘贴图片时出错: {error_msg}'}), 500
         
         if project_info:
             app.logger.info(f"成功提取项目信息: {project_info}")
@@ -5329,6 +5241,31 @@ def map_js_api_proxy():
             status=500,
             content_type='application/javascript'
         )
+
+# 添加项目信息页面路由
+@app.route('/project_info_page')
+def project_info_page():
+    try:
+        # 获取项目ID参数
+        project_id = request.args.get('project_id')
+        
+        if project_id:
+            # 根据项目ID获取项目信息
+            project = Project.query.filter_by(id=project_id).first()
+            if not project:
+                app.logger.warning(f"未找到项目ID: {project_id}")
+                # 如果项目不存在，返回空项目信息
+                return render_template('project_info.html', project=None)
+            
+            app.logger.info(f"访问项目信息页面: 项目ID={project_id}, 名称={project.name}")
+            return render_template('project_info.html', project=project)
+        else:
+            app.logger.warning("访问项目信息页面，但未提供项目ID")
+            return render_template('project_info.html', project=None)
+    except Exception as e:
+        app.logger.error(f"访问项目信息页面出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return render_template('error.html', error=f"获取项目信息失败: {str(e)}")
 
 if __name__ == '__main__':
     # 初始化数据库

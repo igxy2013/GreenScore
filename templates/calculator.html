@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
     <script src="/static/js/exportWord.js" defer></script>
+    <script src="{{ url_for('static', filename='js/iframe-resizer.contentWindow.js') }}"></script>
     <style>
         html, body {
             overflow: hidden; /* 禁用页面滚动条 */
@@ -38,7 +39,7 @@
         <div class="flex flex-col items-center justify-center mb-10 text-center">
             <h1 class="text-3xl font-bold text-primary mb-2">绿色建材应用比例计算</h1>
         </div>
-        <div class="bg-white rounded-lg shadow-xl p-8 mb-8">
+        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
             <div class="flex gap-6 mb-8">
                 <div class="flex-1">
                     <label class="block text-sm font-medium text-gray-700 mb-2">子项名称</label>
@@ -1026,61 +1027,62 @@
         
         // iframe高度自适应函数
         function resizeIframe() {
-            if (window.parent && window.parent !== window) {
-                const height = document.body.scrollHeight;
-                window.parent.postMessage({ 
-                    type: 'resize', 
-                    height: height 
-                }, '*');
-                console.log('发送iframe高度:', height);
-            }
+            const height = document.body.scrollHeight;
+            window.parent.postMessage({
+                height: height,
+                iframe: window.name
+            }, '*');
+            console.log('发送iframe高度:', height);
         }
         
-        // 防抖函数，限制更新频率
+        // 添加防抖函数以避免频繁触发
         function debounce(func, wait) {
             let timeout;
-            return function(...args) {
+            return function() {
+                const context = this;
+                const args = arguments;
                 clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(this, args), wait);
+                timeout = setTimeout(() => func.apply(context, args), wait);
             };
         }
         
-        // 带防抖的高度调整函数
+        // 创建防抖版本的resizeIframe函数
         const debouncedResize = debounce(resizeIframe, 100);
         
         // 页面加载完成后调整iframe高度
         window.addEventListener('load', function() {
-            // 延迟一点时间确保DOM完全渲染
-            setTimeout(function() {
-                // 设置初始高度
-                if (window.parent && window.parent !== window) {
-                    const height = Math.max(800, document.body.scrollHeight);
-                    window.parent.postMessage({ 
-                        type: 'resize', 
-                        height: height,
-                        initial: true // 标记这是初始高度设置
-                    }, '*');
-                    console.log('发送初始高度:', height);
-                }
-                
-                // 添加展开/折叠类别的事件监听
-                document.querySelectorAll('.category h3').forEach(header => {
-                    header.addEventListener('click', function() {
-                        setTimeout(debouncedResize, 300); // 折叠/展开后调整高度
-                    });
-                });
-                
-                // 添加表单变化监听
-                document.querySelectorAll('input').forEach(input => {
-                    input.addEventListener('change', function() {
-                        setTimeout(debouncedResize, 100);
-                    });
-                });
-                
-                // 监听窗口大小变化
-                window.addEventListener('resize', debouncedResize);
-            }, 500);
+            // 初始调整
+            debouncedResize();
+            
+            // 定时检查高度变化
+            setInterval(debouncedResize, 500);
+            
+            // 确保所有资源加载完成后再次调整高度
+            setTimeout(resizeIframe, 500);
+            setTimeout(resizeIframe, 1000);
+            setTimeout(resizeIframe, 2000);
         });
+        
+        // 监听DOM变化，当内容高度改变时调整iframe高度
+        if (window.MutationObserver) {
+            const observer = new MutationObserver(debouncedResize);
+            observer.observe(document.body, { 
+                childList: true, 
+                subtree: true,
+                attributes: true,
+                characterData: true 
+            });
+        }
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', debouncedResize);
+        
+        // 使用iframe-resizer库初始化
+        window.iFrameResizer = {
+            heightCalculationMethod: 'max',
+            checkOrigin: false,
+            autoResize: true
+        };
     </script>
     <!-- 页面主要JS -->
     <script src="/static/js/exportWord.js"></script>
