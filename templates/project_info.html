@@ -118,11 +118,11 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
+            background-color: transparent; /* 从rgba(0, 0, 0, 0.7)改为透明 */
+            backdrop-filter: none; /* 取消模糊效果 */
+            -webkit-backdrop-filter: none; /* 取消模糊效果 */
             z-index: 999;
-            display: none; /* 使用display:none代替opacity+visibility */
+            display: none;
             align-items: center;
             justify-content: center;
         }
@@ -135,13 +135,13 @@
             background: linear-gradient(135deg, #1e293b, #0f172a);
             color: white;
             border-radius: 1rem;
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
-                        0 0 30px rgba(139, 92, 246, 0.3);
+            border: 1px solid rgba(139, 92, 246, 0.5); /* 增强边框可见度 */
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), /* 增强阴影 */
+                        0 0 30px rgba(139, 92, 246, 0.5); /* 增强紫色光晕 */
             width: 100%;
             max-width: 500px;
             padding: 2rem;
-            transform: translateY(0) scale(1); /* 默认显示正常尺寸 */
+            transform: translateY(0) scale(1);
             position: relative;
             max-height: 90vh;
             overflow-y: auto;
