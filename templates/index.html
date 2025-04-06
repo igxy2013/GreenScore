@@ -611,10 +611,12 @@
                                 <!-- <i class="ri-search-line text-gray-400 "></i> -->
                             </div>
                             {% endif %}
+                            {% if current_page == 'project_info' %}
                             <a href="{{ url_for('project_management') }}" class="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
                                 <i class="ri-arrow-left-line mr-2"></i>
                                 <span>返回项目管理</span>
                             </a>
+                            {% endif %}
                         </div>
                     </div>
 
