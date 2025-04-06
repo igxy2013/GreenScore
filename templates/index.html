@@ -621,7 +621,7 @@
                     <!-- 添加隐藏的项目名称字段，在所有页面都可用 -->
                     <input type="hidden" id="current_project_name" value="{{ project.name if project else '' }}">
                     <!-- 添加隐藏的项目ID字段，在所有页面都可用 -->
-                    <input type="hidden" id="project_id" value="{{ project.id if project else '' }}">
+                    <input type="hidden" id="project_id" value="{{ project.id if project else '21' }}">
 
                     {% if current_page == 'score_summary' %}
                     <input type="hidden" id="current-project-standard" value="{{ project.standard if project and project.standard else '成都市标' }}">
@@ -1205,10 +1205,21 @@
         const projectIdField = document.getElementById('project_id');
         if (projectIdField) {
             projectId = projectIdField.value;
+            console.log('从project_id字段获取项目ID:', projectId);
         } else {
             // 尝试从URL中获取项目ID
             const urlParams = new URLSearchParams(window.location.search);
             projectId = urlParams.get('project_id');
+            console.log('从URL参数获取项目ID:', projectId);
+        }
+        
+        // 如果依然没有项目ID，尝试从current-project-id获取
+        if (!projectId) {
+            const currentProjectIdField = document.getElementById('current-project-id');
+            if (currentProjectIdField) {
+                projectId = currentProjectIdField.value;
+                console.log('从current-project-id字段获取项目ID:', projectId);
+            }
         }
         
         // 如果没有项目ID，则无法获取评分汇总
@@ -1222,13 +1233,14 @@
         
         console.log(`获取评分汇总数据: 项目ID=${projectId}, 评价标准=${projectStandard}, 强制刷新=${forceRefresh}`);
      
-        // 直接调用计算评分API，使用返回数据更新界面
-        fetch(`/api/calculate_scores/${projectId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 使用get_score_summary接口获取评分数据
+        fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=${forceRefresh}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`服务器错误 (${response.status})`);
@@ -1236,9 +1248,10 @@
             return response.json();
         })
         .then(data => {
-            console.log('获取评分计算数据成功:', data);
+            console.log('获取评分汇总数据成功:', data);
             
             // 显示评价标准信息 - 如果元素存在才执行
+            const standardInfoEl = document.getElementById('standard-info');
             if (standardInfoEl && data.project_standard) {
                 standardInfoEl.innerHTML = `
                     <span class="font-semibold">当前评价标准:</span> 
@@ -1248,10 +1261,25 @@
             
             // 更新评分汇总表格
             updateScoreSummaryTables(data);
+            
+            // 确保在数据加载后更新星级评定
+            if ('{{ current_page }}' === 'score_summary') {
+                setTimeout(updateStarRating, 100);
+            }
 
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
         })
         .catch(error => {
-            console.error('获取评分计算数据失败:', error);
+            console.error('获取评分汇总数据失败:', error);
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            // 显示错误提示
+            alert('获取评分汇总数据失败: ' + error.message);
         });
     }
     
@@ -1561,13 +1589,36 @@
                 }, 100);
                 
                 try {
-                    // 获取评分汇总数据
-                    const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
-                    const summaryData = await summaryResponse.json();
-                    console.log('获取评分汇总数据:', summaryData);
+                    // 使用fetchScoreSummary函数获取评分汇总数据（强制刷新）
+                    const originalFetch = window.fetch; // 确保在try块开始时就定义originalFetch
                     
-                    // 将数据存储到 sessionStorage
-                    sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
+                    await new Promise((resolve, reject) => {
+                        // 重写fetchScoreSummary成功的回调逻辑
+                        window.fetch = function(...args) {
+                            return originalFetch.apply(this, args).then(response => {
+                                if (args[0].includes('/api/get_score_summary')) {
+                                    response.clone().json().then(data => {
+                                        // 将数据存储到 sessionStorage
+                                        sessionStorage.setItem('score_summary_data', JSON.stringify(data));
+                                        resolve(data);
+                                    }).catch(err => reject(err));
+                                }
+                                return response;
+                            });
+                        };
+                        
+                        // 调用fetchScoreSummary函数
+                        fetchScoreSummary(true);
+                        
+                        // 设置超时，防止长时间等待
+                        setTimeout(() => {
+                            window.fetch = originalFetch;
+                            reject(new Error('获取数据超时'));
+                        }, 10000);
+                    });
+                    
+                    // 恢复原始fetch函数
+                    window.fetch = originalFetch;
                     
                     // 完成进度条 - 循序渐进地增长到100%
                     clearInterval(progressInterval);
@@ -1592,6 +1643,11 @@
                 } catch (error) {
                     console.error('获取评分数据失败:', error);
                     alert(`获取评分数据失败: ${error.message}`);
+                    
+                    // 确保在catch块中也恢复原始fetch函数
+                    if (typeof originalFetch !== 'undefined') {
+                        window.fetch = originalFetch;
+                    }
                     
                     // 重置进度条
                     clearInterval(progressInterval);
@@ -1634,8 +1690,11 @@
                 updateScoreSummaryTables(data);
                 // 清除预加载数据
                 sessionStorage.removeItem('score_summary_data');
+            } else {
+                // 如果没有预加载数据，则主动获取数据
+                console.log('没有预加载数据，主动获取评分汇总数据');
+                fetchScoreSummary(true);
             }
-            // 删除自动刷新的代码
         }
     });
 
@@ -2098,6 +2157,13 @@
     function updateScoreSummaryTables(data) {
         console.log('更新评分汇总表格:', data);
         
+        // 如果数据为空或无效，显示提示并返回
+        if (!data || typeof data !== 'object') {
+            console.error('更新评分汇总表格失败: 无效的数据格式', data);
+            alert('获取评分数据失败，请刷新页面重试');
+            return;
+        }
+        
         // 显示最后更新时间
         const lastUpdateTimeElement = document.getElementById('lastUpdateTime');
         if (lastUpdateTimeElement && data.timestamp) {
@@ -2110,7 +2176,7 @@
             const specialtyScores = data.specialty_scores;
             
             // 获取项目评价标准
-            const projectStandard = document.getElementById('current-project-standard')?.value || '';
+            const projectStandard = data.project_standard || document.getElementById('current-project-standard')?.value || '';
             
             // 显示或隐藏环境健康与节能专业列
             const envHealthEnergyHeader = document.getElementById('env_health_energy_header');
@@ -2174,7 +2240,7 @@
             updateCell(categoryScoresRow, 6, categoryScores['提高与创新']);
             
             // 更新总分
-            const totalScore = Object.values(categoryScores).reduce((sum, score) => sum + score, 0);
+            const totalScore = data.total_score || Object.values(categoryScores).reduce((sum, score) => sum + score, 0);
             updateCell(categoryScoresRow, 7, totalScore);
             
             // 更新达标判断行
@@ -2214,6 +2280,24 @@
             
             // 更新星级判定
             setTimeout(updateStarRating, 100);
+            
+            // 更新评定结果
+            if (data.evaluation_result) {
+                const evaluationResultEl = document.getElementById('evaluation-result');
+                if (evaluationResultEl) {
+                    evaluationResultEl.textContent = data.evaluation_result;
+                    // 根据评定结果设置不同颜色
+                    if (data.evaluation_result.includes('三星级')) {
+                        evaluationResultEl.className = 'text-green-600 font-bold';
+                    } else if (data.evaluation_result.includes('二星级')) {
+                        evaluationResultEl.className = 'text-blue-600 font-bold';
+                    } else if (data.evaluation_result.includes('一星级')) {
+                        evaluationResultEl.className = 'text-orange-600 font-bold';
+                    } else {
+                        evaluationResultEl.className = 'text-red-600 font-bold';
+                    }
+                }
+            }
         }
     }
     

@@ -989,20 +989,14 @@ function debounce(func, wait) {
 // 上次发送的高度
 let lastSentHeight = 0;
 
-// 设置iframe自适应高度函数（添加防抖处理）
+// 设置iframe自适应高度函数
+// 注意：此函数已被iframe-resizer.contentWindow.js替代，保留此函数是为了兼容现有代码调用
+// 实际高度调整由iframe-resizer自动完成
 const resizeIframe = debounce(function() {
-    // 向父页面发送当前文档高度
-    if (window.parent && window.parent !== window) {
-        const height = document.body.scrollHeight;
-        
-        // 只有当高度变化超过10px时才发送消息
-        if (Math.abs(height - lastSentHeight) > 10) {
-            window.parent.postMessage({ type: 'resize', height: height }, '*');
-            console.log('向父窗口发送高度信息:', height);
-            lastSentHeight = height;
-        }
-    }
-}, 100); // 100毫秒防抖时间
+    // 不需要手动实现，iframe-resizer已经处理了高度调整
+    // 此处仅保留空函数，以兼容现有代码调用
+    console.log('resizeIframe被调用，但实际高度调整由iframe-resizer处理');
+}, 100);
 
 // 页面加载完成后初始化
 document.addEventListener("DOMContentLoaded", function() {
@@ -1026,55 +1020,23 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (mapContainer) {
                     mapContainer.innerHTML = '<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图API加载超时，请刷新页面重试</div>';
                 }
-                // 即使地图加载失败，也尝试调整iframe高度
-                resizeIframe();
             }
         }, 5000);
     }
     
-    // 初始化完成后手动设置一次初始高度
-    // 等待页面完全渲染后再发送高度信息
-    setTimeout(function() {
-        // 强制发送一次初始高度，不考虑阈值限制
-        if (window.parent && window.parent !== window) {
-            const height = Math.max(800, document.body.scrollHeight);
-            window.parent.postMessage({ 
-                type: 'resize', 
-                height: height,
-                initial: true // 标记这是初始高度设置
-            }, '*');
-            console.log('发送初始高度:', height);
-            lastSentHeight = height;
-        }
-        
-        // 开始监听DOM变化
-        startObserving();
-    }, 800); // 给足够时间让页面渲染
-});
+    // 不需要手动设置初始高度，iframe-resizer会自动处理
+    
+    // 开始监听DOM变化
+    startObserving();
+}, 800); // 给足够时间让页面渲染
 
 // 开始监听DOM变化
 function startObserving() {
-    // 监听DOM变化，当内容高度改变时调整iframe高度
-    if (window.MutationObserver) {
-        const observer = new MutationObserver(function(mutations) {
-            // 当DOM发生变化时，调整iframe高度
-            resizeIframe();
-        });
-        
-        // 观察整个body的变化
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            attributes: true, // 监听属性变化
-            attributeFilter: ['style', 'class'] // 只监听可能影响布局的属性
-        });
-    } else {
-        // 对于不支持MutationObserver的浏览器，使用定时器但降低频率
-        setInterval(resizeIframe, 2000); // 2秒检查一次
-    }
-    
-    // 监听窗口大小变化，重新调整iframe高度
-    window.addEventListener('resize', resizeIframe);
+    // 由于iframe-resizer会自动监听高度变化，这里只保留window resize事件监听
+    // 监听窗口大小变化
+    window.addEventListener('resize', function() {
+        console.log('窗口大小变化');
+    });
 }
 
 // 启动应用主函数
