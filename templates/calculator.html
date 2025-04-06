@@ -14,7 +14,7 @@
     <script src="{{ url_for('static', filename='js/iframe-resizer.contentWindow.js') }}"></script>
     <style>
         html, body {
-            overflow: hidden; /* 禁用页面滚动条 */
+            overflow: visible; /* 允许页面滚动 */
             height: auto; /* 自适应高度 */
             width: 100%;
             margin: 0;
@@ -24,13 +24,12 @@
             padding: 12px;
             overflow: visible;
             min-height: 500px; /* 设置最小高度 */
-            max-height: 10000px; /* 设置最大高度限制 */
         }
         
         /* 表格容器样式 */
         #export-content {
-            max-height: 600px; /* 限制表格区域最大高度 */
-            overflow: auto; /* 内部滚动而不是整体增加高度 */
+            max-height: none; /* 不限制表格区域高度 */
+            overflow: visible; /* 允许内容显示 */
         }
     </style>
 </head>
@@ -1025,63 +1024,67 @@
             saveAs(blob, '绿色建材应用比例计算.doc');
         }
         
-        // iframe高度自适应函数
-        function resizeIframe() {
-            const height = document.body.scrollHeight;
-            window.parent.postMessage({
-                height: height,
-                iframe: window.name
-            }, '*');
-            console.log('发送iframe高度:', height);
+        // iframe高度自适应脚本
+        function updateParentHeight() {
+            // 确保父窗口存在
+            if (window.parent && window.parent !== window) {
+                // 计算当前文档高度
+                const height = Math.max(
+                    document.body.scrollHeight,
+                    document.documentElement.scrollHeight,
+                    document.body.offsetHeight,
+                    document.documentElement.offsetHeight,
+                    document.body.clientHeight,
+                    document.documentElement.clientHeight
+                );
+                
+                // 通过postMessage发送高度信息
+                window.parent.postMessage({
+                    type: 'resize',
+                    height: height + 50, // 添加一些额外空间
+                    initial: true
+                }, '*');
+                
+                console.log('已向父页面发送高度信息:', height + 50);
+            }
         }
         
-        // 添加防抖函数以避免频繁触发
-        function debounce(func, wait) {
-            let timeout;
-            return function() {
-                const context = this;
-                const args = arguments;
-                clearTimeout(timeout);
-                timeout = setTimeout(() => func.apply(context, args), wait);
-            };
-        }
-        
-        // 创建防抖版本的resizeIframe函数
-        const debouncedResize = debounce(resizeIframe, 100);
-        
-        // 页面加载完成后调整iframe高度
+        // 页面加载完成后更新高度
         window.addEventListener('load', function() {
-            // 初始调整
-            debouncedResize();
-            
-            // 定时检查高度变化
-            setInterval(debouncedResize, 500);
-            
-            // 确保所有资源加载完成后再次调整高度
-            setTimeout(resizeIframe, 500);
-            setTimeout(resizeIframe, 1000);
-            setTimeout(resizeIframe, 2000);
+            // 延时确保内容完全渲染
+            setTimeout(updateParentHeight, 100);
         });
         
-        // 监听DOM变化，当内容高度改变时调整iframe高度
-        if (window.MutationObserver) {
-            const observer = new MutationObserver(debouncedResize);
-            observer.observe(document.body, { 
-                childList: true, 
-                subtree: true,
-                attributes: true,
-                characterData: true 
-            });
-        }
+        // MutationObserver监听DOM变化
+        const observer = new MutationObserver(function(mutations) {
+            updateParentHeight();
+        });
         
-        // 监听窗口大小变化
-        window.addEventListener('resize', debouncedResize);
+        // 开始监听文档变化
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
         
-        // 使用iframe-resizer库初始化
+        // 确保iframe-resizer.contentWindow.js正常工作
         window.iFrameResizer = {
-            heightCalculationMethod: 'max',
-            checkOrigin: false,
-            autoResize: true
+            heightCalculationMethod: function() {
+                // 返回当前文档高度
+                return Math.max(
+                    document.body.scrollHeight,
+                    document.documentElement.scrollHeight,
+                    document.body.offsetHeight,
+                    document.documentElement.offsetHeight,
+                    document.body.clientHeight,
+                    document.documentElement.clientHeight
+                ) + 50; // 添加一些额外空间
+            },
+            autoResize: true,
+            onReady: function() {
+                console.log('iframe-resizer 准备就绪，初始高度:', this.heightCalculationMethod());
+                updateParentHeight();
+            }
         };
     </script>
     <!-- 页面主要JS -->

@@ -39,39 +39,6 @@
     </a>
 </div>
 
-<!-- 联系我们模态框 -->
-<div id="contactModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">联系我们</h3>
-            <button class="text-gray-500 hover:text-gray-700" onclick="closeContactModal()" title="关闭">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="space-y-4">
-            <div class="flex items-center space-x-3">
-                <i class="fas fa-envelope text-primary text-xl"></i>
-                <div>
-                    <p class="text-gray-700 font-medium">Email：</p>
-                    <p class="text-gray-600">acbim@qq.com</p>
-                </div>
-            </div>
-            <div class="flex items-center space-x-3">
-                <i class="fab fa-qq text-primary text-xl"></i>
-                <div>
-                    <p class="text-gray-700 font-medium">用户服务QQ群：</p>
-                    <p class="text-gray-600">715172744</p>
-                </div>
-            </div>
-        </div>
-        <div class="mt-6 flex justify-end">
-            <button onclick="closeContactModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                关闭
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- 用户菜单相关样式 -->
 <style>
 /* 用户菜单样式 */
@@ -117,6 +84,29 @@
     transform: scale(1);
     pointer-events: auto;
 }
+
+/* 联系我们模态框样式 */
+.contact-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.contact-modal-content {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    padding: 1.5rem;
+}
 </style>
 
 <!-- 用户菜单相关脚本 -->
@@ -126,34 +116,142 @@ document.addEventListener('DOMContentLoaded', function() {
     const userIcon = document.getElementById('userIcon');
     const userMenu = document.getElementById('userMenu');
     const contactUsBtn = document.getElementById('contactUsBtn');
-    const contactModal = document.getElementById('contactModal');
-
+    
+    let contactModal = null;
+    
+    // 创建联系我们模态框
+    function createContactModal() {
+        // 创建模态框背景
+        contactModal = document.createElement('div');
+        contactModal.className = 'contact-modal';
+        
+        // 创建模态框内容
+        const modalContent = document.createElement('div');
+        modalContent.className = 'contact-modal-content';
+        modalContent.onclick = function(e) {
+            e.stopPropagation();
+        };
+        
+        // 创建标题和关闭按钮
+        const header = document.createElement('div');
+        header.className = 'flex justify-between items-center mb-4';
+        
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-bold';
+        title.textContent = '联系我们';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'text-gray-500 hover:text-gray-700';
+        closeBtn.title = '关闭';
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.onclick = closeContactModal;
+        
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        
+        // 创建内容
+        const content = document.createElement('div');
+        content.className = 'space-y-4';
+        
+        // 邮箱信息
+        const emailInfo = document.createElement('div');
+        emailInfo.className = 'flex items-center space-x-3';
+        emailInfo.innerHTML = `
+            <i class="fas fa-envelope text-primary text-xl"></i>
+            <div>
+                <p class="text-gray-700 font-medium">Email：</p>
+                <p class="text-gray-600">acbim@qq.com</p>
+            </div>
+        `;
+        
+        // QQ群信息
+        const qqInfo = document.createElement('div');
+        qqInfo.className = 'flex items-center space-x-3';
+        qqInfo.innerHTML = `
+            <i class="fab fa-qq text-primary text-xl"></i>
+            <div>
+                <p class="text-gray-700 font-medium">用户服务QQ群：</p>
+                <p class="text-gray-600">715172744</p>
+            </div>
+        `;
+        
+        content.appendChild(emailInfo);
+        content.appendChild(qqInfo);
+        
+        // 创建底部按钮
+        const footer = document.createElement('div');
+        footer.className = 'mt-6 flex justify-end';
+        
+        const closeFooterBtn = document.createElement('button');
+        closeFooterBtn.className = 'px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90';
+        closeFooterBtn.textContent = '关闭';
+        closeFooterBtn.onclick = closeContactModal;
+        
+        footer.appendChild(closeFooterBtn);
+        
+        // 组装模态框
+        modalContent.appendChild(header);
+        modalContent.appendChild(content);
+        modalContent.appendChild(footer);
+        contactModal.appendChild(modalContent);
+        
+        // 点击模态框背景关闭
+        contactModal.onclick = closeContactModal;
+        
+        // 添加到body
+        document.body.appendChild(contactModal);
+        
+        // 阻止页面滚动
+        document.body.style.overflow = 'hidden';
+        
+        console.log('联系我们模态框已创建并打开');
+        return contactModal;
+    }
+    
+    // 显示联系我们模态框
+    function showContactModal() {
+        if (!contactModal) {
+            contactModal = createContactModal();
+        } else {
+            contactModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    // 关闭联系我们模态框
+    function closeContactModal() {
+        if (contactModal) {
+            contactModal.style.display = 'none';
+            document.body.style.overflow = '';
+            console.log('联系我们模态框已关闭');
+        }
+    }
+    
     // 点击用户图标显示菜单
-    userIcon.addEventListener('click', function(e) {
-        e.stopPropagation();
-        userMenu.classList.toggle('active');
-    });
+    if (userIcon) {
+        userIcon.addEventListener('click', function(e) {
+            e.stopPropagation();
+            userMenu.classList.toggle('active');
+        });
+    }
 
     // 点击联系我们显示联系信息模态框
-    contactUsBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        userMenu.classList.remove('active');
-        contactModal.classList.remove('hidden');
-    });
+    if (contactUsBtn) {
+        contactUsBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (userMenu) userMenu.classList.remove('active');
+            showContactModal();
+        });
+    }
 
-    // 关闭模态框
-    window.closeContactModal = function() {
-        contactModal.classList.add('hidden');
-    };
-
-    // 点击页面其他区域关闭菜单和模态框
+    // 点击页面其他区域关闭菜单
     document.addEventListener('click', function(e) {
-        if (!userMenu.contains(e.target) && !userIcon.contains(e.target)) {
+        if (userMenu && !userMenu.contains(e.target) && userIcon && !userIcon.contains(e.target)) {
             userMenu.classList.remove('active');
         }
-        if (e.target === contactModal) {
-            closeContactModal();
-        }
     });
+    
+    // 将关闭函数添加到全局作用域，以便其他地方可以调用
+    window.closeContactModal = closeContactModal;
 });
 </script> 
