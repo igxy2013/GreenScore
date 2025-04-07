@@ -626,303 +626,118 @@
                     <input type="hidden" id="project_id" value="{{ project.id if project else '21' }}">
 
                     {% if current_page == 'score_summary' %}
-                    <input type="hidden" id="current-project-standard" value="{{ project.standard if project and project.standard else '成都市标' }}">
-                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                        <!-- 页面标题和工具栏 -->
-                        <div class="flex justify-between items-center mb-4">
-                            <div class="flex items-center">
-                                <h3 class="text-lg font-medium mr-4">各专业得分汇总</h3>
-                            </div>
-                            <!-- 移除刷新按钮和计算评分按钮 -->
-                        </div>
-
-                        <div class="overflow-x-auto score-summary-container">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-blue-500 text-white">
-                                        <th class="px-6 py-3 text-center">专业</th>
-                                        <th class="px-6 py-3 text-center">建筑专业</th>
-                                        <th class="px-6 py-3 text-center">结构专业</th>
-                                        <th class="px-6 py-3 text-center">给排水专业</th>
-                                        <th class="px-6 py-3 text-center">电气专业</th>
-                                        <th class="px-6 py-3 text-center">暖通专业</th>
-                                        <th class="px-6 py-3 text-center">景观专业</th>
-                                        <th class="px-6 py-3 text-center" id="env_health_energy_header">环境健康与节能专业</th>
-                                        <th class="px-6 py-3 text-center">合计</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- 专业得分行 -->
-                                    <tr id="specialty-scores-row" class="border-b text-center">
-                                        <td class="px-6 py-4">得分</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4" id="env_health_energy_column">0.0</td>
-                                        <td class="px-6 py-4 font-bold total-score">0.0</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h3 class="text-lg font-medium mb-4">各分类得分汇总</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-blue-500 text-white">
-                                        <th class="px-6 py-3 text-center">分类</th>
-                                        <th class="px-6 py-3 text-center">安全耐久</th>
-                                        <th class="px-6 py-3 text-center">健康舒适</th>
-                                        <th class="px-6 py-3 text-center">生活便利</th>
-                                        <th class="px-6 py-3 text-center">资源节约</th>
-                                        <th class="px-6 py-3 text-center">环境宜居</th>
-                                        <th class="px-6 py-3 text-center">提高与创新</th>
-                                        <th class="px-6 py-3 text-center">合计</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- 分类得分行 - 将由JavaScript动态更新 -->
-                                    <tr id="category-scores-row" class="border-b text-center">
-                                        <td class="px-6 py-4">得分</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4 font-bold">0.0</td>
-                                    </tr>
-                                    <!-- 最低分值行 - 将由JavaScript动态更新 -->
-                                    <tr>
-                                        <td class="px-6 py-4">最低分值</td>
-                                        <td class="px-6 py-4">30.0</td>
-                                        <td class="px-6 py-4">30.0</td>
-                                        <td class="px-6 py-4">21.0</td>
-                                        <td class="px-6 py-4">60.0</td>
-                                        <td class="px-6 py-4">30.0</td>
-                                        <td class="px-6 py-4">0.0</td>
-                                        <td class="px-6 py-4 font-bold">171</td>
-                                    </tr>
-                                    <!-- 达标判断行 - 将由JavaScript动态更新 -->
-                                    <tr>
-                                        <td class="px-6 py-4">达标判断</td>
-                                        <td class="px-6 py-4">-</td>
-                                        <td class="px-6 py-4">-</td>
-                                        <td class="px-6 py-4">-</td>
-                                        <td class="px-6 py-4">-</td>
-                                        <td class="px-6 py-4">-</td>
-                                        <td class="px-6 py-4">-</td>
-                                        <td class="px-6 py-4 font-bold">-</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- 星级判定表格 - 单独显示 -->
-                    <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
-                        <h3 class="text-xl font-bold mb-4 text-primary">绿色建筑星级评定</h3>
-                        <div class="overflow-auto">
-                            <table class="w-full score-table">
-                                <thead>
-                                    <tr>
-                                        <th class="px-6 py-4 text-center bg-primary">项目名称</th>
-                                        <th class="px-6 py-4 text-center bg-primary">总得分</th>
-                                        <th class="px-6 py-4 text-center bg-primary align-middle">星级评定</th>
-                                        <th class="px-6 py-4 text-center bg-primary">评定结果</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr id="star-rating-row" class="star-rating-row">
-                                        <td class="px-6 py-4 text-xl">{{ project.name if project else '未设置项目名称' }}</td>
-                                        <td class="px-6 py-4 text-xl" id="star-rating-score">0.0</td>
-                                        <td class="px-6 py-4 text-xl text-center align-middle" id="star-rating-stars-cell">
-                                            <span id="star-rating-stars" class="text-2xl"></span>
-                                        </td>
-                                        <td class="px-6 py-4 text-xl" id="star-rating-total">-</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            
-                            <!-- 添加保存星级案例按钮，仅管理员可见 -->
-                            {% if session.get('role') == 'admin' %}
-                            <div class="mt-6 flex justify-center">
-                                <button id="saveStarCaseBtn" class="px-6 py-3 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                                    <i class="ri-save-line mr-2"></i>保存星级案例
-                                </button>
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- 星级标准说明 -->
-                        <div class="mt-4 p-4 bg-gray-50 rounded-lg">
-                            <h4 class="font-bold mb-2">星级评定标准说明：</h4>
-                            <ul class="list-disc pl-5 space-y-2">
-                                <li><span class="inline-block px-3 py-1 rounded-full bg-green-100 text-green-800 font-medium">三星级</span>：总得分 ≥ 450分 且 <span class="font-medium">所有分类均达标</span></li>
-                                <li><span class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">二星级</span>：总得分 ≥ 300分 且 <span class="font-medium">所有分类均达标</span></li>
-                                <li><span class="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium">一星级</span>：总得分 ≥ 200分 且 <span class="font-medium">所有分类均达标</span></li>
-                                <li><span class="inline-block px-3 py-1 rounded-full bg-red-100 text-red-600 font-medium">未达标</span>：总得分 < 200分 或 <span class="text-red-600">任一分类未达标</span></li>
-                            </ul>
-                        </div>
-                    </div>
+                    <!-- 通过iframe引入评分汇总页面 -->
+                    <iframe id="score-summary-iframe" src="{{ url_for('score_summary_page', project_id=project.id if project else '21') }}" frameborder="0" class="w-full" style="min-height: 1200px;"></iframe>
                     
                     <script>
-                        function updateStarRating() {
-                            try {
-                                // 获取总分
-                                const categoryScoresRow = document.getElementById('category-scores-row');
-                                if (!categoryScoresRow) {
-                                    console.error('找不到得分行元素');
-                                    return;
-                                }
-                                
-                                // 获取总分单元格（第8个单元格，索引为7）
-                                const totalScoreCell = categoryScoresRow.cells[7];
-                                if (!totalScoreCell) {
-                                    console.error('找不到总分单元格');
-                                    return;
-                                }
-                                
-                                const totalScoreText = totalScoreCell.innerText;
-                                const totalScore = parseFloat(totalScoreText);
-                                
-                                if (isNaN(totalScore)) {
-                                    console.error('总分不是有效数字:', totalScoreText);
-                                    return;
-                                }
-                                
-                                console.log('当前总分:', totalScore);
-                                
-                                // 更新星级判定表格中的总分
-                                const starRatingScore = document.getElementById('star-rating-score');
-                                if (starRatingScore) {
-                                    starRatingScore.innerText = totalScore.toFixed(1);
-                                }
-                                
-                                // 检查所有分类是否都达标
-                                const judgmentRow = categoryScoresRow.parentNode.querySelector('tr:nth-child(3)');
-                                let allCategoriesAchieved = true;
-                                
-                                if (judgmentRow) {
-                                    // 检查每个分类的达标情况（从第2个单元格到第7个单元格，索引1-6）
-                                    for (let i = 1; i <= 6; i++) {
-                                        const cell = judgmentRow.cells[i];
-                                        if (cell && cell.textContent !== '达标') {
-                                            allCategoriesAchieved = false;
-                                            console.log(`分类 ${i} 未达标`);
-                                            break;
-                                        }
-                                    }
-                                    
-                                    // 检查总体达标情况（第8个单元格，索引7）
-                                    const totalJudgmentCell = judgmentRow.cells[7];
-                                    if (totalJudgmentCell && totalJudgmentCell.textContent !== '达标') {
-                                        allCategoriesAchieved = false;
-                                        console.log('总体未达标');
-                                    }
-                                } else {
-                                    console.error('找不到达标判断行');
-                                    allCategoriesAchieved = false;
-                                }
-                                
-                                console.log('所有分类是否达标:', allCategoriesAchieved);
-                                
-                                // 判断星级
-                                let starRating = '-';
-                                let starClass = '';
-                                let starIcons = '';
-                                let rowClass = '';
-                                
-                                // 只有当所有分类都达标时，才进行星级判定
-                                if (allCategoriesAchieved) {
-                                    if (totalScore >= 450) {
-                                        starRating = '三星级';
-                                        starClass = 'star-three';
-                                        starIcons = '<i class="ri-star-fill star-icon text-green-600"></i>'.repeat(3);
-                                        rowClass = 'bg-green-50';
-                                    } else if (totalScore >= 300) {
-                                        starRating = '二星级';
-                                        starClass = 'star-two';
-                                        starIcons = '<i class="ri-star-fill star-icon text-blue-600"></i>'.repeat(2);
-                                        rowClass = 'bg-blue-50';
-                                    } else if (totalScore >= 200) {
-                                        starRating = '一星级';
-                                        starClass = 'star-one';
-                                        starIcons = '<i class="ri-star-fill star-icon text-yellow-600"></i>';
-                                        rowClass = 'bg-yellow-50';
-                                    } else {
-                                        starRating = '未达标';
-                                        starClass = 'star-none';
-                                        starIcons = '<i class="ri-close-circle-fill star-icon text-red-600"></i>';
-                                        rowClass = 'bg-red-50';
-                                    }
-                                } else {
-                                    // 如果有任何分类未达标，则星级判定为"未达标"
-                                    starRating = '未达标';
-                                    starClass = 'star-none';
-                                    starIcons = '<i class="ri-close-circle-fill star-icon text-red-600"></i>';
-                                    rowClass = 'bg-red-50';
-                                }
-                                
-                                // 更新星级判定结果
-                                const starRatingTotal = document.getElementById('star-rating-total');
-                                if (starRatingTotal) {
-                                    starRatingTotal.innerText = starRating;
-                                    // 使用内联样式直接设置样式
-                                    if (starClass === 'star-three') {
-                                        starRatingTotal.style.color = '#10b981';
-
-                                    } else if (starClass === 'star-two') {
-                                        starRatingTotal.style.color = '#3b82f6';
-
-                                    } else if (starClass === 'star-one') {
-                                        starRatingTotal.style.color = '#f59e0b';
-
-                                    } else {
-                                        starRatingTotal.style.color = '#ef4444';
-
-                                    }
-                                }
-                                
-                                // 更新星级图标
-                                const starRatingStars = document.getElementById('star-rating-stars');
-                                if (starRatingStars) {
-                                    starRatingStars.innerHTML = starIcons;
-                                    starRatingStars.style.display = 'inline-block';
-                                    starRatingStars.style.verticalAlign = 'middle';
-                                }
-                                
-                                // 确保星级图标单元格垂直居中
-                                const starRatingStarsCell = document.getElementById('star-rating-stars-cell');
-                                if (starRatingStarsCell) {
-                                    starRatingStarsCell.style.verticalAlign = 'middle';
-                                }
-                                
-                                // 更新星级判定行样式
-                                const starRatingRow = document.getElementById('star-rating-row');
-                                if (starRatingRow) {
-                                    // 移除旧的背景色类
-                                    starRatingRow.classList.remove('bg-blue-50', 'bg-green-50', 'bg-yellow-50', 'bg-red-50');
-                                    
-                                    // 添加新的背景色类
-                                    starRatingRow.classList.add(rowClass);
-                                }
-                                
-                                console.log('星级判定更新为:', starRating);
-                            } catch (error) {
-                                console.error('更新星级判定时出错:', error);
-                            }
-                        }
-
-                        // 在页面加载完成后执行星级判定
                         document.addEventListener('DOMContentLoaded', function() {
-                            console.log('页面加载完成，初始化星级判定');
-                            // 延迟执行，确保数据已加载
-                            setTimeout(updateStarRating, 500);
+                            const iframe = document.getElementById('score-summary-iframe');
+                            
+                            // 监听iframe中发送的消息
+                            window.addEventListener('message', function(event) {
+                                if (event.data && event.data.type === 'saveStarCase') {
+                                    // 处理保存星级案例的请求
+                                    saveStarCase();
+                                } else if (event.data && event.data.type === 'iframeReady') {
+                                    // iframe已准备就绪，如果有数据则立即发送
+                                    console.log('iframe已准备就绪');
+                                    if (scoreData) {
+                                        console.log('iframe就绪后立即发送评分数据');
+                                        updateIframeScores(scoreData);
+                                    }
+                                }
+                            });
+                            
+                            // 保存星级案例的函数
+                            function saveStarCase() {
+                            const projectId = document.getElementById('project_id').value;
+                                fetch('/api/save_star_case', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ project_id: projectId })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        showToast('保存成功', 'success');
+                                    } else {
+                                        showToast(data.message || '保存失败', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('保存星级案例时出错:', error);
+                                    showToast('保存失败，请重试', 'error');
+                                });
+                            }
+                            
+                            // 向iframe发送评分数据更新的消息
+                            function updateIframeScores(data) {
+                                iframe.contentWindow.postMessage({
+                                    type: 'updateScores',
+                                    data: data
+                                }, '*');
+                            }
+                            
+                            // 导出updateIframeScores方法，使其可以从外部调用
+                            window.updateScoreSummary = updateIframeScores;
+                            
+                            // 预先获取评分数据
+                            const projectId = document.getElementById('project_id').value;
+                            let scoreData = null;
+                            
+                            // 立即开始获取评分数据
+                            console.log('预先获取评分数据，项目ID:', projectId);
+                            fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error(`获取评分数据失败: ${response.status} ${response.statusText}`);
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log('预先获取评分数据成功');
+                                    scoreData = data;
+                                    
+                                    // 如果iframe已加载完成，立即更新
+                                    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+                                        console.log('iframe已加载完成，立即更新数据');
+                                        updateIframeScores(data);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('预先获取评分数据失败:', error);
+                                });
+                            
+                            // 监听iframe加载完成事件
+                            iframe.addEventListener('load', function() {
+                                console.log('评分汇总iframe加载完成');
+                                
+                                // 如果预先获取的数据已经就绪，直接使用
+                                if (scoreData) {
+                                    console.log('使用预先获取的评分数据更新iframe');
+                                    updateIframeScores(scoreData);
+                                    return;
+                                }
+                                
+                                // 如果预先获取的数据还未就绪，重新获取
+                                console.log('预先获取的数据未就绪，重新获取');
+                                fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
+                                    .then(response => {
+                                        if (!response.ok) {
+                                            throw new Error(`获取评分数据失败: ${response.status} ${response.statusText}`);
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
+                                        console.log('获取评分数据成功，更新iframe中的评分汇总表格');
+                                        updateIframeScores(data);
+                                    })
+                                    .catch(error => {
+                                        console.error('获取评分数据失败:', error);
+                                    });
+                            });
                         });
                     </script>
                     {% endif %}
@@ -1151,12 +966,12 @@
             try {
                 // 获取项目ID
                 const projectId = document.getElementById('project_id').value;
-                if (!projectId) {
+                                if (!projectId) {
                     alert('未找到项目ID');
-                    return;
-                }
-
-                // 显示加载状态
+                                    return;
+                                }
+                                
+                                // 显示加载状态
                 const originalText = this.textContent;
                 this.textContent = '保存中...';
                 this.disabled = true;
@@ -1265,13 +1080,13 @@
 
         // 使用get_score_summary接口获取评分数据
         fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=${forceRefresh}`)
-        .then(response => {
-            if (!response.ok) {
+                                    .then(response => {
+                                        if (!response.ok) {
                 throw new Error(`服务器错误 (${response.status})`);
-            }
-            return response.json();
-        })
-        .then(data => {
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
             console.log('获取评分汇总数据成功:', data);
             
             // 显示评价标准信息 - 如果元素存在才执行
@@ -1421,7 +1236,7 @@
                 // 注释掉原来的代码: form.submit();
                 calculateAndUpdateScores();
             });
-        } else {
+                                        } else {
             console.log('未找到项目信息保存按钮');
         }
         
@@ -1873,9 +1688,9 @@
                     setTimeout(() => {
                         updateCategoryBadges();
                     }, 500);
-                }
-            })
-            .catch(error => {
+                                        }
+                                    })
+                                    .catch(error => {
                 console.error('保存失败:', error);
                 alert('保存失败: ' + error.message);
             })
@@ -1969,7 +1784,7 @@
         function restoreButton(button, originalText, originalHTML) {
             if (button.tagName === 'BUTTON') {
                 button.textContent = originalText;
-            } else {
+                                } else {
                 button.innerHTML = originalHTML;
                 button.style.animation = '';
             }

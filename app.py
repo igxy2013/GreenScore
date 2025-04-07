@@ -3526,11 +3526,6 @@ def calculate_project_scores(project_id):
                 if 分类 != '总分':  # 跳过总分字段
                     分类总分[分类] += 得分
         
-        print("\n各分类总得分：")
-        for 分类, 得分 in 分类总分.items():
-            if 得分 > 0:  # 只显示有得分的分类
-                print(f"{分类}: {得分:.2f}")
-        
         # 计算项目总分
         total_score = round(sum(专业分数.values()), 2)
         print(f"\n项目总分：{total_score:.2f}")
@@ -4035,8 +4030,10 @@ def delete_project_api(project_id):
 def save_star_case():
     """保存项目数据到星级案例表"""
     try:
-        # 获取项目ID
-        project_id = request.args.get('project_id')
+        # 从URL参数或请求体中获取项目ID
+        data = request.get_json() or {}
+        project_id = request.args.get('project_id') or data.get('project_id')
+        
         if not project_id:
             return jsonify({
                 'success': False,
@@ -5266,6 +5263,15 @@ def project_info_page():
         app.logger.error(f"访问项目信息页面出错: {str(e)}")
         app.logger.error(traceback.format_exc())
         return render_template('error.html', error=f"获取项目信息失败: {str(e)}")
+
+# 添加一个新的路由处理评分汇总页面的请求
+@app.route('/score_summary_page/<project_id>')
+def score_summary_page(project_id):
+    # 查询项目信息
+    project = Project.query.filter_by(id=project_id).first()
+    
+    # 将项目信息传递给模板
+    return render_template('score_summary.html', project=project, session=session)
 
 if __name__ == '__main__':
     # 初始化数据库
