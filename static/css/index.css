@@ -343,3 +343,59 @@ input[name="score"]:focus {
     from { opacity: 0; }
     to { opacity: 1; }
 }
+
+/* Toast组件样式 */
+.custom-toast {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-radius: 4px;
+    color: white;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    animation: toast-in 0.3s ease-out forwards;
+    max-width: 350px;
+    min-width: 250px;
+}
+
+.custom-toast.success {
+    background-color: #10b981;
+}
+
+.custom-toast.error {
+    background-color: #ef4444;
+}
+
+.custom-toast.info {
+    background-color: #3b82f6;
+}
+
+.custom-toast.warning {
+    background-color: #f59e0b;
+}
+
+.custom-toast-icon {
+    margin-right: 8px;
+    font-size: 1.2rem;
+}
+
+.custom-toast-message {
+    flex-grow: 1;
+    font-size: 0.95rem;
+}
+
+@keyframes toast-in {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toast-out {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-20px); opacity: 0; }
+}
+
+/* 添加fadeIn动画 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

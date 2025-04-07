@@ -33,258 +33,309 @@
          -webkit-appearance: none;
          margin: 0;
      }
-        /* 按钮样式 */
-        .ai-extract-btn {
-            position: relative;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 20px rgba(139, 92, 246, 0.2);
-            transition: all 0.3s cubic-bezier(0.215, 0.61, 0.355, 1);
-        }
-        
-        /* 按钮悬停效果 */
-        .ai-extract-btn:hover {
-            border-color: rgba(255, 255, 255, 0.4);
-            animation: pulse 1.5s infinite;
-        }
-        
-        /* 按钮脉冲动画 */
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 0 0 rgba(139, 92, 246, 0.4);
-            }
-            70% {
-                box-shadow: 0 4px 15px rgba(79, 70, 229, 0.6), 0 0 0 10px rgba(139, 92, 246, 0);
-            }
-            100% {
-                box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 0 0 rgba(139, 92, 246, 0);
-            }
-        }
-        
-        /* 机器人图标动画 */
-        .ai-icon {
-            transition: transform 0.3s ease;
-        }
-        
-        .ai-extract-btn:hover .ai-icon {
-            animation: shake 1s ease infinite;
-        }
-        .ai-icon {
-    animation: shake 3s ease infinite;
-            }
-        
-        @keyframes shake {
-            0%, 100% { transform: rotate(0deg); }
-            20% { transform: rotate(-10deg); }
-            40% { transform: rotate(10deg); }
-            60% { transform: rotate(-5deg); }
-            80% { transform: rotate(5deg); }
-        }
-        
-        /* 按钮背景脉冲效果 */
-        .ai-pulse {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, 
-                rgba(255, 255, 255, 0) 0%, 
-                rgba(255, 255, 255, 0.2) 50%, 
-                rgba(255, 255, 255, 0) 100%);
-            opacity: 0;
-            z-index: 1;
-            pointer-events: none;
-            animation: wave 2s infinite;
-        }
-        
-        @keyframes wave {
-            0% {
-                transform: translateX(-100%);
-                opacity: 0;
-            }
-            50% {
-                opacity: 0.5;
-            }
-            100% {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-        }
-        /* 模态框样式 */
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: transparent; /* 从rgba(0, 0, 0, 0.7)改为透明 */
-            backdrop-filter: none; /* 取消模糊效果 */
-            -webkit-backdrop-filter: none; /* 取消模糊效果 */
-            z-index: 999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal-backdrop.show {
-            display: flex; /* 显示时改为flex布局 */
-        }
-        
-        .modal-content {
-            background: linear-gradient(135deg, #1e293b, #0f172a);
-            color: white;
-            border-radius: 1rem;
-            border: 1px solid rgba(139, 92, 246, 0.5); /* 增强边框可见度 */
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), /* 增强阴影 */
-                        0 0 30px rgba(139, 92, 246, 0.5); /* 增强紫色光晕 */
-            width: 100%;
-            max-width: 500px;
-            padding: 2rem;
-            transform: translateY(0) scale(1);
-            position: relative;
-            max-height: 90vh;
-            overflow-y: auto;
-            margin: 0 1rem;
-        }
-        
-        .modal-backdrop.show .modal-content {
-            transform: translateY(0) scale(1);
-        }
-        
-        /* 模态框内容样式 */
-        .modal-content h3 {
-            color: #d8b4fe;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-            position: relative;
-            padding-bottom: 0.5rem;
-        }
-        
-        .modal-content h3:after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, #d8b4fe, transparent);
-        }
-        
-        .modal-content p {
-            color: #cbd5e1;
-        }
-        
-        /* 文件上传区域样式 */
-        #wordFileInput {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px dashed rgba(139, 92, 246, 0.5);
-            border-radius: 0.5rem;
-            color: #e2e8f0;
-            transition: all 0.3s ease;
-        }
-        
-        #wordFileInput:hover, #wordFileInput:focus {
-            border-color: rgba(139, 92, 246, 0.8);
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-        }
-        
-        /* 按钮样式 */
-        .modal-content button {
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-        
-        .modal-content button:after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            transition: width 0.4s ease;
-        }
-        
-        .modal-content button:hover:after {
-            width: 100%;
-        }
-        
-        /* 提取结果区域样式 */
-        #extractedInfo {
-            background: rgba(30, 41, 59, 0.6);
-            border-radius: 0.5rem;
-            border: 1px solid rgba(139, 92, 246, 0.2);
-            color: #e2e8f0;
-        }
-        
-        /* 加载动画样式 */
-        #extractLoading i {
-            animation: spin 1s infinite linear;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        /* Tab切换按钮样式 */
-        .tab-btn {
-            transition: all 0.3s ease;
-        }
-        
-        .tab-btn.active {
-            background: rgba(139, 92, 246, 0.2);
-            color: #f3f4f6;
-            font-weight: 500;
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-        }
-        
-        /* 图片上传区域样式 */
-        #imageDropArea {
-            transition: all 0.3s ease;
-            min-height: 150px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        #imageDropArea:hover, .word-upload-area:hover {
-            border-color: #a78bfa;
-            background-color: rgba(30, 41, 59, 0.8);
-            box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-        }
-        
-        #previewContainer {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            position: relative;
-        }
-        
-        /* 选择文件后的文件名显示 */
-        #wordFileName {
-            font-style: italic;
-            color: #a78bfa;
-        }
-        
-        /* 上传区域悬停效果 */
-        .word-upload-area {
-            transition: all 0.3s ease;
-        }
-        
-        /* 动画效果 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        #wordUploadTab, #imageUploadTab {
-            animation: fadeIn 0.3s ease-out;
-        }
-    
+     
+     /* Toast组件样式 */
+     .custom-toast {
+         display: flex;
+         align-items: center;
+         padding: 12px 16px;
+         border-radius: 4px;
+         color: white;
+         margin-bottom: 8px;
+         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+         animation: toast-in 0.3s ease-out forwards;
+         max-width: 350px;
+         min-width: 250px;
+     }
+     
+     .custom-toast.success {
+         background-color: #10b981;
+     }
+     
+     .custom-toast.error {
+         background-color: #ef4444;
+     }
+     
+     .custom-toast.info {
+         background-color: #3b82f6;
+     }
+     
+     .custom-toast.warning {
+         background-color: #f59e0b;
+     }
+     
+     .custom-toast-icon {
+         margin-right: 8px;
+         font-size: 1.2rem;
+     }
+     
+     .custom-toast-message {
+         flex-grow: 1;
+         font-size: 0.95rem;
+     }
+     
+     @keyframes toast-in {
+         from { transform: translateY(20px); opacity: 0; }
+         to { transform: translateY(0); opacity: 1; }
+     }
+     
+     @keyframes toast-out {
+         from { transform: translateY(0); opacity: 1; }
+         to { transform: translateY(20px); opacity: 0; }
+     }
+     
+     /* 按钮样式 */
+     .ai-extract-btn {
+         position: relative;
+         overflow: hidden;
+         border: 1px solid rgba(255, 255, 255, 0.2);
+         box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 20px rgba(139, 92, 246, 0.2);
+         transition: all 0.3s cubic-bezier(0.215, 0.61, 0.355, 1);
+     }
+     
+     /* 按钮悬停效果 */
+     .ai-extract-btn:hover {
+         border-color: rgba(255, 255, 255, 0.4);
+         animation: pulse 1.5s infinite;
+     }
+     
+     /* 按钮脉冲动画 */
+     @keyframes pulse {
+         0% {
+             box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 0 0 rgba(139, 92, 246, 0.4);
+         }
+         70% {
+             box-shadow: 0 4px 15px rgba(79, 70, 229, 0.6), 0 0 0 10px rgba(139, 92, 246, 0);
+         }
+         100% {
+             box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4), 0 0 0 0 rgba(139, 92, 246, 0);
+         }
+     }
+     
+     /* 机器人图标动画 */
+     .ai-icon {
+         transition: transform 0.3s ease;
+     }
+     
+     .ai-extract-btn:hover .ai-icon {
+         animation: shake 1s ease infinite;
+     }
+     .ai-icon {
+ animation: shake 3s ease infinite;
+         }
+     
+     @keyframes shake {
+         0%, 100% { transform: rotate(0deg); }
+         20% { transform: rotate(-10deg); }
+         40% { transform: rotate(10deg); }
+         60% { transform: rotate(-5deg); }
+         80% { transform: rotate(5deg); }
+     }
+     
+     /* 按钮背景脉冲效果 */
+     .ai-pulse {
+         position: absolute;
+         top: 0;
+         left: 0;
+         width: 100%;
+         height: 100%;
+         background: linear-gradient(90deg, 
+             rgba(255, 255, 255, 0) 0%, 
+             rgba(255, 255, 255, 0.2) 50%, 
+             rgba(255, 255, 255, 0) 100%);
+         opacity: 0;
+         z-index: 1;
+         pointer-events: none;
+         animation: wave 2s infinite;
+     }
+     
+     @keyframes wave {
+         0% {
+             transform: translateX(-100%);
+             opacity: 0;
+         }
+         50% {
+             opacity: 0.5;
+         }
+         100% {
+             transform: translateX(100%);
+             opacity: 0;
+         }
+     }
+     /* 模态框样式 */
+     .modal-backdrop {
+         position: fixed;
+         top: 0;
+         left: 0;
+         width: 100%;
+         height: 100%;
+         background-color: transparent; /* 从rgba(0, 0, 0, 0.7)改为透明 */
+         backdrop-filter: none; /* 取消模糊效果 */
+         -webkit-backdrop-filter: none; /* 取消模糊效果 */
+         z-index: 999;
+         display: none;
+         align-items: center;
+         justify-content: center;
+     }
+     
+     .modal-backdrop.show {
+         display: flex; /* 显示时改为flex布局 */
+     }
+     
+     .modal-content {
+         background: linear-gradient(135deg, #1e293b, #0f172a);
+         color: white;
+         border-radius: 1rem;
+         border: 1px solid rgba(139, 92, 246, 0.5); /* 增强边框可见度 */
+         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), /* 增强阴影 */
+                     0 0 30px rgba(139, 92, 246, 0.5); /* 增强紫色光晕 */
+         width: 100%;
+         max-width: 500px;
+         padding: 2rem;
+         transform: translateY(0) scale(1);
+         position: relative;
+         max-height: 90vh;
+         overflow-y: auto;
+         margin: 0 1rem;
+     }
+     
+     .modal-backdrop.show .modal-content {
+         transform: translateY(0) scale(1);
+     }
+     
+     /* 模态框内容样式 */
+     .modal-content h3 {
+         color: #d8b4fe;
+         margin-bottom: 1rem;
+         font-size: 1.5rem;
+         position: relative;
+         padding-bottom: 0.5rem;
+     }
+     
+     .modal-content h3:after {
+         content: '';
+         position: absolute;
+         bottom: 0;
+         left: 0;
+         width: 100%;
+         height: 2px;
+         background: linear-gradient(90deg, #d8b4fe, transparent);
+     }
+     
+     .modal-content p {
+         color: #cbd5e1;
+     }
+     
+     /* 文件上传区域样式 */
+     #wordFileInput {
+         background: rgba(30, 41, 59, 0.7);
+         border: 1px dashed rgba(139, 92, 246, 0.5);
+         border-radius: 0.5rem;
+         color: #e2e8f0;
+         transition: all 0.3s ease;
+     }
+     
+     #wordFileInput:hover, #wordFileInput:focus {
+         border-color: rgba(139, 92, 246, 0.8);
+         box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+     }
+     
+     /* 按钮样式 */
+     .modal-content button {
+         position: relative;
+         overflow: hidden;
+         transition: all 0.3s ease;
+     }
+     
+     .modal-content button:after {
+         content: '';
+         position: absolute;
+         top: 0;
+         left: 0;
+         width: 0;
+         height: 100%;
+         background: rgba(255, 255, 255, 0.1);
+         transition: width 0.4s ease;
+     }
+     
+     .modal-content button:hover:after {
+         width: 100%;
+     }
+     
+     /* 提取结果区域样式 */
+     #extractedInfo {
+         background: rgba(30, 41, 59, 0.6);
+         border-radius: 0.5rem;
+         border: 1px solid rgba(139, 92, 246, 0.2);
+         color: #e2e8f0;
+     }
+     
+     /* 加载动画样式 */
+     #extractLoading i {
+         animation: spin 1s infinite linear;
+     }
+     
+     @keyframes spin {
+         from { transform: rotate(0deg); }
+         to { transform: rotate(360deg); }
+     }
+     
+     /* Tab切换按钮样式 */
+     .tab-btn {
+         transition: all 0.3s ease;
+     }
+     
+     .tab-btn.active {
+         background: rgba(139, 92, 246, 0.2);
+         color: #f3f4f6;
+         font-weight: 500;
+         box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+     }
+     
+     /* 图片上传区域样式 */
+     #imageDropArea {
+         transition: all 0.3s ease;
+         min-height: 150px;
+         display: flex;
+         flex-direction: column;
+         justify-content: center;
+         align-items: center;
+     }
+     
+     #imageDropArea:hover, .word-upload-area:hover {
+         border-color: #a78bfa;
+         background-color: rgba(30, 41, 59, 0.8);
+         box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+     }
+     
+     #previewContainer {
+         width: 100%;
+         display: flex;
+         justify-content: center;
+         position: relative;
+     }
+     
+     /* 选择文件后的文件名显示 */
+     #wordFileName {
+         font-style: italic;
+         color: #a78bfa;
+     }
+     
+     /* 上传区域悬停效果 */
+     .word-upload-area {
+         transition: all 0.3s ease;
+     }
+     
+     /* 动画效果 */
+     @keyframes fadeIn {
+         from { opacity: 0; transform: translateY(10px); }
+         to { opacity: 1; transform: translateY(0); }
+     }
+     
+     #wordUploadTab, #imageUploadTab {
+         animation: fadeIn 0.3s ease-out;
+     }
+ 
     </style>
     
     <script>
@@ -357,6 +408,9 @@
     </script>
 </head>
 <body class="p-6">
+    <!-- 自定义Toast组件 -->
+    <div id="custom-toast-container" class="fixed bottom-4 right-4 z-50"></div>
+    
     <!-- AI提取项目信息悬浮按钮 -->
          <!-- 添加脚本：省市二级联动 -->
     <script>
@@ -1313,18 +1367,18 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('项目信息保存成功');
+                        toast('项目信息保存成功', 'success');
                         // 更新页面显示的项目ID
                         if (data.project_id) {
                             document.getElementById('project_id').value = data.project_id;
                         }
                     } else {
-                        alert('保存失败: ' + (data.message || '未知错误'));
+                        toast('保存失败: ' + (data.message || '未知错误'), 'error');
                     }
                 })
                 .catch(error => {
                     console.error('保存项目信息出错:', error);
-                    alert('保存失败: ' + error.message);
+                    toast('保存失败: ' + error.message, 'error');
                 });
             });
         }
@@ -2512,6 +2566,68 @@
                 height: document.body.scrollHeight
             }, '*');
         });
+    </script>
+    
+    <!-- Toast通知系统 -->
+    <script>
+    // 全局Toast函数实现
+    function toast(message, type = 'info') {
+        // 尝试在当前iframe中显示Toast
+        const container = document.getElementById('custom-toast-container');
+        if (container) {
+            const toastElement = document.createElement('div');
+            toastElement.className = `custom-toast ${type}`;
+            
+            // 根据类型设置图标
+            let icon = '';
+            switch(type) {
+                case 'success':
+                    icon = '<i class="fas fa-check-circle custom-toast-icon"></i>';
+                    break;
+                case 'error':
+                    icon = '<i class="fas fa-exclamation-circle custom-toast-icon"></i>';
+                    break;
+                case 'warning':
+                    icon = '<i class="fas fa-exclamation-triangle custom-toast-icon"></i>';
+                    break;
+                case 'info':
+                default:
+                    icon = '<i class="fas fa-info-circle custom-toast-icon"></i>';
+                    break;
+            }
+            
+            toastElement.innerHTML = `
+                ${icon}
+                <div class="custom-toast-message">${message}</div>
+            `;
+            
+            container.appendChild(toastElement);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                toastElement.style.animation = 'toast-out 0.3s ease-in forwards';
+                setTimeout(() => {
+                    if (container.contains(toastElement)) {
+                        container.removeChild(toastElement);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // 同时尝试向父窗口发送消息
+        try {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'toast',
+                    message: message,
+                    toastType: type
+                }, '*');
+                console.log('向父窗口发送Toast通知:', message);
+            }
+        } catch (e) {
+            console.error('向父窗口发送消息失败:', e);
+        }
+    }
     </script>
 </body>
 </html> 

@@ -399,6 +399,10 @@
                                         console.log('iframe就绪后立即发送评分数据');
                                         updateIframeScores(scoreData);
                                     }
+                                } else if (event.data && event.data.type === 'toast') {
+                                    // 处理来自iframe的Toast通知
+                                    console.log('收到iframe发来的Toast通知:', event.data.message);
+                                    showToast(event.data.message, event.data.toastType || 'info');
                                 }
                             });
                             
@@ -1642,81 +1646,7 @@
             });
         });
     }
-</script>
 
-<style>
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    .category-filter {
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .category-filter.active {
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-        font-weight: 600;
-        transform: translateY(-1px);
-    }
-</style>
-
-    <!-- 自定义Toast组件 -->
-    <div id="custom-toast-container" class="fixed top-4 right-4 z-50"></div>
-    
-    <style>
-    .custom-toast {
-        display: flex;
-        align-items: center;
-        padding: 12px 16px;
-        border-radius: 4px;
-        color: white;
-        margin-bottom: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        animation: toast-in 0.3s ease-out forwards;
-        max-width: 350px;
-        min-width: 250px;
-    }
-    
-    .custom-toast.success {
-        background-color: #10b981;
-    }
-    
-    .custom-toast.error {
-        background-color: #ef4444;
-    }
-    
-    .custom-toast.info {
-        background-color: #3b82f6;
-    }
-    
-    .custom-toast.warning {
-        background-color: #f59e0b;
-    }
-    
-    .custom-toast-icon {
-        margin-right: 8px;
-        font-size: 1.2rem;
-    }
-    
-    .custom-toast-message {
-        flex-grow: 1;
-        font-size: 0.95rem;
-    }
-    
-    @keyframes toast-in {
-        from { transform: translateY(-20px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes toast-out {
-        from { transform: translateY(0); opacity: 1; }
-        to { transform: translateY(-20px); opacity: 0; }
-    }
-    </style>
-    
-    <script>
     // 全局Toast函数实现
     function toast(message, type = 'info') {
         const container = document.getElementById('custom-toast-container');
@@ -1758,6 +1688,10 @@
             }, 300);
         }, 3000);
     }
-    </script>
+</script>
+
+<!-- 自定义Toast组件 -->
+<div id="custom-toast-container" class="fixed top-4 right-4 z-50"></div>
+
 </body>
 </html>
