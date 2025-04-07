@@ -607,64 +607,64 @@ function updateScoreStatistics() {
 
 // 加载已保存的评分数据
 function loadSavedScores() {
-    // 从DOM元素获取当前级别和专业，如果没有直接指定的元素，则从URL中提取
+    // 从DOM元素获取当前级别和专业
     let level = document.querySelector('.current_level')?.value || '';
     let specialty = document.querySelector('.current_specialty')?.value || '';
     const standard = document.getElementById('current-project-standard')?.value || '成都市标';
     
-    // 如果没有找到级别和专业信息，尝试从URL中提取
+    // 如果无法从DOM中获取level或specialty，尝试从URL或页面内容中提取
     if (!level || !specialty) {
         try {
-            const url = new URL(window.location.href);
-            const pathParts = url.pathname.split('/');
-            const queryParams = new URLSearchParams(url.search);
+            // 1. 从URL参数获取
+            const urlParams = new URLSearchParams(window.location.search);
+            level = level || urlParams.get('level') || '';
+            specialty = specialty || urlParams.get('specialty') || '';
             
-            if (url.pathname.includes('filter_standards')) {
-                level = queryParams.get('level') || '';
-                specialty = queryParams.get('specialty') || '';
-                
-                // 如果仍然无法获取，查看URL路径中是否包含这些信息
-                if (!level || !specialty) {
-                    for (let i = 0; i < pathParts.length; i++) {
-                        if (pathParts[i] === '基本级' || pathParts[i] === '提高级') {
-                            level = pathParts[i];
-                        }
-                        if (['建筑', '结构', '给排水', '电气', '暖通', '景观', '环境健康与节能'].includes(pathParts[i])) {
-                            specialty = pathParts[i];
-                        }
+            // 2. 从URL路径获取
+            if (!level || !specialty) {
+                const pathParts = window.location.pathname.split('/');
+                for (let i = 0; i < pathParts.length; i++) {
+                    if (['基本级', '提高级'].includes(pathParts[i])) {
+                        level = pathParts[i];
+                    }
+                    if (['建筑', '结构', '给排水', '电气', '暖通', '景观', '环境健康与节能'].includes(pathParts[i])) {
+                        specialty = pathParts[i];
                     }
                 }
             }
             
-            console.log('从URL提取的信息:', { level, specialty });
+            // 3. 从页面标题或内容推断
+            if (!level || !specialty) {
+                // 查找页面头部或标题可能包含的专业信息
+                const pageTitle = document.querySelector('h1, h2, h3')?.textContent || '';
+                if (pageTitle.includes('建筑')) specialty = specialty || '建筑';
+                else if (pageTitle.includes('结构')) specialty = specialty || '结构';
+                else if (pageTitle.includes('给排水')) specialty = specialty || '给排水';
+                else if (pageTitle.includes('电气')) specialty = specialty || '电气';
+                else if (pageTitle.includes('暖通')) specialty = specialty || '暖通';
+                else if (pageTitle.includes('景观')) specialty = specialty || '景观';
+                else if (pageTitle.includes('环境健康与节能')) specialty = specialty || '环境健康与节能';
+                
+                // 通过页面元素判断级别
+                if (!level) {
+                    if (document.querySelector('select.is-achieved-select') || document.querySelector('select[name="is_achieved"]')) {
+                        level = '基本级';
+                    } else if (document.querySelector('input[name="score"]') || document.querySelector('input[type="number"]')) {
+                        level = '提高级';
+                    }
+                }
+            }
+            
+            // 4. 如果还是无法获取，设置默认值
+            level = level || '基本级';
+            specialty = specialty || '建筑';
+            
+            console.log('自动推断的评分信息:', { level, specialty });
         } catch (e) {
-            console.error('从URL提取信息失败:', e);
-        }
-    }
-    
-    if (!level || !specialty) {
-        console.error('未找到当前级别或专业信息');
-        
-        // 最后尝试从页面标题或其他元素推断
-        const pageTitle = document.querySelector('h2')?.textContent || '';
-        if (pageTitle.includes('建筑')) specialty = '建筑';
-        else if (pageTitle.includes('结构')) specialty = '结构';
-        else if (pageTitle.includes('给排水')) specialty = '给排水';
-        else if (pageTitle.includes('电气')) specialty = '电气';
-        else if (pageTitle.includes('暖通')) specialty = '暖通';
-        else if (pageTitle.includes('景观')) specialty = '景观';
-        else if (pageTitle.includes('环境健康与节能')) specialty = '环境健康与节能';
-        
-        // 判断基本级还是提高级
-        if (document.querySelector('select.is-achieved-select')) {
-            level = '基本级';
-        } else if (document.querySelector('input[name="score"]')) {
-            level = '提高级';
-        }
-        
-        if (!level || !specialty) {
-            console.error('无法确定级别或专业，无法加载数据');
-            return;
+            console.error('推断级别和专业时出错:', e);
+            // 设置默认值
+            level = level || '基本级';
+            specialty = specialty || '建筑';
         }
     }
     
@@ -796,43 +796,122 @@ function fillScoreTable(scores) {
     });
 }
 
-// 定义保存评分的函数
+// 保存评分数据函数
 function saveScoreData() {
-    // 显示保存中状态
-    const saveBtn = this;
+    console.log('saveScoreData函数被调用');
+    
+    // 获取按钮元素，可能是当前点击的按钮或指定的保存按钮
+    const saveBtn = this instanceof HTMLElement ? this : document.querySelector('.save-score-btn') || document.getElementById('saveScoreBtn');
     const originalText = saveBtn.textContent || '';
     const originalHTML = saveBtn.innerHTML;
     
+    // 将按钮显示为保存中状态
     if (saveBtn.tagName === 'BUTTON') {
         saveBtn.textContent = '保存中...';
-    } else {
+    } else if (saveBtn.id === 'floatingSaveBtn') {
+        // 特殊处理悬浮保存按钮
+        saveBtn.classList.add('saving');
         saveBtn.innerHTML = '<i class="ri-loader-2-line"></i>';
-        saveBtn.style.animation = 'rotate 1s linear infinite';
+        saveBtn.style.animation = 'pulse 1.5s infinite';
+    } else {
+        saveBtn.innerHTML = '<i class="ri-loader-2-line"></i> 保存中...';
+        saveBtn.style.animation = 'pulse 1.5s infinite';
     }
     saveBtn.disabled = true;
     
-    // 获取项目名称和ID
-    const projectName = document.getElementById('current_project_name')?.value || '';
-    const projectId = document.getElementById('project_id')?.value || document.getElementById('current-project-id')?.value;
+    // 获取项目信息
+    let projectId = document.getElementById('project_id')?.value || document.getElementById('current-project-id')?.value;
     
+    // 检查项目ID
     if (!projectId) {
-        alert('未找到项目ID');
+        console.error('未找到项目ID');
+        alert('未找到项目ID，请先选择一个项目');
         restoreButton(saveBtn, originalText, originalHTML);
         return;
     }
-
-    // 收集表格数据
-    const scoreData = collectScoreData();
-    if (scoreData.length === 0) {
-        alert('未找到可保存的评分数据，请确保页面包含评分表格。');
-        restoreButton(saveBtn, originalText, originalHTML);
-        return;
-    }
-
+    
     // 从DOM元素获取当前级别和专业
-    const level = document.querySelector('.current_level')?.value || '';
-    const specialty = document.querySelector('.current_specialty')?.value || '';
-    const standard = document.getElementById('current-project-standard')?.value || '成都市标';
+    let level = document.querySelector('.current_level')?.value || document.getElementById('current_level')?.value || document.querySelector('input[name="level"]')?.value || '';
+    let specialty = document.querySelector('.current_specialty')?.value || document.getElementById('current_specialty')?.value || document.querySelector('input[name="specialty"]')?.value || '';
+    let standard = document.getElementById('current-project-standard')?.value || '成都市标';
+    
+    // 收集评分数据
+    let scoreData = [];
+    try {
+        scoreData = collectScoreData();
+        console.log(`收集到${scoreData.length}条评分数据`);
+        
+        if (scoreData.length === 0) {
+            console.warn('没有找到有效的评分数据');
+            alert('没有找到有效的评分数据，请确认表格已正确加载');
+            restoreButton(saveBtn, originalText, originalHTML);
+            return;
+        }
+    } catch (e) {
+        console.error('收集评分数据失败:', e);
+        alert('收集评分数据失败: ' + e.message);
+        restoreButton(saveBtn, originalText, originalHTML);
+        return;
+    }
+    
+    // 如果无法从DOM中获取level或specialty，尝试从URL或页面内容中提取
+    if (!level || !specialty) {
+        console.log('正在尝试自动推断级别和专业');
+        
+        try {
+            // 尝试自动推断级别和专业
+            // 1. 从URL参数获取
+            const urlParams = new URLSearchParams(window.location.search);
+            level = level || urlParams.get('level') || '';
+            specialty = specialty || urlParams.get('specialty') || '';
+            
+            // 2. 从URL路径获取
+            if (!level || !specialty) {
+                const pathParts = window.location.pathname.split('/');
+                for (let i = 0; i < pathParts.length; i++) {
+                    if (['基本级', '提高级'].includes(pathParts[i])) {
+                        level = pathParts[i];
+                    }
+                    if (['建筑', '结构', '给排水', '电气', '暖通', '景观', '环境健康与节能'].includes(pathParts[i])) {
+                        specialty = pathParts[i];
+                    }
+                }
+            }
+            
+            // 3. 从页面标题或内容推断
+            if (!level || !specialty) {
+                // 查找页面头部或标题可能包含的专业信息
+                const pageTitle = document.querySelector('h1, h2, h3')?.textContent || '';
+                if (pageTitle.includes('建筑')) specialty = specialty || '建筑';
+                else if (pageTitle.includes('结构')) specialty = specialty || '结构';
+                else if (pageTitle.includes('给排水')) specialty = specialty || '给排水';
+                else if (pageTitle.includes('电气')) specialty = specialty || '电气';
+                else if (pageTitle.includes('暖通')) specialty = specialty || '暖通';
+                else if (pageTitle.includes('景观')) specialty = specialty || '景观';
+                else if (pageTitle.includes('环境健康与节能')) specialty = specialty || '环境健康与节能';
+                
+                // 通过页面元素判断级别
+                if (!level) {
+                    if (document.querySelector('select.is-achieved-select') || document.querySelector('select[name="is_achieved"]')) {
+                        level = '基本级';
+                    } else if (document.querySelector('input[name="score"]') || document.querySelector('input[type="number"]')) {
+                        level = '提高级';
+                    }
+                }
+            }
+            
+            // 4. 如果还是无法获取，设置默认值
+            level = level || '基本级';
+            specialty = specialty || '建筑';
+            
+            console.log('自动推断的评分信息:', { level, specialty });
+        } catch (e) {
+            console.error('推断级别和专业时出错:', e);
+            // 设置默认值
+            level = level || '基本级';
+            specialty = specialty || '建筑';
+        }
+    }
     
     const requestData = {
         level: level,
@@ -841,8 +920,11 @@ function saveScoreData() {
         scores: scoreData,
         standard: standard
     };
+    
+    console.log('准备发送请求数据:', requestData);
 
     // 发送数据到服务器
+    console.log('开始发送数据到服务器...');
     fetch('/api/save_score', {
         method: 'POST',
         headers: {
@@ -850,19 +932,26 @@ function saveScoreData() {
         },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('收到服务器响应，状态码:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('解析响应JSON数据:', data);
         if (!data.success) {
             throw new Error(data.error || '保存失败');
         }
         
-        // 显示成功消息
-        // alert('评分信息保存成功！');
+        // 触发保存成功的自定义事件
+        document.dispatchEvent(new CustomEvent('save-score-completed', { 
+            detail: { success: true, message: '评分信息保存成功！' } 
+        }));
         
         // 更新徽章状态
         if (level === '提高级') {
             // 延迟一小段时间后更新徽章，确保数据已保存到数据库
             setTimeout(() => {
+                console.log('更新徽章状态');
                 updateCategoryBadges();
             }, 500);
         }
@@ -872,6 +961,7 @@ function saveScoreData() {
         alert('保存失败: ' + error.message);
     })
     .finally(() => {
+        console.log('请求完成，恢复按钮状态');
         restoreButton(saveBtn, originalText, originalHTML);
     });
 }
@@ -1029,6 +1119,11 @@ function getCategory(content) {
 function restoreButton(button, originalText, originalHTML) {
     if (button.tagName === 'BUTTON') {
         button.textContent = originalText;
+    } else if (button.id === 'floatingSaveBtn') {
+        // 特殊处理悬浮保存按钮
+        button.classList.remove('saving');
+        button.innerHTML = originalHTML;
+        button.style.animation = '';
     } else {
         button.innerHTML = originalHTML;
         button.style.animation = '';

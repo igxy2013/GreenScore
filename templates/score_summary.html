@@ -7,8 +7,13 @@
     <!-- 引入样式文件 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
-    <!-- 添加Remix Icon图标库 -->
-    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- 使用本地Font Awesome图标库替代Remix Icon -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/icon-compatibility.css') }}">
+    
+    <!-- 引入JavaScript文件 -->
+    <script src="{{ url_for('static', filename='js/score_helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/score_summary.js') }}"></script>
+    
     <style>
         .star-icon {
             font-size: 1.5rem;

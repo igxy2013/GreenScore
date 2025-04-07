@@ -28,6 +28,16 @@
      <!-- 引入自定义样式表 -->
      <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
     
+    <!-- 引入样式文件 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    <!-- 使用本地Font Awesome图标库替代Remix Icon -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/icon-compatibility.css') }}">
+    
+    <!-- 引入JavaScript文件 -->
+    <script src="{{ url_for('static', filename='js/score_helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/score_summary.js') }}"></script>
+    
     <script>
     function filterTableByClause(query) {
         // 获取所有表格行
@@ -70,9 +80,6 @@
     <!-- 引入iframe-resizer.js用于iframe高度自适应 -->
     <script src="{{ url_for('static', filename='js/iframe-resizer.js') }}"></script>
 
-    <!-- 添加score_summary.js引用，确保在所有使用它的代码之前 -->
-    <script src="/static/js/score_summary.js"></script>
-    
     <!-- 添加menu.js引用，确保在所有使用它的代码之前 -->
     <script src="/static/js/menu.js"></script>
     
@@ -785,7 +792,7 @@
     
     
     // 项目ID缓存
-    let cachedProjectId = null;
+    let indexCachedProjectId = null;
     
     // 在页面加载完成后处理菜单展开/折叠等事件
     document.addEventListener('DOMContentLoaded', function() {
@@ -803,6 +810,25 @@
             scoreSummaryMenuItem.addEventListener('click', function(e) {
                 // 不阻止默认行为，让导航正常工作
             });
+        }
+        
+        // 为悬浮保存按钮添加点击事件
+        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+        if (floatingSaveBtn) {
+            console.log('找到悬浮保存按钮，添加点击事件');
+            
+            // 移除可能已存在的事件监听器，避免重复绑定
+            floatingSaveBtn.removeEventListener('click', floatingSaveBtnHandler);
+            floatingSaveBtn.removeEventListener('click', saveScoreData);
+            
+            // 直接绑定saveScoreData函数，与常规保存按钮保持一致
+            floatingSaveBtn.addEventListener('click', saveScoreData);
+            console.log('已为悬浮保存按钮绑定saveScoreData函数');
+        }
+        
+        // 悬浮按钮处理函数不再需要，可以移除或保留为备用
+        function floatingSaveBtnHandler() {
+            // 该函数不再使用
         }
         
         // 为当前页面设置data属性，以便menu.js可以使用它们判断当前页面
@@ -1119,12 +1145,22 @@
     <!-- 页面加载后执行的函数 -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 恢复保存的滚动位置
+            // 恢复之前保存的滚动位置
             const savedScrollPosition = sessionStorage.getItem('scrollPosition');
             if (savedScrollPosition) {
                 window.scrollTo(0, parseInt(savedScrollPosition));
                 sessionStorage.removeItem('scrollPosition');
             }
+            
+            // 监听保存成功事件
+            document.addEventListener('save-score-completed', function(event) {
+                if (event.detail && event.detail.success) {
+                    // 保存成功时显示提示
+                    if (typeof toast === 'function') {
+                        toast(event.detail.message || '评分信息保存成功！', 'success');
+                    }
+                }
+            });
             
             // 检查是否保存成功
             const saveSuccess = sessionStorage.getItem('save_success');
@@ -1626,5 +1662,102 @@
     }
 </style>
 
+    <!-- 自定义Toast组件 -->
+    <div id="custom-toast-container" class="fixed top-4 right-4 z-50"></div>
+    
+    <style>
+    .custom-toast {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-radius: 4px;
+        color: white;
+        margin-bottom: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        animation: toast-in 0.3s ease-out forwards;
+        max-width: 350px;
+        min-width: 250px;
+    }
+    
+    .custom-toast.success {
+        background-color: #10b981;
+    }
+    
+    .custom-toast.error {
+        background-color: #ef4444;
+    }
+    
+    .custom-toast.info {
+        background-color: #3b82f6;
+    }
+    
+    .custom-toast.warning {
+        background-color: #f59e0b;
+    }
+    
+    .custom-toast-icon {
+        margin-right: 8px;
+        font-size: 1.2rem;
+    }
+    
+    .custom-toast-message {
+        flex-grow: 1;
+        font-size: 0.95rem;
+    }
+    
+    @keyframes toast-in {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes toast-out {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(-20px); opacity: 0; }
+    }
+    </style>
+    
+    <script>
+    // 全局Toast函数实现
+    function toast(message, type = 'info') {
+        const container = document.getElementById('custom-toast-container');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `custom-toast ${type}`;
+        
+        // 根据类型设置图标
+        let icon = '';
+        switch(type) {
+            case 'success':
+                icon = '<i class="ri-check-line custom-toast-icon"></i>';
+                break;
+            case 'error':
+                icon = '<i class="ri-error-warning-line custom-toast-icon"></i>';
+                break;
+            case 'warning':
+                icon = '<i class="ri-alert-line custom-toast-icon"></i>';
+                break;
+            case 'info':
+            default:
+                icon = '<i class="ri-information-line custom-toast-icon"></i>';
+                break;
+        }
+        
+        toast.innerHTML = `
+            ${icon}
+            <div class="custom-toast-message">${message}</div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            toast.style.animation = 'toast-out 0.3s ease-in forwards';
+            setTimeout(() => {
+                container.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+    </script>
 </body>
 </html>
