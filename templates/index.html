@@ -1147,6 +1147,484 @@
             
             // ... 其他现有代码
         });
+        
     </script>
+    
+<script>
+        // 添加生成DWG文档的函数
+        function generateDWG() {
+        // 临时设置当前页面为dwg_export，以便高亮显示菜单项
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
+        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+        currentMenuItems.forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // 找到绿色建筑设计专篇菜单项并添加active类
+        const dwgMenuItem = document.querySelector('a[onclick="generateDWG()"]');
+        let progressInterval;
+        
+        if (dwgMenuItem) {
+            dwgMenuItem.classList.add('active');
+            dwgMenuItem.classList.add('loading');
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (dwgMenuItem) {
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+            }
+            return;
+        }
+        
+        // 调用generate_dwg接口
+        fetch(`${window.location.protocol}//${window.location.host}/api/generate_dwg`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                standard: currentProjectStandard
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成绿色建筑设计专篇失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            if (currentProjectStandard=='四川省标') {
+                a.download = '绿色建筑设计专篇（四川省标）.dwg';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '绿色建筑设计专篇（成都市标）.dwg';
+            } else {
+                a.download = '绿色建筑设计专篇.dwg';
+            }
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    dwgMenuItem.classList.remove('loading');
+                    dwgMenuItem.style.backgroundImage = '';
+                }, 500);
+            }
+        })
+        .catch(error => {
+            console.error('生成绿色建筑设计专篇失败:', error);
+            alert(error.message || '生成绿色建筑设计专篇失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+            }
+        });
+    }
+    // 添加生成Word文档的函数
+    function generateWord() {
+        // 临时设置当前页面为report_table，以便高亮显示菜单项
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
+        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+        if (currentProjectStandard=='国标') {
+            alert('当前标准下暂无报审表模板!');
+            return;
+        }
+        currentMenuItems.forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // 找到报审表菜单项并添加active类
+        const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
+        let progressInterval;
+        
+        if (wordMenuItem) {
+            wordMenuItem.classList.add('active');
+            wordMenuItem.classList.add('loading');
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (wordMenuItem) {
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+            }
+            return;
+        }
+        
+        // 调用generate_word接口
+        fetch('/api/generate_word', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                standard: currentProjectStandard
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成报审表失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            if (currentProjectStandard=='四川省标') {
+                a.download = '四川省绿色建筑报审表.docx';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '成都市绿色建筑报审表.docx';
+            } else {
+                a.download = '报审表.docx';
+            }
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    wordMenuItem.classList.remove('loading');
+                    wordMenuItem.style.backgroundImage = '';
+                }, 500);
+            }
+        })
+        .catch(error => {
+            console.error('生成报审表失败:', error);
+            alert(error.message || '生成报审表失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+            }
+        });
+    }
+            // 为评分汇总菜单添加点击事件
+            const scoreSummaryMenuItem = document.getElementById('scoreSummaryMenuItem');
+        if (scoreSummaryMenuItem) {
+            scoreSummaryMenuItem.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                // 移除其他菜单项的active类
+                const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+                currentMenuItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // 添加active类和loading效果
+                this.classList.add('active');
+                this.classList.add('loading');
+                let progressInterval;
+                
+                // 获取项目ID
+                const projectId = document.getElementById('current-project-id').value;
+                if (!projectId) {
+                    alert('请先选择项目');
+                    this.classList.remove('active');
+                    this.classList.remove('loading');
+                    return;
+                }
+                
+                // 创建进度条动画，使用与报审表相同的实现方式
+                let progress = 0;
+                progressInterval = setInterval(() => {
+                    progress += 2;
+                    if (progress > 90) {
+                        clearInterval(progressInterval);
+                    }
+                    // 使用backgroundImage线性渐变实现进度条
+                    this.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+                }, 100);
+                
+                try {
+                    // 获取评分汇总数据
+                    const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
+                    const summaryData = await summaryResponse.json();
+                    console.log('获取评分汇总数据:', summaryData);
+                    
+                    // 将数据存储到 sessionStorage
+                    sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
+                    
+                    // 完成进度条 - 循序渐进地增长到100%
+                    clearInterval(progressInterval);
+                    
+                    // 获取当前进度
+                    const currentProgress = parseInt(this.style.backgroundImage.match(/(\d+)%/) ? this.style.backgroundImage.match(/(\d+)%/)[1] : 0);
+                    // 计算剩余步数
+                    const stepsLeft = Math.ceil((100 - currentProgress) / 2);
+                    // 创建新的进度条动画，从当前进度到100%
+                    let finalProgress = currentProgress;
+                    progressInterval = setInterval(() => {
+                        finalProgress += 2;
+                        this.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${finalProgress}%, transparent ${finalProgress}%)`;
+                        
+                        if (finalProgress >= 100) {
+                            clearInterval(progressInterval);
+                            // 进度条达到100%后立即跳转
+                            window.location.href = this.getAttribute('href');
+                        }
+                    }, 40); // 稍微加快速度，每40毫秒更新一次
+                    
+                } catch (error) {
+                    console.error('获取评分数据失败:', error);
+                    alert(`获取评分数据失败: ${error.message}`);
+                    
+                    // 重置进度条
+                    clearInterval(progressInterval);
+                    this.classList.remove('active');
+                    this.classList.remove('loading');
+                    this.style.backgroundImage = '';
+                }
+            });
+        }
+        // 为项目信息保存按钮添加点击事件
+        const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
+        if (saveProjectInfoBtn) {
+            console.log('找到项目信息保存按钮，添加点击事件');
+            saveProjectInfoBtn.addEventListener('click', function(e) {
+                e.preventDefault(); // 阻止表单默认提交
+                
+                // 显示保存中状态
+                const originalText = saveProjectInfoBtn.textContent;
+                saveProjectInfoBtn.textContent = '保存中...';
+                saveProjectInfoBtn.disabled = true;
+
+                // 获取表单元素
+                const form = saveProjectInfoBtn.closest('form');
+                if (!form) {
+                    console.error('未找到表单元素');
+                    saveProjectInfoBtn.textContent = originalText;
+                    saveProjectInfoBtn.disabled = false;
+                    return;
+                }
+                
+                // 使用FormData获取表单数据
+                const formData = new FormData(form);
+                
+                // 临时保存关键字段值到sessionStorage
+                const greenArea = document.getElementById('green_area').value;
+                if (greenArea) {
+                    sessionStorage.setItem('saved_green_area', greenArea);
+                    console.log('保存绿地面积临时数据:', greenArea);
+                }
+                
+                // 添加详细表单标志
+                formData.append('detail_form', '1');
+                
+                // 保存当前滚动位置
+                const scrollPosition = window.scrollY;
+                
+                // 使用AJAX提交表单，防止页面刷新
+                fetch('/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('提交失败，请稍后重试');
+                    }
+                    return response.json().catch(() => {
+                        console.log('返回值不是JSON格式，可能是重定向响应');
+                        // 如果服务器返回了重定向响应，我们手动重载页面并保留滚动位置
+                        sessionStorage.setItem('scrollPosition', scrollPosition);
+                        window.location.reload();
+                        throw new Error('服务器返回了非JSON响应');
+                    });
+                })
+                .then(result => {
+                    // 恢复按钮状态
+                    saveProjectInfoBtn.textContent = originalText;
+                    saveProjectInfoBtn.disabled = false;
+                    
+                    // 显示成功消息
+                    alert('项目信息保存成功');
+                    
+                    // 记录保存成功状态，用于清除临时数据
+                    sessionStorage.setItem('save_success', 'true');
+                    
+                    // 刷新页面但保持滚动位置
+                    sessionStorage.setItem('scrollPosition', scrollPosition);
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('保存项目信息出错:', error);
+                    
+                    // 恢复按钮状态
+                    saveProjectInfoBtn.textContent = originalText;
+                    saveProjectInfoBtn.disabled = false;
+                    
+                    // 显示错误消息，但不是重定向错误
+                    if (!error.message.includes('非JSON响应')) {
+                        alert('保存失败: ' + error.message);
+                    }
+                });
+                
+                // 不使用传统的form.submit()，防止页面刷新
+                // 注释掉原来的代码: form.submit();
+                calculateAndUpdateScores();
+            });
+        } else {
+            console.log('未找到项目信息保存按钮');
+        }        
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 如果是提高级页面，初始化分类过滤器
+        if ('{{ current_level }}' === '提高级') {
+            initializeCategoryFilters();
+        }
+    });
+
+    // 初始化分类过滤器功能
+    function initializeCategoryFilters() {
+        const filterButtons = document.querySelectorAll('.category-filter');
+        const tableRows = document.querySelectorAll('table tbody tr');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // 移除所有按钮的active状态
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                // 添加当前按钮的active状态
+                this.classList.add('active');
+                
+                const selectedCategory = this.getAttribute('data-category');
+                
+                // 过滤表格行
+                tableRows.forEach(row => {
+                    if (this.id === 'filter-all') {
+                        // 如果点击"全部"按钮，显示所有行
+                        row.style.display = '';
+                        row.style.animation = 'fadeIn 0.3s ease-in';
+                    } else {
+                        // 获取行的分类（在第二列）
+                        const rowCategory = row.querySelector('td:nth-child(2) .category-tag')?.textContent.trim();
+                        if (rowCategory === selectedCategory) {
+                            row.style.display = '';
+                            row.style.animation = 'fadeIn 0.3s ease-in';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+    }
+</script>
+
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .category-filter {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .category-filter.active {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+        font-weight: 600;
+        transform: translateY(-1px);
+    }
+</style>
+
 </body>
 </html>

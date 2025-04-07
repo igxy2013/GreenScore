@@ -344,6 +344,455 @@ function initializeScoreSummary() {
         }
     }
 }
+    // 更新评分汇总表格
+    function updateScoreSummaryTables(data) {
+        console.log('更新评分汇总表格:', data);
+        
+        // 显示最后更新时间
+        const lastUpdateTimeElement = document.getElementById('lastUpdateTime');
+        if (lastUpdateTimeElement && data.timestamp) {
+            lastUpdateTimeElement.textContent = `最后更新时间: ${data.timestamp}`;
+        }
+        
+        // 更新专业得分行
+        const specialtyScoresRow = document.getElementById('specialty-scores-row');
+        if (specialtyScoresRow && data.specialty_scores) {
+            const specialtyScores = data.specialty_scores;
+            
+            // 获取项目评价标准
+            const projectStandard = document.getElementById('current-project-standard')?.value || '';
+            
+            // 显示或隐藏环境健康与节能专业列
+            const envHealthEnergyHeader = document.getElementById('env_health_energy_header');
+            const envHealthEnergyColumn = document.getElementById('env_health_energy_column');
+            if (envHealthEnergyHeader) {
+                envHealthEnergyHeader.style.display = projectStandard === '四川省标' ? '' : 'none';
+                if (envHealthEnergyColumn) {
+                    envHealthEnergyColumn.style.display = projectStandard === '四川省标' ? '' : 'none';
+                }
+            }
+            
+            // 更新各专业得分
+            updateCell(specialtyScoresRow, 1, specialtyScores['建筑专业'] || 0);
+            updateCell(specialtyScoresRow, 2, specialtyScores['结构专业'] || 0);
+            updateCell(specialtyScoresRow, 3, specialtyScores['给排水专业'] || 0);
+            updateCell(specialtyScoresRow, 4, specialtyScores['电气专业'] || 0);
+            updateCell(specialtyScoresRow, 5, specialtyScores['暖通专业'] || 0);
+            updateCell(specialtyScoresRow, 6, specialtyScores['景观专业'] || 0);
+            
+            // 如果是四川省标，更新环境健康与节能专业得分
+            if (projectStandard === '四川省标') {
+                updateCell(specialtyScoresRow, 7, specialtyScores['环境健康与节能专业'] || 0);
+            }
+            
+            // 更新总分
+            const totalScore = data.total_score || 0;
+            const totalScoreCell = specialtyScoresRow.querySelector('.total-score');
+            if (totalScoreCell) {
+                totalScoreCell.textContent = totalScore.toFixed(1);
+            }
+        }
+        
+        // 更新分类得分行
+        const categoryScoresRow = document.getElementById('category-scores-row');
+        if (categoryScoresRow && data.specialty_scores_by_category) {
+            // 计算各分类得分
+            const categoryScores = {
+                '安全耐久': 0,
+                '健康舒适': 0,
+                '生活便利': 0,
+                '资源节约': 0,
+                '环境宜居': 0,
+                '提高与创新': 0
+            };
+            
+            // 遍历各专业的分类得分
+            Object.values(data.specialty_scores_by_category).forEach(specialtyData => {
+                Object.entries(specialtyData).forEach(([category, score]) => {
+                    if (category !== '总分' && categoryScores.hasOwnProperty(category)) {
+                        categoryScores[category] += parseFloat(score) || 0;
+                    }
+                });
+            });
+            
+            // 更新各分类得分
+            updateCell(categoryScoresRow, 1, categoryScores['安全耐久']);
+            updateCell(categoryScoresRow, 2, categoryScores['健康舒适']);
+            updateCell(categoryScoresRow, 3, categoryScores['生活便利']);
+            updateCell(categoryScoresRow, 4, categoryScores['资源节约']);
+            updateCell(categoryScoresRow, 5, categoryScores['环境宜居']);
+            updateCell(categoryScoresRow, 6, categoryScores['提高与创新']);
+            
+            // 更新总分
+            const totalScore = Object.values(categoryScores).reduce((sum, score) => sum + score, 0);
+            updateCell(categoryScoresRow, 7, totalScore);
+            
+            // 更新达标判断行
+            const judgmentRow = categoryScoresRow.parentNode.querySelector('tr:nth-child(3)');
+            if (judgmentRow) {
+                // 使用静态的最低分值数据
+                const minScores = {
+                    '安全耐久': 30.0,
+                    '健康舒适': 30.0,
+                    '生活便利': 21.0,
+                    '资源节约': 60.0,
+                    '环境宜居': 30.0,
+                    '提高与创新': 0.0
+                };
+                const totalMinScore = 171; // 静态总分
+                
+                // 判断各分类是否达标
+                updateJudgmentCell(judgmentRow, 1, categoryScores['安全耐久'] >= minScores['安全耐久']);
+                updateJudgmentCell(judgmentRow, 2, categoryScores['健康舒适'] >= minScores['健康舒适']);
+                updateJudgmentCell(judgmentRow, 3, categoryScores['生活便利'] >= minScores['生活便利']);
+                updateJudgmentCell(judgmentRow, 4, categoryScores['资源节约'] >= minScores['资源节约']);
+                updateJudgmentCell(judgmentRow, 5, categoryScores['环境宜居'] >= minScores['环境宜居']);
+                updateJudgmentCell(judgmentRow, 6, categoryScores['提高与创新'] >= minScores['提高与创新']);
+                
+                // 判断总分是否达标 - 只有当所有分类都达标时，总分才达标
+                const allCategoriesAchieved = 
+                    categoryScores['安全耐久'] >= minScores['安全耐久'] &&
+                    categoryScores['健康舒适'] >= minScores['健康舒适'] &&
+                    categoryScores['生活便利'] >= minScores['生活便利'] &&
+                    categoryScores['资源节约'] >= minScores['资源节约'] &&
+                    categoryScores['环境宜居'] >= minScores['环境宜居'] &&
+                    categoryScores['提高与创新'] >= minScores['提高与创新'];
+                
+                // 总分达标需要同时满足：1.总分达到要求 2.所有分类都达标
+                updateJudgmentCell(judgmentRow, 7, totalScore >= totalMinScore && allCategoriesAchieved);
+            }
+            
+            // 更新星级判定
+            setTimeout(updateStarRating, 100);
+        }
+    }
+    
+    // 更新表格单元格
+    function updateCell(row, cellIndex, value) {
+        const cell = row.querySelector(`td:nth-child(${cellIndex + 1})`);
+        if (cell) {
+            cell.textContent = typeof value === 'number' ? value.toFixed(1) : value;
+        }
+    }
+    
+    // 更新判断单元格
+    function updateJudgmentCell(row, cellIndex, isAchieved) {
+        const cell = row.querySelector(`td:nth-child(${cellIndex + 1})`);
+        if (cell) {
+            if (isAchieved) {
+                cell.textContent = '达标';
+                cell.className = 'px-6 py-4 text-green-600 bg-green-50';
+            } else {
+                cell.textContent = '未达标';
+                cell.className = 'px-6 py-4 text-red-600 bg-red-50';
+            }
+        }
+    }
+    // 添加评分统计更新功能
+    function updateScoreStatistics() {
+        // 获取所有填写了得分的条目
+        const rows = document.querySelectorAll('table tbody tr');
+        
+        // 准备各分类的得分统计
+        const categoryScores = {
+            '安全耐久': 0,
+            '健康舒适': 0,
+            '生活便利': 0,
+            '资源节约': 0,
+            '环境宜居': 0,
+            '提高与创新': 0
+        };
+        
+        // 计算各分类的得分
+        rows.forEach(row => {
+            const category = row.querySelector('td:nth-child(2) span')?.textContent.trim();
+            // 检查是否有输入框，如果没有则查找span元素（针对分值为'-'的情况）
+            const scoreInput = row.querySelector('td:nth-child(5) input');
+            let score = 0;
+            
+            if (scoreInput) {
+                // 如果有输入框，获取其值
+                if (scoreInput.value && !isNaN(parseFloat(scoreInput.value))) {
+                    score = parseFloat(scoreInput.value);
+                }
+            } else {
+                // 如果没有输入框，查找span元素（针对分值为'-'的情况）
+                const scoreSpan = row.querySelector('td:nth-child(5) span');
+                if (scoreSpan && scoreSpan.textContent === '0') {
+                    score = 0;
+                }
+            }
+            
+            if (category && categoryScores.hasOwnProperty(category)) {
+                categoryScores[category] += score;
+            }
+        });
+        
+        // 更新统计表格
+        const statTable = document.querySelector('.mt-10 table');
+        if (statTable) {
+            const statRow = statTable.querySelector('tbody tr');
+            if (statRow) {
+                // 更新各分类得分
+                updateCategoryCell(statRow, 1, categoryScores['安全耐久']);
+                updateCategoryCell(statRow, 2, categoryScores['健康舒适']);
+                updateCategoryCell(statRow, 3, categoryScores['生活便利']);
+                updateCategoryCell(statRow, 4, categoryScores['资源节约']);
+                updateCategoryCell(statRow, 5, categoryScores['环境宜居']);
+                updateCategoryCell(statRow, 6, categoryScores['提高与创新']);
+                
+                // 计算总分
+                const totalScore = Object.values(categoryScores).reduce((sum, score) => sum + score, 0);
+                updateCategoryCell(statRow, 7, totalScore);
+            }
+        }
+    }
+    // 填充表格数据
+    function fillScoreTable(scores) {
+        const rows = document.querySelectorAll('table tbody tr');
+        const level = '{{ current_level }}';
+        
+        rows.forEach(row => {
+            const clauseNumber = row.querySelector('td:nth-child(1)')?.textContent.trim();
+            if (!clauseNumber) return;
+            
+            // 查找匹配的评分数据
+            const scoreData = scores.find(s => s.clause_number === clauseNumber);
+            if (!scoreData) return;
+            
+            console.log(`填充数据: 条文号=${clauseNumber}, 是否达标=${scoreData.is_achieved}, 技术措施长度=${scoreData.technical_measures ? scoreData.technical_measures.length : 0}`);
+            
+            // 根据不同级别填充数据
+            if (level === '基本级') {
+                // 选择"是否达标"下拉框
+                const selectElement = row.querySelector('select.is-achieved-select');
+                if (selectElement) {
+                    selectElement.value = scoreData.is_achieved;
+                    console.log(`设置是否达标: ${scoreData.is_achieved}`);
+                } else {
+                    console.log(`未找到是否达标下拉框: 条文号=${clauseNumber}`);
+                }
+                
+                // 填充技术措施
+                const textareaElement = row.querySelector('textarea.technical-measures');
+                if (textareaElement) {
+                    textareaElement.value = scoreData.technical_measures || '';
+                    console.log(`设置技术措施: 长度=${scoreData.technical_measures ? scoreData.technical_measures.length : 0}`);
+                } else {
+                    console.log(`未找到技术措施文本框: 条文号=${clauseNumber}`);
+                }
+            } else if (level === '提高级') {
+                // 填充得分
+                const inputElement = row.querySelector('input[name="score"]');
+                if (inputElement) {
+                    inputElement.value = scoreData.score || '0';
+                    console.log(`设置得分: ${scoreData.score}`);
+                } else {
+                    console.log(`未找到得分输入框: 条文号=${clauseNumber}`);
+                }
+                
+                // 填充技术措施
+                const textareaElement = row.querySelector('textarea.technical-measures');
+                if (textareaElement) {
+                    textareaElement.value = scoreData.technical_measures || '';
+                    console.log(`设置技术措施: 长度=${scoreData.technical_measures ? scoreData.technical_measures.length : 0}`);
+                } else {
+                    console.log(`未找到技术措施文本框: 条文号=${clauseNumber}`);
+                }
+            }
+        });
+    }
+    // 加载已保存的评分数据
+    function loadSavedScores() {
+        const level = '{{ current_level }}';
+        const specialty = '{{ current_specialty }}';
+        const standard = '{{ project.standard if project and project.standard else "成都市标" }}';
+        
+        // 获取项目ID（如果有的话）
+        let projectId = null;
+        const projectIdField = document.getElementById('project_id');
+        if (projectIdField) {
+            projectId = projectIdField.value;
+        }
+        
+        // 构建API URL
+        let apiUrl = `/api/load_scores?level=${encodeURIComponent(level)}&specialty=${encodeURIComponent(specialty)}&standard=${encodeURIComponent(standard)}`;
+        if (projectId) {
+            apiUrl += `&project_id=${encodeURIComponent(projectId)}`;
+        }
+        
+        console.log('加载评分数据URL:', apiUrl);
+        
+        // 请求服务器数据
+        fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('网络响应异常');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.scores && data.scores.length > 0) {
+                // 填充表格数据
+                fillScoreTable(data.scores);
+                console.log('成功加载评分数据，共', data.scores.length, '条记录');
+                
+                // 如果需要，可以更新统计数据
+                if (level === '提高级') {
+                    updateScoreStatistics();
+                }
+            } else {
+                console.log('未找到评分数据或数据为空');
+            }
+        })
+        .catch(error => {
+            console.error('加载评分数据失败:', error);
+        });
+    }
+        // 定义保存评分的函数
+        function saveScoreData() {
+            // 显示保存中状态
+            const saveBtn = this;
+            const originalText = saveBtn.textContent || '';
+            const originalHTML = saveBtn.innerHTML;
+            
+            if (saveBtn.tagName === 'BUTTON') {
+                saveBtn.textContent = '保存中...';
+            } else {
+                saveBtn.innerHTML = '<i class="ri-loader-2-line"></i>';
+                saveBtn.style.animation = 'rotate 1s linear infinite';
+            }
+            saveBtn.disabled = true;
+            
+            // 获取项目名称和ID
+            const projectName = document.getElementById('current_project_name')?.value || '';
+            const projectId = document.getElementById('project_id')?.value;
+            
+            if (!projectId) {
+                alert('未找到项目ID');
+                restoreButton(saveBtn, originalText, originalHTML);
+                return;
+            }
+
+            // 收集表格数据
+            const scoreData = collectScoreData();
+            if (scoreData.length === 0) {
+                alert('未找到可保存的评分数据，请确保页面包含评分表格。');
+                restoreButton(saveBtn, originalText, originalHTML);
+                return;
+            }
+
+            const requestData = {
+                level: '{{ current_level }}',
+                specialty: '{{ current_specialty }}',
+                project_id: projectId,
+                scores: scoreData,
+                standard: '{{ project.standard if project and project.standard else "成都市标" }}'
+            };
+
+            // 发送数据到服务器
+            fetch('/api/save_score', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.error || '保存失败');
+                }
+                
+                // 显示成功消息
+                // alert('评分信息保存成功！');
+                
+                // 更新徽章状态
+                if ('{{ current_level }}' === '提高级') {
+                    // 延迟一小段时间后更新徽章，确保数据已保存到数据库
+                    setTimeout(() => {
+                        updateCategoryBadges();
+                    }, 500);
+                }
+            })
+            .catch(error => {
+                console.error('保存失败:', error);
+                alert('保存失败: ' + error.message);
+            })
+            .finally(() => {
+                restoreButton(saveBtn, originalText, originalHTML);
+            });
+        }
+
+        // 辅助函数：收集评分数据
+        function collectScoreData() {
+            const scoreData = [];
+            const rows = document.querySelectorAll('table tbody tr');
+            const currentLevel = '{{ current_level }}';
+            
+            rows.forEach((row, index) => {
+                try {
+                    // 基本级
+                    if (currentLevel === '基本级') {
+                        const clauseNumber = row.querySelector('td:nth-child(1)')?.textContent.trim();
+                        if (!clauseNumber) return;
+                        
+                        const isAchievedSelect = row.querySelector('select.is-achieved-select');
+                        if (!isAchievedSelect) return;
+                        
+                        const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures');
+                        if (!technicalMeasuresTextarea) return;
+                        
+                        const contentText = row.querySelector('td:nth-child(3)')?.textContent.trim() || '';
+                        let category = getCategory(contentText);
+                        
+                        scoreData.push({
+                            project_name: document.getElementById('current_project_name')?.value || '',
+                            clause_number: clauseNumber,
+                            category: category,
+                            is_achieved: isAchievedSelect.value,
+                            score: '0',
+                            technical_measures: technicalMeasuresTextarea.value || ''
+                        });
+                    } 
+                    // 提高级
+                    else if (currentLevel === '提高级') {
+                        const clauseNumber = row.querySelector('td:nth-child(1)')?.textContent.trim();
+                        if (!clauseNumber) return;
+                        
+                        const categoryElement = row.querySelector('td:nth-child(2) span');
+                        if (!categoryElement) return;
+                        
+                        const category = categoryElement.textContent.trim();
+                        const scoreInput = row.querySelector('input[name="score"]');
+                        const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures');
+                        
+                        let score = '0';
+                        if (scoreInput) {
+                            score = scoreInput.value || '0';
+                            const maxScore = parseFloat(row.querySelector('td:nth-child(4)')?.textContent.trim());
+                            if (!isNaN(maxScore) && parseFloat(score) > maxScore) {
+                                score = maxScore.toString();
+                                scoreInput.value = score;
+                            }
+                        }
+                        
+                        scoreData.push({
+                            project_name: document.getElementById('current_project_name')?.value || '',
+                            clause_number: clauseNumber,
+                            category: category,
+                            is_achieved: '是',
+                            score: score,
+                            technical_measures: technicalMeasuresTextarea?.value || ''
+                        });
+                    }
+                } catch (rowError) {
+                    console.error(`处理第 ${index+1} 行时出错:`, rowError);
+                }
+            });
+            
+            return scoreData;
+        }
 
 // 初始化评分相关功能
 document.addEventListener('DOMContentLoaded', initializeScoreSummary);
