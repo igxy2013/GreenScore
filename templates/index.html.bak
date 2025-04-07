@@ -949,6 +949,182 @@
         });
     }
     </script>
+
+    <script>
+        // 通用模态窗口函数
+        // 加载中模态窗口
+        function showLoadingModal(message = '处理中，请稍候...') {
+            // 检查是否已存在加载模态窗口
+            let loadingModal = document.getElementById('loadingModal');
+            
+            // 如果不存在，创建一个
+            if (!loadingModal) {
+                loadingModal = document.createElement('div');
+                loadingModal.id = 'loadingModal';
+                loadingModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                loadingModal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+                        <div class="animate-spin mb-4 mx-auto">
+                            <i class="ri-loader-4-line text-4xl text-primary"></i>
+                        </div>
+                        <p id="loadingMessage" class="text-gray-700"></p>
+                    </div>
+                `;
+                document.body.appendChild(loadingModal);
+            }
+            
+            // 设置消息并显示
+            const messageElement = loadingModal.querySelector('#loadingMessage');
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            
+            loadingModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 隐藏加载中模态窗口
+        function hideLoadingModal() {
+            const loadingModal = document.getElementById('loadingModal');
+            if (loadingModal) {
+                loadingModal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        }
+        
+        // 显示错误模态窗口
+        function showErrorModal(message, title = '出错了') {
+            // 隐藏加载窗口
+            hideLoadingModal();
+            
+            // 检查是否已存在错误模态窗口
+            let errorModal = document.getElementById('errorModal');
+            
+            // 如果不存在，创建一个
+            if (!errorModal) {
+                errorModal = document.createElement('div');
+                errorModal.id = 'errorModal';
+                errorModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                errorModal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 id="errorTitle" class="text-xl font-bold text-red-600"></h3>
+                            <button class="text-gray-500 hover:text-gray-700" onclick="closeErrorModal()" aria-label="关闭">
+                                <i class="ri-close-line text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="mb-6">
+                            <p id="errorMessage" class="text-gray-700"></p>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="closeErrorModal()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                我知道了
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(errorModal);
+            }
+            
+            // 设置标题和消息并显示
+            const titleElement = errorModal.querySelector('#errorTitle');
+            const messageElement = errorModal.querySelector('#errorMessage');
+            
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+            
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            
+            errorModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭错误模态窗口
+        function closeErrorModal() {
+            const errorModal = document.getElementById('errorModal');
+            if (errorModal) {
+                errorModal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        }
+        
+        // 显示成功模态窗口
+        function showSuccessModal(message, title = '操作成功') {
+            // 隐藏加载窗口
+            hideLoadingModal();
+            
+            // 检查是否已存在成功模态窗口
+            let successModal = document.getElementById('successModal');
+            
+            // 如果不存在，创建一个
+            if (!successModal) {
+                successModal = document.createElement('div');
+                successModal.id = 'successModal';
+                successModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                successModal.innerHTML = `
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 id="successTitle" class="text-xl font-bold text-green-600"></h3>
+                            <button class="text-gray-500 hover:text-gray-700" onclick="closeSuccessModal()" aria-label="关闭">
+                                <i class="ri-close-line text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="mb-6">
+                            <p id="successMessage" class="text-gray-700"></p>
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="closeSuccessModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                确定
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(successModal);
+            }
+            
+            // 设置标题和消息并显示
+            const titleElement = successModal.querySelector('#successTitle');
+            const messageElement = successModal.querySelector('#successMessage');
+            
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+            
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+            
+            successModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 关闭成功模态窗口
+        function closeSuccessModal() {
+            const successModal = document.getElementById('successModal');
+            if (successModal) {
+                successModal.classList.add('hidden');
+                document.body.style.overflow = ''; // 恢复背景滚动
+            }
+        }
+        
+        // 点击模态窗口外部关闭
+        document.addEventListener('click', function(e) {
+            const errorModal = document.getElementById('errorModal');
+            const successModal = document.getElementById('successModal');
+            
+            if (errorModal && !errorModal.querySelector('.bg-white').contains(e.target) && !errorModal.classList.contains('hidden')) {
+                closeErrorModal();
+            }
+            
+            if (successModal && !successModal.querySelector('.bg-white').contains(e.target) && !successModal.classList.contains('hidden')) {
+                closeSuccessModal();
+            }
+        });
+    </script>
+
     <!-- 评分汇总按钮的JS代码 -->
     <script>
         // 获取当前选中的项目ID
@@ -1115,6 +1291,13 @@
         }
     });
     </script>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
 
     <!-- 页面加载后执行的函数 -->
     <script>

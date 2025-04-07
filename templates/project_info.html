@@ -358,6 +358,139 @@
 </head>
 <body class="p-6">
     <!-- AI提取项目信息悬浮按钮 -->
+         <!-- 添加脚本：省市二级联动 -->
+    <script>
+        // 省市联动功能
+        let provinceData = {};
+        let cityData = {};
+        
+        // 初始化省市数据
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeProvinceCitySelectors();
+        });
+
+        // 初始化省市选择器
+        function initializeProvinceCitySelectors() {
+            const provinceSelect = document.getElementById('province');
+            const citySelect = document.getElementById('city');
+            const projectLocationInput = document.getElementById('project_location');
+            
+            // 只在项目表单页面初始化
+            if (provinceSelect && citySelect && projectLocationInput) {
+                // 设置loading状态，防止抖动
+                provinceSelect.innerHTML = '<option value="">加载中...</option>';
+                citySelect.innerHTML = '<option value="">请选择城市</option>';
+                
+                // 加载省市数据
+                fetch('/static/json/province_city.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        provinceData = data['86']; // 所有省份
+                        cityData = data; // 所有城市数据
+                        
+                        // 添加省份选项
+                        let provinceOptions = '<option value="">请选择省份</option>';
+                        for (let code in provinceData) {
+                            provinceOptions += `<option value="${code}">${provinceData[code]}</option>`;
+                        }
+                        provinceSelect.innerHTML = provinceOptions;
+                        
+                        // 如果有已保存的地址，尝试初始化选择框
+                        if (projectLocationInput.value) {
+                            const parts = projectLocationInput.value.split(' ');
+                            if (parts.length > 0) {
+                                const provinceName = parts[0];
+                                let provinceCode = null;
+                                
+                                // 查找省份代码
+                                for (let code in provinceData) {
+                                    if (provinceData[code] === provinceName) {
+                                        provinceCode = code;
+                                        provinceSelect.value = code;
+                                        
+                                        // 加载城市选项
+                                        const cities = cityData[code] || {};
+                                        let cityOptions = '<option value="">请选择城市</option>';
+                                        for (let cityCode in cities) {
+                                            cityOptions += `<option value="${cityCode}">${cities[cityCode]}</option>`;
+                                        }
+                                        citySelect.innerHTML = cityOptions;
+                                        
+                                        // 如果有城市数据，设置选中状态
+                                        if (parts.length > 1) {
+                                            const cityName = parts[1];
+                                            for (let cityCode in cities) {
+                                                if (cities[cityCode] === cityName) {
+                                                    citySelect.value = cityCode;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('加载省市数据失败:', error);
+                        provinceSelect.innerHTML = '<option value="">请选择省份</option>';
+                    });
+            }
+        }
+        
+        // 更新省市选择
+        function updateProvinceCity() {
+            const provinceSelect = document.getElementById('province');
+            const citySelect = document.getElementById('city');
+            const projectLocationInput = document.getElementById('project_location');
+            const climateZoneSelect = document.getElementById('climate_zone');
+            
+            if (!provinceSelect || !citySelect || !projectLocationInput) return;
+            
+            // 如果切换了省份，加载对应的城市
+            if (provinceSelect.value && provinceSelect.value !== citySelect.dataset.provinceCode) {
+                citySelect.dataset.provinceCode = provinceSelect.value;
+                
+                // 构建城市选项
+                const cities = cityData[provinceSelect.value] || {};
+                let cityOptions = '<option value="">请选择城市</option>';
+                for (let cityCode in cities) {
+                    cityOptions += `<option value="${cityCode}">${cities[cityCode]}</option>`;
+                }
+                citySelect.innerHTML = cityOptions;
+                citySelect.value = "";
+            }
+            
+            // 更新地址输入框
+            const provinceName = provinceSelect.options[provinceSelect.selectedIndex]?.text || '';
+            const cityName = citySelect.options[citySelect.selectedIndex]?.text || '';
+            
+            let location = [];
+            if (provinceName && provinceName !== '请选择省份' && provinceName !== '加载中...') location.push(provinceName);
+            if (cityName && cityName !== '请选择城市') location.push(cityName);
+            
+            projectLocationInput.value = location.join(' ');
+            
+            // 更新气候区划
+            if (climateZoneSelect && provinceName && cityName && 
+                provinceName !== '请选择省份' && provinceName !== '加载中...' && 
+                cityName !== '请选择城市') {
+                
+                const zoneInfo = getClimateZone(provinceName, cityName);
+                if (zoneInfo) {
+                    // 设置气候区划选择框的值
+                    for (let i = 0; i < climateZoneSelect.options.length; i++) {
+                        if (climateZoneSelect.options[i].value === zoneInfo.气候区划) {
+                            climateZoneSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+    </script>
     <div>
         <button id="aiExtractButton" onclick="showAiExtractModal()" class="ai-extract-btn flex items-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white px-3 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] group">
             <i class="fas fa-robot mr-3 text-xl ai-icon"></i>
