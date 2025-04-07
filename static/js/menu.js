@@ -86,11 +86,36 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log("已清除旧事件监听器");
 
+    // 函数：折叠除指定菜单外的所有菜单
+    function collapseOtherMenus(exceptMenuId) {
+        const allMenuContents = document.querySelectorAll('.menu-content');
+        allMenuContents.forEach(menuContent => {
+            if (menuContent.id !== exceptMenuId) {
+                // 折叠其他菜单
+                menuContent.classList.remove('expanded');
+                menuContent.style.display = 'none';
+                
+                // 更新对应的箭头图标
+                const otherToggle = document.querySelector(`#${menuContent.id.replace('Content', 'Toggle')}`);
+                if (otherToggle) {
+                    const arrow = otherToggle.querySelector('.ri-arrow-down-s-line');
+                    if (arrow) arrow.style.transform = 'rotate(0deg)';
+                }
+            }
+        });
+    }
+
     // 添加菜单切换事件
     if (basicMenuToggle && basicMenuContent) {
         basicMenuToggle.addEventListener('click', function(e) {
             console.log("基本级菜单被点击");
             e.stopPropagation();
+            
+            // 在展开基本级菜单前，先折叠其他菜单
+            if (!basicMenuContent.classList.contains('expanded')) {
+                collapseOtherMenus('basicMenuContent');
+            }
+            
             basicMenuContent.classList.toggle('expanded');
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
@@ -113,6 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
         advancedMenuToggle.addEventListener('click', function(e) {
             console.log("提高级菜单被点击");
             e.stopPropagation();
+            
+            // 在展开提高级菜单前，先折叠其他菜单
+            if (!advancedMenuContent.classList.contains('expanded')) {
+                collapseOtherMenus('advancedMenuContent');
+            }
+            
             advancedMenuContent.classList.toggle('expanded');
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
@@ -135,6 +166,12 @@ document.addEventListener('DOMContentLoaded', function() {
         reportMenuToggle.addEventListener('click', function(e) {
             console.log("报告菜单被点击");
             e.stopPropagation();
+            
+            // 在展开报告菜单前，先折叠其他菜单
+            if (!reportMenuContent.classList.contains('expanded')) {
+                collapseOtherMenus('reportMenuContent');
+            }
+            
             reportMenuContent.classList.toggle('expanded');
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
@@ -162,6 +199,11 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
             
             console.log('专项计算菜单被点击');
+            
+            // 在展开专项计算菜单前，先折叠其他菜单
+            if (!specialCalcMenuContent.classList.contains('expanded')) {
+                collapseOtherMenus('specialCalcMenuContent');
+            }
             
             // 切换expanded类，控制菜单的显示/隐藏
             specialCalcMenuContent.classList.toggle('expanded');
@@ -255,6 +297,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // 确保所有菜单初始都是折叠状态
+        collapseOtherMenus("");
+        
         // 如果没有保存的状态或恢复失败，根据当前页面设置菜单
         // 根据当前页面展开相应菜单
         if (currentLevel === '基本级' && basicMenuContent) {
@@ -273,10 +318,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const arrow = advancedMenuToggle.querySelector('.ri-arrow-down-s-line');
                 if (arrow) arrow.style.transform = 'rotate(180deg)';
             }
-        }
-        
-        // 如果当前页面是报告导出相关页面，展开报告导出菜单
-        if (currentPage === 'report_table' && reportMenuContent) {
+        } else if (currentPage === 'report_table' && reportMenuContent) {
+            // 如果当前页面是报告导出相关页面，展开报告导出菜单
             console.log("展开报告菜单");
             reportMenuContent.classList.add('expanded');
             reportMenuContent.style.display = 'block';
@@ -284,10 +327,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
                 if (arrow) arrow.style.transform = 'rotate(180deg)';
             }
-        }
-        
-        // 如果当前页面是专项计算相关页面，展开专项计算菜单
-        if ((currentPage === 'solar_calculator' || currentPage === 'green_materials') && specialCalcMenuContent) {
+        } else if ((currentPage === 'solar_calculator' || currentPage === 'green_materials') && specialCalcMenuContent) {
+            // 如果当前页面是专项计算相关页面，展开专项计算菜单
             console.log("展开专项计算菜单");
             specialCalcMenuContent.classList.add('expanded');
             specialCalcMenuContent.style.display = 'block';
@@ -317,11 +358,27 @@ document.addEventListener('DOMContentLoaded', function() {
             // 在导航前调用防止页面跳动的函数
             preventPageJump();
             
-            // 保存菜单状态到 sessionStorage
             // 获取当前父菜单
             let parentMenuContent = this.closest('.menu-content');
             if (parentMenuContent) {
                 console.log("找到父菜单:", parentMenuContent.id);
+                
+                // 折叠其他所有菜单，只保留当前菜单
+                const allMenuContents = document.querySelectorAll('.menu-content');
+                allMenuContents.forEach(menuContent => {
+                    if (menuContent.id !== parentMenuContent.id) {
+                        // 折叠其他菜单
+                        menuContent.classList.remove('expanded');
+                        menuContent.style.display = 'none';
+                        
+                        // 更新对应的箭头图标
+                        const otherToggle = document.querySelector(`[id$="Toggle"][aria-controls="${menuContent.id}"], #${menuContent.id.replace('Content', 'Toggle')}`);
+                        if (otherToggle) {
+                            const arrow = otherToggle.querySelector('.ri-arrow-down-s-line');
+                            if (arrow) arrow.style.transform = 'rotate(0deg)';
+                        }
+                    }
+                });
                 
                 // 临时强制父菜单保持展开状态
                 parentMenuContent.classList.add('expanded');
