@@ -1,0 +1,161 @@
+<!-- 悬浮徽章组件 -->
+<div class="floating-badge" id="categoryBadge" role="status" aria-label="分类达标情况">
+    <div class="badge-title">
+        <span>分类达标情况</span>
+        <span class="toggle-badge" onclick="toggleBadgeContent()" title="展开/收起分类达标情况" aria-label="展开/收起分类达标情况">
+            <i class="fas fa-chevron-up" aria-hidden="true"></i>
+        </span>
+    </div>
+    <div class="badge-content" id="badgeContent">
+        <div class="category-badges">
+            <div class="category-badge" data-category="安全耐久" role="status" aria-label="安全耐久达标状态">安全耐久</div>
+            <div class="category-badge" data-category="健康舒适" role="status" aria-label="健康舒适达标状态">健康舒适</div>
+            <div class="category-badge" data-category="生活便利" role="status" aria-label="生活便利达标状态">生活便利</div>
+            <div class="category-badge" data-category="资源节约" role="status" aria-label="资源节约达标状态">资源节约</div>
+            <div class="category-badge" data-category="环境宜居" role="status" aria-label="环境宜居达标状态">环境宜居</div>
+            <div class="category-badge" data-category="提高与创新" role="status" aria-label="提高与创新达标状态">提高与创新</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 添加徽章相关的JavaScript函数
+function toggleBadgeContent() {
+    const content = document.getElementById('badgeContent');
+    const icon = document.querySelector('.toggle-badge i');
+    content.classList.toggle('collapsed');
+    icon.style.transform = content.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+// 更新分类达标状态的函数
+function updateCategoryBadges() {
+    const projectId = document.getElementById('current-project-id').value;
+    if (!projectId) {
+        console.error('未找到项目ID');
+        return;
+    }
+
+    // 从后端获取项目整体的分类得分数据，强制刷新
+    fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
+        .then(response => response.json())
+        .then(data => {
+            const minScores = {
+                '安全耐久': 30.0,
+                '健康舒适': 30.0,
+                '生活便利': 21.0,
+                '资源节约': 60.0,
+                '环境宜居': 30.0,
+                '提高与创新': 0.0
+            };
+
+            // 使用后端返回的分类得分数据
+            const categoryScores = {};
+            if (data.specialty_scores_by_category) {
+                Object.values(data.specialty_scores_by_category).forEach(specialtyData => {
+                    Object.entries(specialtyData).forEach(([category, score]) => {
+                        if (!categoryScores[category]) {
+                            categoryScores[category] = 0;
+                        }
+                        categoryScores[category] += parseFloat(score) || 0;
+                    });
+                });
+            }
+
+            console.log('更新后的分类得分:', categoryScores);
+
+            // 更新徽章状态
+            const badges = document.querySelectorAll('.category-badge');
+            badges.forEach(badge => {
+                const category = badge.getAttribute('data-category');
+                const score = categoryScores[category] || 0;
+                const minScore = minScores[category] || 0;
+                
+                console.log(`${category} - 得分: ${score}, 最低要求: ${minScore}`);
+                
+                if (score >= minScore) {
+                    badge.classList.remove('not-achieved');
+                    badge.classList.add('achieved');
+                    badge.title = `${category}: ${score.toFixed(1)} (已达标)`;
+                } else {
+                    badge.classList.remove('achieved');
+                    badge.classList.add('not-achieved');
+                    badge.title = `${category}: ${score.toFixed(1)} (未达标)`;
+                }
+            });
+        })
+        .catch(error => {
+            console.error('获取项目评分数据失败:', error);
+        });
+}
+
+// 初始化徽章过滤器功能
+function initializeBadgeFilters() {
+    const badges = document.querySelectorAll('.category-badge');
+    const tableRows = document.querySelectorAll('table tbody tr');
+    let activeCategory = null;
+
+    badges.forEach(badge => {
+        badge.addEventListener('click', function() {
+            const category = this.getAttribute('data-category');
+            
+            // 如果点击的是当前激活的分类，则取消过滤
+            if (this.classList.contains('active')) {
+                this.classList.remove('active');
+                activeCategory = null;
+                // 显示所有行
+                tableRows.forEach(row => {
+                    row.style.display = '';
+                });
+            } else {
+                // 移除其他徽章的激活状态
+                badges.forEach(b => b.classList.remove('active'));
+                // 激活当前徽章
+                this.classList.add('active');
+                activeCategory = category;
+                
+                // 过滤表格行
+                tableRows.forEach(row => {
+                    const rowCategory = row.querySelector('td:nth-child(2) span')?.textContent.trim();
+                    if (rowCategory === category) {
+                        row.style.display = '';
+                        row.style.animation = 'fadeIn 0.3s ease-in';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            }
+        });
+    });
+}
+
+// 在组件加载后初始化事件监听
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('categoryBadge')) {
+        // 监听得分输入变化和保存按钮点击
+        const scoreInputs = document.querySelectorAll('input[name="score"]');
+        const saveScoreBtn = document.getElementById('saveScoreBtn');
+        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
+        
+        scoreInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                // 延迟更新，等待数据保存
+                setTimeout(updateCategoryBadges, 500);
+            });
+        });
+
+        if (saveScoreBtn) {
+            saveScoreBtn.addEventListener('click', () => {
+                // 延迟更新，等待数据保存
+                setTimeout(updateCategoryBadges, 1000);
+            });
+        }
+
+        if (floatingSaveBtn) {
+            floatingSaveBtn.addEventListener('click', () => {
+                // 延迟更新，等待数据保存
+                setTimeout(updateCategoryBadges, 1000);
+            });
+        }
+    }
+});
+</script> 

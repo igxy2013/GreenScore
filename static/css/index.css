@@ -1,0 +1,345 @@
+/* 图标样式兼容处理 */
+[class^="ri-"], [class*=" ri-"] {
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    line-height: 1;
+    font-family: "Font Awesome 5 Free";
+    font-weight: 900;
+}
+
+/* 定义图标映射关系 */
+.ri-add-line:before { content: "\f067"; }                    /* fa-plus */
+.ri-delete-bin-line:before { content: "\f2ed"; }            /* fa-trash-alt */
+.ri-edit-line:before { content: "\f044"; }                  /* fa-edit */
+.ri-search-line:before { content: "\f002"; }                /* fa-search */
+.ri-menu-line:before { content: "\f0c9"; }                  /* fa-bars */
+.ri-settings-line:before { content: "\f013"; }              /* fa-cog */
+.ri-user-line:before { content: "\f007"; }                  /* fa-user */
+.ri-home-line:before { content: "\f015"; }                  /* fa-home */
+.ri-arrow-down-s-line:before { content: "\f107"; }          /* fa-angle-down */
+.ri-arrow-up-s-line:before { content: "\f106"; }            /* fa-angle-up */
+.ri-close-line:before { content: "\f00d"; }                 /* fa-times */
+.ri-check-line:before { content: "\f00c"; }                 /* fa-check */
+.ri-information-line:before { content: "\f129"; }           /* fa-info */
+.ri-file-list-line:before { content: "\f15c"; }             /* fa-file-alt */
+.ri-calendar-line:before { content: "\f133"; }              /* fa-calendar */
+.ri-save-line:before { content: "\f0c7"; }                  /* fa-save */
+.ri-upload-line:before { content: "\f093"; }                /* fa-cloud-upload-alt */
+.ri-download-line:before { content: "\f019"; }              /* fa-download */
+.ri-refresh-line:before { content: "\f2f1"; }               /* fa-sync */
+.ri-loader-2-line:before { content: "\f110"; }             /* fa-spinner */
+.ri-arrow-left-line:before { content: "\f060"; }           /* fa-arrow-left */
+.ri-star-fill:before { content: "\f005"; }                  /* fa-star */
+.ri-close-circle-fill:before { content: "\f057"; }          /* fa-times-circle */
+.ri-bar-chart-line:before { content: "\f080"; }             /* fa-chart-bar */
+.ri-file-download-line:before { content: "\f56d"; }         /* fa-file-download */
+.ri-calculator-line:before { content: "\f1ec"; }            /* fa-calculator */
+.ri-building-line:before { content: "\f1ad"; }              /* fa-building */
+.ri-layout-2-line:before { content: "\f0db"; }              /* fa-columns */
+.ri-drop-line:before { content: "\f043"; }                  /* fa-tint */
+.ri-flashlight-line:before { content: "\f0eb"; }            /* fa-lightbulb */
+.ri-temp-hot-line:before { content: "\f2c7"; }             /* fa-thermometer-full */
+.ri-plant-line:before { content: "\f4d8"; }                 /* fa-seedling */
+.ri-checkbox-line:before { content: "\f0c8"; }              /* fa-square */
+.ri-checkbox-multiple-line:before { content: "\f14a"; }     /* fa-check-square */
+.ri-leaf-line:before { content: "\f06c"; }                  /* fa-leaf */
+.ri-file-list-3-line:before { content: "\f15c"; }          /* fa-file-alt */
+.ri-book-line:before { content: "\f02d"; }                  /* fa-book */
+
+/* 添加动画效果 */
+.fa-spin {
+    animation: fa-spin 2s infinite linear;
+}
+@keyframes fa-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* 页面布局样式 */
+.page-container {
+    min-width: 1024px;
+    overflow-x: auto;
+}
+.main-content {
+    margin-left: 18rem; /* 与左侧导航栏宽度一致 */
+    width: calc(100% - 18rem);
+    min-width: 768px;
+}
+/* 添加输入框和选择框的边框样式 */
+.is-achieved-select,
+.technical-measures,
+input[name="score"] {
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+}
+.is-achieved-select:focus,
+.technical-measures:focus,
+input[name="score"]:focus {
+    border-color: #3b82f6;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+/* 提高级技术措施列样式 */
+.technical-measures-cell {
+    width: 300px;
+    min-width: 300px;
+    max-width: 500px;
+}
+.technical-measures {
+    width: 100%;
+    min-height: 100px;
+    resize: vertical;
+}
+/* 进度条样式 */
+.submenu-item.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.submenu-item.loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background-color: rgba(79, 209, 197, 0.3);
+    transition: width 0.1s linear;
+    z-index: 0;
+}
+
+.submenu-item.loading > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* 评分汇总菜单进度条样式 */
+.menu-item.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-item.loading > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* 添加图标旋转动画 */
+.menu-item.loading .ri-bar-chart-line {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 省市选择器加载平滑过渡 */
+.province-city-container select {
+    min-width: 100px; /* 确保最小宽度 */
+    transition: all 0.2s ease; /* 平滑过渡效果 */
+    height: 42px; /* 固定高度 */
+}
+
+/* 分类过滤器按钮样式 */
+.category-filter {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.category-filter.active {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    font-weight: 600;
+    transform: translateY(-1px);
+}
+
+/* 添加悬浮徽章样式 */
+.floating-badge {
+    position: fixed;
+    right: 20px;
+    top: 80px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    padding: 12px;
+    z-index: 50;
+    width: auto;
+    min-width: 160px;
+    max-width: 200px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-badge:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.badge-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.95rem;
+}
+
+.category-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.category-badge {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: white;
+    transition: all 0.2s ease;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.category-badge::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.category-badge:hover::before {
+    opacity: 1;
+}
+
+.category-badge.not-achieved {
+    background-color: #f87171;
+}
+
+.category-badge.achieved {
+    background-color: #34d399;
+}
+
+.category-badge.active {
+    outline: 2px solid #4f46e5;
+    outline-offset: 1px;
+}
+
+.badge-content {
+    max-height: 500px;
+    opacity: 1;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.badge-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.toggle-badge {
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 8px;
+}
+
+.toggle-badge:hover {
+    background-color: #f3f4f6;
+}
+
+.toggle-badge i {
+    transition: transform 0.3s ease;
+    font-size: 0.85rem;
+}
+
+/* 响应式样式 */
+@media (min-width: 1280px) {
+    .floating-badge {
+        min-width: 180px;
+        max-width: 220px;
+        padding: 16px;
+    }
+
+    .badge-title {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    .category-badges {
+        gap: 8px;
+    }
+
+    .category-badge {
+        padding: 8px 12px;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+
+    .toggle-badge {
+        padding: 6px;
+    }
+
+    .toggle-badge i {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .floating-badge {
+        right: 10px;
+        top: 70px;
+        min-width: 140px;
+        padding: 10px;
+    }
+    
+    .category-badge {
+        font-size: 0.8rem;
+        padding: 5px 8px;
+    }
+}
+
+/* 详情表格样式 */
+.detail-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+.detail-table td {
+    width: 16.66% !important;
+}
+.detail-table input,
+.detail-table select {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 旋转动画 */
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 淡入动画 */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
