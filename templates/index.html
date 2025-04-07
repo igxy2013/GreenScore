@@ -393,12 +393,18 @@
                                     // 处理保存星级案例的请求
                                     saveStarCase();
                                 } else if (event.data && event.data.type === 'iframeReady') {
-                                    // iframe已准备就绪，如果有数据则立即发送
+                                    // iframe已准备就绪，立即发送缓存数据(如果有)
                                     console.log('iframe已准备就绪');
-                                    if (scoreData) {
-                                        console.log('iframe就绪后立即发送评分数据');
-                                        updateIframeScores(scoreData);
+                                    
+                                    // 优先使用缓存数据立即显示
+                                    const cachedData = sessionStorage.getItem('score_summary_data');
+                                    if (cachedData) {
+                                        console.log('从缓存加载评分数据到iframe');
+                                        updateIframeScores(JSON.parse(cachedData));
                                     }
+                                    
+                                    // 然后在后台获取最新数据
+                                    fetchLatestScoreData();
                                 } else if (event.data && event.data.type === 'toast') {
                                     // 处理来自iframe的Toast通知
                                     console.log('收到iframe发来的Toast通知:', event.data.message);
@@ -441,46 +447,12 @@
                             // 导出updateIframeScores方法，使其可以从外部调用
                             window.updateScoreSummary = updateIframeScores;
                             
-                            // 预先获取评分数据
-                            const projectId = document.getElementById('project_id').value;
-                            let scoreData = null;
-                            
-                            // 立即开始获取评分数据
-                            console.log('预先获取评分数据，项目ID:', projectId);
-                            fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
-                                .then(response => {
-                                    if (!response.ok) {
-                                        throw new Error(`获取评分数据失败: ${response.status} ${response.statusText}`);
-                                    }
-                                    return response.json();
-                                })
-                                .then(data => {
-                                    console.log('预先获取评分数据成功');
-                                    scoreData = data;
-                                    
-                                    // 如果iframe已加载完成，立即更新
-                                    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-                                        console.log('iframe已加载完成，立即更新数据');
-                                        updateIframeScores(data);
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('预先获取评分数据失败:', error);
-                                });
-                            
-                            // 监听iframe加载完成事件
-                            iframe.addEventListener('load', function() {
-                                console.log('评分汇总iframe加载完成');
+                            // 获取最新评分数据并更新iframe
+                            function fetchLatestScoreData() {
+                                const projectId = document.getElementById('project_id').value;
+                                if (!projectId) return;
                                 
-                                // 如果预先获取的数据已经就绪，直接使用
-                                if (scoreData) {
-                                    console.log('使用预先获取的评分数据更新iframe');
-                                    updateIframeScores(scoreData);
-                                    return;
-                                }
-                                
-                                // 如果预先获取的数据还未就绪，重新获取
-                                console.log('预先获取的数据未就绪，重新获取');
+                                console.log('在后台获取最新评分数据');
                                 fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
                                     .then(response => {
                                         if (!response.ok) {
@@ -489,12 +461,31 @@
                                         return response.json();
                                     })
                                     .then(data => {
-                                        console.log('获取评分数据成功，更新iframe中的评分汇总表格');
+                                        console.log('获取最新评分数据成功');
+                                        // 更新缓存
+                                        sessionStorage.setItem('score_summary_data', JSON.stringify(data));
+                                        sessionStorage.setItem('score_summary_cache_time', new Date().getTime().toString());
+                                        // 更新iframe
                                         updateIframeScores(data);
                                     })
                                     .catch(error => {
-                                        console.error('获取评分数据失败:', error);
+                                        console.error('获取最新评分数据失败:', error);
                                     });
+                            }
+                            
+                            // iframe加载完成后的处理
+                            iframe.addEventListener('load', function() {
+                                console.log('评分汇总iframe加载完成');
+                                
+                                // 优先使用缓存数据立即显示
+                                const cachedData = sessionStorage.getItem('score_summary_data');
+                                if (cachedData) {
+                                    console.log('从缓存加载评分数据到iframe');
+                                    updateIframeScores(JSON.parse(cachedData));
+                                } else {
+                                    // 如果没有缓存，在后台获取数据
+                                    fetchLatestScoreData();
+                                }
                             });
                         });
                     </script>
@@ -1434,8 +1425,22 @@
             // 为评分汇总菜单添加点击事件
             const scoreSummaryMenuItem = document.getElementById('scoreSummaryMenuItem');
         if (scoreSummaryMenuItem) {
-            scoreSummaryMenuItem.addEventListener('click', async function(e) {
-                e.preventDefault();
+            // 页面加载时预先获取评分数据
+            document.addEventListener('DOMContentLoaded', async function() {
+                const projectId = document.getElementById('current-project-id').value;
+                if (projectId) {
+                    try {
+                        // 后台预加载数据，不阻塞其他操作
+                        fetchSummaryData(projectId);
+                    } catch (error) {
+                        console.error('预加载评分数据失败:', error);
+                    }
+                }
+            });
+            
+            // 添加点击事件，直接跳转而不等待数据加载
+            scoreSummaryMenuItem.addEventListener('click', function(e) {
+                // 不阻止默认行为，允许直接跳转
                 
                 // 移除其他菜单项的active类
                 const currentMenuItems = document.querySelectorAll('.submenu-item.active');
@@ -1443,71 +1448,52 @@
                     item.classList.remove('active');
                 });
                 
-                // 添加active类和loading效果
+                // 添加active类
                 this.classList.add('active');
-                this.classList.add('loading');
-                let progressInterval;
                 
                 // 获取项目ID
                 const projectId = document.getElementById('current-project-id').value;
                 if (!projectId) {
                     alert('请先选择项目');
-                    this.classList.remove('active');
-                    this.classList.remove('loading');
+                    e.preventDefault(); // 如果没有项目ID，则阻止跳转
                     return;
                 }
                 
-                // 创建进度条动画，使用与报审表相同的实现方式
-                let progress = 0;
-                progressInterval = setInterval(() => {
-                    progress += 2;
-                    if (progress > 90) {
-                        clearInterval(progressInterval);
-                    }
-                    // 使用backgroundImage线性渐变实现进度条
-                    this.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
-                }, 100);
+                // 在后台更新数据，但不等待它完成
+                fetchSummaryData(projectId);
                 
+                // 直接继续默认跳转，不等待数据加载完成
+            });
+            
+            // 提取获取评分数据的函数，以便重复使用
+            async function fetchSummaryData(projectId) {
                 try {
-                    // 获取评分汇总数据
+                    // 首先检查是否有缓存且缓存时间在1分钟以内
+                    const cachedData = sessionStorage.getItem('score_summary_data');
+                    const cacheTime = sessionStorage.getItem('score_summary_cache_time');
+                    const now = new Date().getTime();
+                    
+                    // 如果缓存存在且在1分钟以内，直接使用缓存
+                    if (cachedData && cacheTime && (now - parseInt(cacheTime)) < 1 * 60 * 1000) {
+                        console.log('使用缓存的评分汇总数据');
+                        return JSON.parse(cachedData);
+                    }
+                    
+                    // 否则获取新数据
+                    console.log('获取最新评分汇总数据');
                     const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
                     const summaryData = await summaryResponse.json();
-                    console.log('获取评分汇总数据:', summaryData);
                     
-                    // 将数据存储到 sessionStorage
+                    // 将数据和时间戳存储到 sessionStorage
                     sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
+                    sessionStorage.setItem('score_summary_cache_time', now.toString());
                     
-                    // 完成进度条 - 循序渐进地增长到100%
-                    clearInterval(progressInterval);
-                    
-                    // 获取当前进度
-                    const currentProgress = parseInt(this.style.backgroundImage.match(/(\d+)%/) ? this.style.backgroundImage.match(/(\d+)%/)[1] : 0);
-                    // 计算剩余步数
-                    const stepsLeft = Math.ceil((100 - currentProgress) / 2);
-                    // 创建新的进度条动画，从当前进度到100%
-                    let finalProgress = currentProgress;
-                    progressInterval = setInterval(() => {
-                        finalProgress += 2;
-                        this.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${finalProgress}%, transparent ${finalProgress}%)`;
-                        
-                        if (finalProgress >= 100) {
-                            clearInterval(progressInterval);
-                            // 进度条达到100%后立即跳转
-                            window.location.href = this.getAttribute('href');
-                        }
-                    }, 40); // 稍微加快速度，每40毫秒更新一次
-                    
+                    return summaryData;
                 } catch (error) {
                     console.error('获取评分数据失败:', error);
-                    alert(`获取评分数据失败: ${error.message}`);
-                    
-                    // 重置进度条
-                    clearInterval(progressInterval);
-                    this.classList.remove('active');
-                    this.classList.remove('loading');
-                    this.style.backgroundImage = '';
+                    throw error;
                 }
-            });
+            }
         }
         // 为项目信息保存按钮添加点击事件
         const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
