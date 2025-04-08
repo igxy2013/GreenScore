@@ -89,3 +89,4 @@ create_system_metrics_table.py
 GreenScore.NET/static/temp/
 static/exports/
 logs/
+uploads/

@@ -17,7 +17,7 @@ if not IS_WSL:
         print("警告: pyodbc模块未安装，某些功能可能不可用")
         print("请运行 'pip install pyodbc' 安装所需模块")
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash, Response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash, Response, Blueprint
 from flask_caching import Cache
 from flask_migrate import Migrate
 from functools import wraps
@@ -246,6 +246,21 @@ def page_not_found(e):
     
     # 返回自定义404页面
     return render_template('error.html', error="页面未找到"), 404
+
+# 添加405错误处理器
+@app.errorhandler(405)
+def method_not_allowed(e):
+    # 检查是否为非应用路径的请求
+    non_app_paths = ['/dns-query', '/robots.txt', '/favicon.ico']
+    if request.path in non_app_paths:
+        app.logger.debug(f"忽略对非应用路径的请求: {request.method} {request.path}")
+        return '', 204  # 返回无内容状态码
+    
+    # 记录其他405错误
+    app.logger.warning(f"方法不允许: {request.method} {request.path}")
+    return render_template('error.html', 
+                          error_code=405, 
+                          error_message="请求方法不被允许"), 405
 
 # 邀请码相关API路由
 @app.route('/api/invite-codes', methods=['POST'])
