@@ -953,6 +953,12 @@ def project_detail(project_id):
         project = Project.query.get_or_404(project_id)
         # 获取page参数，默认为project_info
         page = request.args.get('page', 'project_info')
+        
+        # 如果页面类型为公共交通分析，使用iframe加载页面
+        if page == 'public_transport_analysis':
+            app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
+            return render_template('dashboard.html', project=project, current_page=page)
+        
         app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
         return render_template('dashboard.html', project=project, current_page=page)
     except Exception as e:
@@ -5300,6 +5306,111 @@ def score_summary_page(project_id):
     
     # 将项目信息传递给模板
     return render_template('score_summary.html', project=project, session=session)
+
+@app.route('/public_transport_analysis')
+@login_required
+def public_transport_analysis():
+    """公共交通分析报告生成页面"""
+    # 获取可能的项目ID参数
+    project_id = request.args.get('project_id')
+    project = None
+    
+    if project_id:
+        try:
+            project = Project.query.get(project_id)
+        except Exception as e:
+            app.logger.error(f"获取项目信息失败: {str(e)}")
+            
+    return render_template('public_transport_analysis.html', project=project)
+
+@app.route('/api/generate_transport_report', methods=['POST'])
+@login_required
+def generate_transport_report():
+    """生成公共交通分析报告"""
+    try:
+        # 获取请求数据
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'message': '缺少必要的数据'}), 400
+        
+        # 提取项目信息
+        project_info = data.get('project', {})
+        project_name = project_info.get('name', '未命名项目')
+        project_location = project_info.get('location', '')
+        project_coordinates = project_info.get('coordinates', {})
+        
+        # 提取分析结果
+        analysis_results = data.get('analysis', {})
+        stations = data.get('stations', [])
+        
+        # 记录处理信息
+        app.logger.info(f"开始生成公共交通分析报告: 项目 '{project_name}'")
+        
+        # 准备替换模板中的数据
+        template_data = [{
+            # 项目基本信息
+            '项目名称': project_name,
+            '项目地点': project_location,
+            '经度': project_coordinates.get('lng', ''),
+            '纬度': project_coordinates.get('lat', ''),
+            '分析日期': datetime.now().strftime('%Y年%m月%d日'),
+            
+            # 分析结果数据
+            '公交站总数': str(analysis_results.get('busStations', {}).get('total', 0)),
+            '地铁站总数': str(analysis_results.get('subwayStations', {}).get('total', 0)),
+            '500米内公交站': str(analysis_results.get('busStations', {}).get('qualified', 0)),
+            '800米内地铁站': str(analysis_results.get('subwayStations', {}).get('qualified', 0)),
+            
+            # 最近站点信息
+            '最近公交站名称': analysis_results.get('busStations', {}).get('nearest', {}).get('name', '无'),
+            '最近公交站距离': str(analysis_results.get('busStations', {}).get('nearest', {}).get('distance', 0)) + '米',
+            '最近地铁站名称': analysis_results.get('subwayStations', {}).get('nearest', {}).get('name', '无'),
+            '最近地铁站距离': str(analysis_results.get('subwayStations', {}).get('nearest', {}).get('distance', 0)) + '米',
+            
+            # 评价结果
+            '评价结果': analysis_results.get('evaluation', {}).get('result', '不符合'),
+            '评分': str(analysis_results.get('evaluation', {}).get('score', 0)),
+        }]
+        
+        # 添加站点列表数据
+        for i, station in enumerate(stations, 1):
+            if i > 10:  # 最多处理10个站点
+                break
+                
+            template_data[0][f'站点{i}名称'] = station.get('name', '')
+            template_data[0][f'站点{i}类型'] = station.get('type', '')
+            template_data[0][f'站点{i}距离'] = str(station.get('distance', 0)) + '米'
+        
+        # 生成Word文档
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        template_path = '公共交通分析报告.docx'
+        output_filename = f"公共交通分析报告_{project_name}_{timestamp}.docx"
+        output_dir = os.path.join(app.config['EXPORT_FOLDER'])
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, output_filename)
+        
+        # 使用现有的Word模板处理函数
+        from word_template import process_template
+        result = process_template(template_data, template_path=template_path, output_path=output_path)
+        
+        if result and os.path.exists(output_path):
+            app.logger.info(f"公共交通分析报告生成成功: {output_path}")
+            
+            # 返回下载链接
+            download_url = url_for('static', filename=f'exports/{output_filename}')
+            return jsonify({
+                'success': True, 
+                'message': '公共交通分析报告生成成功',
+                'downloadUrl': download_url
+            })
+        else:
+            app.logger.error(f"公共交通分析报告生成失败")
+            return jsonify({'success': False, 'message': '报告生成失败，请稍后重试'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"生成公共交通分析报告时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # 初始化数据库
