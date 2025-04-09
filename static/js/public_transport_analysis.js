@@ -430,6 +430,15 @@ function initMap() {
             return;
         }
         
+        // 如果百度地图没有提供checkResize方法，添加一个
+        if (!BMap.Map.prototype.checkResize) {
+            BMap.Map.prototype.checkResize = function() {
+                this.reset();
+                this.resize();
+                this.enableAutoResize();
+            };
+        }
+        
         // 创建地图实例
         map = new BMap.Map("map");
         
@@ -567,6 +576,9 @@ function searchNearbyStations() {
         onSearchComplete: function(results) {
             // 处理搜索结果
             processStationResults(results, radius);
+            
+            // 确保布局稳定
+            ensureStableLayout();
         },
         pageCapacity: 50
     };
@@ -585,6 +597,34 @@ function searchNearbyStations() {
                 <div class="mt-2">正在搜索附近站点...</div>
               </div>`
     }]);
+}
+
+/**
+ * 确保布局稳定
+ */
+function ensureStableLayout() {
+    // 强制地图容器保持原有尺寸
+    const mapParent = document.querySelector('.map-parent-container');
+    if (mapParent) {
+        mapParent.style.width = '60%';
+        mapParent.style.minWidth = '60%';
+        mapParent.style.maxWidth = '60%';
+    }
+    
+    // 强制侧边栏容器保持尺寸
+    const sideContainer = document.querySelector('.side-container');
+    if (sideContainer) {
+        sideContainer.style.width = '40%';
+        sideContainer.style.minWidth = '40%';
+        sideContainer.style.maxWidth = '40%';
+    }
+    
+    // 刷新地图大小以适应容器
+    if (map) {
+        setTimeout(() => {
+            map.checkResize();
+        }, 300);
+    }
 }
 
 /**
@@ -760,6 +800,9 @@ function updateStationDisplay() {
     
     // 添加站点项点击事件
     addStationItemClickEvents();
+    
+    // 确保布局稳定
+    ensureStableLayout();
 }
 
 /**
@@ -870,6 +913,9 @@ function analyzeStations(stations, searchRadius) {
             subwayStations: { total: 0, qualified: 0, nearest: null },
             evaluation: { result: '不符合', score: 0 }
         });
+        
+        // 确保布局稳定
+        ensureStableLayout();
         return;
     }
     
@@ -915,15 +961,18 @@ function analyzeStations(stations, searchRadius) {
             result: result,
             score: score
         },
-        projectName: document.getElementById('projectNameText').textContent,
-        projectLocation: document.getElementById('projectLocation').value,
-        projectCoordinates: document.getElementById('projectCoordinates').textContent,
+        projectName: document.getElementById('projectNameText')?.textContent || '未命名项目',
+        projectLocation: document.getElementById('projectLocation')?.value || '未知地址',
+        projectCoordinates: document.getElementById('projectCoordinates')?.textContent || '未知坐标',
         searchRadius: searchRadius,
         timestamp: new Date().toLocaleString('zh-CN')
     };
     
     // 显示分析结果
     showAnalysisResults(analysisResults);
+    
+    // 确保布局稳定
+    ensureStableLayout();
 }
 
 /**

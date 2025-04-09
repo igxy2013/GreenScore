@@ -92,6 +92,27 @@
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+        /* 添加地图父容器固定宽度 */
+        .map-parent-container {
+            width: 75%;
+            flex-shrink: 0; /* 防止容器收缩 */
+            flex-grow: 0; /* 防止容器扩展 */
+            min-width: 75%; /* 确保最小宽度 */
+            max-width: 75%; /* 确保最大宽度 */
+        }
+        .side-container {
+            width: 25%; 
+            flex-shrink: 0; /* 防止容器收缩 */
+            flex-grow: 0; /* 防止容器扩展 */
+            min-width: 25%; /* 确保最小宽度 */
+            max-width: 25%; /* 确保最大宽度 */
+        }
+        /* 确保布局在加载动态内容后仍然稳定 */
+        .layout-wrapper {
+            display: flex;
+            width: 100%;
+            flex-wrap: nowrap; /* 防止换行 */
+        }
         .data-card {
             background: white;
             border-radius: 8px;
@@ -167,7 +188,6 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-1">
                 <div class="md:col-span-1 bg-white rounded-lg shadow-sm p-4">          
                     <div class="flex flex-row space-x-4 mb-4">
-                        
                         <div class="flex-1 flex flex-col">
                             <label for="projectLocation" class="text-gray-700 mb-1">项目地址</label>
                             <input type="text" id="projectLocation" class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入详细地址">
@@ -175,30 +195,29 @@
                         <div class="flex-1 flex flex-col" style="width: 25% !important; min-width: 120px !important;">
                             <label for="searchLocationBtn" class="text-gray-700 mb-1">搜索位置</label>
                             <button id="searchLocationBtn" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-300" style="min-width: 120px !important;">
-                                <i class="ri-search-line mr-2"></i>搜索位置
+                            搜索位置
                             </button>
                         </div>
                         <div class="flex-1 flex flex-col">
                             <label for="projectCoordinates" class="text-gray-700 mb-1">项目坐标</label>
                             <div id="projectCoordinates" class="bg-gray-100 p-2 rounded text-gray-800 flex-1 flex items-center">未选择位置</div>
                         </div>
-
-
                     </div>
+                    <!-- 添加隐藏的项目名称元素 -->
+                    <div id="projectNameText" style="display:none;">{% if project %}{{ project.name }}{% else %}未命名项目{% endif %}</div>
                 </div>
                     
                 <!-- 隐藏的项目ID字段 -->
                 <input type="hidden" id="projectId" value="{% if project %}{{ project.id }}{% endif %}">
 
-                <!-- 地图部分 -->
                 <div class="md:col-span-2">
-                    <div class="flex gap-1">
-                        <div class="flex-1 bg-white rounded-lg shadow-sm p-6">
+                    <div class="layout-wrapper gap-1">
+                        <div class="map-parent-container bg-white rounded-lg shadow-sm p-6">
                             <h2 class="text-xl font-semibold text-gray-800 mb-4">项目位置</h2>
                             <div class="w-full map-container mb-4" id="map"></div>
                         </div>
                         
-                        <div class="w-[40%] bg-white rounded-lg shadow-sm p-6 flex flex-col gap-1">
+                        <div class="side-container bg-white rounded-lg shadow-sm p-6 flex flex-col gap-1">
                             <!-- 搜索设置部分 -->
                             <div>
                                 <h2 class="text-xl font-semibold text-gray-800 mb-4">搜索设置</h2>
@@ -214,12 +233,12 @@
                                     </div>
                                     <div class="flex items-end">
                                         <button id="searchStations" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-300">
-                                            <i class="ri-bus-line mr-2"></i>搜索附近站点
+                                            搜索附近站点
                                         </button>
                                     </div>
                                     <div class="flex items-end">
                                         <button id="exportReportBtn" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-300">
-                                            <i class="ri-file-download-line mr-2"></i>导出报告
+                                        导出报告
                                         </button>
                                     </div>
                                 </div>
