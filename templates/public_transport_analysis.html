@@ -179,7 +179,7 @@
 <body class="bg-gray-50">
     <!-- 标题部分 -->
     <div class="flex flex-col items-center justify-center mb-10 text-center">
-        <h1 class="text-3xl font-bold text-primary mb-2">公共交通站点分析报告</h1>
+        <h1 class="text-3xl font-bold text-primary mb-2">公共交通站点分析</h1>
         <p class="text-gray-600">根据项目位置分析公共交通情况，生成符合《绿色建筑评价标准》的分析报告</p>
     </div>
     <div class="container-wrapper mx-auto max-w-7xl">
@@ -205,12 +205,9 @@
                     </div>
                 </div>
                     
-                <!-- 隐藏的项目ID字段 -->
-                <input type="hidden" id="projectId" value="{% if project %}{{ project.id }}{% endif %}">
-
                 <div class="md:col-span-2">
                     <div class="layout-wrapper gap-1">
-                        <div class="map-parent-container bg-white rounded-lg shadow-sm p-6">
+                        <div class="map-parent-container bg-white rounded-lg p-6">
                             <h2 class="text-xl font-semibold text-gray-800 mb-4">项目位置</h2>
                             <div class="w-full map-container mb-4" id="map"></div>
                         </div>
