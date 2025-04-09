@@ -141,6 +141,14 @@ def load_user(user_id):
 def home():
     return render_template('index.html')
 
+@app.route('/privacy_policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
+
+@app.route('/terms_of_service')
+def terms_of_service():
+    return render_template('terms_of_service.html')
+
 # 添加请求处理器来更新用户的last_seen时间
 @app.before_request
 def update_last_seen():

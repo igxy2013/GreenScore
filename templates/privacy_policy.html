@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隐私政策 - 智能绿建评价系统</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#3176FF',secondary:''},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e6f0ff 0%, #f0f7ff 100%);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="w-full bg-white shadow-sm fixed top-0 left-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="/" class="flex items-center">
+                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="GreenScore Logo" class="w-10 h-10 mr-3">
+                <span class="text-xl font-bold text-gray-800">智能绿建评价系统</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-24">
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8 md:p-12">
+            <h1 class="text-3xl font-bold text-gray-900 mb-8">隐私政策</h1>
+            
+            <div class="space-y-6 text-gray-600">
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">1. 信息收集</h2>
+                    <p>我们收集的信息包括但不限于：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>您提供的注册信息（如姓名、电子邮件地址等）</li>
+                        <li>使用服务时产生的数据（如项目信息、评估数据等）</li>
+                        <li>设备信息和日志数据</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">2. 信息使用</h2>
+                    <p>我们使用收集的信息用于：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>提供、维护和改进我们的服务</li>
+                        <li>处理您的请求和反馈</li>
+                        <li>发送服务相关通知</li>
+                        <li>防止欺诈和提升安全性</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">3. 信息保护</h2>
+                    <p>我们采取适当的技术和组织措施来保护您的个人信息，包括：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>数据加密传输和存储</li>
+                        <li>访问控制和身份验证</li>
+                        <li>定期安全评估和更新</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">4. 信息共享</h2>
+                    <p>我们不会出售您的个人信息。仅在以下情况下可能会共享您的信息：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>经您明确同意</li>
+                        <li>法律要求或政府部门要求</li>
+                        <li>保护我们的权利和财产</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">5. 您的权利</h2>
+                    <p>您对您的个人信息拥有以下权利：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>访问和获取您的个人信息副本</li>
+                        <li>更正不准确的个人信息</li>
+                        <li>要求删除您的个人信息</li>
+                        <li>反对或限制个人信息的处理</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">6. 政策更新</h2>
+                    <p>我们可能会不时更新本隐私政策。更新后的政策将在网站上发布，并在重大变更时通知您。</p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">7. 联系我们</h2>
+                    <p>如果您对本隐私政策有任何疑问或建议，请通过以下方式联系我们：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>电子邮件：acbim@qq.com</li>
+                        <li>电话：19130693109</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-900 text-white py-8 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">© 2024 智能绿建评价系统. 保留所有权利.</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用条款 - 智能绿建评价系统</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#3176FF',secondary:''},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e6f0ff 0%, #f0f7ff 100%);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="w-full bg-white shadow-sm fixed top-0 left-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="/" class="flex items-center">
+                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="GreenScore Logo" class="w-10 h-10 mr-3">
+                <span class="text-xl font-bold text-gray-800">智能绿建评价系统</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-24">
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8 md:p-12">
+            <h1 class="text-3xl font-bold text-gray-900 mb-8">使用条款</h1>
+            
+            <div class="space-y-6 text-gray-600">
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">1. 服务说明</h2>
+                    <p>智能绿建评价系统（以下简称"本系统"）是一个基于AI技术的绿色建筑评价平台。通过使用本系统，即表示您同意遵守以下条款。</p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">2. 用户责任</h2>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>遵守所有适用的法律法规</li>
+                        <li>提供真实、准确的信息</li>
+                        <li>保护账户安全，不得与他人共享</li>
+                        <li>不得从事任何可能损害系统或其他用户的行为</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">3. 知识产权</h2>
+                    <p>本系统的所有内容，包括但不限于文字、图片、代码、算法等，均受知识产权法保护。未经许可，不得：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>复制或分发系统内容</li>
+                        <li>修改或创建系统的衍生作品</li>
+                        <li>反向工程或破解系统</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">4. 服务使用</h2>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>本系统提供的评估结果仅供参考</li>
+                        <li>我们保留随时修改或终止服务的权利</li>
+                        <li>用户需自行承担使用本系统的风险</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">5. 免责声明</h2>
+                    <p>我们不对以下情况承担责任：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>系统使用过程中的技术问题</li>
+                        <li>用户提供错误信息导致的评估偏差</li>
+                        <li>因不可抗力导致的服务中断</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">6. 账户终止</h2>
+                    <p>在以下情况下，我们可能会终止或暂停您的账户：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>违反使用条款</li>
+                        <li>提供虚假信息</li>
+                        <li>从事违法或有害行为</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">7. 条款修改</h2>
+                    <p>我们可能会不时更新这些条款。更新后的条款将在网站上发布，继续使用本系统即表示您接受新的条款。</p>
+                </section>
+
+                <section>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">8. 联系方式</h2>
+                    <p>如有任何问题或建议，请联系我们：</p>
+                    <ul class="list-disc pl-6 mt-2 space-y-2">
+                        <li>电子邮件：acbim@qq.com</li>
+                        <li>电话：19130693109</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-900 text-white py-8 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">© 2024 智能绿建评价系统. 保留所有权利.</p>
+        </div>
+    </footer>
+</body>
+</html>
