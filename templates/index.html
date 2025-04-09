@@ -54,7 +54,7 @@
                     <a href="/register" class="px-4 py-2 bg-primary text-white hover:bg-blue-600 transition-colors !rounded-button whitespace-nowrap">免费注册</a>
                 </div>
             </nav>
-            <button class="md:hidden w-10 h-10 flex items-center justify-center">
+            <button class="md:hidden w-10 h-10 flex items-center justify-center" title="打开菜单">
                 <i class="ri-menu-line text-gray-700 ri-lg"></i>
             </button>
         </div>
@@ -285,13 +285,13 @@
                     </div>
                     <p class="text-gray-400 mb-6">国内首个完全基于AI自主开发的智能绿建评价系统，让绿色建筑评价变得简单高效。</p>
                     <div class="flex space-x-4 mb-4">
-                        <a href="https://weixin.qq.com" target="_blank" class="text-gray-400 hover:text-white transition-colors" title="关注我们的微信公众号">
+                        <a href="https://weixin.qq.com" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors" title="关注我们的微信公众号">
                             <i class="ri-wechat-line ri-xl"></i>
                         </a>
-                        <a href="https://weibo.com" target="_blank" class="text-gray-400 hover:text-white transition-colors" title="关注我们的微博">
+                        <a href="https://weibo.com" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors" title="关注我们的微博">
                             <i class="ri-weibo-line ri-xl"></i>
                         </a>
-                        <a href="https://www.linkedin.com" target="_blank" class="text-gray-400 hover:text-white transition-colors" title="在领英上关注我们">
+                        <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors" title="在领英上关注我们">
                             <i class="ri-linkedin-line ri-xl"></i>
                         </a>
                     </div>
@@ -360,36 +360,44 @@
 
     <script>
         // 记住我开关效果
-        document.getElementById('remember').addEventListener('change', function() {
-            const toggle = this.nextElementSibling.querySelector('div');
-            if(this.checked) {
-                toggle.classList.remove('translate-x-0');
-                toggle.classList.add('translate-x-5');
-                this.nextElementSibling.classList.remove('bg-gray-200');
-                this.nextElementSibling.classList.add('bg-primary');
-            } else {
-                toggle.classList.remove('translate-x-5');
-                toggle.classList.add('translate-x-0');
-                this.nextElementSibling.classList.remove('bg-primary');
-                this.nextElementSibling.classList.add('bg-gray-200');
-            }
-        });
+        const rememberCheckbox = document.getElementById('remember');
+        if (rememberCheckbox) {
+            rememberCheckbox.addEventListener('change', function() {
+                const toggle = this.nextElementSibling.querySelector('div');
+                if(this.checked) {
+                    toggle.classList.remove('translate-x-0');
+                    toggle.classList.add('translate-x-5');
+                    this.nextElementSibling.classList.remove('bg-gray-200');
+                    this.nextElementSibling.classList.add('bg-primary');
+                } else {
+                    toggle.classList.remove('translate-x-5');
+                    toggle.classList.add('translate-x-0');
+                    this.nextElementSibling.classList.remove('bg-primary');
+                    this.nextElementSibling.classList.add('bg-gray-200');
+                }
+            });
+        }
 
         // 密码显示/隐藏
-        document.querySelector('.ri-eye-off-line').parentElement.addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const icon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('ri-eye-off-line');
-                icon.classList.add('ri-eye-line');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('ri-eye-line');
-                icon.classList.add('ri-eye-off-line');
-            }
-        });
+        const eyeIcon = document.querySelector('.ri-eye-off-line');
+        if (eyeIcon && eyeIcon.parentElement) {
+            eyeIcon.parentElement.addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const icon = this.querySelector('i');
+                
+                if (passwordInput && icon) {
+                    if (passwordInput.type === 'password') {
+                        passwordInput.type = 'text';
+                        icon.classList.remove('ri-eye-off-line');
+                        icon.classList.add('ri-eye-line');
+                    } else {
+                        passwordInput.type = 'password';
+                        icon.classList.remove('ri-eye-line');
+                        icon.classList.add('ri-eye-off-line');
+                    }
+                }
+            });
+        }
 
         // 平滑滚动
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

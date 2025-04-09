@@ -7,10 +7,11 @@
 
     <!-- 立即加载CSS文件，避免闪烁 -->
     <link href="/static/css/tailwind.min.css" rel="stylesheet">
-    <link href="/static/css/remixicon.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <!-- 引入iframe-resizer脚本，用于自适应高度 -->
     <script src="{{ url_for('static', filename='js/iframe-resizer.contentWindow.js') }}"></script>
-    
+        <!-- 加载脚本 -->
+        <script src="/static/js/public_transport_analysis.js" defer></script>
     <!-- 动态加载百度地图API -->
     <script>
         // 创建全局回调函数
@@ -166,20 +167,14 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-1">
                 <div class="md:col-span-1 bg-white rounded-lg shadow-sm p-4">          
                     <div class="flex flex-row space-x-4 mb-4">
-                        <div class="flex-1 flex flex-col">
-                            <label for="projectName" class="text-gray-700 mb-1">项目名称</label>
-                            <div id="projectName" class="bg-gray-100 p-2 rounded text-gray-800 flex-1 flex items-center">
-                                <span id="projectNameText">加载中...</span>
-                            </div>
-                        </div>
                         
                         <div class="flex-1 flex flex-col">
                             <label for="projectLocation" class="text-gray-700 mb-1">项目地址</label>
                             <input type="text" id="projectLocation" class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="输入详细地址">
                         </div>
                         <div class="flex-1 flex flex-col" style="width: 25% !important; min-width: 120px !important;">
-                            <label for="projectLocation" class="text-gray-700 mb-1">搜索位置</label>
-                            <button id="searchLocation" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-300" style="min-width: 120px !important;">
+                            <label for="searchLocationBtn" class="text-gray-700 mb-1">搜索位置</label>
+                            <button id="searchLocationBtn" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-300" style="min-width: 120px !important;">
                                 <i class="ri-search-line mr-2"></i>搜索位置
                             </button>
                         </div>
@@ -207,10 +202,10 @@
                             <!-- 搜索设置部分 -->
                             <div>
                                 <h2 class="text-xl font-semibold text-gray-800 mb-4">搜索设置</h2>
-                                <div class="grid grid-cols-1 gap-4">
+                                <div class="grid grid-cols-1 gap-1">
                                     <div>
-                                        <label class="block text-gray-700 mb-2">搜索范围 (米)</label>
-                                        <select id="searchRadius" class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <label class="block text-gray-700 mb-2" for="searchRadius">搜索范围 (米)</label>
+                                        <select id="searchRadius" name="searchRadius" aria-label="搜索范围" class="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="500" selected>500米</option>
                                             <option value="800" >800米</option>
                                             <option value="1000">1000米</option>
@@ -220,6 +215,11 @@
                                     <div class="flex items-end">
                                         <button id="searchStations" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-300">
                                             <i class="ri-bus-line mr-2"></i>搜索附近站点
+                                        </button>
+                                    </div>
+                                    <div class="flex items-end">
+                                        <button id="exportReportBtn" class="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-300">
+                                            <i class="ri-file-download-line mr-2"></i>导出报告
                                         </button>
                                     </div>
                                 </div>
@@ -255,97 +255,7 @@
         </div>
     </div>
     
-    <!-- 加载脚本 -->
-    <script src="/static/js/public_transport_analysis.js" defer></script>
-    <script>
-        // 页面加载完成后获取项目信息
-        document.addEventListener('DOMContentLoaded', function() {
-            const projectInfo = getProjectInfo();
-            if (projectInfo.projectId) {
-                // 获取项目详细信息
-                fetch(`/project/${projectInfo.projectId}`)
-                    .then(response => {
-                        // 增加对404错误的检查
-                        if (!response.ok) {
-                            if (response.status === 404) {
-                                throw new Error('项目信息接口未找到 (404)');
-                            }
-                            throw new Error(`获取项目信息失败: ${response.statusText} (${response.status})`);
-                        }
-                        // 检查Content-Type是否为JSON
-                        const contentType = response.headers.get('content-type');
-                        if (!contentType || !contentType.includes('application/json')) {
-                            // 如果不是JSON，尝试读取文本并抛出错误
-                            return response.text().then(text => {
-                                console.error("收到的非JSON响应:", text); 
-                                throw new TypeError("收到的响应不是JSON格式");
-                            });
-                        }
-                        return response.json(); // 只有当Content-Type是JSON时才解析
-                    })
-                    .then(data => {
-                        if (data.success === false) { // 后端可能返回 {success: false, message: '...'} 
-                           throw new Error(data.message || '后端返回获取项目信息失败');
-                        }
-                        // 假设成功时直接返回项目数据，或者包含在 data.project 中
-                        const projectData = data.project || data; 
 
-                        // 更新项目名称
-                        document.getElementById('projectNameText').textContent = projectData.name;
-                        
-                        // 更新项目地址
-                        if (projectData.location) {
-                            document.getElementById('projectLocation').value = projectData.location;
-                        }
-                        
-                        // 如果有坐标信息，更新地图
-                        if (projectData.latitude && projectData.longitude) {
-                            window.baiduMapLoaded = function() {
-                                const map = new BMap.Map("map");
-                                const point = new BMap.Point(projectData.longitude, projectData.latitude);
-                                map.centerAndZoom(point, 15);
-                                const marker = new BMap.Marker(point);
-                                map.addOverlay(marker);
-                                
-                                // 更新坐标显示
-                                document.getElementById('projectCoordinates').textContent = 
-                                    `${projectData.latitude.toFixed(6)}, ${projectData.longitude.toFixed(6)}`;
-                            };
-                            
-                            // 如果百度地图已加载则直接初始化
-                            if (window.BMap) {
-                                window.baiduMapLoaded();
-                            }
-                        }
-                        
-                        // 调整iframe高度
-                        if (window.parentIFrame) {
-                            window.parentIFrame.size();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('获取项目信息失败:', error);
-                        document.getElementById('projectNameText').textContent = '获取项目信息失败';
-                    });
-            } else {
-                document.getElementById('projectNameText').textContent = '未选择项目';
-            }
-        });
 
-        // 当内容变化时自动调整高度
-        function resizeIframe() {
-            if (window.parentIFrame) {
-                window.parentIFrame.size();
-            }
-        }
-
-        // 监听页面内容变化，包括地图加载、站点列表更新等
-        document.addEventListener('DOMSubtreeModified', function() {
-            setTimeout(resizeIframe, 100);
-        });
-
-        // 监听窗口大小变化
-        window.addEventListener('resize', resizeIframe);
-    </script>
 </body>
 </html>
