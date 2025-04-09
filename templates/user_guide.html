@@ -309,47 +309,7 @@
             }
         }
 
-        /* 右上角返回按钮 */
-        .back-to-project {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: rgba(49, 118, 255, 0.9);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-            cursor: pointer;
-            z-index: 100;
-            transition: all 0.3s ease;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        
-        .back-to-project:hover {
-            background-color: #4FD1C5;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-        
-        @media (max-width: 768px) {
-            .back-to-project span {
-                display: none;
-            }
-            
-            .back-to-project {
-                width: 40px;
-                height: 40px;
-                justify-content: center;
-                padding: 0;
-            }
-            
-            .back-to-project i {
-                margin: 0;
-            }
-        }
+
     </style>
 </head>
 <body>
@@ -363,11 +323,6 @@
         </div>
     </header>
 
-    <!-- 右上角返回项目管理按钮 -->
-    <a href="{{ url_for('project_management') }}" class="back-to-project" title="返回项目管理" style="text-decoration: none;">
-        <i class="fas fa-arrow-left mr-2"></i>
-        <span>返回项目管理</span>
-    </a>
 
     <!-- 左侧悬浮导航 -->
     <div class="side-nav">
@@ -684,7 +639,7 @@
                     <span class="text-xl font-bold">智能绿建评价系统</span>
                 </div>
                 <div class="text-sm">
-                    <p>© 2024 智能绿建评价系统 版权所有</p>
+                    <p>© 2025 智能绿建评价系统 版权所有</p>
                 </div>
             </div>
         </div>
@@ -794,4 +749,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

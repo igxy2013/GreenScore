@@ -136,6 +136,11 @@ login_manager.login_message_category = 'info'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# 添加根路由重定向到index.html
+@app.route('/')
+def home():
+    return render_template('index.html')
+
 # 添加请求处理器来更新用户的last_seen时间
 @app.before_request
 def update_last_seen():
@@ -941,7 +946,7 @@ def project_detail(project_id):
         # 获取page参数，默认为project_info
         page = request.args.get('page', 'project_info')
         app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
-        return render_template('index.html', project=project, current_page=page)
+        return render_template('dashboard.html', project=project, current_page=page)
     except Exception as e:
         app.logger.error(f"获取项目详情失败: {str(e)}")
         app.logger.error(traceback.format_exc())
@@ -1141,7 +1146,7 @@ def filter_standards():
         
         # 渲染模板
         return render_template(
-            'index.html', 
+            'dashboard.html', 
             standards=standards, 
             current_level=level, 
             current_specialty=specialty,
