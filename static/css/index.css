@@ -47,6 +47,7 @@
 .ri-leaf-line:before { content: "\f06c"; }                  /* fa-leaf */
 .ri-file-list-3-line:before { content: "\f15c"; }          /* fa-file-alt */
 .ri-book-line:before { content: "\f02d"; }                  /* fa-book */
+.ri-bus-line:before { content: "\f207"; }                   /* fa-bus */
 
 /* 添加动画效果 */
 .fa-spin {

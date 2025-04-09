@@ -680,59 +680,41 @@
                     
                     {% if current_page == 'public_transport_analysis' %}
                     <!-- 通过iframe引入公共交通分析页面 -->
-                    <iframe id="public-transport-analysis-iframe" src="{{ url_for('public_transport_analysis', project_id=project.id if project else '') }}" frameborder="0" class="w-full" style="min-height: 1200px;"></iframe>
+                    <div class="public-transport-analysis-container">
+                        <iframe id="public-transport-analysis-iframe" src="{{ url_for('public_transport_analysis', project_id=project.id if project else '') }}" 
+                            style="width:100%; border:none;" scrolling="no"
+                            title="公共交通分析" loading="eager"></iframe>
+                    </div>
                     
                     <script>
+                        // 初始化iframe自适应高度
                         document.addEventListener('DOMContentLoaded', function() {
-                            const iframe = document.getElementById('public-transport-analysis-iframe');
-                            
-                            // 监听iframe中发送的消息
-                            window.addEventListener('message', function(event) {
-                                if (event.data && event.data.type === 'iframeReady') {
-                                    // iframe已准备就绪
-                                    console.log('公共交通分析iframe已准备就绪');
-                                    
-                                    // 向iframe发送项目信息
-                                    const projectId = document.getElementById('project_id').value;
-                                    const projectName = document.getElementById('current_project_name').value;
-                                    
-                                    console.log('准备发送项目信息到iframe:', { projectId, projectName });
-                                    
-                                    iframe.contentWindow.postMessage({
-                                        type: 'projectInfo',
-                                        data: {
-                                            projectId: projectId,
-                                            projectName: projectName
-                                        }
-                                    }, '*');
-                                } else if (event.data && event.data.type === 'toast') {
-                                    // 处理来自iframe的Toast通知
-                                    console.log('收到iframe发来的Toast通知:', event.data.message);
-                                    showToast(event.data.message, event.data.toastType || 'info');
-                                }
-                            });
-                            
-                            // iframe加载完成后的处理
-                            iframe.addEventListener('load', function() {
-                                console.log('公共交通分析iframe加载完成');
-                                
-                                // 向iframe发送项目信息
-                                const projectId = document.getElementById('project_id').value;
-                                const projectName = document.getElementById('current_project_name').value;
-                                
-                                console.log('iframe加载完成，发送项目信息:', { projectId, projectName });
-                                
-                                // 确保iframe已经完全加载后再发送消息
-                                setTimeout(function() {
-                                    iframe.contentWindow.postMessage({
-                                        type: 'projectInfo',
-                                        data: {
-                                            projectId: projectId,
-                                            projectName: projectName
-                                        }
-                                    }, '*');
-                                }, 1000);
-                            });
+                            if (typeof iFrameResize === 'function') {
+                                iFrameResize({
+                                    log: false,
+                                    heightCalculationMethod: 'bodyOffset',
+                                    autoResize: true,
+                                    maxHeight: 50000,
+                                    scrolling: false,
+                                    checkOrigin: false,
+                                    resizeFrom: 'child',
+                                    inPageLinks: true,
+                                    sizeHeight: true,
+                                    sizeWidth: false
+                                }, '#public-transport-analysis-iframe');
+                                console.log('公共交通分析iframe高度自适应已初始化');
+                            } else {
+                                console.error('iframe-resizer.js 未正确加载');
+                            }
+                        });
+                        
+                        // 监听iframe中发送的消息
+                        window.addEventListener('message', function(event) {
+                            if (event.data && event.data.type === 'toast') {
+                                // 处理来自iframe的Toast通知
+                                console.log('收到iframe发来的Toast通知:', event.data.message);
+                                showToast(event.data.message, event.data.toastType || 'info');
+                            }
                         });
                     </script>
                     {% endif %}
