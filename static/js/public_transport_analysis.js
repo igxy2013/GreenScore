@@ -52,361 +52,20 @@ function initEventListeners() {
  * 加载项目信息
  */
 function loadProjectInfo() {
-    // 获取页面上隐藏的项目ID
-    const projectId = document.getElementById('projectId')?.value;
+    console.log('初始化地图');
     
-    if (!projectId) {
-        console.warn('未找到项目ID，尝试从父窗口获取');
-        // 尝试从父窗口获取项目信息
-        const projectInfo = getFallbackProjectInfo();
-        
-        // 更新项目地址
-        if (projectInfo.location && document.getElementById('projectLocation')) {
-            document.getElementById('projectLocation').value = projectInfo.location;
-        }
-        
-        // 确保地图仍然初始化，即使获取项目信息失败
-        if (!map) {
-            window.baiduMapLoaded = function() {
-                initMap();
-                
-                // 如果备用信息中有坐标，使用这些坐标
-                if (projectInfo.latitude && projectInfo.longitude) {
-                    setProjectLocation(
-                        projectInfo.longitude,
-                        projectInfo.latitude,
-                        projectInfo.name || '项目位置'
-                    );
-                } else if (projectInfo.location) {
-                    // 如果有地址但没有坐标，尝试搜索地址
-                    setTimeout(() => {
-                        searchProjectLocation();
-                    }, 1000);
-                }
-            };
-            
-            if (window.BMap) {
-                window.baiduMapLoaded();
-            }
-        }
-        return;
-    }
+    // 直接初始化地图
+    window.baiduMapLoaded = function() {
+        initMap();
+    };
     
-    console.log(`尝试获取项目ID: ${projectId} 的信息`);
-    
-    // 设置请求超时
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
-    
-    // 使用项目详情页面API获取项目JSON数据
-    fetch(`/api/project_info?project_id=${projectId}`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'User-Agent': 'GreenScore-PublicTransportAnalysis/1.0'
-        },
-        credentials: 'same-origin',
-        signal: controller.signal
-    })
-    .then(async response => {
-        // 清除超时计时器
-        clearTimeout(timeoutId);
-        
-        console.log(`获取到响应，状态码: ${response.status}`);
-        
-        // 检查响应状态
-        if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error(`项目ID ${projectId} 不存在`);
-            }
-            throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);
-        }
-        
-        // 检查内容类型
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
-            console.warn('服务器返回了HTML页面而不是JSON数据，可能是认证问题，尝试继续处理');
-        }
-        
-        // 获取响应文本
-        const text = await response.text();
-        
-        // 如果响应内容为空，返回一个默认的空对象而不是抛出错误
-        if (!text || text.trim() === '') {
-            console.warn('服务器返回了空响应，使用默认空对象');
-            return {};
-        }
-        
-        // 尝试解析为 JSON
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            console.error("无法解析的响应内容:", text.substring(0, 150) + "...");
-            console.warn("尝试使用默认空对象继续");
-            // 返回空对象而不是抛出错误，允许代码继续执行
-            return {};
-        }
-    })
-    .then(data => {
-        console.log('成功解析项目数据:', data);
-        
-        // 检查API返回格式，更灵活地处理各种情况
-        if (data && data.success === false) {
-            console.warn('API返回失败状态:', data.message);
-            // 不直接抛出错误，而是记录警告并尝试继续处理
-            // 如果有message字段，记录警告
-            if (data.message) {
-                console.warn('API返回提示: ' + data.message);
-            }
-            // 尝试继续处理，可能有部分可用数据
-        }
-        
-        // 确保数据格式正确 (从API返回的项目数据通常在data字段中)
-        let projectData = data.data || data.project || data.projectLocation || data;
-        
-        // 增强数据格式验证和容错处理
-        if (!projectData) {
-            console.warn('API返回的数据中没有找到项目信息，尝试使用原始数据');
-            projectData = data; // 尝试使用原始数据
-        }
-        
-        // 检查projectData是否为对象类型
-        if (typeof projectData !== 'object') {
-            console.warn('项目数据不是对象类型，尝试创建默认对象');
-            projectData = { name: '未知项目' };
-        }
-        
-        // 确保至少有基本的项目信息
-        if (!projectData.name) {
-            console.warn('项目数据中没有名称信息，使用默认名称');
-            projectData.name = '未命名项目';
-        }
-        
-        // 更新项目地址 - 增强容错处理
-        const projectLocation = document.getElementById('projectLocation');
-        if (projectLocation) {
-            // 检查location是否存在且为非空字符串
-            if (projectData.location && typeof projectData.location === 'string' && projectData.location.trim() !== '') {
-                projectLocation.value = projectData.location;
-            } else {
-                console.warn('项目地址信息不完整或无效');
-                // 保留输入框现有值，如果有的话
-            }
-        }
-        
-        // 检查坐标信息是否有效
-        const hasValidCoordinates = (
-            projectData.latitude && !isNaN(parseFloat(projectData.latitude)) &&
-            projectData.longitude && !isNaN(parseFloat(projectData.longitude))
-        );
-        
-        // 如果有有效的坐标信息，初始化地图
-        if (hasValidCoordinates) {
-            console.log(`使用项目坐标: 经度=${projectData.longitude}, 纬度=${projectData.latitude}`);
-            // 确保地图API已加载
-            window.baiduMapLoaded = function() {
-                initMap();
-                // 设置项目位置
-                setProjectLocation(
-                    parseFloat(projectData.longitude), 
-                    parseFloat(projectData.latitude), 
-                    projectData.name || '项目位置'
-                );
-            };
-            
-            // 如果百度地图已加载则直接初始化
-            if (window.BMap) {
-                window.baiduMapLoaded();
-            } else {
-                console.log('百度地图API尚未加载，等待回调...');
-            }
-        } else {
-            // 没有坐标信息，则在地图加载后自动搜索地址
-            window.baiduMapLoaded = function() {
-                initMap();
-                // 如果有地址信息，自动搜索
-                if (projectData.location) {
-                    setTimeout(() => {
-                        searchProjectLocation();
-                    }, 1000);
-                }
-            };
-            
-            // 如果百度地图已加载则直接初始化
-            if (window.BMap) {
-                window.baiduMapLoaded();
-            } else {
-                console.log('百度地图API尚未加载，等待回调...');
-            }
-        }
-    })
-    .catch(error => {
-        // 清除超时计时器（以防在catch中未清除）
-        clearTimeout(timeoutId);
-        
-        // 处理特定错误类型
-        if (error.name === 'AbortError') {
-            console.error("获取项目信息请求超时");
-        } else {
-            console.error('获取项目信息失败:', error);
-        }
-        
-        // 使用备用方法：从页面上直接获取项目地址
-        const fallbackInfo = getFallbackProjectInfo();
-        
-        if (fallbackInfo.location && document.getElementById('projectLocation')) {
-            document.getElementById('projectLocation').value = fallbackInfo.location;
-        }
-        
-        // 确保地图仍然初始化，即使获取项目信息失败
-        if (!map && window.BMap) {
-            window.baiduMapLoaded = function() {
-                initMap();
-                
-                // 如果备用信息中有坐标，使用这些坐标
-                if (fallbackInfo.latitude && fallbackInfo.longitude) {
-                    setProjectLocation(
-                        fallbackInfo.longitude,
-                        fallbackInfo.latitude,
-                        fallbackInfo.name || '项目位置'
-                    );
-                } else if (fallbackInfo.location) {
-                    // 如果有地址但没有坐标，尝试搜索地址
-                    setTimeout(() => {
-                        searchProjectLocation();
-                    }, 1000);
-                }
-            };
-            
-            if (window.BMap) {
-                window.baiduMapLoaded();
-            }
-        }
-    });
-}
-
-/**
- * 从页面上获取备用的项目信息
- * 这是一种应急方案，当API调用失败时使用
- */
-function getFallbackProjectInfo() {
-    try {
-        // 尝试从页面中获取项目地址和坐标
-        let location = '';
-        let latitude = null;
-        let longitude = null;
-        
-        // 首先尝试从当前页面获取
-        const currentPageLocation = document.querySelector('.project-location, .location');
-        if (currentPageLocation) {
-            location = currentPageLocation.textContent.trim();
-        }
-        
-        // 尝试从页面上的隐藏字段获取坐标
-        const latField = document.querySelector('input[name="latitude"], #latitude');
-        const lngField = document.querySelector('input[name="longitude"], #longitude');
-        
-        if (latField && !isNaN(parseFloat(latField.value))) {
-            latitude = parseFloat(latField.value);
-        }
-        
-        if (lngField && !isNaN(parseFloat(lngField.value))) {
-            longitude = parseFloat(lngField.value);
-        }
-        
-        // 如果当前页面没有找到，尝试从父页面获取
-        if ((!name || !location) && window.parent && window.parent.document) {
-            try {
-                const projectNameElement = window.parent.document.querySelector('.project-name');
-                if (projectNameElement && !name) {
-                    name = projectNameElement.textContent.trim();
-                }
-                
-                const locationElement = window.parent.document.querySelector('.project-location');
-                if (locationElement && !location) {
-                    location = locationElement.textContent.trim();
-                }
-                
-                // 如果没有找到项目名称，尝试其他可能的选择器
-                if (!name) {
-                    const possibleNameElements = [
-                        window.parent.document.querySelector('.project-title'),
-                        window.parent.document.querySelector('h1'),
-                        window.parent.document.querySelector('title')
-                    ];
-                    
-                    for (const element of possibleNameElements) {
-                        if (element && element.textContent) {
-                            name = element.textContent.trim();
-                            if (name) break;
-                        }
-                    }
-                }
-                
-                // 尝试从父页面获取坐标
-                if (latitude === null || longitude === null) {
-                    const parentLatField = window.parent.document.querySelector('input[name="latitude"], #latitude, .latitude');
-                    const parentLngField = window.parent.document.querySelector('input[name="longitude"], #longitude, .longitude');
-                    
-                    if (parentLatField && !isNaN(parseFloat(parentLatField.value || parentLatField.textContent))) {
-                        latitude = parseFloat(parentLatField.value || parentLatField.textContent);
-                    }
-                    
-                    if (parentLngField && !isNaN(parseFloat(parentLngField.value || parentLngField.textContent))) {
-                        longitude = parseFloat(parentLngField.value || parentLngField.textContent);
-                    }
-                }
-            } catch (innerError) {
-                console.warn('访问父窗口DOM时出错:', innerError);
-                // 内部错误不会中断整个函数
-            }
-        }
-        
-        // 如果仍然没有找到名称，使用URL中可能包含的信息
-        if (!name) {
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const projectIdFromUrl = urlParams.get('project_id');
-                if (projectIdFromUrl) {
-                    name = `项目 #${projectIdFromUrl}`;
-                    
-                    // 尝试从localStorage获取该项目的缓存信息
-                    try {
-                        const cachedProject = localStorage.getItem(`project_${projectIdFromUrl}`);
-                        if (cachedProject) {
-                            const projectData = JSON.parse(cachedProject);
-                            if (projectData.name) name = projectData.name;
-                            if (projectData.location) location = projectData.location;
-                            if (projectData.latitude) latitude = projectData.latitude;
-                            if (projectData.longitude) longitude = projectData.longitude;
-                        }
-                    } catch (storageError) {
-                        console.warn('从localStorage获取缓存项目信息失败:', storageError);
-                    }
-                }
-            } catch (urlError) {
-                console.warn('从URL获取项目ID失败:', urlError);
-            }
-        }
-        
-        // 如果仍然没有找到位置信息，尝试使用默认位置（如成都市中心）
-        if (!location && !latitude && !longitude) {
-            console.warn('未找到位置信息，使用默认位置');
-            location = '成都市';
-            latitude = 30.67;
-            longitude = 104.06;
-        }
-        
-        console.log('获取到备用项目信息:', { name, location, latitude, longitude });
-        return { name, location, latitude, longitude };
-    } catch (e) {
-        console.error('获取备用项目信息失败:', e);
-        return { name: '未知项目', location: '成都市', latitude: 30.67, longitude: 104.06 };
+    // 如果百度地图已加载则直接初始化
+    if (window.BMap) {
+        window.baiduMapLoaded();
+    } else {
+        console.log('百度地图API尚未加载，等待回调...');
     }
 }
-
-// 项目名称相关功能已移除
 
 /**
  * 初始化百度地图
@@ -566,6 +225,14 @@ function searchNearbyStations() {
     const radiusSelect = document.getElementById('searchRadius');
     const radius = parseInt(radiusSelect ? radiusSelect.value : 500);
     
+    // 如果存在项目标记，获取其精确位置
+    if (projectMarker) {
+        currentPosition = projectMarker.getPosition();
+        console.log(`使用标记位置作为搜索中心: ${currentPosition.lng}, ${currentPosition.lat}`);
+        // 更新坐标显示
+        updateCoordinatesDisplay(currentPosition.lng, currentPosition.lat);
+    }
+    
     // 显示搜索范围圆圈
     showSearchRadius(currentPosition, radius);
     
@@ -667,6 +334,31 @@ function showSearchRadius(center, radius) {
     
     // 添加到地图
     map.addOverlay(searchCircle);
+    
+    // 确保项目标记点显示在圆心位置
+    if (!projectMarker || Math.abs(projectMarker.getPosition().lng - center.lng) > 0.0000001 || 
+        Math.abs(projectMarker.getPosition().lat - center.lat) > 0.0000001) {
+        console.log("重新设置项目标记点到圆心位置");
+        
+        // 移除当前的项目标记
+        if (projectMarker) {
+            map.removeOverlay(projectMarker);
+        }
+        
+        // 创建新标记
+        projectMarker = new BMap.Marker(center);
+        map.addOverlay(projectMarker);
+        
+        // 添加标记信息窗口
+        const infoWindow = new BMap.InfoWindow("项目位置");
+        projectMarker.addEventListener("click", function() {
+            this.openInfoWindow(infoWindow);
+        });
+    }
+    
+    // 更新地图视图，确保圆圈完全可见
+    const zoom = map.getZoom();
+    map.centerAndZoom(center, zoom);
 }
 
 /**
@@ -684,6 +376,9 @@ function processStationResults(results, searchRadius) {
     // 站点类型检查，过滤出公交站和地铁站
     const stationTypes = ['公交车站', '公交站', '地铁站', '轻轨站'];
     
+    // 确保使用最新的项目位置
+    const centerPoint = projectMarker ? projectMarker.getPosition() : currentPosition;
+    
     pois.forEach(poi => {
         // 检查是否为公交站或地铁站
         if (!stationTypes.some(type => poi.type.includes(type))) {
@@ -691,7 +386,7 @@ function processStationResults(results, searchRadius) {
         }
         
         // 计算到项目的距离
-        const distance = map.getDistance(currentPosition, poi.point).toFixed(0);
+        const distance = map.getDistance(centerPoint, poi.point).toFixed(0);
         
         // 如果超出搜索范围，跳过
         if (distance > searchRadius) {
@@ -961,7 +656,7 @@ function analyzeStations(stations, searchRadius) {
             result: result,
             score: score
         },
-        projectName: document.getElementById('projectNameText')?.textContent || '未命名项目',
+        projectName: '公共交通分析', // 使用固定名称
         projectLocation: document.getElementById('projectLocation')?.value || '未知地址',
         projectCoordinates: document.getElementById('projectCoordinates')?.textContent || '未知坐标',
         searchRadius: searchRadius,
@@ -1046,13 +741,6 @@ function exportReport() {
         return;
     }
     
-    // 获取项目ID
-    const projectId = document.getElementById('projectId').value;
-    if (!projectId) {
-        alert('未找到项目ID，无法导出报告');
-        return;
-    }
-    
     // 显示加载状态
     const exportBtn = document.getElementById('exportReportBtn');
     if (exportBtn) {
@@ -1062,7 +750,6 @@ function exportReport() {
         
         // 准备要发送的数据
         const reportData = {
-            projectId: projectId,
             projectName: analysisResults.projectName,
             projectLocation: analysisResults.projectLocation,
             projectCoordinates: analysisResults.projectCoordinates,
@@ -1108,7 +795,7 @@ function exportReport() {
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = `公共交通分析报告_${analysisResults.projectName}_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`;
+            a.download = `公共交通分析报告_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
