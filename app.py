@@ -44,6 +44,8 @@ from flask_sqlalchemy import SQLAlchemy
 from routes import auth_bp
 from admin import admin_app  # 使用admin.py中的admin_app
 from utils.extract_word_info import extract_project_info  # 导入Word信息提取函数
+import uuid
+import base64
 
 # 定义等级到属性的映射
 LEVEL_TO_ATTRIBUTE = {
@@ -5409,6 +5411,248 @@ def generate_transport_report():
             
     except Exception as e:
         app.logger.error(f"生成公共交通分析报告时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
+
+@app.route('/api/fill_transport_report_template', methods=['POST'])
+@login_required
+def fill_transport_report_template():
+    """填充公共交通站点分析报告模板"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'message': '缺少必要的数据'}), 400
+        
+        # 获取必要的数据
+        address = data.get('address', '未指定地址')
+        stations = data.get('stations', [])
+        map_image_data = data.get('mapImage', '')
+        map_info = data.get('mapInfo', {})
+        
+        # 检查必要的数据是否存在
+        if not stations:
+            return jsonify({'success': False, 'message': '缺少公交站点数据'}), 400
+            
+        # 创建临时目录（如果不存在）
+        exports_dir = os.path.join(app.static_folder, 'exports')
+        os.makedirs(exports_dir, exist_ok=True)
+        
+        # 为当前报告创建一个唯一的文件名
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        unique_id = str(uuid.uuid4())[:8]
+        report_filename = f"公交站点分析报告_{timestamp}_{unique_id}.docx"
+        output_path = os.path.join(exports_dir, report_filename)
+        
+        # 模板文件路径
+        template_path = os.path.join(app.static_folder, 'templates', '公共交通站点分析报告.docx')
+        if not os.path.exists(template_path):
+            app.logger.error(f"模板文件不存在: {template_path}")
+            return jsonify({'success': False, 'message': f'模板文件不存在，请确认 {template_path} 文件已准备好'}), 500
+        
+        # 复制模板文件到输出路径
+        import shutil
+        shutil.copy2(template_path, output_path)
+        app.logger.info(f"已将模板复制到: {output_path}")
+        
+        try:
+            from docx import Document
+            from docx.shared import Inches, Pt
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+            import io
+            import base64
+            
+            # 打开复制的模板文件
+            doc = Document(output_path)
+            
+            # 查找并替换文本占位符
+            app.logger.info(f"开始查找文本占位符...")
+            
+            # 初始化标记
+            stations_table_added = False
+            placeholder_found = False
+            map_image_added = False
+            temp_image_path = None
+            
+            # 处理地图图片
+            if map_image_data and map_image_data.startswith('data:image/png;base64,'):
+                try:
+                    # 从base64数据中提取图片内容
+                    map_image_data = map_image_data.replace('data:image/png;base64,', '')
+                    image_binary = base64.b64decode(map_image_data)
+                    
+                    # 保存图片到临时文件
+                    temp_image_path = os.path.join(exports_dir, f"map_image_{unique_id}.png")
+                    with open(temp_image_path, 'wb') as img_file:
+                        img_file.write(image_binary)
+                        
+                    app.logger.info(f"地图图片已保存到临时文件: {temp_image_path}")
+                except Exception as e:
+                    app.logger.error(f"处理地图图片数据时出错: {str(e)}")
+                    # 如果Canvas生成的图片处理失败，尝试使用百度地图静态图API
+                    if map_info and map_info.get('center'):
+                        try:
+                            app.logger.info("尝试使用百度地图静态图API生成地图...")
+                            # 这里可以通过调用百度地图静态图API来获取地图图片
+                            # 但需要额外的处理
+                        except Exception as e2:
+                            app.logger.error(f"使用百度地图静态图API生成地图时出错: {str(e2)}")
+            else:
+                app.logger.warning("未收到有效的地图图片数据")
+                # 可以在这里添加使用百度地图静态图API的备用方案
+            
+            # 遍历所有段落查找占位符
+            for i, paragraph in enumerate(doc.paragraphs):
+                app.logger.info(f"检查段落 {i+1}: {paragraph.text[:50]}...")
+                
+                # 替换地址占位符
+                if '{地址}' in paragraph.text:
+                    # 获取整个段落的文本并替换占位符
+                    new_text = paragraph.text.replace('{地址}', address)
+                    
+                    # 清空段落中所有runs，但保持段落本身
+                    p = paragraph._p
+                    for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
+                        p.remove(run._r)
+                        
+                    # 添加新的文本
+                    paragraph.add_run(new_text)
+                    app.logger.info(f"替换了地址占位符")
+                
+                # 替换日期占位符
+                if '{日期}' in paragraph.text:
+                    # 获取整个段落的文本并替换占位符
+                    new_text = paragraph.text.replace('{日期}', datetime.now().strftime('%Y年%m月%d日'))
+                    
+                    # 清空段落中所有runs，但保持段落本身
+                    p = paragraph._p
+                    for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
+                        p.remove(run._r)
+                        
+                    # 添加新的文本
+                    paragraph.add_run(new_text)
+                    app.logger.info(f"替换了日期占位符")
+                
+                # 替换地图占位符，并插入地图图片
+                if '{地图截图}' in paragraph.text and temp_image_path:
+                    app.logger.info(f"找到地图截图占位符")
+                    
+                    # 设置段落居中对齐
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                    # 清除段落中的所有runs，但保持段落本身
+                    p = paragraph._p
+                    for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
+                        p.remove(run._r)
+                    
+                    # 在清空后的段落中添加图片
+                    try:
+                        run = paragraph.add_run()
+                        run.add_picture(temp_image_path, width=Inches(6))
+                        map_image_added = True
+                        app.logger.info(f"成功在占位符位置添加了地图图片")
+                    except Exception as e:
+                        app.logger.error(f"添加地图图片时出错: {str(e)}")
+                        # 如果添加图片失败，添加文本提示
+                        paragraph.add_run(f"{address} 周边公交站位置情况（图片加载失败）")
+                    
+                elif '{地图截图}' in paragraph.text:
+                    # 如果没有图片，只添加标题
+                    # 清空段落中所有runs
+                    p = paragraph._p
+                    for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
+                        p.remove(run._r)
+                    # 添加新的标题文本
+                    run = paragraph.add_run(f"{address} 周边公交站位置情况")
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    app.logger.info(f"替换了地图截图占位符（无图片）")
+                
+                # 处理公交站点列表占位符
+                if '{公交站点列表}' in paragraph.text:
+                    app.logger.info(f"找到公交站点列表占位符")
+                    placeholder_found = True
+                    
+                    # 创建表格
+                    table = doc.add_table(rows=1, cols=4)
+                    table.style = 'Table Grid'
+                    
+                    # 设置表头
+                    header_cells = table.rows[0].cells
+                    header_cells[0].text = "序号"
+                    header_cells[1].text = "站点名称"
+                    header_cells[2].text = "距离（米）"
+                    header_cells[3].text = "详细信息"
+                    
+                    # 添加数据行
+                    for idx, station in enumerate(stations):
+                        row = table.add_row()
+                        cells = row.cells
+                        cells[0].text = str(idx + 1)
+                        cells[1].text = station.get('name', '')
+                        cells[2].text = station.get('distance', '')
+                        cells[3].text = station.get('address', '无详细信息')
+                    
+                    # 直接用表格替换段落，而不是添加到段落后面
+                    try:
+                        # 获取段落的父元素
+                        parent = paragraph._p.getparent()
+                        # 获取段落在父元素中的索引
+                        index = parent.index(paragraph._p)
+                        # 在段落的位置插入表格
+                        parent.insert(index, table._tbl)
+                        # 移除原始段落
+                        parent.remove(paragraph._p)
+                        
+                        stations_table_added = True
+                        app.logger.info(f"成功用表格替换了占位符段落")
+                    except Exception as e:
+                        app.logger.error(f"替换段落为表格时出错: {str(e)}")
+                        os.remove(output_path)  # 删除临时文件
+                        return jsonify({'success': False, 'message': f'替换段落为表格失败: {str(e)}'}), 500
+            
+            # 如果没有找到占位符，返回错误
+            if not placeholder_found:
+                app.logger.warning(f"在模板中未找到'{公交站点列表}'占位符")
+                os.remove(output_path)  # 删除临时文件
+                return jsonify({'success': False, 'message': '在模板中未找到"{公交站点列表}"占位符，请检查模板文件'}), 400
+            
+            # 如果找到占位符但无法插入表格，返回错误
+            if placeholder_found and not stations_table_added:
+                app.logger.warning(f"无法在占位符位置插入表格")
+                os.remove(output_path)  # 删除临时文件
+                return jsonify({'success': False, 'message': '虽然找到了占位符，但无法在此位置插入表格，请检查模板格式'}), 500
+            
+            # 保存文档
+            doc.save(output_path)
+            app.logger.info(f"已保存文档到: {output_path}")
+            
+            # 清理临时文件
+            if temp_image_path and os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
+                app.logger.info(f"删除临时图片文件: {temp_image_path}")
+            
+            # 创建下载链接
+            download_url = url_for('static', filename=f'exports/{report_filename}')
+            app.logger.info(f"生成的下载链接: {download_url}")
+            
+            return jsonify({
+                'success': True, 
+                'message': '公交站点分析报告生成成功',
+                'download_url': download_url
+            })
+            
+        except Exception as e:
+            app.logger.error(f"处理Word文档时出错: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            # 删除临时文件
+            if os.path.exists(output_path):
+                os.remove(output_path)
+            # 清理临时图片文件
+            if temp_image_path and os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
+            return jsonify({'success': False, 'message': f'处理Word文档时出错: {str(e)}'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"生成公交站点分析报告时出错: {str(e)}")
         app.logger.error(traceback.format_exc())
         return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
 

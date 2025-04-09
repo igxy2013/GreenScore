@@ -11,6 +11,8 @@
     <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
     <!-- 加载气候区划查询工具 -->
     <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
+    <!-- 添加html2canvas库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
@@ -151,17 +153,93 @@
         document.addEventListener('DOMContentLoaded', function() {
             // 使用score_summary.js提供的initializeScoreSummary函数
             if (typeof scoreUtils !== 'undefined' && scoreUtils.initializeScoreSummary) {
-                // scoreUtils.initializeScoreSummary已经包含了所有初始化逻辑
-                // 无需额外调用，因为score_summary.js中已有DOMContentLoaded事件监听器
+
             }
         });
-        
-        // 更新其他直接调用的地方
-        // 例如，原来是:
-        // fetchScoreSummary(true).catch(error => { ... });
-        // 改为:
-        // scoreUtils.fetchScoreSummary(true).catch(error => { ... });
+    
     </script>
+
+<style>
+    body {
+        font-family: 'Microsoft YaHei', sans-serif;
+        margin: 0;
+        padding: 20px;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        color: #3c8dbc;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .search-box {
+        display: flex;
+        margin-bottom: 20px;
+    }
+    #address {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px 0 0 4px;
+        font-size: 16px;
+    }
+    #search-btn {
+        padding: 10px 20px;
+        color: white;
+        border: none;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    #map-container {
+        height: 400px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .result-container {
+        margin-bottom: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    table th, table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    table th {
+        background-color: #f2f2f2;
+    }
+    .export-btn {
+        padding: 10px 20px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .loading {
+        text-align: center;
+        display: none;
+        margin: 20px 0;
+    }
+    .loading img {
+        width: 50px;
+    }
+</style>
+
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- 引入用户菜单组件 -->
@@ -679,11 +757,38 @@
                     {% endif %}
                     
                     {% if current_page == 'public_transport_analysis' %}
-                    <!-- 通过iframe引入公共交通分析页面 -->
-                    <div class="public-transport-analysis-container">
-                        <iframe id="public-transport-analysis-iframe" src="{{ url_for('public_transport_analysis', project_id=project.id if project else '') }}" 
-                            style="width:100%; border:none;" scrolling="no"
-                            title="公共交通分析" loading="eager"></iframe>
+                    <div class="container">
+                        <h1 class="text-3xl font-bold text-primary mb-2">查询地址周边500米范围内的公交站</h1>
+                        <div class="search-box">
+                            <input type="text" id="address" placeholder="请输入地址（如：北京市海淀区中关村）">
+                            <button id="search-btn" class="bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">查询</button>
+                        </div>
+                        
+                        <div id="map-container"></div>
+                        
+                        <div class="loading" id="loading">
+                            <p>数据加载中，请稍候...</p>
+                        </div>
+                        
+                        <div class="result-container">
+                            <h2 class="text-2xl font-bold text-primary mb-2">查询结果</h2>
+                            <div id="result-count"></div>
+                            <table id="result-table" class="min-w-full divide-y divide-gray-200 table-fixed">
+                                <thead>
+                                    <tr>
+                                        <th>序号</th>
+                                        <th>站点名称</th>
+                                        <th>距离（米）</th>
+                                        <th>详细信息</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="result-body" class="min-w-full divide-y divide-gray-200 table-fixed">
+                                    <!-- 结果将在这里动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <button class="export-btn bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" id="export-btn" disabled>生成公交站点分析报告</button>
                     </div>
                     
                     <script>
@@ -1724,6 +1829,648 @@
 
 <!-- 自定义Toast组件 -->
 <div id="custom-toast-container" class="fixed top-4 right-4 z-50"></div>
+<script>
+    // 百度地图API加载
+    function loadBaiduMapScript() {
+        const script = document.createElement('script');
+        script.src = 'https://api.map.baidu.com/api?v=3.0&ak=J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL&callback=initMap';
+        script.onerror = function() {
+            alert('百度地图API加载失败，请检查网络连接或API密钥是否有效');
+        };
+        document.body.appendChild(script);
+    }
 
+    // 初始化地图
+    function initMap() {
+        try {
+            window.map = new BMap.Map('map-container');
+            const point = new BMap.Point(116.404, 39.915); // 默认北京市中心
+            map.centerAndZoom(point, 15);
+            // 禁用滚轮放大缩小功能
+            map.disableScrollWheelZoom();
+            map.addControl(new BMap.NavigationControl());
+            map.addControl(new BMap.ScaleControl());
+            
+            // 初始化搜索功能
+            document.getElementById('search-btn').addEventListener('click', searchBusStops);
+            
+            console.log('地图初始化成功');
+        } catch (error) {
+            console.error('地图初始化失败:', error);
+            alert('地图初始化失败，请刷新页面重试');
+        }
+    }
+
+    // 搜索附近公交站
+    function searchBusStops() {
+        const address = document.getElementById('address').value.trim();
+        if (!address) {
+            alert('请输入有效地址！');
+            return;
+        }
+        
+        // 显示加载中
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('result-body').innerHTML = '';
+        document.getElementById('result-count').innerHTML = '';
+        document.getElementById('export-btn').disabled = true;
+        
+        try {
+            // 地址解析
+            const geoCoder = new BMap.Geocoder();
+            geoCoder.getPoint(address, function(point) {
+                if (point) {
+                    map.clearOverlays();
+                    map.centerAndZoom(point, 16);
+                    
+                    // 添加中心点标记
+                    const centerMarker = new BMap.Marker(point);
+                    // 添加自定义属性，标识这是中心点标记
+                    centerMarker.customData = {
+                        isCenter: true
+                    };
+                    map.addOverlay(centerMarker);
+                    
+                    // 添加半径圈
+                    const circle = new BMap.Circle(point, 500, {
+                        strokeColor: '#3c8dbc',
+                        strokeWeight: 2,
+                        strokeOpacity: 0.5,
+                        fillColor: '#3c8dbc',
+                        fillOpacity: 0.1
+                    });
+                    map.addOverlay(circle);
+                    
+                    // 搜索周边公交站
+                    try {
+                        const options = {
+                            onSearchComplete: function(results) {
+                                document.getElementById('loading').style.display = 'none';
+                                
+                                if (results && results.getNumPois && results.getNumPois() > 0) {
+                                    const busStops = [];
+                                    for (let i = 0; i < results.getNumPois(); i++) {
+                                        try {
+                                            const poi = results.getPoi(i);
+                                            if (poi && poi.point) {
+                                                const distance = map.getDistance(point, poi.point).toFixed(0);
+                                                
+                                                // 只保留500米范围内的站点
+                                                if (distance <= 500) {
+                                                    busStops.push({
+                                                        name: poi.title,
+                                                        distance: distance,
+                                                        address: poi.address || '无详细地址',
+                                                        point: poi.point
+                                                    });
+                                                }
+                                            }
+                                        } catch (poiError) {
+                                            console.error('处理POI数据时出错:', poiError);
+                                            continue;
+                                        }
+                                    }
+                                    
+                                    // 按距离排序
+                                    busStops.sort((a, b) => a.distance - b.distance);
+                                    
+                                    // 显示结果
+                                    displayResults(busStops);
+                                } else {
+                                    document.getElementById('result-count').innerHTML = '<p>未找到周边公交站点</p>';
+                                }
+                            },
+                            onError: function(error) {
+                                document.getElementById('loading').style.display = 'none';
+                                console.error('搜索出错:', error);
+                                alert('搜索公交站点时出错，请稍后重试');
+                            }
+                        };
+                        
+                        const searchLocal = new BMap.LocalSearch(map, options);
+                        searchLocal.searchNearby('公交站', point, 500);
+                    } catch (searchError) {
+                        document.getElementById('loading').style.display = 'none';
+                        console.error('创建搜索时出错:', searchError);
+                        alert('搜索功能初始化失败，请稍后重试');
+                    }
+                } else {
+                    document.getElementById('loading').style.display = 'none';
+                    alert('无法解析该地址，请输入正确的地址！');
+                }
+            });
+        } catch (error) {
+            document.getElementById('loading').style.display = 'none';
+            console.error('搜索过程出错:', error);
+            alert('搜索过程中出现错误，请稍后重试');
+        }
+    }
+
+    // 显示搜索结果
+    function displayResults(busStops) {
+        const tbody = document.getElementById('result-body');
+        tbody.innerHTML = '';
+        
+        document.getElementById('result-count').innerHTML = `<p>共找到 <strong>${busStops.length}</strong> 个公交站点</p>`;
+        
+        // 先清除所有公交站点标记，但保留中心点和圆圈
+        // 获取所有覆盖物
+        const allOverlays = map.getOverlays();
+        const overlaysToRemove = [];
+        
+        // 找出所有公交站点标记（非中心点标记）
+        if (allOverlays && allOverlays.length > 0) {
+            allOverlays.forEach(overlay => {
+                // 检查是否是公交站点标记（使用自定义属性）
+                if (overlay instanceof BMap.Marker && overlay.customData && overlay.customData.isBusStop) {
+                    overlaysToRemove.push(overlay);
+                }
+            });
+        }
+        
+        // 移除公交站点标记
+        overlaysToRemove.forEach(overlay => {
+            map.removeOverlay(overlay);
+        });
+        
+        busStops.forEach((stop, index) => {
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${stop.name}</td>
+                <td>${stop.distance}</td>
+                <td>${stop.address || '无详细信息'}</td>
+            `;
+            
+            tbody.appendChild(tr);
+            
+            // 确保stop.point存在
+            if (stop && stop.point) {
+                // 在地图上添加标记
+                const marker = new BMap.Marker(stop.point);
+                // 添加自定义属性，标识这是公交站点标记
+                marker.customData = {
+                    isBusStop: true,
+                    index: index + 1  // 记录序号，从1开始
+                };
+                map.addOverlay(marker);
+                
+                // 添加信息窗口
+                const infoWindow = new BMap.InfoWindow(`
+                    <div style="padding: 10px">
+                        <h4>${stop.name}</h4>
+                        <p>距离：${stop.distance}米</p>
+                        <p>地址：${stop.address || '无详细信息'}</p>
+                    </div>
+                `);
+                
+                marker.addEventListener('click', function() {
+                    this.openInfoWindow(infoWindow);
+                });
+            }
+        });
+        
+        // 启用导出按钮
+        if (busStops.length > 0) {
+            document.getElementById('export-btn').disabled = false;
+        }
+    }
+
+    // 导出到Word文档
+    document.getElementById('export-btn').addEventListener('click', function() {
+        const address = document.getElementById('address').value;
+        
+        // 获取表格数据
+        const busStops = [];
+        const rows = document.querySelectorAll('#result-body tr');
+        rows.forEach((row, index) => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+                busStops.push({
+                    name: cells[1].textContent,
+                    distance: cells[2].textContent,
+                    address: cells[3].textContent
+                });
+            }
+        });
+        
+        // 显示加载中
+        document.getElementById('loading').style.display = 'block';
+        
+        // 获取当前地图中心点和缩放级别
+        const center = window.map.getCenter();
+        const zoom = window.map.getZoom();
+        
+        // 收集标记点和圆圈信息
+        const allOverlays = window.map.getOverlays();
+        const markers = [];
+        let circleInfo = null;
+        
+        // 收集所有标记点和圆圈信息
+        if (allOverlays && allOverlays.length > 0) {
+            allOverlays.forEach(overlay => {
+                if (overlay instanceof BMap.Marker) {
+                    const pos = overlay.getPosition();
+                    // 使用自定义属性判断标记类型
+                    const isCenter = overlay.customData && overlay.customData.isCenter;
+                    const busStopIndex = overlay.customData && overlay.customData.isBusStop ? overlay.customData.index : null;
+                    
+                    if (pos) {
+                        markers.push({
+                            lng: pos.lng,
+                            lat: pos.lat,
+                            isCenter: isCenter,
+                            busStopIndex: busStopIndex
+                        });
+                    }
+                } else if (overlay instanceof BMap.Circle) {
+                    const centerPos = overlay.getCenter();
+                    const radius = overlay.getRadius();
+                    if (centerPos) {
+                        circleInfo = {
+                            center: {
+                                lng: centerPos.lng,
+                                lat: centerPos.lat
+                            },
+                            radius: radius
+                        };
+                    }
+                }
+            });
+        }
+        
+        // 创建一个包含地图和标记的完整图像
+        function createMapScreenshot() {
+            return new Promise((resolve, reject) => {
+                try {
+                    const mapContainer = document.getElementById('map-container');
+                    const width = mapContainer.offsetWidth;
+                    const height = mapContainer.offsetHeight;
+                    
+                    // 第一步：使用html2canvas截取地图底图
+                    html2canvas(mapContainer, {
+                        useCORS: true,
+                        allowTaint: true,
+                        backgroundColor: "#ffffff",
+                        scale: 1,
+                        logging: true,
+                        ignoreElements: function(element) {
+                            // 忽略标记和圆圈，只保留底图
+                            return element.className && 
+                                  (typeof element.className === 'string') && 
+                                  (element.className.includes('BMap_Marker') || 
+                                   element.className.includes('BMap_Circle') ||
+                                   element.className.includes('BMap_Overlay'));
+                        }
+                    }).then(baseMapCanvas => {
+                        // 第二步：创建新的Canvas来绘制标记和圆圈
+                        const markersCanvas = document.createElement('canvas');
+                        markersCanvas.width = width;
+                        markersCanvas.height = height;
+                        const markersCtx = markersCanvas.getContext('2d');
+                        
+                        // 绘制所有标记和圆圈
+                        // 绘制圆圈
+                        if (circleInfo && window.map) {
+                            try {
+                                const pixel = window.map.pointToPixel(new BMap.Point(circleInfo.center.lng, circleInfo.center.lat));
+                                const radius = window.map.getZoomUnits() * circleInfo.radius * Math.pow(2, (18 - zoom));
+                                
+                                // 使用更明显的样式绘制圆圈
+                                markersCtx.beginPath();
+                                markersCtx.arc(pixel.x, pixel.y, radius, 0, Math.PI * 2);
+                                markersCtx.strokeStyle = "#FF0000";  // 红色边框
+                                markersCtx.lineWidth = 3;            // 加粗边框
+                                markersCtx.stroke();
+                                
+                                // 使用半透明红色填充
+                                markersCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                                markersCtx.fill();
+                                
+                                // 添加一个内圈增加可见性
+                                markersCtx.beginPath();
+                                markersCtx.arc(pixel.x, pixel.y, radius - 3, 0, Math.PI * 2);
+                                markersCtx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+                                markersCtx.lineWidth = 1;
+                                markersCtx.stroke();
+                            } catch(e) {
+                                console.error('绘制圆圈失败:', e);
+                            }
+                        }
+                        
+                        // 绘制标记点
+                        markers.forEach((marker) => {
+                            try {
+                                const pixel = window.map.pointToPixel(new BMap.Point(marker.lng, marker.lat));
+                                
+                                if (marker.isCenter) {
+                                    // 中心点标记样式 - 使用蓝色
+                                    markersCtx.beginPath();
+                                    markersCtx.arc(pixel.x, pixel.y, 10, 0, Math.PI * 2);
+                                    markersCtx.fillStyle = "#3c8dbc"; // 蓝色填充
+                                    markersCtx.fill();
+                                    
+                                    // 绘制白色边框
+                                    markersCtx.strokeStyle = "#FFFFFF";
+                                    markersCtx.lineWidth = 2;
+                                    markersCtx.stroke();
+                                    
+                                    // 绘制"起点"标记
+                                    markersCtx.font = "bold 10px Arial";
+                                    markersCtx.fillStyle = "#FFFFFF";
+                                    markersCtx.textAlign = "center";
+                                    markersCtx.textBaseline = "middle";
+                                    markersCtx.fillText("起", pixel.x, pixel.y);
+                                } else if (marker.busStopIndex) {
+                                    // 公交站点标记样式 - 使用红色
+                                    markersCtx.beginPath();
+                                    markersCtx.arc(pixel.x, pixel.y, 12, 0, Math.PI * 2);
+                                    markersCtx.fillStyle = "#FF0000";
+                                    markersCtx.fill();
+                                    
+                                    // 绘制白色边框
+                                    markersCtx.strokeStyle = "#FFFFFF";
+                                    markersCtx.lineWidth = 2;
+                                    markersCtx.stroke();
+                                    
+                                    // 绘制序号文字
+                                    markersCtx.font = "bold 10px Arial";
+                                    markersCtx.fillStyle = "#FFFFFF";
+                                    markersCtx.textAlign = "center";
+                                    markersCtx.textBaseline = "middle";
+                                    
+                                    // 使用公交站点的实际序号
+                                    markersCtx.fillText(marker.busStopIndex.toString(), pixel.x, pixel.y);
+                                }
+                            } catch(e) {
+                                console.error('绘制标记点失败:', e);
+                            }
+                        });
+                        
+                        // 第三步：创建最终合成的Canvas
+                        const finalCanvas = document.createElement('canvas');
+                        finalCanvas.width = width;
+                        finalCanvas.height = height;
+                        const finalCtx = finalCanvas.getContext('2d');
+                        
+                        // 先绘制底图
+                        finalCtx.drawImage(baseMapCanvas, 0, 0, width, height);
+                        
+                        // 叠加标记层
+                        finalCtx.drawImage(markersCanvas, 0, 0, width, height);
+                        
+                        // 绘制标题背景
+                        finalCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                        finalCtx.fillRect(0, 0, width, 30);
+                        
+                        // 绘制标题文本
+                        finalCtx.fillStyle = "#333333";
+                        finalCtx.font = "bold 16px 微软雅黑";
+                        finalCtx.textAlign = "center";
+                        finalCtx.fillText(address + " 周边公交站位置", width/2, 20);
+                        
+                        // 返回最终的图像
+                        resolve(finalCanvas.toDataURL('image/png'));
+                    }).catch(error => {
+                        console.error("底图截取失败，尝试使用静态地图API:", error);
+                        
+                        // 如果html2canvas截图失败，回退到使用静态地图API
+                        const staticMapCanvas = document.createElement('canvas');
+                        staticMapCanvas.width = width;
+                        staticMapCanvas.height = height;
+                        const staticCtx = staticMapCanvas.getContext('2d');
+                        
+                        // 绘制白色背景
+                        staticCtx.fillStyle = "#ffffff";
+                        staticCtx.fillRect(0, 0, width, height);
+                        
+                        // 尝试使用百度地图静态图API
+                        const centerPoint = window.map.getCenter();
+                        const zoom = window.map.getZoom();
+                        const staticMapUrl = `https://api.map.baidu.com/staticimage/v2?ak=J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL&width=${width}&height=${height}&center=${centerPoint.lng},${centerPoint.lat}&zoom=${zoom}&copyright=1`;
+                        
+                        const mapImage = new Image();
+                        mapImage.crossOrigin = "Anonymous";
+                        
+                        mapImage.onload = function() {
+                            // 绘制地图底图
+                            staticCtx.drawImage(mapImage, 0, 0, width, height);
+                            
+                            // 绘制标记和标题
+                            // 绘制圆圈
+                            if (circleInfo && window.map) {
+                                try {
+                                    const pixel = window.map.pointToPixel(new BMap.Point(circleInfo.center.lng, circleInfo.center.lat));
+                                    const radius = window.map.getZoomUnits() * circleInfo.radius * Math.pow(2, (18 - zoom));
+                                    
+                                    staticCtx.beginPath();
+                                    staticCtx.arc(pixel.x, pixel.y, radius, 0, Math.PI * 2);
+                                    staticCtx.strokeStyle = "#FF0000";  // 红色边框
+                                    staticCtx.lineWidth = 3;            // 加粗边框
+                                    staticCtx.stroke();
+                                    
+                                    // 使用半透明红色填充
+                                    staticCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                                    staticCtx.fill();
+                                    
+                                    // 添加一个内圈增加可见性
+                                    staticCtx.beginPath();
+                                    staticCtx.arc(pixel.x, pixel.y, radius - 3, 0, Math.PI * 2);
+                                    staticCtx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+                                    staticCtx.lineWidth = 1;
+                                    staticCtx.stroke();
+                                } catch(e) {
+                                    console.error('绘制圆圈失败:', e);
+                                }
+                            }
+                            
+                            // 绘制标记点
+                            markers.forEach((marker) => {
+                                try {
+                                    const pixel = window.map.pointToPixel(new BMap.Point(marker.lng, marker.lat));
+                                    
+                                    if (marker.isCenter) {
+                                        // 中心点标记样式 - 使用蓝色
+                                        staticCtx.beginPath();
+                                        staticCtx.arc(pixel.x, pixel.y, 10, 0, Math.PI * 2);
+                                        staticCtx.fillStyle = "#3c8dbc"; // 蓝色填充
+                                        staticCtx.fill();
+                                        
+                                        // 绘制白色边框
+                                        staticCtx.strokeStyle = "#FFFFFF";
+                                        staticCtx.lineWidth = 2;
+                                        staticCtx.stroke();
+                                        
+                                        // 绘制"起点"标记
+                                        staticCtx.font = "bold 10px Arial";
+                                        staticCtx.fillStyle = "#FFFFFF";
+                                        staticCtx.textAlign = "center";
+                                        staticCtx.textBaseline = "middle";
+                                        staticCtx.fillText("起", pixel.x, pixel.y);
+                                    } else if (marker.busStopIndex) {
+                                        // 公交站点标记样式 - 使用红色
+                                        staticCtx.beginPath();
+                                        staticCtx.arc(pixel.x, pixel.y, 12, 0, Math.PI * 2);
+                                        staticCtx.fillStyle = "#FF0000";
+                                        staticCtx.fill();
+                                        
+                                        // 绘制白色边框
+                                        staticCtx.strokeStyle = "#FFFFFF";
+                                        staticCtx.lineWidth = 2;
+                                        staticCtx.stroke();
+                                        
+                                        // 绘制序号文字
+                                        staticCtx.font = "bold 10px Arial";
+                                        staticCtx.fillStyle = "#FFFFFF";
+                                        staticCtx.textAlign = "center";
+                                        staticCtx.textBaseline = "middle";
+                                        
+                                        // 使用公交站点的实际序号
+                                        staticCtx.fillText(marker.busStopIndex.toString(), pixel.x, pixel.y);
+                                    }
+                                } catch(e) {
+                                    console.error('绘制标记点失败:', e);
+                                }
+                            });
+                            
+                            // 绘制标题
+                            staticCtx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                            staticCtx.fillRect(0, 0, width, 30);
+                            staticCtx.fillStyle = "#333333";
+                            staticCtx.font = "bold 16px 微软雅黑";
+                            staticCtx.textAlign = "center";
+                            staticCtx.fillText(address + " 周边公交站位置", width/2, 20);
+                            
+                            resolve(staticMapCanvas.toDataURL('image/png'));
+                        };
+                        
+                        mapImage.onerror = function() {
+                            console.error("静态地图加载失败，使用纯标记图片");
+                            
+                            // 绘制提示文字
+                            staticCtx.fillStyle = "#333333";
+                            staticCtx.font = "bold 16px 微软雅黑";
+                            staticCtx.textAlign = "center";
+                            staticCtx.fillText(address + " 周边公交站位置", width/2, 20);
+                            
+                            staticCtx.font = "14px 微软雅黑";
+                            staticCtx.fillText("地图底图加载失败，仅显示位置标记", width/2, height/2);
+                            
+                            // 尝试直接绘制圆圈和标记
+                            if (circleInfo && window.map) {
+                                const centerPixel = window.map.pointToPixel(new BMap.Point(circleInfo.center.lng, circleInfo.center.lat));
+                                if (centerPixel) {
+                                    // 绘制红色圆圈
+                                    staticCtx.beginPath();
+                                    staticCtx.arc(centerPixel.x, centerPixel.y, 100, 0, Math.PI * 2); // 使用固定半径
+                                    staticCtx.strokeStyle = "#FF0000";  // 红色边框
+                                    staticCtx.lineWidth = 3;            // 加粗边框
+                                    staticCtx.stroke();
+                                    
+                                    // 使用半透明红色填充
+                                    staticCtx.fillStyle = "rgba(255, 0, 0, 0.15)";
+                                    staticCtx.fill();
+                                    
+                                    // 添加一个内圈增加可见性
+                                    staticCtx.beginPath();
+                                    staticCtx.arc(centerPixel.x, centerPixel.y, 100 - 3, 0, Math.PI * 2);
+                                    staticCtx.strokeStyle = "rgba(255, 0, 0, 0.5)";
+                                    staticCtx.lineWidth = 1;
+                                    staticCtx.stroke();
+                                }
+                            }
+                            
+                            resolve(staticMapCanvas.toDataURL('image/png'));
+                        };
+                        
+                        mapImage.src = staticMapUrl;
+                    });
+                } catch(e) {
+                    console.error("创建Canvas失败:", e);
+                    reject(e);
+                }
+            });
+        }
+        
+        // 执行地图截图
+        createMapScreenshot().then(mapImageData => {
+            // 发送数据到后端
+            fetch('/api/fill_transport_report_template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    address: address,
+                    stations: busStops,
+                    mapImage: mapImageData,
+                    mapInfo: {
+                        center: {
+                            lng: center.lng,
+                            lat: center.lat
+                        },
+                        zoom: zoom,
+                        markers: markers,
+                        circle: circleInfo
+                    }
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 隐藏加载中
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.success) {
+                    console.log('成功收到响应:', data);
+                    
+                    // 创建下载链接 - 确保使用正确的属性名称
+                    const link = document.createElement('a');
+                    // 检查两种可能的属性名
+                    const downloadUrl = data.download_url || data.downloadUrl;
+                    
+                    if (!downloadUrl) {
+                        console.error('响应中缺少下载链接:', data);
+                        alert('生成报告失败: 服务器未返回下载链接');
+                        return;
+                    }
+                    
+                    link.href = downloadUrl;
+                    link.download = `公交站点查询结果_${address}_${new Date().toLocaleDateString()}.docx`;
+                    
+                    // 触发下载
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    console.error('生成报告失败:', data.message);
+                    alert('生成报告失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                // 隐藏加载中
+                document.getElementById('loading').style.display = 'none';
+                console.error('API请求失败:', error);
+                alert('导出失败: ' + error.message);
+            });
+        }).catch(error => {
+            // 隐藏加载中
+            document.getElementById('loading').style.display = 'none';
+            console.error('地图截图创建失败:', error);
+            alert('地图截图创建失败: ' + error.message);
+        });
+    });
+
+    // 加载百度地图API
+    loadBaiduMapScript();
+
+    // 全局函数，供百度地图API回调
+    window.initMap = initMap;
+</script>
 </body>
 </html>
