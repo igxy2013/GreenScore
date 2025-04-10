@@ -160,7 +160,7 @@
         padding: 20px;
     }
     .container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
         background-color: white;
         padding: 20px;
@@ -762,9 +762,8 @@
                     {% endif %}
                     
                     {% if current_page == 'public_transport_analysis' %}
+                    <h1 class="text-3xl font-bold text-primary mb-6 text-center">公共交通站点分析</h1>
                     <div class="container mx-auto px-4 py-8">
-                        <h1 class="text-3xl font-bold text-primary mb-6 text-center">公共交通站点分析</h1>
-
                         <!-- 地图切换标签 -->
                         <div class="flex justify-center mb-4 border-b border-gray-200">
                             <button id="baidu-tab" class="map-tab active px-6 py-2 text-lg font-medium text-primary border-b-2 border-primary focus:outline-none" onclick="switchMapProvider('baidu')">百度地图</button>
@@ -777,8 +776,8 @@
                         </div>
 
                         <!-- 地图容器 -->
-                        <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 400px; width: 100%; position: relative;"></div>
-                        <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 400px; width: 100%; position: relative; display: none;"></div>
+                        <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 600px; width: 100%; position: relative;"></div>
+                        <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 600px; width: 100%; position: relative; display: none;"></div>
 
                         <div class="loading" id="loading" style="display: none;">
                             <p class="text-center text-gray-600 my-4">数据加载中，请稍候...</p>
