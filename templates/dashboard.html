@@ -22,6 +22,8 @@
     <!-- 绿色建材计算所需的外部库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+    <!-- 添加word_template_handler.js引用 -->
+    <script src="{{ url_for('static', filename='js/word_template_handler.js') }}" defer></script>
     <script src="/static/js/green_building_score_calculator.js"></script>
     <!-- 在 head 部分添加对 db_updater.js 的引用 -->
     <script src="/static/js/db_updater.js"></script>
@@ -827,11 +829,40 @@
                             </div>
                         </div>
 
+                        <!-- 找到公共交通分析部分的导出按钮 -->
                         <div class="text-center">
                             <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
                         </div>
                     </div>
 
+                    <script>
+                        // 在页面加载完成后设置导出按钮的点击事件
+                        document.addEventListener('DOMContentLoaded', function() {
+                            // 获取导出按钮
+                            const exportBtn = document.getElementById('export-btn');
+                            
+                            // 如果按钮存在，设置点击事件
+                            if (exportBtn) {
+                                exportBtn.addEventListener('click', function() {
+                                    // 显示加载中提示
+                                    document.getElementById('loading').style.display = 'block';
+                                    
+                                    // 创建地图截图
+                                    createMapScreenshot().then(function(mapImageData) {
+                                        // 生成结论
+                                        const conclusion = generateConclusion();
+                                        
+                                        // 处理地图图像并发送报告
+                                        processMapImageAndSendReport(mapImageData, conclusion);
+                                    }).catch(function(error) {
+                                        console.error('地图截图创建失败:', error);
+                                        alert('地图截图创建失败: ' + error.message);
+                                        document.getElementById('loading').style.display = 'none';
+                                    });
+                                });
+                            }
+                        });
+                    </script>
             {% endif %}
                     {% endblock %}
                 </div>

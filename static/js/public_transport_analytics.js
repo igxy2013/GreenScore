@@ -1025,123 +1025,118 @@
     }
     
     // 处理地图图像并发送报告
-    function processMapImageAndSendReport(mapImageData, conclusion) {
-        console.log("地图图像数据生成完成，准备发送到后端");
+    async function processMapImageAndSendReport(mapImageData, conclusion) {
+        console.log("地图图像数据生成完成，准备处理报告");
         
-        // 准备要发送的数据
-        const requestData = {
-            address: window.address,
-            stations: window.stations || [],
-            mapImage: mapImageData,
-            mapInfo: {
-                center: window.center || { lng: 0, lat: 0 },
-                zoom: window.zoom || 15,
-                markers: window.markers || [],
-                circle: window.circleInfo || { radius: 800 }
-            },
-            // 添加项目ID参数，从URL获取
-            project_id: new URLSearchParams(window.location.search).get('project_id'),
-            // 添加评分结论
-            conclusion: conclusion
-        };
-        
-        // 确保所有站点都有详细信息字段并且距离字段为字符串
-        if (requestData.stations && requestData.stations.length > 0) {
-            console.log("处理站点详细信息字段...");
-            requestData.stations = requestData.stations.map((station, index) => {
-                // 记录原始站点数据
-                console.log(`原始站点数据 ${index + 1}:`, JSON.stringify(station));
-                
-                // 确保所有重要字段都存在，并且distance为字符串
-                const normalizedStation = {
-                    index: station.index || (index + 1),
+        try {
+            // 显示加载中提示
+            document.getElementById('loading').style.display = 'block';
+            
+            // 准备数据
+            const data = {
+                address: window.address || '',
+                stations: window.stations || [],
+                mapImage: mapImageData,
+                project_id: new URLSearchParams(window.location.search).get('project_id'),
+                conclusion: conclusion
+            };
+            
+            // 获取项目信息
+            const projectInfoResponse = await fetch('/api/project_info');
+            const projectInfo = projectInfoResponse.ok ? await projectInfoResponse.json() : {};
+            
+            // 合并项目信息和结论
+            const templateData = {
+                ...projectInfo,
+                '项目地址': data.address,
+                '项目地点': data.address,
+                '项目位置': data.address,
+                '查询地址': data.address,
+                '设计日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                '评估日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                '分析日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                '报告日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                '当前日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                '结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
+                '交通分析结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
+                '分析结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
+                '评价结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
+                '规范6.1.2评价': conclusion.result6_1_2,
+                '规范6.2.1评价': conclusion.result6_2_1,
+                '规范6_1_2评价': conclusion.result6_1_2,
+                '规范6_2_1评价': conclusion.result6_2_1,
+                '规范612评价': conclusion.result6_1_2,
+                '规范621评价': conclusion.result6_2_1,
+                '总得分': conclusion.totalScore + '分',
+                '得分': conclusion.totalScore + '分',
+                '评分': conclusion.totalScore + '分',
+                '总分': conclusion.totalScore + '分',
+                stations: data.stations.map((station, index) => ({
+                    index: index + 1,
                     name: station.name || '未知站点',
                     type: station.type || '公交站',
-                    // 确保distance字段为字符串类型
-                    distance: typeof station.distance === 'number' ? 
-                             String(station.distance) : 
-                             (station.distance || '0'),
-                    // 优先使用detail字段，如果没有则使用其他可能的字段
-                    detail: station.detail || 
-                           station.address || 
-                           station.addressDetail || 
-                           station.description || 
-                           station.info || 
-                           '无详细信息',
-                    location: station.location || { lng: 0, lat: 0 }
-                };
-                
-                // 记录标准化后的站点数据
-                console.log(`标准化后的站点数据 ${index + 1}:`, JSON.stringify(normalizedStation));
-                
-                return normalizedStation;
+                    distance: String(station.distance || '0'),
+                    detail: station.detail || station.address || station.description || '无详细信息'
+                })),
+                mapImage: mapImageData
+            };
+            
+            // 使用后端API生成报告
+            console.log("使用后端API生成报告...");
+            
+            // 准备要发送的数据
+            const reportData = {
+                address: data.address,
+                stations: templateData.stations,
+                map_image: mapImageData.split(',')[1], // 移除base64前缀
+                conclusion: {
+                    result6_1_2: conclusion.result6_1_2,
+                    result6_2_1: conclusion.result6_2_1,
+                    totalScore: conclusion.totalScore
+                },
+                project_info: projectInfo
+            };
+            
+            // 调用后端API
+            const reportResponse = await fetch('/api/generate_transport_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(reportData)
             });
             
-            console.log(`处理后的站点数据: 共${requestData.stations.length}个站点`);
-            if (requestData.stations.length > 0) {
-                console.log(`第一个站点完整数据:`, JSON.stringify(requestData.stations[0]));
-                console.log(`字段检查 - name: ${requestData.stations[0].name}, type: ${requestData.stations[0].type}, distance: ${requestData.stations[0].distance}, detail: ${requestData.stations[0].detail}`);
+            if (!reportResponse.ok) {
+                const errorText = await reportResponse.text();
+                throw new Error(`后端生成报告失败: ${reportResponse.status} - ${errorText}`);
             }
-        }
-        
-        console.log("开始发送数据到后端生成报告");
-        
-        // 发送数据到后端
-        fetch('/api/fill_transport_report_template', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                console.error(`服务器响应错误: ${response.status} ${response.statusText}`);
-                throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // 隐藏加载中
+            
+            // 获取生成的报告文件
+            const reportBlob = await reportResponse.blob();
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            const fileName = `公共交通查询结果_${data.address || '地址'}_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`;
+            link.href = URL.createObjectURL(reportBlob);
+            link.download = fileName;
+            
+            // 隐藏加载中提示
             document.getElementById('loading').style.display = 'none';
             
-            if (data.success) {
-                console.log('成功收到报告生成响应:', data);
-                
-                // 创建下载链接 - 确保使用正确的属性名称
-                const link = document.createElement('a');
-                // 检查两种可能的属性名
-                const downloadUrl = data.download_url || data.downloadUrl;
-                
-                if (!downloadUrl) {
-                    console.error('响应中缺少下载链接:', data);
-                    alert('生成报告失败: 服务器未返回下载链接');
-                    return;
-                }
-                
-                // 显示成功消息
-                alert('公共交通分析报告生成成功，即将开始下载');
-                
-                // 设置下载文件名
-                const fileName = `公共交通查询结果_${window.address || '地址'}_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`;
-                link.href = downloadUrl;
-                link.download = fileName;
-                
-                // 触发下载
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                console.error('生成报告失败:', data.message);
-                alert('生成报告失败: ' + (data.message || '未知错误'));
-            }
-        })
-        .catch(error => {
-            // 隐藏加载中
+            // 显示成功消息并触发下载
+            alert('公共交通分析报告生成成功，即将开始下载');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // 清理URL对象
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+            // 隐藏加载中提示
             document.getElementById('loading').style.display = 'none';
-            console.error('API请求失败:', error);
-            alert('导出失败: ' + error.message);
-        });
+            console.error('生成报告失败:', error);
+            alert('生成报告失败: ' + error.message);
+        }
     }
 
     // 加载百度地图API
@@ -1783,119 +1778,6 @@
                 reject(error);
             }
         });
-    }
-    
-    // 创建地图截图函数
-    function createMapScreenshot() {
-        return new Promise((resolve, reject) => {
-            try {
-                console.log("开始创建地图截图");
-                // 获取当前使用的地图容器
-                const mapContainerId = currentMapProvider === 'baidu' ? 'baidu-map-container' : 'gaode-map-container';
-                const mapContainer = document.getElementById(mapContainerId);
-                
-                if (!mapContainer) {
-                    throw new Error(`地图容器 ${mapContainerId} 不存在`);
-                }
-                
-                // 使用html2canvas对地图容器进行截图
-                html2canvas(mapContainer, {
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false,
-                    scale: window.devicePixelRatio || 1, // 使用设备像素比来提高清晰度
-                    backgroundColor: "#ffffff",
-                    willReadFrequently: true, // 添加willReadFrequently属性
-                    ignoreElements: (element) => {
-                        // 忽略任何隐藏的元素
-                        return element.style.display === 'none';
-                    },
-                    onclone: (documentClone, element) => {
-                        // 在克隆的文档中处理一些特殊情况
-                        console.log("文档克隆完成，准备进行截图...");
-                        const clonedContainer = documentClone.getElementById(mapContainerId);
-                        
-                        // 确保克隆的容器可见且尺寸正确
-                        if (clonedContainer) {
-                            clonedContainer.style.opacity = '1';
-                            clonedContainer.style.visibility = 'visible';
-                            
-                            // 特殊处理高德地图
-                            if (currentMapProvider === 'gaode') {
-                                // 确保所有地图瓦片和覆盖物都可见
-                                const mapTiles = clonedContainer.querySelectorAll('.amap-layer img, .amap-markers img, .amap-overlays div');
-                                mapTiles.forEach(tile => {
-                                    if (tile) {
-                                        tile.style.opacity = '1';
-                                        tile.style.visibility = 'visible';
-                                    }
-                                });
-                            }
-                        }
-                    }
-                }).then(canvas => {
-                    console.log("地图截图成功，画布尺寸:", canvas.width, "x", canvas.height);
-                    // 转换为图片数据URL
-                    const imgData = canvas.toDataURL('image/png');
-                    resolve(imgData);
-                }).catch(error => {
-                    console.error("html2canvas截图失败:", error);
-                    // 截图失败时创建备用的截图
-                    createFallbackImage(resolve);
-                });
-            } catch (error) {
-                console.error("创建地图截图失败:", error);
-                // 发生异常时创建备用的截图
-                createFallbackImage(resolve);
-            }
-        });
-    }
-    
-    // 创建备用图片
-    function createFallbackImage(resolve) {
-        console.log("创建备用地图图片");
-        const fallbackCanvas = document.createElement('canvas');
-        const width = 800;
-        const height = 600;
-        fallbackCanvas.width = width;
-        fallbackCanvas.height = height;
-        const ctx = fallbackCanvas.getContext('2d', { willReadFrequently: true }); // 添加willReadFrequently属性
-        
-        // 绘制背景
-        ctx.fillStyle = '#F5F5F5';
-        ctx.fillRect(0, 0, width, height);
-        
-        // 绘制地址文本
-        ctx.fillStyle = '#333333';
-        ctx.font = 'bold 16px Microsoft YaHei, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`地址: ${window.address || '未指定地址'}`, width/2, height/3);
-        
-        // 绘制圆圈表示搜索范围
-        ctx.strokeStyle = 'red';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(width/2, height/2, 100, 0, 2 * Math.PI);
-        ctx.stroke();
-        
-        // 绘制中心点
-        ctx.fillStyle = 'red';
-        ctx.beginPath();
-        ctx.arc(width/2, height/2, 5, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 在底部添加说明
-        ctx.fillStyle = '#666666';
-        ctx.font = '14px Microsoft YaHei, sans-serif';
-        ctx.fillText('注: 截图生成失败，此为示例图。', width/2, height*2/3);
-        
-        // 添加站点数量说明
-        if (window.stations && window.stations.length) {
-            ctx.fillText(`周边800米内共找到 ${window.stations.length} 个公共交通站点`, width/2, height*2/3 + 24);
-        }
-        
-        // 返回备用图片数据
-        resolve(fallbackCanvas.toDataURL('image/png'));
     }
     
     // 执行地图截图并处理后续操作 (改进版)

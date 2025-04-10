@@ -71,4 +71,18 @@
         <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
     </div>
 </div>
+
+<!-- 在其他脚本之前添加JSZip库 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- 添加我们的模板处理器 -->
+<script src="{{ url_for('static', filename='js/word_template_handler.js') }}"></script>
+<!-- 添加模板测试脚本 -->
+<script src="{{ url_for('static', filename='js/test_template.js') }}"></script>
+<!-- 其他现有的脚本 -->
+<script src="{{ url_for('static', filename='js/public_transport_analytics.js') }}"></script>
+
+<!-- 添加隐藏的测试按钮 -->
+<div class="hidden">
+    <button id="test-template-btn" onclick="window.checkTemplateFormat()" class="bg-blue-500 text-white px-3 py-1 rounded shadow">测试模板</button>
+</div>
 {% endblock %} 
