@@ -6,7 +6,6 @@ import base64
 from flask import request, jsonify, Response, url_for, render_template
 from datetime import datetime
 from flask_login import login_required
-import re
 
 # 将所有路由函数放入一个init_routes函数中
 def init_routes(app):
@@ -67,6 +66,9 @@ def init_routes(app):
             app.logger.info("接收到前端请求数据 - 详细记录结束")
             app.logger.info("="*50)
             
+            # 记录接收到的站点数据结构
+            app.logger.info(f"接收到站点数据数量: {len(stations)}")
+            
             # 检查必要的数据是否存在
             if not stations:
                 return jsonify({'success': False, 'message': '缺少公交站点数据'}), 400
@@ -110,9 +112,11 @@ def init_routes(app):
                             '建筑密度': str(project.building_density or '') + ' %' if project.building_density else '',
                             '容积率': str(project.plot_ratio or '') if project.plot_ratio else '',
                             '绿地率': str(project.green_ratio or '') + ' %' if project.green_ratio else '',
-                            '设计日期': datetime.now().strftime('%Y年%m月%d日'),
-                            '项目地址': project.location or ''  # 添加项目地址字段与项目地点保持一致
+                            '设计日期': datetime.now().strftime('%Y年%m月%d日')
                         }
+                        
+                        # 表单数据中可能有其他字段，但我们已经直接使用了project.code
+                        # 所以不需要再次从form_data获取设计编号
                         
                         app.logger.info(f"成功获取项目信息: {project_info}")
                     else:
@@ -137,9 +141,19 @@ def init_routes(app):
                 from docx.enum.text import WD_ALIGN_PARAGRAPH
                 import io
                 import base64
+                import re
                 
                 # 打开复制的模板文件
                 doc = Document(output_path)
+                
+                # 查找并替换文本占位符
+                app.logger.info(f"开始查找文本占位符...")
+                
+                # 初始化标记
+                stations_table_added = False
+                placeholder_found = False
+                map_image_added = False
+                temp_image_path = None
                 
                 # 在处理段落占位符前，先扫描整个文档以识别所有可能的占位符
                 all_placeholders = []
@@ -214,20 +228,27 @@ def init_routes(app):
                         app.logger.info(f"地图图片已保存到临时文件: {temp_image_path}")
                     except Exception as e:
                         app.logger.error(f"处理地图图片数据时出错: {str(e)}")
-                        app.logger.error(traceback.format_exc())
+                        # 如果Canvas生成的图片处理失败，尝试使用百度地图静态图API
+                        if map_info and map_info.get('center'):
+                            try:
+                                app.logger.info("尝试使用百度地图静态图API生成地图...")
+                                # 这里可以通过调用百度地图静态图API来获取地图图片
+                                # 但需要额外的处理
+                            except Exception as e2:
+                                app.logger.error(f"使用百度地图静态图API生成地图时出错: {str(e2)}")
                 else:
                     app.logger.warning("未收到有效的地图图片数据")
+                    # 可以在这里添加使用百度地图静态图API的备用方案
                 
-                # 处理段落中的占位符
+                # 遍历所有段落查找占位符
                 for i, paragraph in enumerate(doc.paragraphs):
                     original_text = paragraph.text
                     app.logger.info(f"检查段落 {i+1}: \"{original_text}\"")
                     
                     # 替换地址占位符
                     if '{地址}' in original_text:
-                        # 获取地址，优先使用项目地址，如果没有则使用项目地点
-                        address_value = address or extended_project_info.get('项目地址', '') or extended_project_info.get('项目地点', '')
-                        new_text = original_text.replace('{地址}', address_value)
+                        # 获取整个段落的文本并替换占位符
+                        new_text = original_text.replace('{地址}', address)
                         app.logger.info(f"替换地址占位符: '{original_text}' -> '{new_text}'")
                         
                         # 清空段落中所有runs，但保持段落本身
@@ -237,13 +258,12 @@ def init_routes(app):
                             
                         # 添加新的文本
                         paragraph.add_run(new_text)
-                        continue  # 处理完占位符后，跳过后续处理
                     
                     # 替换日期占位符
-                    if '{设计日期}' in original_text:
+                    if '{设计日期}' in paragraph.text:
                         # 获取整个段落的文本并替换占位符
-                        new_text = original_text.replace('{设计日期}', datetime.now().strftime('%Y年%m月%d日'))
-                        app.logger.info(f"替换日期占位符: '{original_text}' -> '{new_text}'")
+                        new_text = paragraph.text.replace('{设计日期}', datetime.now().strftime('%Y年%m月%d日'))
+                        app.logger.info(f"替换日期占位符: '{paragraph.text}' -> '{new_text}'")
                         
                         # 清空段落中所有runs，但保持段落本身
                         p = paragraph._p
@@ -252,30 +272,9 @@ def init_routes(app):
                             
                         # 添加新的文本
                         paragraph.add_run(new_text)
-                        continue  # 处理完占位符后，跳过后续处理
                     
-                    # 替换结论占位符
-                    if '{结论}' in original_text:
-                        app.logger.info(f"找到结论占位符")
-                        conclusion_value = extended_project_info.get('结论', '未提供结论')
-                        
-                        # 清空段落中所有runs，但保持段落本身
-                        p = paragraph._p
-                        for run in list(paragraph.runs):
-                            p.remove(run._r)
-                        
-                        # 分行添加结论文本
-                        lines = conclusion_value.split('\n')
-                        for line_idx, line in enumerate(lines):
-                            if line_idx > 0:  # 非首行添加换行
-                                paragraph.add_run().add_break()
-                            if line.strip():  # 只添加非空行
-                                paragraph.add_run(line)
-                        
-                        app.logger.info(f"替换结论占位符完成")
-                        continue  # 处理完占位符后，跳过后续处理
-                    
-                    # 检查段落是否包含项目信息占位符
+                    # 替换项目信息占位符
+                    # 创建一个副本，因为我们将在迭代过程中修改文本
                     original_text = paragraph.text
                     new_text = original_text
                     text_changed = False
@@ -285,53 +284,56 @@ def init_routes(app):
                         app.logger.info(f"段落 {i+1} 包含花括号，可能包含占位符")
                         
                         # 使用正则表达式查找所有占位符
+                        import re
                         placeholders = re.findall(r'\{([^}]+)\}', original_text)
                         app.logger.info(f"找到的占位符: {placeholders}")
                         
+                        # 替换结论占位符
+                if '{结论}' in original_text:
+                    app.logger.info(f"找到结论占位符")
+                    conclusion_value = extended_project_info.get('结论', '未提供结论')
+                    
+                    # 清空段落中所有runs，但保持段落本身
+                    p = paragraph._p
+                    for run in list(paragraph.runs):
+                        p.remove(run._r)
+                    
+                    # 分行添加结论文本
+                    lines = conclusion_value.split('
+')
+                    for line_idx, line in enumerate(lines):
+                        if line_idx > 0:  # 非首行添加换行
+                            paragraph.add_run().add_break()
+                        if line.strip():  # 只添加非空行
+                            paragraph.add_run(line)
+                    
+                    app.logger.info(f"替换结论占位符完成")
+                    continue  # 处理完占位符后，跳过后续处理
+                            
                         # 检查是否包含任何项目信息占位符
-                        for placeholder in placeholders:
+                        for placeholder, value in extended_project_info.items():
                             placeholder_text = '{' + placeholder + '}'
-                            # 先检查是否在扩展项目信息中
-                            if placeholder in extended_project_info:
-                                value = extended_project_info[placeholder]
-                                if value is not None:
-                                    new_text = new_text.replace(placeholder_text, str(value))
+                            if placeholder_text in new_text:
+                                # 结论占位符已在单独的逻辑中处理，此处跳过
+                    continue
+                                else:
+                                    new_text = new_text.replace(placeholder_text, value)
                                     text_changed = True
                                     app.logger.info(f"替换了项目信息占位符 {placeholder_text} -> {value}")
-                            # 如果不在扩展项目信息中，再尝试类似匹配
-                            elif placeholder not in ['地图截图', '公交站点列表', '结论']:
-                                # 尝试查找最相似的键
-                                best_match = None
-                                for key in extended_project_info.keys():
-                                    # 简单的相似度检查 - 移除空格和标点后比较
-                                    cleaned_placeholder = re.sub(r'[\s\W]+', '', placeholder.lower())
-                                    cleaned_key = re.sub(r'[\s\W]+', '', key.lower())
-                                    
-                                    if cleaned_placeholder == cleaned_key:
-                                        best_match = key
-                                        break
-                                
-                                if best_match:
-                                    value = extended_project_info[best_match]
-                                    if value is not None:
-                                        new_text = new_text.replace(placeholder_text, str(value))
-                                        text_changed = True
-                                        app.logger.info(f"通过相似匹配替换占位符 {placeholder_text} -> {best_match} = {value}")
-                        
-                        # 如果文本已更改，应用新文本
-                        if text_changed:
-                            app.logger.info(f"段落 {i+1} 文本已更改: '{original_text}' -> '{new_text}'")
-                            # 清空段落中所有runs，但保持段落本身
-                            p = paragraph._p
-                            for run in list(paragraph.runs):
-                                p.remove(run._r)
-                                
-                            # 添加新的文本
-                            paragraph.add_run(new_text)
-                            continue  # 处理完占位符后，跳过后续处理
+                    
+                    # 如果文本已更改且不是结论占位符的特殊处理，应用新文本
+                    if text_changed and not ('{结论}' in original_text and '结论' in extended_project_info):
+                        app.logger.info(f"段落 {i+1} 文本已更改: '{original_text}' -> '{new_text}'")
+                        # 清空段落中所有runs，但保持段落本身
+                        p = paragraph._p
+                        for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
+                            p.remove(run._r)
+                            
+                        # 添加新的文本
+                        paragraph.add_run(new_text)
                     
                     # 替换地图占位符，并插入地图图片
-                    if '{地图截图}' in original_text and temp_image_path:
+                    if '{地图截图}' in paragraph.text and temp_image_path:
                         app.logger.info(f"找到地图截图占位符")
                         
                         # 设置段落居中对齐
@@ -339,7 +341,7 @@ def init_routes(app):
                         
                         # 清除段落中的所有runs，但保持段落本身
                         p = paragraph._p
-                        for run in list(paragraph.runs):
+                        for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
                             p.remove(run._r)
                         
                         # 在清空后的段落中添加图片
@@ -358,191 +360,131 @@ def init_routes(app):
                             app.logger.info(f"添加了黑色编号说明文字")
                         except Exception as e:
                             app.logger.error(f"添加地图图片时出错: {str(e)}")
-                            app.logger.error(traceback.format_exc())
                             # 如果添加图片失败，添加文本提示
                             paragraph.add_run(f"{address} 周边公交站位置情况（图片加载失败）")
                         
-                        continue  # 处理完占位符后，跳过后续处理
-                    elif '{地图截图}' in original_text:
+                    elif '{地图截图}' in paragraph.text:
                         # 如果没有图片，只添加标题
                         # 清空段落中所有runs
                         p = paragraph._p
-                        for run in list(paragraph.runs):
+                        for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
                             p.remove(run._r)
                         # 添加新的标题文本
                         run = paragraph.add_run(f"{address} 周边公交站位置情况")
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        app.logger.info(f"替换了地图截图占位符（无图片）")
-                        continue  # 处理完占位符后，跳过后续处理
-                    
-                    # 处理公交站点列表占位符
-                    if '{公交站点列表}' in original_text:
-                        app.logger.info(f"找到公交站点列表占位符")
-                        placeholder_found = True
-                        
-                        # 创建表格
-                        table = doc.add_table(rows=1, cols=5)
-                        table.style = 'Table Grid'
-                        app.logger.info(f"创建表格: 行数={len(table.rows)}, 列数={len(table.rows[0].cells) if table.rows else 0}")
-                        
-                        # 设置表头
-                        header_cells = table.rows[0].cells
-                        header_cells[0].text = "序号"
-                        header_cells[1].text = "站点名称"
-                        header_cells[2].text = "类型"
-                        header_cells[3].text = "距离（米）"
-                        header_cells[4].text = "详细信息"
-                        app.logger.info(f"设置表头: {[cell.text for cell in header_cells]}")
-                        
-                        # 在后端也进行站点数据的标准化，确保字段格式一致
-                        standardized_stations = []
-                        for idx, station in enumerate(stations):
-                            # 标准化站点数据格式
-                            standardized_station = {
-                                'index': station.get('index', idx + 1),
-                                'name': station.get('name', '未知站点'),
-                                'type': station.get('type', '公交站'),
-                                'distance': str(station.get('distance', '0')),  # 确保距离为字符串
-                                'detail': station.get('detail', station.get('address', station.get('description', '无详细信息'))),
-                                'location': station.get('location', {"lng": 0, "lat": 0})
-                            }
-                            standardized_stations.append(standardized_station)
-                        
-                        # 使用标准化后的站点数据填充表格
-                        for idx, station in enumerate(standardized_stations):
-                            row = table.add_row()
-                            cells = row.cells
-                            
-                            app.logger.info(f"处理表格行 {idx+1}:")
-                            app.logger.info(f"站点数据: {json.dumps(station, ensure_ascii=False)}")
-                            
-                            # 逐个单元格填充并记录
-                            app.logger.info("开始填充单元格:")
-                            
-                            # 序号列
-                            cells[0].text = str(idx + 1)
-                            app.logger.info(f"单元格[0](序号): 已填充值 '{cells[0].text}'")
-                            
-                            # 站点名称列
-                            name_value = station.get('name', '')
-                            cells[1].text = name_value
-                            app.logger.info(f"单元格[1](站点名称): 从字段'name'获取值 '{name_value}'")
-                            
-                            # 类型列
-                            type_value = station.get('type', '')
-                            cells[2].text = type_value
-                            app.logger.info(f"单元格[2](类型): 已填充值 '{cells[2].text}'")
-                            
-                            # 距离列
-                            distance_value = station.get('distance', '')
-                            cells[3].text = str(distance_value)
-                            app.logger.info(f"单元格[3](距离): 已填充值 '{cells[3].text}'")
-                            
-                            # 详细信息列
-                            detail_value = station.get('detail', '无详细信息')
-                            cells[4].text = detail_value
-                            app.logger.info(f"单元格[4](详细信息): 已填充值 '{cells[4].text}'")
-                            
-                            # 验证填充结果
-                            app.logger.info(f"行 {idx+1} 填充结果:")
-                            for i, cell in enumerate(cells):
-                                app.logger.info(f"  单元格[{i}]: '{cell.text}'")
-                        
-                        # 直接用表格替换段落，而不是添加到段落后面
-                        try:
-                            # 获取段落的父元素
-                            parent = paragraph._p.getparent()
-                            # 获取段落在父元素中的索引
-                            index = parent.index(paragraph._p)
-                            # 在段落的位置插入表格
-                            parent.insert(index, table._tbl)
-                            # 移除原始段落
-                            parent.remove(paragraph._p)
-                            
-                            stations_table_added = True
-                            app.logger.info(f"成功用表格替换了占位符段落")
-                        except Exception as e:
-                            app.logger.error(f"替换段落为表格时出错: {str(e)}")
-                            app.logger.error(traceback.format_exc())
-                            os.remove(output_path)  # 删除临时文件
-                            return jsonify({'success': False, 'message': f'替换段落为表格失败: {str(e)}'}), 500
-                            
-                        continue  # 处理完占位符后，跳过后续处理
-                
-                # 检查表格中的占位符
-                app.logger.info("\n开始替换表格中的占位符")
-                
-                for t_idx, table in enumerate(doc.tables):
-                    app.logger.info(f"处理表格 #{t_idx+1}")
-                    
-                    for r_idx, row in enumerate(table.rows):
-                        for c_idx, cell in enumerate(row.cells):
-                            original_text = cell.text
-                            
-                            if '{' in original_text and '}' in original_text:
-                                app.logger.info(f"表格 #{t_idx+1}, 行 #{r_idx+1}, 列 #{c_idx+1} 包含占位符: '{original_text}'")
-                                
-                                # 特殊处理日期占位符
-                                if '{设计日期}' in original_text:
-                                    date_value = datetime.now().strftime('%Y年%m月%d日')
-                                    new_text = original_text.replace('{设计日期}', date_value)
-                                    
-                                    # 替换单元格文本
-                                    cell.text = new_text
-                                    app.logger.info(f"替换表格中的日期占位符: '{original_text}' -> '{new_text}'")
-                                    continue
-                                
-                                # 替换其他占位符
-                                new_text = original_text
-                                text_changed = False
-                                
-                                # 使用正则表达式查找所有占位符
-                                placeholders = re.findall(r'\{([^}]+)\}', original_text)
-                                
-                                # 处理每个占位符
-                                for placeholder in placeholders:
-                                    placeholder_text = '{' + placeholder + '}'
-                                    
-                                    # 如果占位符在扩展项目信息中
-                                    if placeholder in extended_project_info:
-                                        value = extended_project_info[placeholder]
-                                        if value is not None:
-                                            new_text = new_text.replace(placeholder_text, str(value))
-                                            text_changed = True
-                                            app.logger.info(f"替换了表格中的占位符 {placeholder_text} -> {value}")
-                                    # 尝试相似匹配
-                                    else:
-                                        # 尝试查找最相似的键
-                                        best_match = None
-                                        for key in extended_project_info.keys():
-                                            # 简单的相似度检查
-                                            cleaned_placeholder = re.sub(r'[\s\W]+', '', placeholder.lower())
-                                            cleaned_key = re.sub(r'[\s\W]+', '', key.lower())
-                                            
-                                            if cleaned_placeholder == cleaned_key:
-                                                best_match = key
-                                                break
-                                        
-                                        if best_match:
-                                            value = extended_project_info[best_match]
-                                            if value is not None:
-                                                new_text = new_text.replace(placeholder_text, str(value))
-                                                text_changed = True
-                                                app.logger.info(f"通过相似匹配替换表格占位符 {placeholder_text} -> {best_match} = {value}")
-                                
-                                # 如果文本已更改，应用新文本
-                                if text_changed:
-                                    cell.text = new_text
-                                    app.logger.info(f"表格单元格文本已更改: '{original_text}' -> '{new_text}'")
+                        app.logger.info(f"替换了地图截图占位符（无图片）")    # 处理公交站点列表占位符
+    if '{公交站点列表}' in original_text:
+        app.logger.info(f"找到公交站点列表占位符")
+        placeholder_found = True
+        
+        # 创建表格
+        table = doc.add_table(rows=1, cols=5)
+        table.style = 'Table Grid'
+        app.logger.info(f"创建表格: 行数={len(table.rows)}, 列数={len(table.rows[0].cells) if table.rows else 0}")
+        
+        # 设置表头
+        header_cells = table.rows[0].cells
+        header_cells[0].text = "序号"
+        header_cells[1].text = "站点名称"
+        header_cells[2].text = "类型"
+        header_cells[3].text = "距离（米）"
+        header_cells[4].text = "详细信息"
+        app.logger.info(f"设置表头: {[cell.text for cell in header_cells]}")
+        
+        # 在后端也进行站点数据的标准化，确保字段格式一致
+        standardized_stations = []
+        for idx, station in enumerate(stations):
+            # 标准化站点数据格式
+            standardized_station = {
+                'index': station.get('index', idx + 1),
+                'name': station.get('name', '未知站点'),
+                'type': station.get('type', '公交站'),
+                'distance': str(station.get('distance', '0')),  # 确保距离为字符串
+                'detail': station.get('detail', station.get('address', station.get('description', '无详细信息'))),
+                'location': station.get('location', {"lng": 0, "lat": 0})
+            }
+            standardized_stations.append(standardized_station)
+        
+        # 使用标准化后的站点数据
+        standardized_data = standardized_stations
+        app.logger.info(f"站点数据已标准化，共 {len(standardized_data)} 个站点")
+        
+        # 添加数据行
+        for idx, station in enumerate(standardized_data):
+            row = table.add_row()
+            cells = row.cells
+            
+            app.logger.info(f"
+处理表格行 {idx+1}:")
+            app.logger.info(f"站点数据: {json.dumps(station, ensure_ascii=False)}")
+            
+            # 逐个单元格填充并记录
+            app.logger.info("开始填充单元格:")
+            
+            # 序号列
+            cells[0].text = str(idx + 1)
+            app.logger.info(f"单元格[0](序号): 已填充值 '{cells[0].text}'")
+            
+            # 站点名称列
+            name_value = station.get('name', '')
+            cells[1].text = name_value
+            app.logger.info(f"单元格[1](站点名称): 从字段'name'获取值 '{name_value}'")
+            
+            # 类型列
+            type_value = station.get('type', '')
+            app.logger.info(f"字段'type'的值: '{type_value}'")
+            cells[2].text = type_value
+            app.logger.info(f"单元格[2](类型): 已填充值 '{cells[2].text}'")
+            
+            # 距离列
+            distance_value = station.get('distance', '')
+            app.logger.info(f"字段'distance'的值: '{distance_value}'")
+            cells[3].text = str(distance_value)
+            app.logger.info(f"单元格[3](距离): 已填充值 '{cells[3].text}'")
+            
+            # 详细信息列
+            detail_value = station.get('detail', station.get('address', '无详细信息'))
+            app.logger.info(f"详细信息使用值: '{detail_value}'")
+            cells[4].text = detail_value
+            app.logger.info(f"单元格[4](详细信息): 已填充值 '{cells[4].text}'")
+            
+            # 验证填充结果
+            app.logger.info(f"行 {idx+1} 填充结果:")
+            for i, cell in enumerate(cells):
+                app.logger.info(f"  单元格[{i}]: '{cell.text}'")
+            
+            # 最终表格行的实际内容
+            app.logger.info(f"表格行 {idx+1} 最终内容: {[cell.text for cell in cells]}")
+        
+        # 直接用表格替换段落，而不是添加到段落后面
+        try:
+            # 获取段落的父元素
+            parent = paragraph._p.getparent()
+            # 获取段落在父元素中的索引
+            index = parent.index(paragraph._p)
+            # 在段落的位置插入表格
+            parent.insert(index, table._tbl)
+            # 移除原始段落
+            parent.remove(paragraph._p)
+            
+            stations_table_added = True
+            app.logger.info(f"成功用表格替换了占位符段落")
+        except Exception as e:
+            app.logger.error(f"替换段落为表格时出错: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            os.remove(output_path)  # 删除临时文件
+            return jsonify({'success': False, 'message': f'替换段落为表格失败: {str(e)}'}), 500
+            
+        continue  # 处理完占位符后，跳过后续处理
                 
                 # 如果没有找到占位符，返回错误
-                if 'placeholder_found' in locals() and not placeholder_found:
-                    app.logger.warning(f"在模板中未找到'公交站点列表'占位符")
+                if not placeholder_found:
+                    app.logger.warning(f"在模板中未找到'{公交站点列表}'占位符")
                     os.remove(output_path)  # 删除临时文件
                     return jsonify({'success': False, 'message': '在模板中未找到"{公交站点列表}"占位符，请检查模板文件'}), 400
                 
                 # 如果找到占位符但无法插入表格，返回错误
-                if 'placeholder_found' in locals() and 'stations_table_added' in locals() and placeholder_found and not stations_table_added:
+                if placeholder_found and not stations_table_added:
                     app.logger.warning(f"无法在占位符位置插入表格")
                     os.remove(output_path)  # 删除临时文件
                     return jsonify({'success': False, 'message': '虽然找到了占位符，但无法在此位置插入表格，请检查模板格式'}), 500
@@ -581,7 +523,7 @@ def init_routes(app):
             app.logger.error(f"生成公交站点分析报告时出错: {str(e)}")
             app.logger.error(traceback.format_exc())
             return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
-    
+
     @app.route('/public_transport_analysis')
     @login_required
     def public_transport_analysis():
@@ -597,9 +539,99 @@ def init_routes(app):
                 app.logger.error(f"获取项目信息失败: {str(e)}")
                 
         return render_template('public_transport_analysis.html', project=project)
+
+    @app.route('/api/generate_transport_report', methods=['POST'])
+    @login_required
+    def generate_transport_report():
+        """生成公共交通分析报告"""
+        try:
+            # 获取请求数据
+            data = request.json
+            if not data:
+                return jsonify({'success': False, 'message': '缺少必要的数据'}), 400
+            
+            # 提取项目信息
+            project_info = data.get('project', {})
+            project_name = project_info.get('name', '未命名项目')
+            project_location = project_info.get('location', '')
+            project_coordinates = project_info.get('coordinates', {})
+            
+            # 提取分析结果
+            analysis_results = data.get('analysis', {})
+            stations = data.get('stations', [])
+            
+            # 记录处理信息
+            app.logger.info(f"开始生成公共交通分析报告: 项目 '{project_name}'")
+            
+            # 准备替换模板中的数据
+            template_data = [{
+                # 项目基本信息
+                '项目名称': project_name,
+                '项目地点': project_location,
+                '经度': project_coordinates.get('lng', ''),
+                '纬度': project_coordinates.get('lat', ''),
+                '分析日期': datetime.now().strftime('%Y年%m月%d日'),
+                
+                # 分析结果数据
+                '公交站总数': str(analysis_results.get('busStations', {}).get('total', 0)),
+                '地铁站总数': str(analysis_results.get('subwayStations', {}).get('total', 0)),
+                '500米内公交站': str(analysis_results.get('busStations', {}).get('qualified', 0)),
+                '800米内地铁站': str(analysis_results.get('subwayStations', {}).get('qualified', 0)),
+                
+                # 最近站点信息
+                '最近公交站名称': analysis_results.get('busStations', {}).get('nearest', {}).get('name', '无'),
+                '最近公交站距离': str(analysis_results.get('busStations', {}).get('nearest', {}).get('distance', 0)) + '米',
+                '最近地铁站名称': analysis_results.get('subwayStations', {}).get('nearest', {}).get('name', '无'),
+                '最近地铁站距离': str(analysis_results.get('subwayStations', {}).get('nearest', {}).get('distance', 0)) + '米',
+                
+                # 评价结果
+                '评价结果': analysis_results.get('evaluation', {}).get('result', '不符合'),
+                '评分': str(analysis_results.get('evaluation', {}).get('score', 0)),
+            }]
+            
+            # 添加站点列表数据
+            for i, station in enumerate(stations, 1):
+                if i > 10:  # 最多处理10个站点
+                    break
+                    
+                template_data[0][f'站点{i}名称'] = station.get('name', '')
+                template_data[0][f'站点{i}类型'] = station.get('type', '')
+                template_data[0][f'站点{i}距离'] = str(station.get('distance', 0)) + '米'
+            
+            # 生成Word文档
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            template_path = '公共交通分析报告.docx'
+            output_filename = f"公共交通分析报告_{project_name}_{timestamp}.docx"
+            output_dir = os.path.join(app.config['EXPORT_FOLDER'])
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, output_filename)
+            
+            # 使用现有的Word模板处理函数
+            from word_template import process_template
+            result = process_template(template_data, template_path=template_path, output_path=output_path)
+            
+            if result and os.path.exists(output_path):
+                app.logger.info(f"公共交通分析报告生成成功: {output_path}")
+                
+                # 返回下载链接
+                download_url = url_for('static', filename=f'exports/{output_filename}')
+                return jsonify({
+                    'success': True, 
+                    'message': '公共交通分析报告生成成功',
+                    'downloadUrl': download_url
+                })
+            else:
+                app.logger.error(f"公共交通分析报告生成失败")
+                return jsonify({'success': False, 'message': '报告生成失败，请稍后重试'}), 500
+                
+        except Exception as e:
+            app.logger.error(f"生成公共交通分析报告时出错: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
     
     # 返回注册的路由函数，以便在需要时可以单独访问
     return {
         'fill_transport_report_template': fill_transport_report_template,
-        'public_transport_analysis': public_transport_analysis
-    } 
+        'public_transport_analysis': public_transport_analysis,
+        'generate_transport_report': generate_transport_report
+    }

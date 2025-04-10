@@ -1,4 +1,3 @@
-
             // --- 公共交通分析JS ---
             let currentMapProvider = 'baidu'; // 默认百度
             let baiduMapInstance = null;
@@ -934,6 +933,42 @@
                 // 添加评分结论
                 conclusion: conclusion
             };
+            
+            // 确保所有站点都有详细信息字段
+            if (requestData.stations && requestData.stations.length > 0) {
+                console.log("处理站点详细信息字段...");
+                requestData.stations = requestData.stations.map((station, index) => {
+                    // 记录原始站点数据
+                    console.log(`原始站点数据 ${index + 1}:`, JSON.stringify(station));
+                    
+                    // 确保所有重要字段都存在
+                    const normalizedStation = {
+                        index: station.index || (index + 1),
+                        name: station.name || '未知站点',
+                        type: station.type || '公交站',
+                        distance: station.distance || '0',
+                        // 优先使用detail字段，如果没有则使用其他可能的字段
+                        detail: station.detail || 
+                               station.address || 
+                               station.addressDetail || 
+                               station.description || 
+                               station.info || 
+                               '无详细信息',
+                        location: station.location || { lng: 0, lat: 0 }
+                    };
+                    
+                    // 记录标准化后的站点数据
+                    console.log(`标准化后的站点数据 ${index + 1}:`, JSON.stringify(normalizedStation));
+                    
+                    return normalizedStation;
+                });
+                
+                console.log(`处理后的站点数据: 共${requestData.stations.length}个站点`);
+                if (requestData.stations.length > 0) {
+                    console.log(`第一个站点完整数据:`, JSON.stringify(requestData.stations[0]));
+                    console.log(`字段检查 - name: ${requestData.stations[0].name}, type: ${requestData.stations[0].type}, distance: ${requestData.stations[0].distance}, detail: ${requestData.stations[0].detail}`);
+                }
+            }
             
             console.log("开始发送数据到后端生成报告");
             

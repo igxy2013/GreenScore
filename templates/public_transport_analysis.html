@@ -1,0 +1,74 @@
+{% extends "dashboard.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-primary mb-6 text-center">公共交通站点分析</h1>
+
+    <!-- 地图切换标签 -->
+    <div class="flex justify-center mb-4 border-b border-gray-200">
+        <button id="baidu-tab" class="map-tab active px-6 py-2 text-lg font-medium text-primary border-b-2 border-primary focus:outline-none" onclick="switchMapProvider('baidu')">百度地图</button>
+        <button id="gaode-tab" class="map-tab px-6 py-2 text-lg font-medium text-gray-500 hover:text-primary focus:outline-none" onclick="switchMapProvider('gaode')">高德地图</button>
+    </div>
+
+    <div class="search-box mb-6 flex">
+        <input type="text" id="address" class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-base" placeholder="请输入详细地址（如：北京市海淀区中关村）">
+        <button id="search-btn" class="px-6 py-2 bg-primary text-white rounded-r-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium">查询</button>
+    </div>
+
+    <!-- 地图容器 -->
+    <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 400px; width: 100%; position: relative;"></div>
+    <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 400px; width: 100%; position: relative; display: none;"></div>
+
+    <div class="loading" id="loading" style="display: none;">
+        <p class="text-center text-gray-600 my-4">数据加载中，请稍候...</p>
+    </div>
+
+    <div class="result-container mb-6">
+        <h2 class="text-xl font-bold text-primary mb-4">查询结果</h2>
+        <div id="result-count" class="mb-4 text-gray-700"></div>
+        <div class="overflow-x-auto">
+            <table id="result-table" class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">序号</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">站点名称</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">类型</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">距离（米）</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">详细信息</th>
+                    </tr>
+                </thead> 
+                <tbody id="result-body" class="bg-white divide-y divide-gray-200">
+                    <!-- 结果将在这里动态生成 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 结论预览区域 -->
+    <div id="conclusion-preview" class="mb-6 bg-white rounded-lg shadow-md p-6 hidden">
+        <h2 class="text-xl font-bold text-primary mb-4 border-b pb-2">评价结论</h2>
+        <div class="mb-4">
+            <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+                <span class="inline-block w-3 h-3 rounded-full mr-2" id="status-indicator-6-1-2"></span>
+                规范6.1.2评价：
+            </h3>
+            <p id="conclusion-6-1-2" class="text-gray-700 mt-2 whitespace-pre-line bg-gray-50 p-3 rounded"></p>
+        </div>
+        <div class="mb-4">
+            <h3 class="text-lg font-semibold text-gray-700 flex items-center">
+                <span class="inline-block w-3 h-3 rounded-full mr-2" id="status-indicator-6-2-1"></span>
+                规范6.2.1评价：
+            </h3>
+            <p id="conclusion-6-2-1" class="text-gray-700 mt-2 whitespace-pre-line bg-gray-50 p-3 rounded"></p>
+        </div>
+        <div class="mt-6 text-center">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">总得分：</h3>
+            <p id="conclusion-total-score" class="text-3xl font-bold text-primary"></p>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
+    </div>
+</div>
+{% endblock %} 
