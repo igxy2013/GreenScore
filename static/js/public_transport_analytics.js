@@ -230,7 +230,7 @@
             
             // 创建地图实例
             const map = new AMap.Map('gaode-map-container', {
-                zoom: 17,  // 与百度地图保持一致
+                zoom: 15,  // 与百度地图保持一致
                 center: [104.065735, 30.659462], // 成都中心点
                 viewMode: '2D'
             });

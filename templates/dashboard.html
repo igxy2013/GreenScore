@@ -70,10 +70,6 @@
     
     <!-- 添加climate_zone.js引用，放在页面头部的script标签之前 -->
     <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
-    <script>
-        // 页面变量
-        // ... existing code ...
-    </script>
     <!-- 引入Chart.js用于数据可视化 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/js/green_building_score_calculator.js"></script>
@@ -81,10 +77,8 @@
     <script src="/static/js/db_updater.js"></script>
     <!-- 引入iframe-resizer.js用于iframe高度自适应 -->
     <script src="{{ url_for('static', filename='js/iframe-resizer.js') }}"></script>
-
     <!-- 添加menu.js引用，确保在所有使用它的代码之前 -->
     <script src="/static/js/menu.js"></script>
-    
     <script>
         // 在这里添加自定义的updateScoreSummaryTables函数，它会被scoreUtils.fetchScoreSummary调用
         // 更新评分汇总表格
@@ -248,6 +242,17 @@
     <!-- 隐藏字段，用于存储当前项目ID和标准 -->
     <input type="hidden" id="current-project-id" value="{{ project.id if project else '21' }}">
     <input type="hidden" id="current-project-standard" value="{{ project.standard if project else '成都市标' }}">
+    
+    <!-- 添加全局页面加载指示器 -->
+    <div id="page-loader" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
+            <svg class="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-gray-700 font-medium">正在处理，请稍候...</p>
+        </div>
+    </div>
     
     <div class="page-container">
         <div class="flex min-h-screen">
@@ -834,5 +839,554 @@
             </main>
         </div>
     </div>
+
+    <script>
+            // 添加生成Word文档的函数
+    function generateWord() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
+        if (currentProjectStandard=='国标') {
+            alert('当前标准下暂无报审表模板!');
+            return;
+        }
+        
+        // 确保报告导出菜单保持展开状态
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+        
+        // 找到报审表菜单项并添加active类
+        const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
+        let progressInterval;
+        
+        if (wordMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== wordMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            wordMenuItem.classList.add('active');
+            wordMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            wordMenuItem.style.display = 'flex';
+            wordMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (wordMenuItem) {
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                wordMenuItem.classList.add('keep-visible');
+            }
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+            return;
+        }
+        
+        // 调用generate_word接口
+        fetch('/api/generate_word', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                standard: currentProjectStandard
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成报审表失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            if (currentProjectStandard=='四川省标') {
+                a.download = '四川省绿色建筑报审表.docx';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '成都市绿色建筑报审表.docx';
+            } else {
+                a.download = '报审表.docx';
+            }
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    wordMenuItem.classList.remove('loading');
+                    wordMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    wordMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        })
+        .catch(error => {
+            console.error('生成报审表失败:', error);
+            alert(error.message || '生成报审表失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                wordMenuItem.classList.add('keep-visible');
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        });
+    }
+    
+    // 添加生成DWG文档的函数
+    function generateDWG() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
+        
+        // 确保报告导出菜单保持展开状态
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+        
+        // 找到绿色建筑设计专篇菜单项并添加active类
+        const dwgMenuItem = document.querySelector('a[onclick="generateDWG()"]');
+        let progressInterval;
+        
+        if (dwgMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== dwgMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            dwgMenuItem.classList.add('active');
+            dwgMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            dwgMenuItem.style.display = 'flex';
+            dwgMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (dwgMenuItem) {
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                dwgMenuItem.classList.add('keep-visible');
+            }
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+            return;
+        }
+        
+        // 调用generate_dwg接口
+        fetch(`${window.location.protocol}//${window.location.host}/api/generate_dwg`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                standard: currentProjectStandard
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成绿色建筑设计专篇失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            if (currentProjectStandard=='四川省标') {
+                a.download = '绿色建筑设计专篇（四川省标）.dwg';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '绿色建筑设计专篇（成都市标）.dwg';
+            } else {
+                a.download = '绿色建筑设计专篇.dwg';
+            }
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    dwgMenuItem.classList.remove('loading');
+                    dwgMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    dwgMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        })
+        .catch(error => {
+            console.error('生成绿色建筑设计专篇失败:', error);
+            alert(error.message || '生成绿色建筑设计专篇失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                dwgMenuItem.classList.add('keep-visible');
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        });
+    }
+    
+    // 绿建自评估报告生成函数
+    function generateSelfAssessmentReport() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard')?.value || '国标';
+        
+        // 只有国标项目才能生成绿建自评估报告
+        if (currentProjectStandard !== '国标') {
+            alert('只有国标项目才能生成绿建自评估报告！');
+            return;
+        }
+        
+        // 确保报告导出菜单保持展开状态
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+        
+        // 找到绿建自评估报告菜单项并添加active类
+        const reportMenuItem = document.querySelector('a[onclick="generateSelfAssessmentReport(); return false;"]');
+        let progressInterval;
+        
+        if (reportMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== reportMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            reportMenuItem.classList.add('active');
+            reportMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            reportMenuItem.style.display = 'flex';
+            reportMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取当前项目ID
+        const projectId = document.getElementById('project_id').value;
+        console.log("项目ID:", projectId);
+        
+        if (!projectId) {
+            alert('未找到项目ID');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (reportMenuItem) {
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                reportMenuItem.classList.add('keep-visible');
+            }
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+            return;
+        }
+
+        console.log("正在生成绿建自评估报告，项目ID: " + projectId);
+
+        // 发送请求
+        fetch('/api/self-assessment-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId
+            })
+        })
+        .then(response => {
+            console.log("收到服务器响应状态:", response.status);
+            
+            if (!response.ok) {
+                // 如果服务器返回错误，尝试获取错误信息
+                return response.json().then(data => {
+                    console.error("服务器返回错误:", data);
+                    throw new Error(data.error || '生成绿建自评估报告失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            console.log("收到blob数据，类型:", blob.type, "大小:", blob.size, "bytes");
+            
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            const projectName = document.getElementById('current_project_name').value || '';
+            console.log("项目名称:", projectName);
+            
+            a.href = url;
+            a.download = projectName ? `${projectName}_绿建自评估报告.docx` : '绿建自评估报告.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    reportMenuItem.classList.remove('loading');
+                    reportMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    reportMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        })
+        .catch(error => {
+            console.error('生成报告失败:', error);
+            alert(error.message || '生成绿建自评估报告失败，请稍后重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                reportMenuItem.classList.add('keep-visible');
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        });
+    }
+
+    // 确保报告导出菜单保持展开状态的辅助函数
+    function ensureReportMenuOpen() {
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+            
+            // 确保所有子菜单项保持原有样式
+            const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
+            subMenuItems.forEach(item => {
+                // 保持原有的类，但确保可见性
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.paddingLeft = '1rem';
+                item.style.paddingRight = '1rem';
+                item.style.paddingTop = '0.75rem';
+                item.style.paddingBottom = '0.75rem';
+            });
+        }
+    }
+
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 确保报告导出菜单子项保持可见并且样式一致
+            const reportMenuContent = document.getElementById('reportMenuContent');
+            if (reportMenuContent) {
+                const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
+                subMenuItems.forEach(item => {
+                    // 保持原有的布局和样式
+                    item.style.display = 'flex';
+                    item.style.alignItems = 'center';
+                    item.style.paddingLeft = '1rem';
+                    item.style.paddingRight = '1rem';
+                    item.style.paddingTop = '0.75rem';
+                    item.style.paddingBottom = '0.75rem';
+                    console.log("初始化: 保持报告子菜单项样式一致", item.textContent.trim());
+                });
+            }
+        });
+    </script>
 </body>
 </html>

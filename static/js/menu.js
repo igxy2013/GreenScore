@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (basicMenuToggle && basicMenuContent) {
         basicMenuToggle.addEventListener('click', function(e) {
             console.log("基本级菜单被点击");
+            e.preventDefault();
             e.stopPropagation();
             
             // 在展开基本级菜单前，先折叠其他菜单
@@ -116,18 +117,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 collapseOtherMenus('basicMenuContent');
             }
             
+            // 切换展开/折叠状态
             basicMenuContent.classList.toggle('expanded');
+            
+            // 更新箭头图标
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
                 arrow.style.transform = basicMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
             }
             
-            // 确保菜单样式正确
-            if (basicMenuContent.classList.contains('expanded')) {
-                basicMenuContent.style.display = 'block';
-            } else {
-                basicMenuContent.style.display = 'none';
-            }
+            // 更新菜单样式
+            basicMenuContent.style.display = basicMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
             // 保存菜单状态
             saveMenuState();
@@ -137,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (advancedMenuToggle && advancedMenuContent) {
         advancedMenuToggle.addEventListener('click', function(e) {
             console.log("提高级菜单被点击");
+            e.preventDefault();
             e.stopPropagation();
             
             // 在展开提高级菜单前，先折叠其他菜单
@@ -144,18 +145,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 collapseOtherMenus('advancedMenuContent');
             }
             
+            // 切换展开/折叠状态
             advancedMenuContent.classList.toggle('expanded');
+            
+            // 更新箭头图标
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
                 arrow.style.transform = advancedMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
             }
             
-            // 确保菜单样式正确
-            if (advancedMenuContent.classList.contains('expanded')) {
-                advancedMenuContent.style.display = 'block';
-            } else {
-                advancedMenuContent.style.display = 'none';
-            }
+            // 更新菜单样式
+            advancedMenuContent.style.display = advancedMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
             // 保存菜单状态
             saveMenuState();
@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (reportMenuToggle && reportMenuContent) {
         reportMenuToggle.addEventListener('click', function(e) {
             console.log("报告菜单被点击");
+            e.preventDefault();
             e.stopPropagation();
             
             // 在展开报告菜单前，先折叠其他菜单
@@ -172,18 +173,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 collapseOtherMenus('reportMenuContent');
             }
             
+            // 切换展开/折叠状态
             reportMenuContent.classList.toggle('expanded');
+            
+            // 更新箭头图标
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
                 arrow.style.transform = reportMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
             }
             
-            // 确保菜单样式正确
-            if (reportMenuContent.classList.contains('expanded')) {
-                reportMenuContent.style.display = 'block';
-            } else {
-                reportMenuContent.style.display = 'none';
-            }
+            // 更新菜单样式
+            reportMenuContent.style.display = reportMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
             // 保存菜单状态
             saveMenuState();
@@ -195,7 +195,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('初始化专项计算菜单事件');
         
         specialCalcMenuToggle.addEventListener('click', function(e) {
-            // 阻止事件冒泡
+            // 阻止事件冒泡和默认行为
+            e.preventDefault();
             e.stopPropagation();
             
             console.log('专项计算菜单被点击');
@@ -205,21 +206,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 collapseOtherMenus('specialCalcMenuContent');
             }
             
-            // 切换expanded类，控制菜单的显示/隐藏
+            // 切换展开/折叠状态
             specialCalcMenuContent.classList.toggle('expanded');
             
-            // 旋转箭头图标
+            // 更新箭头图标
             const arrow = this.querySelector('.ri-arrow-down-s-line');
             if (arrow) {
                 arrow.style.transform = specialCalcMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
             }
             
-            // 确保菜单样式正确
-            if (specialCalcMenuContent.classList.contains('expanded')) {
-                specialCalcMenuContent.style.display = 'block';
-            } else {
-                specialCalcMenuContent.style.display = 'none';
-            }
+            // 更新菜单样式
+            specialCalcMenuContent.style.display = specialCalcMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
             // 保存菜单状态
             saveMenuState();
@@ -301,7 +298,6 @@ document.addEventListener('DOMContentLoaded', function() {
         collapseOtherMenus("");
         
         // 如果没有保存的状态或恢复失败，根据当前页面设置菜单
-        // 根据当前页面展开相应菜单
         if (currentLevel === '基本级' && basicMenuContent) {
             console.log("展开基本级菜单");
             basicMenuContent.classList.add('expanded');
@@ -327,7 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
                 if (arrow) arrow.style.transform = 'rotate(180deg)';
             }
-        } else if ((currentPage === 'solar_calculator' || currentPage === 'green_materials') && specialCalcMenuContent) {
+        } else if ((currentPage === 'solar_calculator' || currentPage === 'green_materials' || currentPage === 'public_transport_analysis') && specialCalcMenuContent) {
             // 如果当前页面是专项计算相关页面，展开专项计算菜单
             console.log("展开专项计算菜单");
             specialCalcMenuContent.classList.add('expanded');
@@ -355,51 +351,33 @@ document.addEventListener('DOMContentLoaded', function() {
             // 阻止事件冒泡，防止触发父菜单的折叠
             e.stopPropagation();
             
-            // 在导航前调用防止页面跳动的函数
-            preventPageJump();
-            
-            // 获取当前父菜单
-            let parentMenuContent = this.closest('.menu-content');
-            if (parentMenuContent) {
-                console.log("找到父菜单:", parentMenuContent.id);
-                
-                // 折叠其他所有菜单，只保留当前菜单
-                const allMenuContents = document.querySelectorAll('.menu-content');
-                allMenuContents.forEach(menuContent => {
-                    if (menuContent.id !== parentMenuContent.id) {
-                        // 折叠其他菜单
-                        menuContent.classList.remove('expanded');
-                        menuContent.style.display = 'none';
-                        
-                        // 更新对应的箭头图标
-                        const otherToggle = document.querySelector(`[id$="Toggle"][aria-controls="${menuContent.id}"], #${menuContent.id.replace('Content', 'Toggle')}`);
-                        if (otherToggle) {
-                            const arrow = otherToggle.querySelector('.ri-arrow-down-s-line');
-                            if (arrow) arrow.style.transform = 'rotate(0deg)';
-                        }
-                    }
-                });
-                
-                // 临时强制父菜单保持展开状态
-                parentMenuContent.classList.add('expanded');
-                parentMenuContent.style.display = 'block';
-                
-                // 更新箭头图标
-                const parentToggle = document.querySelector(`[id$="Toggle"][aria-controls="${parentMenuContent.id}"], #${parentMenuContent.id.replace('Content', 'Toggle')}`);
-                if (parentToggle) {
-                    const arrow = parentToggle.querySelector('.ri-arrow-down-s-line');
-                    if (arrow) arrow.style.transform = 'rotate(180deg)';
-                }
-            }
-            
-            // 保存当前菜单状态
-            saveMenuState();
-            
-            // 如果有 href 属性，让链接正常工作
+            // 检查是否有href属性且不是javascript:开头
             const href = this.getAttribute('href');
-            if (href && !href.startsWith('javascript:') && !e.defaultPrevented) {
-                console.log("正在导航到:", href);
+            if (href && !href.startsWith('javascript:')) {
+                // 这是一个导航链接，让它正常工作
+                console.log("这是一个导航链接，正常跳转");
+                
+                // 在导航前调用防止页面跳动的函数
+                preventPageJump();
+                
+                // 保存当前菜单状态
+                saveMenuState();
+                return;
             }
+            
+            // 检查是否为报告导出子菜单下的项 - 这些按钮有onclick事件
+            if (this.getAttribute('onclick')) {
+                console.log("检测到点击有onclick事件的子菜单项");
+                
+                // 阻止默认行为，让onclick正常执行
+                e.preventDefault();
+                
+                // 保存当前菜单状态
+                saveMenuState();
+                return;
+            }
+            
+            // 对于其他子菜单项的处理...
         });
     });
     
@@ -424,15 +402,32 @@ document.addEventListener('DOMContentLoaded', function() {
             if (arrow) arrow.style.transform = 'rotate(180deg)';
         }
         
-        if (reportMenuContent && currentPage === 'report_table') {
-            console.log("强制展开报告菜单");
-            reportMenuContent.classList.add('expanded');
-            reportMenuContent.style.display = 'block';
-            const arrow = reportMenuToggle?.querySelector('.ri-arrow-down-s-line');
-            if (arrow) arrow.style.transform = 'rotate(180deg)';
+        if (reportMenuContent) {
+            // 检查当前是否有报告相关页面（兼容report_table、dwg_export等不同页面）
+            if (currentPage === 'report_table' || currentPage === 'dwg_export') {
+                console.log("强制展开报告菜单");
+                reportMenuContent.classList.add('expanded');
+                reportMenuContent.classList.add('keep-open');
+                reportMenuContent.style.display = 'block';
+                const arrow = reportMenuToggle?.querySelector('.ri-arrow-down-s-line');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+            }
+            
+            // 为报告菜单下的子菜单项保持一致的样式，确保它们不会被隐藏
+            const reportSubMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
+            reportSubMenuItems.forEach(item => {
+                // 保持原有的布局和样式
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.paddingLeft = '1rem';
+                item.style.paddingRight = '1rem';
+                item.style.paddingTop = '0.75rem';
+                item.style.paddingBottom = '0.75rem';
+                console.log("为报告子菜单项添加一致样式:", item.textContent.trim());
+            });
         }
         
-        if (specialCalcMenuContent && (currentPage === 'solar_calculator' || currentPage === 'green_materials')) {
+        if (specialCalcMenuContent && (currentPage === 'solar_calculator' || currentPage === 'green_materials' || currentPage === 'public_transport_analysis')) {
             console.log("强制展开专项计算菜单");
             specialCalcMenuContent.classList.add('expanded');
             specialCalcMenuContent.style.display = 'block';

@@ -7501,6 +7501,12 @@ if __name__ == '__main__':
     # 初始化数据库
     init_db()
     
+    # 初始化地图辅助模块
+    map_helper.init_routes(app)
+    
+    # 初始化公共交通分析模块
+    public_transport_analytics.init_routes(app)
+    
     # 根据环境变量决定是否开启调试模式
     debug_mode = not is_production
     app.logger.info(f"应用启动: 调试模式={debug_mode}")
