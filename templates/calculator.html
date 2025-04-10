@@ -840,10 +840,10 @@
             return 0;
         }
         function calculateGreenStar(total) {
-            if (total >= 30) return '满足三星级要求';
-            if (total >= 20) return '满足二星级要求';
-            if (total >= 10) return '满足一星级要求';
-            return '不满足星级要求';
+            if (total >= 30) return '三星级绿色建筑';
+            if (total >= 20) return '二星级绿色建筑';
+            if (total >= 10) return '一星级绿色建筑';
+            return '未达到绿建星级'; // 默认返回值
         }
         // 更新后的结果显示函数
         function showResult(data) {

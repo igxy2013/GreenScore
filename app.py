@@ -1,4 +1,4 @@
-# 在文件顶部添加以下代码
+﻿# 在文件顶部添加以下代码
 import platform
 import os
 
@@ -4560,7 +4560,7 @@ def get_score_summary(project_id, force_refresh=False):
         # 如果需要更新项目表，并且有有效的汇总数据
         if need_update_project and summary_data and project_id:
             try:
-                # 高效更新项目表，不阻塞API响应
+                # 高效更新项目表，不使用with_for_update以避免锁定延迟
                 update_project_scores_efficient(project_id, summary_data)
             except Exception as e:
                 # 仅记录错误，不影响API响应
@@ -5177,7 +5177,25 @@ def get_map_api_key():
     except Exception as e:
         app.logger.error(f"获取地图API密钥时出错: {str(e)}")
         return jsonify({'error': f'服务器错误: {str(e)}'}), 500
-
+# 添加获取高德地图API密钥的API端点
+@app.route('/api/gaode_map_api_key', methods=['GET'])
+def get_gaode_map_api_key():
+    try:
+        # 从环境变量获取高德地图API密钥和安全密钥
+        api_key = os.environ.get('GAODE_MAP_AK')
+        security_js_code = os.environ.get('GAODE_MAP_SEC_CODE')
+        
+        if not api_key or not security_js_code:
+            return jsonify({'error': '高德地图API密钥未配置'}), 500
+        
+        # 返回API密钥和安全密钥
+        return jsonify({
+            'api_key': api_key,
+            'security_js_code': security_js_code
+        })
+    except Exception as e:
+        app.logger.error(f"获取高德地图API密钥时出错: {str(e)}")
+        return jsonify({'error': f'服务器错误: {str(e)}'}), 500
 # 添加百度地图API代理
 @app.route('/api/map_proxy', methods=['GET', 'POST'])
 def map_api_proxy():
@@ -5305,7 +5323,7 @@ def get_static_map_proxy():
             'center': f"{center_lng},{center_lat}",
             'zoom': zoom,
             'copyright': 1,
-            'markers': markers_param # 直接使用前端传递的标记字符串
+            # 移除markers参数，避免与前端Canvas绘制的标记点重复
             # 注意：百度静态地图API可能无法完美渲染所有自定义标记和圆圈，这里仅传递基础信息
         }
         
@@ -5688,7 +5706,7 @@ def fill_transport_report_template():
                     app.logger.info(f"找到的占位符: {placeholders}")
                     
                     # 检查是否包含任何项目信息占位符
-                    for placeholder, value in project_info.items():
+                    for placeholder, value in extended_project_info.items():
                         placeholder_text = '{' + placeholder + '}'
                         if placeholder_text in new_text:
                             new_text = new_text.replace(placeholder_text, value)
@@ -5746,15 +5764,16 @@ def fill_transport_report_template():
                     placeholder_found = True
                     
                     # 创建表格
-                    table = doc.add_table(rows=1, cols=4)
+                    table = doc.add_table(rows=1, cols=5)
                     table.style = 'Table Grid'
                     
                     # 设置表头
                     header_cells = table.rows[0].cells
                     header_cells[0].text = "序号"
                     header_cells[1].text = "站点名称"
-                    header_cells[2].text = "距离（米）"
-                    header_cells[3].text = "详细信息"
+                    header_cells[2].text = "类型"
+                    header_cells[3].text = "距离（米）"
+                    header_cells[4].text = "详细信息"
                     
                     # 添加数据行
                     for idx, station in enumerate(stations):
@@ -5838,3 +5857,4 @@ if __name__ == '__main__':
     debug_mode = not is_production
     app.logger.info(f"应用启动: 调试模式={debug_mode}")
     app.run(debug=debug_mode, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+

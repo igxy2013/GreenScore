@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
@@ -757,1390 +757,136 @@
                     {% endif %}
                     
                     {% if current_page == 'public_transport_analysis' %}
-                    <div class="container">
-                        <h1 class="text-3xl font-bold text-primary mb-2">公共交通站点分析</h1>
-                        <div class="search-box">
-                            <input type="text" id="address" placeholder="请输入地址（如：北京市海淀区中关村）">
-                            <button id="search-btn" class="bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">查询</button>
+                    <div class="container mx-auto px-4 py-8">
+                        <h1 class="text-3xl font-bold text-primary mb-6 text-center">公共交通站点分析</h1>
+
+                        <!-- 地图切换标签 -->
+                        <div class="flex justify-center mb-4 border-b border-gray-200">
+                            <button id="baidu-tab" class="map-tab active px-6 py-2 text-lg font-medium text-primary border-b-2 border-primary focus:outline-none" onclick="switchMapProvider('baidu')">百度地图</button>
+                            <button id="gaode-tab" class="map-tab px-6 py-2 text-lg font-medium text-gray-500 hover:text-primary focus:outline-none" onclick="switchMapProvider('gaode')">高德地图</button>
                         </div>
-                        
-                        <div id="map-container"></div>
-                        
-                        <div class="loading" id="loading">
-                            <p>数据加载中，请稍候...</p>
+
+                        <div class="search-box mb-6 flex">
+                            <input type="text" id="address" class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-base" placeholder="请输入详细地址（如：北京市海淀区中关村）">
+                            <button id="search-btn" class="px-6 py-2 bg-primary text-white rounded-r-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium">查询</button>
                         </div>
-                        
-                        <div class="result-container">
-                            <h2 class="text-xl font-bold text-primary mb-2">查询结果</h2>
-                            <div id="result-count"></div>
-                            <table id="result-table" class="min-w-full divide-y divide-gray-200 table-fixed">
-                                <thead>
-                                    <tr>
-                                        <th>序号</th>
-                                        <th>站点名称</th>
-                                        <th>距离（米）</th>
-                                        <th>详细信息</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="result-body" class="min-w-full divide-y divide-gray-200 table-fixed">
-                                    <!-- 结果将在这里动态生成 -->
-                                </tbody>
-                            </table>
+
+                        <!-- 地图容器 -->
+                        <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg"></div>
+                        <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="display: none;"></div>
+
+                        <div class="loading" id="loading" style="display: none;">
+                            <p class="text-center text-gray-600 my-4">数据加载中，请稍候...</p>
                         </div>
-                        
-                        <button class="export-btn bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary" id="export-btn" disabled>生成公交站点分析报告</button>
+
+                        <div class="result-container mb-6">
+                            <h2 class="text-xl font-bold text-primary mb-4">查询结果</h2>
+                            <div id="result-count" class="mb-4 text-gray-700"></div>
+                            <div class="overflow-x-auto">
+                                <table id="result-table" class="min-w-full divide-y divide-gray-200 border border-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">序号</th>
+                                            <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">站点名称</th>
+                                            <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">类型</th>
+                                            <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">距离（米）</th>
+                                            <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">详细信息</th>
+                                        </tr>
+                                    </thead> 
+                                    <tbody id="result-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- 结果将在这里动态生成 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
+                        </div>
                     </div>
-                    
                     <script>
-                        // 初始化iframe自适应高度
-                        document.addEventListener('DOMContentLoaded', function() {
-                            if (typeof iFrameResize === 'function') {
-                                iFrameResize({
-                                    log: false,
-                                    heightCalculationMethod: 'bodyOffset',
-                                    autoResize: true,
-                                    maxHeight: 50000,
-                                    scrolling: false,
-                                    checkOrigin: false,
-                                    resizeFrom: 'child',
-                                    inPageLinks: true,
-                                    sizeHeight: true,
-                                    sizeWidth: false
-                                }, '#public-transport-analysis-iframe');
-                                console.log('公共交通分析iframe高度自适应已初始化');
-                            } else {
-                                console.error('iframe-resizer.js 未正确加载');
+                        // --- 公共交通分析JS ---
+                        let currentMapProvider = 'baidu'; // 默认百度
+                        let baiduMapInstance = null;
+                        let gaodeMapInstance = null;
+                        let lastSearchResults = []; // 存储上次搜索结果，用于导出
+
+                        // --- 地图API Key ---
+                        let baiduApiKey = null;
+                        let gaodeApiKey = null; // 需要从后端获取
+
+                        // --- 切换地图提供商 ---
+                        function switchMapProvider(provider) {
+                            if (provider === currentMapProvider) return;
+
+                            console.log(`切换地图提供商从 ${currentMapProvider} 到 ${provider}`);
+                            currentMapProvider = provider;
+                            lastSearchResults = []; // 清空上次结果
+                            document.getElementById('result-body').innerHTML = '';
+                            document.getElementById('result-count').innerHTML = '';
+                            document.getElementById('export-btn').disabled = true;
+
+                            // 更新标签页样式
+                            document.querySelectorAll('.map-tab').forEach(tab => tab.classList.remove('active', 'text-primary', 'border-primary', 'border-b-2'));
+                            document.querySelectorAll('.map-tab').forEach(tab => tab.classList.add('text-gray-500', 'hover:text-primary'));
+                            const activeTab = document.getElementById(`${provider}-tab`);
+                            if (activeTab) {
+                                activeTab.classList.add('active', 'text-primary', 'border-primary', 'border-b-2');
+                                activeTab.classList.remove('text-gray-500', 'hover:text-primary');
                             }
-                        });
-                        
-                        // 监听iframe中发送的消息
-                        window.addEventListener('message', function(event) {
-                            if (event.data && event.data.type === 'toast') {
-                                // 处理来自iframe的Toast通知
-                                console.log('收到iframe发来的Toast通知:', event.data.message);
-                                showToast(event.data.message, event.data.toastType || 'info');
+
+                            // 显示/隐藏地图容器
+                            document.getElementById('baidu-map-container').style.display = provider === 'baidu' ? 'block' : 'none';
+                            document.getElementById('gaode-map-container').style.display = provider === 'gaode' ? 'block' : 'none';
+
+                            // 初始化地图 (如果尚未初始化)
+                            if (provider === 'baidu' && !baiduMapInstance) {
+                                loadBaiduMapScript();
+                            } else if (provider === 'gaode' && !gaodeMapInstance) {
+                                loadGaodeMapScript(); 
                             }
-                        });
-                    </script>
-                    {% endif %}
-                    
-                    {% endblock %}
-                </div>
-            </main>
-        </div>
-    </div>
 
-    <!-- 添加悬浮保存按钮，仅在基本级和提高级页面显示 -->
-    {% if current_level == '基本级' or current_level == '提高级' %}
-    <div class="floating-save-btn" id="floatingSaveBtn">
-        <i class="ri-save-line"></i>
-    </div>
-    {% endif %}
-
-    <script>
-    // 获取DOM元素
-    const basicMenuToggle = document.getElementById('basicMenuToggle');
-    const basicMenuContent = document.getElementById('basicMenuContent');
-    const advancedMenuToggle = document.getElementById('advancedMenuToggle');
-    const advancedMenuContent = advancedMenuToggle ? document.getElementById('advancedMenuContent') : null;
-    const reportMenuToggle = document.getElementById('reportMenuToggle');
-    const reportMenuContent = document.getElementById('reportMenuContent');
-    const specialCalcMenuToggle = document.getElementById('specialCalcMenuToggle');
-    const specialCalcMenuContent = document.getElementById('specialCalcMenuContent');
-    const loadStarCaseBtn = document.getElementById('loadStarCaseBtn');
-    const saveStarCaseBtn = document.getElementById('saveStarCaseBtn');
-
-    // 添加防抖函数
-    function debounce(func, wait) {
-        let timeout;
-        return function(...args) {
-            const context = this;
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(context, args), wait);
-        };
-    }
-    
-    // 为保存星级案例按钮添加点击事件
-    if (saveStarCaseBtn) {
-        saveStarCaseBtn.addEventListener('click', async function() {
-            try {
-                // 获取项目ID
-                const projectId = document.getElementById('project_id').value;
-                                if (!projectId) {
-                    alert('未找到项目ID');
-                                    return;
-                                }
-                                
-                                // 显示加载状态
-                const originalText = this.textContent;
-                this.textContent = '保存中...';
-                this.disabled = true;
-
-                // 调用API保存星级案例数据
-                const response = await fetch(`/api/save_star_case?project_id=${projectId}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    alert(data.message);
-                } else {
-                    alert(data.message || '保存星级案例失败');
-                }
-            } catch (error) {
-                console.error('保存星级案例失败:', error);
-                alert('保存星级案例失败，请重试');
-            } finally {
-                // 恢复按钮状态
-                this.textContent = '保存星级案例';
-                this.disabled = false;
-            }
-        });
-    }
-
-    // 防止页面跳动的函数
-    function preventPageJump() {
-        // 记录当前滚动位置
-        const scrollPosition = window.scrollY;
-        
-        // 在下一个事件循环中恢复滚动位置
-        setTimeout(() => {
-            window.scrollTo(0, scrollPosition);
-        }, 0);
-    }
-    
-    // 添加菜单切换事件
-    basicMenuToggle.addEventListener('click', function() {
-        basicMenuContent.classList.toggle('expanded');
-        const arrow = this.querySelector('.ri-arrow-down-s-line');
-        if (arrow) {
-            arrow.style.transform = basicMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-    });
-    
-    if (advancedMenuToggle) {
-        advancedMenuToggle.addEventListener('click', function() {
-            advancedMenuContent.classList.toggle('expanded');
-            const arrow = this.querySelector('.ri-arrow-down-s-line');
-            if (arrow) {
-                arrow.style.transform = advancedMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
-            }
-        });
-    }
-    
-    reportMenuToggle.addEventListener('click', function() {
-        reportMenuContent.classList.toggle('expanded');
-        const arrow = this.querySelector('.ri-arrow-down-s-line');
-        if (arrow) {
-            arrow.style.transform = reportMenuContent.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-    });
-    
-    
-    // 项目ID缓存
-    let indexCachedProjectId = null;
-    
-    // 在页面加载完成后处理菜单展开/折叠等事件
-    document.addEventListener('DOMContentLoaded', function() {
-        // 评分汇总相关代码保留
-        if (window.location.href.includes('page=score_summary')) {
-            console.log('当前是评分汇总页面');
-        }
-        
-        // 获取评分汇总菜单项
-        const scoreSummaryMenuItem = document.querySelector('a[data-content="score-summary"]');
-        if (scoreSummaryMenuItem) {
-            console.log('找到评分汇总菜单项，添加点击事件');
-            
-            // 添加点击事件，确保点击时先计算评分
-            scoreSummaryMenuItem.addEventListener('click', function(e) {
-                // 不阻止默认行为，让导航正常工作
-            });
-        }
-        
-        // 为悬浮保存按钮添加点击事件
-        const floatingSaveBtn = document.getElementById('floatingSaveBtn');
-        if (floatingSaveBtn) {
-            console.log('找到悬浮保存按钮，添加点击事件');
-            
-            // 移除可能已存在的事件监听器，避免重复绑定
-            floatingSaveBtn.removeEventListener('click', floatingSaveBtnHandler);
-            floatingSaveBtn.removeEventListener('click', saveScoreData);
-            
-            // 直接绑定saveScoreData函数，与常规保存按钮保持一致
-            floatingSaveBtn.addEventListener('click', saveScoreData);
-            console.log('已为悬浮保存按钮绑定saveScoreData函数');
-        }
-        
-        // 悬浮按钮处理函数不再需要，可以移除或保留为备用
-        function floatingSaveBtnHandler() {
-            // 该函数不再使用
-        }
-        
-        // 为当前页面设置data属性，以便menu.js可以使用它们判断当前页面
-        document.body.setAttribute('data-level', "{{ current_level }}");
-        document.body.setAttribute('data-page', "{{ current_page }}");
-        document.body.setAttribute('data-specialty', "{{ current_specialty }}");
-    });
-
-    </script>
-    
-
-    <!-- 在适当的JS部分添加生成自评估报告的函数 -->
-    <script>
-
-    // 绿建自评估报告生成函数
-    function generateSelfAssessmentReport() {
-        // 获取项目评价标准
-        const currentProjectStandard = document.getElementById('current-project-standard')?.value || '国标';
-        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
-        
-        // 只有国标项目才能生成绿建自评估报告
-        if (currentProjectStandard !== '国标') {
-            alert('只有国标项目才能生成绿建自评估报告！');
-            return;
-        }
-        
-        // 移除其他菜单项的激活状态
-        currentMenuItems.forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // 找到绿建自评估报告菜单项并添加active类
-        const reportMenuItem = document.querySelector('a[onclick="generateSelfAssessmentReport(); return false;"]');
-        let progressInterval;
-        
-        if (reportMenuItem) {
-            reportMenuItem.classList.add('active');
-            reportMenuItem.classList.add('loading');
-            
-            // 创建进度条动画
-            let progress = 0;
-            progressInterval = setInterval(() => {
-                progress += 2;
-                if (progress > 90) {
-                    clearInterval(progressInterval);
-                }
-                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
-            }, 100);
-        }
-        
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
-        // 获取当前项目ID
-        const projectId = document.getElementById('project_id').value;
-        console.log("项目ID:", projectId);
-        
-        if (!projectId) {
-            alert('未找到项目ID');
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            if (reportMenuItem) {
-                reportMenuItem.classList.remove('loading');
-                reportMenuItem.style.backgroundImage = '';
-                clearInterval(progressInterval);
-            }
-            return;
-        }
-
-        console.log("正在生成绿建自评估报告，项目ID: " + projectId);
-
-        // 发送请求
-        fetch('/api/self-assessment-report', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                project_id: projectId
-            })
-        })
-        .then(response => {
-            console.log("收到服务器响应状态:", response.status);
-            
-            if (!response.ok) {
-                // 如果服务器返回错误，尝试获取错误信息
-                return response.json().then(data => {
-                    console.error("服务器返回错误:", data);
-                    throw new Error(data.error || '生成绿建自评估报告失败');
-                });
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            console.log("收到blob数据，类型:", blob.type, "大小:", blob.size, "bytes");
-            
-            // 创建下载链接
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            const projectName = document.getElementById('current_project_name').value || '';
-            console.log("项目名称:", projectName);
-            
-            a.href = url;
-            a.download = projectName ? `${projectName}_绿建自评估报告.docx` : '绿建自评估报告.docx';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
-            // 完成进度条
-            if (reportMenuItem) {
-                clearInterval(progressInterval);
-                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
-                setTimeout(() => {
-                    reportMenuItem.classList.remove('loading');
-                    reportMenuItem.style.backgroundImage = '';
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('生成报告失败:', error);
-            alert(error.message || '生成绿建自评估报告失败，请稍后重试');
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
-            // 重置进度条
-            if (reportMenuItem) {
-                clearInterval(progressInterval);
-                reportMenuItem.classList.remove('loading');
-                reportMenuItem.style.backgroundImage = '';
-            }
-        });
-    }
-    </script>
-    <!-- 评分汇总按钮的JS代码 -->
-    <script>
-        // 获取当前选中的项目ID
-        function getSelectedProjectId() {
-            // 先尝试从隐藏字段获取
-            let projectId = document.getElementById('current-project-id')?.value;
-            if (!projectId) {
-                // 尝试从project_id字段获取
-                projectId = document.getElementById('project_id')?.value;
-            }
-            if (!projectId) {
-                // 尝试从URL参数获取
-                const urlParams = new URLSearchParams(window.location.search);
-                projectId = urlParams.get('project_id');
-            }
-            return projectId;
-        }
-        
-        /**
-         * 更新项目评分表的函数
-         * 注意：此函数不再自动调用，因为后端get_score_summary已集成更新项目表的功能
-         * 保留此函数以便需要时手动触发项目评分更新
-         */
-        async function updateProjectScores(projectId, scoreData) {
-            try {
-                console.log('更新项目表中的评分数据:', projectId, scoreData);
-                
-                // 调用更新项目评分的API
-                const response = await fetch('/api/update_project_scores', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        project_id: projectId,
-                        scores: scoreData
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    console.log('成功更新项目评分:', result);
-                    return true;
-                } else {
-                    console.error('更新项目评分失败:', result.message);
-                    return false;
-                }
-            } catch (error) {
-                console.error('更新项目评分时出错:', error);
-                return false;
-            }
-        }
-        
-        // 简单的提示函数
-        function showToast(message, type = 'info') {
-            // 如果有现成的Toast系统可以使用
-            if (typeof toast !== 'undefined') {
-                toast(message, type);
-                return;
-            }
-            
-            // 否则使用简单的alert
-            alert(message);
-        }
-        
-        // 在页面加载完成后，添加评分菜单点击事件
-        document.addEventListener('DOMContentLoaded', function() {
-            // 如果当前是评分汇总页面，不再自动加载评分数据
-            if (window.location.href.includes('page=score_summary')) {
-                console.log('当前是评分汇总页面');
-            }
-            
-            // 获取评分汇总菜单项
-            const scoreSummaryMenuItem = document.querySelector('a[data-content="score-summary"]');
-            if (scoreSummaryMenuItem) {
-                console.log('找到评分汇总菜单项，添加点击事件');
-                
-                // 添加点击事件，确保点击时先计算评分
-                scoreSummaryMenuItem.addEventListener('click', function(e) {
-                    // 不阻止默认行为，让导航正常工作
-                });
-            }
-        });
-    </script>
-
-    <!-- 评分汇总面板 -->
-    <div id="score-summary" class="content-panel" style="display: none;">
-        <h3>评分汇总</h3>
-        <div class="alert alert-info">
-            <p id="current-standard-info">当前评价标准: 加载中...</p>
-        </div>
-        <div id="score-summary-container">
-            <!-- 评分汇总内容将通过JavaScript加载 -->
-            <div class="text-center p-5">
-                <p>请选择项目并点击"评分汇总"菜单查看评分结果</p>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // ... existing code ...
-
-        // 为提高级得分输入框添加验证
-        document.addEventListener('DOMContentLoaded', function() {
-            // 如果当前是提高级页面，添加输入验证
-            if ('{{ current_level }}' === '提高级') {
-                // 获取所有得分输入框
-                const scoreInputs = document.querySelectorAll('input[name="score"]');
-                
-                // 为每个输入框添加事件监听
-                scoreInputs.forEach(input => {
-                    input.addEventListener('input', function(e) {
-                        // 获取输入值
-                        const scoreValue = parseFloat(this.value);
-                        
-                        // 如果不是数字，不做处理
-                        if (isNaN(scoreValue)) {
-                            return;
+                            // 清除地图上的覆盖物 (如果地图已初始化)
+                            if (baiduMapInstance) baiduMapInstance.clearOverlays();
+                            if (gaodeMapInstance) gaodeMapInstance.clearMap();
+                            
+                            // 保存用户选择到localStorage
+                            localStorage.setItem('preferred_map_provider', provider);
                         }
-                        
-                        // 获取最大分值
-                        const maxScore = parseFloat(this.getAttribute('data-maxscore'));
-                        
-                        // 验证输入值不大于最大分值
-                        if (scoreValue > maxScore) {
-                            // 提示用户
-                            alert(`输入的分数不能大于该条文的分值(${maxScore})`);
-                            // 重置为最大分值
-                            this.value = maxScore;
-                        }
-                        
-                        // 确保不为负数
-                        if (scoreValue < 0) {
-                            this.value = 0;
-                        }
-                    });
-                    
-                    // 添加失焦事件，确保在用户完成输入后格式化值
-                    input.addEventListener('blur', function() {
-                        // 如果值为空或不是数字，设为0
-                        if (this.value === '' || isNaN(parseFloat(this.value))) {
-                            this.value = '0';
-                        }
-                    });
-                });
-            }
-        });
-        
-        // ... existing code ...
-    </script>
-    {% if current_level == '提高级' %}
-    <!-- 添加悬浮徽章组件 -->
-    {% include 'components/floating_badge.html' %}
-    {% endif %}
-    <script>
-    // 添加徽章相关的JavaScript函数已移至组件文件中
-    
-    // 在页面加载和得分变化时更新徽章
-    document.addEventListener('DOMContentLoaded', function() {
-        if ('{{ current_level }}' === '提高级') {
-            updateCategoryBadges();
-            initializeBadgeFilters();
-        }
-    });
-    </script>
 
-    <!-- 页面加载后执行的函数 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 恢复之前保存的滚动位置
-            const savedScrollPosition = sessionStorage.getItem('scrollPosition');
-            if (savedScrollPosition) {
-                window.scrollTo(0, parseInt(savedScrollPosition));
-                sessionStorage.removeItem('scrollPosition');
-            }
-            
-            // 监听保存成功事件
-            document.addEventListener('save-score-completed', function(event) {
-                if (event.detail && event.detail.success) {
-                    // 保存成功时显示提示
-                    if (typeof toast === 'function') {
-                        toast(event.detail.message || '评分信息保存成功！', 'success');
-                    }
-                }
-            });
-            
-            // 检查是否保存成功
-            const saveSuccess = sessionStorage.getItem('save_success');
-            if (saveSuccess === 'true') {
-                // 如果保存成功，清除临时数据
-                sessionStorage.removeItem('saved_green_area');
-                sessionStorage.removeItem('save_success');
-                console.log('保存成功，已清除临时数据');
-            } else {
-                // 检查并恢复临时保存的绿地面积数据
-                const savedGreenArea = sessionStorage.getItem('saved_green_area');
-                if (savedGreenArea) {
-                    const greenAreaInput = document.getElementById('green_area');
-                    if (greenAreaInput && (!greenAreaInput.value || greenAreaInput.value === '0.00')) {
-                        console.log('从临时存储恢复绿地面积:', savedGreenArea);
-                        greenAreaInput.value = savedGreenArea;
-                    }
-                }
-            }
-            
-            // ... 其他现有代码
-        });
-        
-    </script>
-    
-<script>
-        // 添加生成DWG文档的函数
-        function generateDWG() {
-        // 临时设置当前页面为dwg_export，以便高亮显示菜单项
-        const currentProjectStandard = document.getElementById('current-project-standard').value;
-        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
-        currentMenuItems.forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // 找到绿色建筑设计专篇菜单项并添加active类
-        const dwgMenuItem = document.querySelector('a[onclick="generateDWG()"]');
-        let progressInterval;
-        
-        if (dwgMenuItem) {
-            dwgMenuItem.classList.add('active');
-            dwgMenuItem.classList.add('loading');
-            
-            // 创建进度条动画
-            let progress = 0;
-            progressInterval = setInterval(() => {
-                progress += 2;
-                if (progress > 90) {
-                    clearInterval(progressInterval);
-                }
-                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
-            }, 100);
-        }
-        
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
-        // 获取项目ID
-        const projectId = document.getElementById('current-project-id').value;
-        if (!projectId) {
-            alert('请先选择项目');
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            if (dwgMenuItem) {
-                dwgMenuItem.classList.remove('loading');
-                dwgMenuItem.style.backgroundImage = '';
-                clearInterval(progressInterval);
-            }
-            return;
-        }
-        
-        // 调用generate_dwg接口
-        fetch(`${window.location.protocol}//${window.location.host}/api/generate_dwg`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                project_id: projectId,
-                standard: currentProjectStandard
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || '生成绿色建筑设计专篇失败');
-                });
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            // 创建下载链接
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            if (currentProjectStandard=='四川省标') {
-                a.download = '绿色建筑设计专篇（四川省标）.dwg';
-            } else if (currentProjectStandard=='成都市标') {
-                a.download = '绿色建筑设计专篇（成都市标）.dwg';
-            } else {
-                a.download = '绿色建筑设计专篇.dwg';
-            }
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
-            // 完成进度条
-            if (dwgMenuItem) {
-                clearInterval(progressInterval);
-                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
-                setTimeout(() => {
-                    dwgMenuItem.classList.remove('loading');
-                    dwgMenuItem.style.backgroundImage = '';
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('生成绿色建筑设计专篇失败:', error);
-            alert(error.message || '生成绿色建筑设计专篇失败，请重试');
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
-            // 重置进度条
-            if (dwgMenuItem) {
-                clearInterval(progressInterval);
-                dwgMenuItem.classList.remove('loading');
-                dwgMenuItem.style.backgroundImage = '';
-            }
-        });
-    }
-    // 添加生成Word文档的函数
-    function generateWord() {
-        // 临时设置当前页面为report_table，以便高亮显示菜单项
-        // 获取项目评价标准
-        const currentProjectStandard = document.getElementById('current-project-standard').value;
-        const currentMenuItems = document.querySelectorAll('.submenu-item.active');
-        if (currentProjectStandard=='国标') {
-            alert('当前标准下暂无报审表模板!');
-            return;
-        }
-        currentMenuItems.forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // 找到报审表菜单项并添加active类
-        const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
-        let progressInterval;
-        
-        if (wordMenuItem) {
-            wordMenuItem.classList.add('active');
-            wordMenuItem.classList.add('loading');
-            
-            // 创建进度条动画
-            let progress = 0;
-            progressInterval = setInterval(() => {
-                progress += 2;
-                if (progress > 90) {
-                    clearInterval(progressInterval);
-                }
-                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
-            }, 100);
-        }
-        
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
-        // 获取项目ID
-        const projectId = document.getElementById('current-project-id').value;
-
-        if (!projectId) {
-            alert('请先选择项目');
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            if (wordMenuItem) {
-                wordMenuItem.classList.remove('loading');
-                wordMenuItem.style.backgroundImage = '';
-                clearInterval(progressInterval);
-            }
-            return;
-        }
-        
-        // 调用generate_word接口
-        fetch('/api/generate_word', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                project_id: projectId,
-                standard: currentProjectStandard
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || '生成报审表失败');
-                });
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            // 创建下载链接
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            if (currentProjectStandard=='四川省标') {
-                a.download = '四川省绿色建筑报审表.docx';
-            } else if (currentProjectStandard=='成都市标') {
-                a.download = '成都市绿色建筑报审表.docx';
-            } else {
-                a.download = '报审表.docx';
-            }
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
-            // 完成进度条
-            if (wordMenuItem) {
-                clearInterval(progressInterval);
-                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
-                setTimeout(() => {
-                    wordMenuItem.classList.remove('loading');
-                    wordMenuItem.style.backgroundImage = '';
-                }, 500);
-            }
-        })
-        .catch(error => {
-            console.error('生成报审表失败:', error);
-            alert(error.message || '生成报审表失败，请重试');
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
-            // 重置进度条
-            if (wordMenuItem) {
-                clearInterval(progressInterval);
-                wordMenuItem.classList.remove('loading');
-                wordMenuItem.style.backgroundImage = '';
-            }
-        });
-    }
-            // 为评分汇总菜单添加点击事件
-            const scoreSummaryMenuItem = document.getElementById('scoreSummaryMenuItem');
-        if (scoreSummaryMenuItem) {
-            // 页面加载时预先获取评分数据
-            document.addEventListener('DOMContentLoaded', async function() {
-                const projectId = document.getElementById('current-project-id').value;
-                if (projectId) {
-                    try {
-                        // 后台预加载数据，不阻塞其他操作
-                        fetchSummaryData(projectId);
-                    } catch (error) {
-                        console.error('预加载评分数据失败:', error);
-                    }
-                }
-            });
-            
-            // 添加点击事件，直接跳转而不等待数据加载
-            scoreSummaryMenuItem.addEventListener('click', function(e) {
-                // 不阻止默认行为，允许直接跳转
-                
-                // 移除其他菜单项的active类
-                const currentMenuItems = document.querySelectorAll('.submenu-item.active');
-                currentMenuItems.forEach(item => {
-                    item.classList.remove('active');
-                });
-                
-                // 添加active类
-                this.classList.add('active');
-                
-                // 获取项目ID
-                const projectId = document.getElementById('current-project-id').value;
-                if (!projectId) {
-                    alert('请先选择项目');
-                    e.preventDefault(); // 如果没有项目ID，则阻止跳转
-                    return;
-                }
-                
-                // 在后台更新数据，但不等待它完成
-                fetchSummaryData(projectId);
-                
-                // 直接继续默认跳转，不等待数据加载完成
-            });
-            
-            // 提取获取评分数据的函数，以便重复使用
-            async function fetchSummaryData(projectId) {
-                try {
-                    // 首先检查是否有缓存且缓存时间在1分钟以内
-                    const cachedData = sessionStorage.getItem('score_summary_data');
-                    const cacheTime = sessionStorage.getItem('score_summary_cache_time');
-                    const now = new Date().getTime();
-                    
-                    // 如果缓存存在且在1分钟以内，直接使用缓存
-                    if (cachedData && cacheTime && (now - parseInt(cacheTime)) < 1 * 60 * 1000) {
-                        console.log('使用缓存的评分汇总数据');
-                        return JSON.parse(cachedData);
-                    }
-                    
-                    // 否则获取新数据
-                    console.log('获取最新评分汇总数据');
-                    const summaryResponse = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`);
-                    const summaryData = await summaryResponse.json();
-                    
-                    // 将数据和时间戳存储到 sessionStorage
-                    sessionStorage.setItem('score_summary_data', JSON.stringify(summaryData));
-                    sessionStorage.setItem('score_summary_cache_time', now.toString());
-                    
-                    return summaryData;
-                } catch (error) {
-                    console.error('获取评分数据失败:', error);
-                    throw error;
-                }
-            }
-        }
-        // 为项目信息保存按钮添加点击事件
-        const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
-        if (saveProjectInfoBtn) {
-            console.log('找到项目信息保存按钮，添加点击事件');
-            saveProjectInfoBtn.addEventListener('click', function(e) {
-                e.preventDefault(); // 阻止表单默认提交
-                
-                // 显示保存中状态
-                const originalText = saveProjectInfoBtn.textContent;
-                saveProjectInfoBtn.textContent = '保存中...';
-                saveProjectInfoBtn.disabled = true;
-
-                // 获取表单元素
-                const form = saveProjectInfoBtn.closest('form');
-                if (!form) {
-                    console.error('未找到表单元素');
-                    saveProjectInfoBtn.textContent = originalText;
-                    saveProjectInfoBtn.disabled = false;
-                    return;
-                }
-                
-                // 使用FormData获取表单数据
-                const formData = new FormData(form);
-                
-                // 临时保存关键字段值到sessionStorage
-                const greenArea = document.getElementById('green_area').value;
-                if (greenArea) {
-                    sessionStorage.setItem('saved_green_area', greenArea);
-                    console.log('保存绿地面积临时数据:', greenArea);
-                }
-                
-                // 添加详细表单标志
-                formData.append('detail_form', '1');
-                
-                // 保存当前滚动位置
-                const scrollPosition = window.scrollY;
-                
-                // 使用AJAX提交表单，防止页面刷新
-                fetch('/', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('提交失败，请稍后重试');
-                    }
-                    return response.json().catch(() => {
-                        console.log('返回值不是JSON格式，可能是重定向响应');
-                        // 如果服务器返回了重定向响应，我们手动重载页面并保留滚动位置
-                        sessionStorage.setItem('scrollPosition', scrollPosition);
-                        window.location.reload();
-                        throw new Error('服务器返回了非JSON响应');
-                    });
-                })
-                .then(result => {
-                    // 恢复按钮状态
-                    saveProjectInfoBtn.textContent = originalText;
-                    saveProjectInfoBtn.disabled = false;
-                    
-                    // 显示成功消息
-                    alert('项目信息保存成功');
-                    
-                    // 记录保存成功状态，用于清除临时数据
-                    sessionStorage.setItem('save_success', 'true');
-                    
-                    // 刷新页面但保持滚动位置
-                    sessionStorage.setItem('scrollPosition', scrollPosition);
-                    window.location.reload();
-                })
-                .catch(error => {
-                    console.error('保存项目信息出错:', error);
-                    
-                    // 恢复按钮状态
-                    saveProjectInfoBtn.textContent = originalText;
-                    saveProjectInfoBtn.disabled = false;
-                    
-                    // 显示错误消息，但不是重定向错误
-                    if (!error.message.includes('非JSON响应')) {
-                        alert('保存失败: ' + error.message);
-                    }
-                });
-                
-                // 不使用传统的form.submit()，防止页面刷新
-                // 注释掉原来的代码: form.submit();
-                calculateAndUpdateScores();
-            });
-        } else {
-            console.log('未找到项目信息保存按钮');
-        }        
-</script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 如果是提高级页面，初始化分类过滤器
-        if ('{{ current_level }}' === '提高级') {
-            initializeCategoryFilters();
-        }
-    });
-
-    // 初始化分类过滤器功能
-    function initializeCategoryFilters() {
-        const filterButtons = document.querySelectorAll('.category-filter');
-        const tableRows = document.querySelectorAll('table tbody tr');
-        
-        filterButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                // 移除所有按钮的active状态
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                // 添加当前按钮的active状态
-                this.classList.add('active');
-                
-                const selectedCategory = this.getAttribute('data-category');
-                
-                // 过滤表格行
-                tableRows.forEach(row => {
-                    if (this.id === 'filter-all') {
-                        // 如果点击"全部"按钮，显示所有行
-                        row.style.display = '';
-                        row.style.animation = 'fadeIn 0.3s ease-in';
-                    } else {
-                        // 获取行的分类（在第二列）
-                        const rowCategory = row.querySelector('td:nth-child(2) .category-tag')?.textContent.trim();
-                        if (rowCategory === selectedCategory) {
-                            row.style.display = '';
-                            row.style.animation = 'fadeIn 0.3s ease-in';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    }
-                });
-            });
-        });
-    }
-
-    // 全局Toast函数实现
-    function toast(message, type = 'info') {
-        const container = document.getElementById('custom-toast-container');
-        if (!container) return;
-        
-        const toast = document.createElement('div');
-        toast.className = `custom-toast ${type}`;
-        
-        // 根据类型设置图标
-        let icon = '';
-        switch(type) {
-            case 'success':
-                icon = '<i class="ri-check-line custom-toast-icon"></i>';
-                break;
-            case 'error':
-                icon = '<i class="ri-error-warning-line custom-toast-icon"></i>';
-                break;
-            case 'warning':
-                icon = '<i class="ri-alert-line custom-toast-icon"></i>';
-                break;
-            case 'info':
-            default:
-                icon = '<i class="ri-information-line custom-toast-icon"></i>';
-                break;
-        }
-        
-        toast.innerHTML = `
-            ${icon}
-            <div class="custom-toast-message">${message}</div>
-        `;
-        
-        container.appendChild(toast);
-        
-        // 3秒后自动移除
-        setTimeout(() => {
-            toast.style.animation = 'toast-out 0.3s ease-in forwards';
-            setTimeout(() => {
-                container.removeChild(toast);
-            }, 300);
-        }, 3000);
-    }
-</script>
-
-<!-- 自定义Toast组件 -->
-<div id="custom-toast-container" class="fixed top-4 right-4 z-50"></div>
-<script>
-    // 百度地图API加载
-    function loadBaiduMapScript() {
-        // 从服务器获取API密钥
-        fetch('/api/map_api_key')
-            .then(response => response.json())
-            .then(data => {
-                const apiKey = data.api_key;
-                const script = document.createElement('script');
-                script.src = `https://api.map.baidu.com/api?v=3.0&ak=${apiKey}&callback=initMap`;
-                script.onerror = function() {
-                    alert('百度地图API加载失败，请检查网络连接或API密钥是否有效');
-                };
-                document.body.appendChild(script);
-            })
-            .catch(error => {
-                console.error('获取百度地图API密钥失败:', error);
-                alert('无法获取地图API密钥，地图功能可能无法正常使用');
-            });
-    }
-
-    // 初始化地图
-    function initMap() {
-        try {
-            window.map = new BMap.Map('map-container');
-            const point = new BMap.Point(116.404, 39.915); // 默认北京市中心
-            map.centerAndZoom(point, 15);
-            // 禁用滚轮放大缩小功能
-            map.disableScrollWheelZoom();
-            map.addControl(new BMap.NavigationControl());
-            map.addControl(new BMap.ScaleControl());
-            
-            // 初始化搜索功能
-            document.getElementById('search-btn').addEventListener('click', searchBusStops);
-            
-            console.log('地图初始化成功');
-        } catch (error) {
-            console.error('地图初始化失败:', error);
-            alert('地图初始化失败，请刷新页面重试');
-        }
-    }
-
-    // 搜索附近公交站
-    function searchBusStops() {
-        const address = document.getElementById('address').value.trim();
-        if (!address) {
-            alert('请输入有效地址！');
-            return;
-        }
-        
-        // 显示加载中
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('result-body').innerHTML = '';
-        document.getElementById('result-count').innerHTML = '';
-        document.getElementById('export-btn').disabled = true;
-        
-        try {
-            // 地址解析
-            const geoCoder = new BMap.Geocoder();
-            geoCoder.getPoint(address, function(point) {
-                if (point) {
-                    map.clearOverlays();
-                    map.centerAndZoom(point, 16);
-                    
-                    // 添加中心点标记
-                    const centerMarker = new BMap.Marker(point);
-                    // 添加自定义属性，标识这是中心点标记
-                    centerMarker.customData = {
-                        isCenter: true
-                    };
-                    map.addOverlay(centerMarker);
-                    
-                    // 添加半径圈
-                    const circle = new BMap.Circle(point, 500, {
-                        strokeColor: '#3c8dbc',
-                        strokeWeight: 2,
-                        strokeOpacity: 0.5,
-                        fillColor: '#3c8dbc',
-                        fillOpacity: 0.1
-                    });
-                    map.addOverlay(circle);
-                    
-                    // 搜索周边公交站
-                    try {
-                        const options = {
-                            onSearchComplete: function(results) {
-                                document.getElementById('loading').style.display = 'none';
-                                
-                                if (results && results.getNumPois && results.getNumPois() > 0) {
-                                    const busStops = [];
-                                    for (let i = 0; i < results.getNumPois(); i++) {
-                                        try {
-                                            const poi = results.getPoi(i);
-                                            if (poi && poi.point) {
-                                                const distance = map.getDistance(point, poi.point).toFixed(0);
-                                                
-                                                // 只保留500米范围内的站点
-                                                if (distance <= 500) {
-                                                    busStops.push({
-                                                        name: poi.title,
-                                                        distance: distance,
-                                                        address: poi.address || '无详细地址',
-                                                        point: poi.point
-                                                    });
-                                                }
-                                            }
-                                        } catch (poiError) {
-                                            console.error('处理POI数据时出错:', poiError);
-                                            continue;
-                                        }
+                        // --- 加载百度地图API (已有) ---
+                        function loadBaiduMapScript() {
+                            console.log("开始加载百度地图API");
+                            
+                            // 检查BMap对象是否已存在
+                            if (typeof BMap !== 'undefined') {
+                                console.log("BMap对象已存在，直接初始化地图");
+                                setTimeout(() => {
+                                    try {
+                                        initBaiduMap();
+                                    } catch (e) {
+                                        console.error("延迟初始化百度地图失败:", e);
                                     }
-                                    
-                                    // 按距离排序
-                                    busStops.sort((a, b) => a.distance - b.distance);
-                                    
-                                    // 显示结果
-                                    displayResults(busStops);
-                                } else {
-                                    document.getElementById('result-count').innerHTML = '<p>未找到周边公交站点</p>';
-                                }
-                            },
-                            onError: function(error) {
-                                document.getElementById('loading').style.display = 'none';
-                                console.error('搜索出错:', error);
-                                alert('搜索公交站点时出错，请稍后重试');
+                                }, 500); // 添加延迟，确保BMap完全加载
+                                return;
                             }
-                        };
-                        
-                        const searchLocal = new BMap.LocalSearch(map, options);
-                        searchLocal.searchNearby('公交站', point, 500);
-                    } catch (searchError) {
-                        document.getElementById('loading').style.display = 'none';
-                        console.error('创建搜索时出错:', searchError);
-                        alert('搜索功能初始化失败，请稍后重试');
-                    }
-                } else {
-                    document.getElementById('loading').style.display = 'none';
-                    alert('无法解析该地址，请输入正确的地址！');
-                }
-            });
-        } catch (error) {
-            document.getElementById('loading').style.display = 'none';
-            console.error('搜索过程出错:', error);
-            alert('搜索过程中出现错误，请稍后重试');
-        }
-    }
 
-    // 显示搜索结果
-    function displayResults(busStops) {
-        const tbody = document.getElementById('result-body');
-        tbody.innerHTML = '';
-        
-        document.getElementById('result-count').innerHTML = `<p>共找到 <strong>${busStops.length}</strong> 个公交站点</p>`;
-        
-        // 先清除所有公交站点标记，但保留中心点和圆圈
-        // 获取所有覆盖物
-        const allOverlays = map.getOverlays();
-        const overlaysToRemove = [];
-        
-        // 找出所有公交站点标记（非中心点标记）
-        if (allOverlays && allOverlays.length > 0) {
-            allOverlays.forEach(overlay => {
-                // 检查是否是公交站点标记（使用自定义属性）
-                if (overlay instanceof BMap.Marker && overlay.customData && overlay.customData.isBusStop) {
-                    overlaysToRemove.push(overlay);
-                }
-            });
-        }
-        
-        // 移除公交站点标记
-        overlaysToRemove.forEach(overlay => {
-            map.removeOverlay(overlay);
-        });
-        
-        busStops.forEach((stop, index) => {
-            const tr = document.createElement('tr');
-            
-            tr.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${stop.name}</td>
-                <td>${stop.distance}</td>
-                <td>${stop.address || '无详细信息'}</td>
-            `;
-            
-            tbody.appendChild(tr);
-            
-            // 确保stop.point存在
-            if (stop && stop.point) {
-                // 在地图上添加标记
-                const marker = new BMap.Marker(stop.point);
-                // 添加自定义属性，标识这是公交站点标记
-                marker.customData = {
-                    isBusStop: true,
-                    index: index + 1  // 记录序号，从1开始
-                };
-                map.addOverlay(marker);
-                
-                // 添加信息窗口
-                const infoWindow = new BMap.InfoWindow(`
-                    <div style="padding: 10px">
-                        <h4>${stop.name}</h4>
-                        <p>距离：${stop.distance}米</p>
-                        <p>地址：${stop.address || '无详细信息'}</p>
-                    </div>
-                `);
-                
-                marker.addEventListener('click', function() {
-                    this.openInfoWindow(infoWindow);
-                });
-            }
-        });
-        
-        // 启用导出按钮
-        if (busStops.length > 0) {
-            document.getElementById('export-btn').disabled = false;
-        }
-    }
+                            // 添加全局错误处理，捕获"Cannot read properties of undefined (reading 'hc')"错误
+                            window.onerror = function(message, source, lineno, colno, error) {
+                                console.error("全局错误:", message, "来源:", source, "行号:", lineno);
+                                if (message.includes("Cannot read properties of undefined") && message.includes("hc")) {
+                                    console.error("捕获到百度地图初始化错误，尝试重新加载");
+                                    setTimeout(() => {
+                                        loadBaiduMapScript();
+                                    }, 1000);
+                                    return true; // 阻止默认错误处理
+                                }
+                                return false; // 允许其他错误正常处理
+                            };
 
-    // 导出到Word文档
-    document.getElementById('export-btn').addEventListener('click', function() {
-        const address = document.getElementById('address').value;
-        const busStops = [];
-        const rows = document.querySelectorAll('#result-body tr');
-        rows.forEach((row, index) => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length >= 4) {
-                busStops.push({
-                    name: cells[1].textContent,
-                    distance: cells[2].textContent,
-                    address: cells[3].textContent
-                });
-            }
-        });
-
-        document.getElementById('loading').style.display = 'block';
-        const center = window.map.getCenter();
-        const zoom = window.map.getZoom();
-        const allOverlays = window.map.getOverlays();
-        const markers = [];
-        let circleInfo = null;
-
-        if (allOverlays && allOverlays.length > 0) {
-            allOverlays.forEach(overlay => {
-                if (overlay instanceof BMap.Marker) {
-                    const pos = overlay.getPosition();
-                    const isCenter = overlay.customData && overlay.customData.isCenter;
-                    const busStopIndex = overlay.customData && overlay.customData.isBusStop ? overlay.customData.index : null;
-                    if (pos) {
-                        markers.push({
-                            lng: pos.lng,
-                            lat: pos.lat,
-                            isCenter: isCenter,
-                            busStopIndex: busStopIndex
-                        });
-                    }
-                } else if (overlay instanceof BMap.Circle) {
-                    const centerPos = overlay.getCenter();
-                    const radius = overlay.getRadius();
-                    if (centerPos) {
-                        circleInfo = {
-                            center: {
-                                lng: centerPos.lng,
-                                lat: centerPos.lat
-                            },
-                            radius: radius
-                        };
-                    }
-                }
-            });
-        }
-        
-        // 创建一个包含地图和标记的完整图像
-        function createMapScreenshot() {
-            return new Promise((resolve, reject) => {
-                try {
-                    const mapContainer = document.getElementById('map-container');
-                    const width = mapContainer.offsetWidth;
-                    const height = mapContainer.offsetHeight;
-                    const address = document.getElementById('address').value; // 获取地址用于标题
-
-                    // 直接使用静态地图API
-                    console.log("尝试使用静态地图API生成地图...");
-                    
-                    const staticMapCanvas = document.createElement('canvas');
-                    staticMapCanvas.width = width;
-                    staticMapCanvas.height = height;
-                    const staticCtx = staticMapCanvas.getContext('2d');
-
-                    // 绘制白色背景
-                    staticCtx.fillStyle = "#ffffff";
-                    staticCtx.fillRect(0, 0, width, height);
-
-                    // 尝试使用百度地图静态图API
-                    const centerPoint = window.map.getCenter();
-                    const zoom = window.map.getZoom();
-
-                    // --- 修改开始: 请求后端的静态地图代理端点 ---
-                    fetch('/api/get_static_map', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            width: width,
-                            height: height,
-                            center_lng: centerPoint.lng,
-                            center_lat: centerPoint.lat,
-                            zoom: zoom,
-                            markers: markers.map(m => `${m.lng},${m.lat}`).join('|') // 将标记点信息传递给后端
-                        })
-                    })
-                    .then(response => {
+                            // 获取API密钥
+                            fetch('/api/map_api_key')
+                                .then(response => {
                         if (!response.ok) {
                              // 如果后端代理返回错误，尝试读取错误信息
                             return response.json().then(err => {
@@ -2219,11 +965,12 @@
                                         staticCtx.textAlign = "center";
                                         staticCtx.textBaseline = "middle";
                                         staticCtx.fillText("起", pixel.x, pixel.y);
-                                    } else if (marker.busStopIndex) {
-                                        // 公交站点标记样式 - 使用红色
+                                    } else if (marker.stationIndex) { // 检查 stationIndex
+                                        // 根据类型选择颜色
+                                        const color = marker.stationType === '公交站' ? '#FF0000' : '#0000FF'; // 公交红，地铁蓝
                                         staticCtx.beginPath();
                                         staticCtx.arc(pixel.x, pixel.y, 10, 0, Math.PI * 2); // 稍小一点
-                                        staticCtx.fillStyle = "#FF0000";
+                                        staticCtx.fillStyle = color;
                                         staticCtx.fill();
                                         staticCtx.strokeStyle = "#FFFFFF";
                                         staticCtx.lineWidth = 1;
@@ -2232,7 +979,7 @@
                                         staticCtx.fillStyle = "#FFFFFF";
                                         staticCtx.textAlign = "center";
                                         staticCtx.textBaseline = "middle";
-                                        staticCtx.fillText(marker.busStopIndex.toString(), pixel.x, pixel.y);
+                                        staticCtx.fillText(marker.stationIndex.toString(), pixel.x, pixel.y);
                                     }
                                 } catch(e) {
                                     console.error('绘制标记点失败:', e);
@@ -2277,91 +1024,96 @@
                         staticCtx.fillText("无法从服务器获取地图图片", width/2, height/2);
                         reject(error);
                     });
-                } catch(e) {
-                    console.error("创建Canvas或生成截图时失败:", e);
-                    reject(e);
                 }
-            });
-        }
+
         
         // 执行地图截图
-        createMapScreenshot().then(mapImageData => {
-            // 发送数据到后端
-            fetch('/api/fill_transport_report_template', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    address: address,
-                    stations: busStops,
-                    mapImage: mapImageData,
-                    mapInfo: {
-                        center: {
-                            lng: center.lng,
-                            lat: center.lat
+        function executeMapScreenshot() {
+            createMapScreenshot().then(mapImageData => {
+                // 发送数据到后端
+                fetch('/api/fill_transport_report_template', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: address,
+                        stations: stations, // 使用更新后的 stations
+                        mapImage: mapImageData,
+                        mapInfo: {
+                            center: {
+                                lng: center.lng,
+                                lat: center.lat
+                            },
+                            zoom: zoom,
+                            markers: markers, // markers 数组现在包含 stationType
+                            circle: circleInfo
                         },
-                        zoom: zoom,
-                        markers: markers,
-                        circle: circleInfo
+                        // 添加项目ID参数，从URL获取
+                        project_id: new URLSearchParams(window.location.search).get('project_id')
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 隐藏加载中
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (data.success) {
+                        console.log('成功收到响应:', data);
+                        
+                        // 创建下载链接 - 确保使用正确的属性名称
+                        const link = document.createElement('a');
+                        // 检查两种可能的属性名
+                        const downloadUrl = data.download_url || data.downloadUrl;
+                        
+                        if (!downloadUrl) {
+                            console.error('响应中缺少下载链接:', data);
+                            alert('生成报告失败: 服务器未返回下载链接');
+                            return;
+                        }
+                        
+                        link.href = downloadUrl;
+                        link.download = `公共交通查询结果_${address}_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`;
+                        
+                        // 触发下载
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    } else {
+                        console.error('生成报告失败:', data.message);
+                        alert('生成报告失败: ' + data.message);
                     }
                 })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`服务器响应错误: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
+                .catch(error => {
+                    // 隐藏加载中
+                    document.getElementById('loading').style.display = 'none';
+                    console.error('API请求失败:', error);
+                    alert('导出失败: ' + error.message);
+                });
+            }).catch(error => {
                 // 隐藏加载中
                 document.getElementById('loading').style.display = 'none';
-                
-                if (data.success) {
-                    console.log('成功收到响应:', data);
-                    
-                    // 创建下载链接 - 确保使用正确的属性名称
-                    const link = document.createElement('a');
-                    // 检查两种可能的属性名
-                    const downloadUrl = data.download_url || data.downloadUrl;
-                    
-                    if (!downloadUrl) {
-                        console.error('响应中缺少下载链接:', data);
-                        alert('生成报告失败: 服务器未返回下载链接');
-                        return;
-                    }
-                    
-                    link.href = downloadUrl;
-                    link.download = `公交站点查询结果_${address}_${new Date().toLocaleDateString()}.docx`;
-                    
-                    // 触发下载
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                } else {
-                    console.error('生成报告失败:', data.message);
-                    alert('生成报告失败: ' + data.message);
-                }
-            })
-            .catch(error => {
-                // 隐藏加载中
-                document.getElementById('loading').style.display = 'none';
-                console.error('API请求失败:', error);
-                alert('导出失败: ' + error.message);
+                console.error('地图截图创建失败:', error);
+                alert('地图截图创建失败: ' + error.message);
             });
-        }).catch(error => {
-            // 隐藏加载中
-            document.getElementById('loading').style.display = 'none';
-            console.error('地图截图创建失败:', error);
-            alert('地图截图创建失败: ' + error.message);
-        });
-    });
+        }
 
-    // 加载百度地图API
-    loadBaiduMapScript();
+        // 加载百度地图API
+        loadBaiduMapScript();
 
-    // 全局函数，供百度地图API回调
-    window.initMap = initMap;
-</script>
+        // 全局函数，供百度地图API回调
+        window.initMap = initMap;
+    </script>
+    {% endif %}
+                    {% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
 </body>
 </html>
