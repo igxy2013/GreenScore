@@ -5275,6 +5275,61 @@ def map_js_api_proxy():
             content_type='application/javascript'
         )
 
+# 新增：代理百度静态地图API请求
+@app.route('/api/get_static_map', methods=['POST'])
+def get_static_map_proxy():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing request body'}), 400
+
+        width = data.get('width')
+        height = data.get('height')
+        center_lng = data.get('center_lng')
+        center_lat = data.get('center_lat')
+        zoom = data.get('zoom')
+        markers_param = data.get('markers', '') # 获取前端处理好的标记字符串
+
+        if not all([width, height, center_lng, center_lat, zoom]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+
+        # 从环境变量获取百度地图API密钥
+        api_key = os.environ.get('BAIDU_MAP_API_KEY', 'J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL')
+
+        # 构建百度静态地图API URL
+        baidu_url = f"https://api.map.baidu.com/staticimage/v2"
+        params = {
+            'ak': api_key,
+            'width': width,
+            'height': height,
+            'center': f"{center_lng},{center_lat}",
+            'zoom': zoom,
+            'copyright': 1,
+            'markers': markers_param # 直接使用前端传递的标记字符串
+            # 注意：百度静态地图API可能无法完美渲染所有自定义标记和圆圈，这里仅传递基础信息
+        }
+        
+        app.logger.info(f"代理请求百度静态地图: {baidu_url} with params: {params}")
+
+        # 发送请求到百度服务器
+        import requests
+        response = requests.get(baidu_url, params=params, timeout=15, stream=True) # 使用stream=True处理图片
+
+        # 检查百度服务器的响应
+        if response.status_code == 200:
+            # 获取 Content-Type，如果百度返回了的话
+            content_type = response.headers.get('Content-Type', 'image/png') 
+            # 返回图片数据
+            return Response(response.content, status=200, content_type=content_type)
+        else:
+            app.logger.error(f"请求百度静态地图失败: Status {response.status_code}, Response: {response.text[:200]}")
+            return jsonify({'error': f'Failed to fetch map image from Baidu: Status {response.status_code}'}), response.status_code
+
+    except Exception as e:
+        app.logger.error(f"代理百度静态地图时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'Server error during map proxy: {str(e)}'}), 500
+
 # 添加项目信息页面路由
 @app.route('/project_info_page')
 def project_info_page():
