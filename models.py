@@ -236,3 +236,33 @@ class ClimateZone(db.Model):
             'district': self.分区名称,
             'climate_zone': self.气候区划
         }
+# 添加评价标准的模型
+class review_standard(db.Model):
+    __tablename__ = '评价标准'
+    
+    # 使用中文字段名
+    序号 = db.Column(db.Integer, primary_key=True)
+    条文号 = db.Column(db.String(20))
+    分类 = db.Column(db.String(50))
+    专业 = db.Column(db.String(50))
+    条文内容 = db.Column(db.Text)
+    分值 = db.Column(db.String(10))
+    审查材料 = db.Column(db.Text)
+    属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
+    标准名称 = db.Column(db.String(20))  # 标准名称字段
+
+class FormData(db.Model):
+    __tablename__ = 'form_data'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
+    project_name = db.Column(db.String(100))
+    building_no = db.Column(db.String(50))
+    project_location = db.Column(db.String(200))
+    design_no = db.Column(db.String(50))
+    construction_unit = db.Column(db.String(100))
+    design_unit = db.Column(db.String(100))
+    standard_selection = db.Column(db.String(20))
+    form_data = db.Column(db.Text)  # 存储JSON格式的表单数据
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())    

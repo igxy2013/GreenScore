@@ -53,11 +53,19 @@ function initMap() {
         var map = new BMap.Map("map");
         // 初始中心点设为成都
         var point = new BMap.Point(104.06, 30.67);
-        map.centerAndZoom(point, 12);
-        map.enableScrollWheelZoom(true);
+        map.centerAndZoom(point, 15);
+        map.enableScrollWheelZoom(false);
         
         // 设置地图区域的鼠标样式为默认箭头
         document.getElementById("map").style.cursor = "default";
+        
+        // 额外添加DOM事件监听器来阻止地图区域的滚轮事件，确保禁用滚轮缩放
+        const mapContainer = document.getElementById("map");
+        mapContainer.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, { passive: false });
         
         // 添加控件
         map.addControl(new BMap.NavigationControl());
@@ -102,7 +110,8 @@ function initMap() {
                 var myGeo = new BMap.Geocoder();
                 myGeo.getPoint(location, function(point) {
                     if (point) {
-                        map.centerAndZoom(point, 12);
+                        map.centerAndZoom(point, 15);
+                        map.enableScrollWheelZoom(false);
                         marker.setPosition(point);
                         document.getElementById("longitude").textContent = point.lng.toFixed(6);
                         document.getElementById("latitude").textContent = point.lat.toFixed(6);

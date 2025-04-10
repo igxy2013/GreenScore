@@ -90,3 +90,4 @@ GreenScore.NET/static/temp/
 static/exports/
 logs/
 uploads/
+__pycache__/

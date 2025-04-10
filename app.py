@@ -36,6 +36,1683 @@ from flask_cors import CORS
 from word_template import process_template
 from export import generate_word, generate_dwg, generate_self_assessment_report
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from models import db, User, InvitationCode, LogRecord, Project, review_standard, FormData  # 导入Project模型
+import random
+import string
+import werkzeug.exceptions
+from flask_sqlalchemy import SQLAlchemy
+from routes import auth_bp
+from admin import admin_app  # 使用admin.py中的admin_app
+from utils.extract_word_info import extract_project_info  # 导入Word信息提取函数
+import uuid
+import base64
+
+# 定义等级到属性的映射
+LEVEL_TO_ATTRIBUTE = {
+    '基本级': '控制项',
+    '提高级': '评分项'
+}
+
+# 加载环境变量
+load_dotenv()
+
+# 创建应用
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+
+# 设置配置
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['EXPORT_FOLDER'] = 'static/exports'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 最大上传文件限制为16MB
+
+# 配置日志
+logging.basicConfig(level=logging.WARNING)  # 将日志级别从INFO改为WARNING
+logger = logging.getLogger('greenscore')
+handler = RotatingFileHandler('logs/app.log', maxBytes=10000000, backupCount=5)
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+handler.setLevel(logging.WARNING)  # 将处理器的级别从INFO改为WARNING
+logger.addHandler(handler)
+app.logger = logger
+
+# 禁用其他库的冗余日志
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.dialects').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.orm').setLevel(logging.WARNING)
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
+logging.getLogger('flask_cors').setLevel(logging.WARNING)
+
+# 配置 session
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev_key_123')  # 添加一个默认的密钥
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# 配置CORS
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# 判断是否为生产环境
+is_production = os.environ.get('FLASK_ENV') == 'production'
+
+# 配置缓存
+cache_config = {
+    "DEBUG": not is_production,
+    "CACHE_TYPE": "FileSystemCache" if is_production else "SimpleCache",
+    "CACHE_DIR": "cache" if is_production else None,
+    "CACHE_DEFAULT_TIMEOUT": 3600  # 缓存过期时间，单位秒（1小时）
+}
+cache = Cache(app, config=cache_config)
+
+# 配置数据库连接
+db_uri = os.environ.get('DATABASE_URL')
+if not db_uri:
+    # MySQL数据库连接配置
+    mysql_host = os.environ.get('MYSQL_HOST', 'localhost')
+    mysql_port = os.environ.get('MYSQL_PORT', '3306')
+    mysql_database = os.environ.get('MYSQL_DATABASE', '绿色建筑')
+    mysql_username = os.environ.get('MYSQL_USERNAME', 'root')
+    mysql_password = os.environ.get('MYSQL_PASSWORD', 'password')
+    
+    # 构建MySQL连接字符串
+    db_uri = f'mysql+pymysql://{mysql_username}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}?charset=utf8mb4'
+    app.logger.warning("警告: DATABASE_URL 环境变量未设置，使用默认连接字符串")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = False  # 禁用SQLAlchemy的ECHO功能，不管是开发环境还是生产环境
+
+# 初始化数据库
+db.init_app(app)
+
+# 初始化数据库迁移
+migrate = Migrate(app, db)
+
+# 初始化login manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'admin.admin_login'  # 修改这里，指向管理员登录页面
+login_manager.login_message = '请先登录'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# 添加根路由重定向到index.html
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/privacy_policy')
+def privacy_policy():
+    return render_template('privacy_policy.html')
+
+@app.route('/terms_of_service')
+def terms_of_service():
+    return render_template('terms_of_service.html')
+
+# 添加请求处理器来更新用户的last_seen时间
+@app.before_request
+def update_last_seen():
+    if current_user.is_authenticated:
+        current_user.last_seen = datetime.utcnow()
+        db.session.commit()
+
+# 添加请求日志中间件
+@app.before_request
+def log_request_info():
+    # 只记录GET和POST请求
+    if request.method in ['GET', 'POST', 'PUT', 'DELETE']:
+        try:
+            # 获取用户ID（如果已登录）
+            user_id = current_user.id if current_user.is_authenticated else None
+            
+            # 记录请求信息，但排除静态文件和某些特定路径
+            path = request.path
+            if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
+                LogRecord.add_log(
+                    level="INFO",
+                    message=f"请求: {request.method} {path}",
+                    source="HTTP_REQUEST",
+                    user_id=user_id,
+                    ip_address=request.remote_addr,
+                    path=path,
+                    method=request.method,
+                    user_agent=request.user_agent.string
+                )
+        except Exception as e:
+            app.logger.error(f"记录请求日志时出错: {str(e)}")
+
+# 添加响应日志中间件
+@app.after_request
+def log_response_info(response):
+    try:
+        # 只记录错误响应
+        if response.status_code >= 400:
+            path = request.path
+            if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
+                user_id = current_user.id if current_user.is_authenticated else None
+                
+                LogRecord.add_log(
+                    level="ERROR" if response.status_code >= 500 else "WARNING",
+                    message=f"响应错误: {request.method} {path} 状态码: {response.status_code}",
+                    source="HTTP_RESPONSE",
+                    user_id=user_id,
+                    ip_address=request.remote_addr,
+                    path=path,
+                    method=request.method,
+                    user_agent=request.user_agent.string
+                )
+    except Exception as e:
+        app.logger.error(f"记录响应日志时出错: {str(e)}")
+    
+    return response
+
+# 添加异常日志中间件
+@app.errorhandler(Exception)
+def log_exception(e):
+    try:
+        # 获取请求相关信息
+        path = request.path if request else "未知路径"
+        method = request.method if request else "未知方法"
+        user_id = current_user.id if current_user and current_user.is_authenticated else None
+        
+        # 对静态文件的404错误进行特殊处理，减少日志记录
+        if isinstance(e, werkzeug.exceptions.NotFound) and (path.startswith('/static/') or path == '/favicon.ico'):
+            # 静态文件404不记录详细日志，只在DEBUG模式下记录
+            if app.debug:
+                app.logger.debug(f"静态文件未找到: {path}")
+            return render_template('error.html', error="文件未找到"), 404
+        
+        # 记录异常信息
+        LogRecord.add_log(
+            level="ERROR",
+            message=f"系统异常: {str(e)}",
+            source="EXCEPTION",
+            user_id=user_id,
+            ip_address=request.remote_addr if request else None,
+            path=path,
+            method=method,
+            user_agent=request.user_agent.string if request else None
+        )
+        
+        # 记录详细的异常堆栈到应用日志
+        app.logger.error(f"系统异常: {str(e)}", exc_info=True)
+        
+    except Exception as log_err:
+        app.logger.error(f"记录异常日志时出错: {str(log_err)}")
+    
+    # 返回通用的错误页面
+    return render_template('error.html', error=str(e)), 500
+
+# 添加专门的404错误处理器
+@app.errorhandler(404)
+def page_not_found(e):
+    # 获取请求路径
+    path = request.path
+    
+    # 对静态文件的请求进行特殊处理
+    if path.startswith('/static/') or path == '/favicon.ico':
+        # 静态文件不存在的情况，返回简单的404响应而不记录详细日志
+        return "File not found", 404
+    
+    # 非静态文件的404，记录日志
+    app.logger.warning(f"页面未找到: {request.method} {path}")
+    
+    # 返回自定义404页面
+    return render_template('error.html', error="页面未找到"), 404
+
+# 添加405错误处理器
+@app.errorhandler(405)
+def method_not_allowed(e):
+    # 检查是否为非应用路径的请求
+    non_app_paths = ['/dns-query', '/robots.txt', '/favicon.ico']
+    if request.path in non_app_paths:
+        app.logger.debug(f"忽略对非应用路径的请求: {request.method} {request.path}")
+        return '', 204  # 返回无内容状态码
+    
+    # 记录其他405错误
+    app.logger.warning(f"方法不允许: {request.method} {request.path}")
+    return render_template('error.html', 
+                          error_code=405, 
+                          error_message="请求方法不被允许"), 405
+
+# 邀请码相关API路由
+@app.route('/api/invite-codes', methods=['POST'])
+@login_required
+def generate_invite_code():
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': '只有管理员可以生成邀请码'}), 403
+    
+    try:
+        # 生成随机邀请码
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        # 创建新的邀请码记录
+        new_code = InvitationCode(code=code)
+        db.session.add(new_code)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请码生成成功',
+            'code': code
+            
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'生成邀请码失败: {str(e)}')
+        return jsonify({'success': False, 'message': '生成邀请码失败'}), 500
+
+@app.route('/api/invite-codes/<int:code_id>', methods=['DELETE'])
+@login_required
+def delete_invite_code(code_id):
+    if not current_user.is_admin():
+        return jsonify({'success': False, 'message': '只有管理员可以删除邀请码'}), 403
+    
+    try:
+        code = InvitationCode.query.get_or_404(code_id)
+        db.session.delete(code)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请码删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'删除邀请码失败: {str(e)}')
+        return jsonify({'success': False, 'message': '删除邀请码失败'}), 500
+
+# 添加登录要求装饰器
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def sync_score_tables(project_id):
+    """同步得分表和project_scores表的数据"""
+    if not project_id:
+        logger.warning("项目ID不能为空，无法同步数据")
+        return False
+    
+    try:
+        # 记录开始时间
+        start_time = datetime.now()
+        logger.info(f"开始同步项目ID={project_id}的得分表和project_scores表数据")
+        
+        # 获取项目信息
+        project = get_project(project_id)
+        if not project:
+            logger.error(f"项目不存在: ID={project_id}")
+            return False
+            
+        project_standard = project.standard
+        
+        # 从得分表导入数据到project_scores表
+        count = 0
+        try:
+            result = db.session.execute(
+                text("SELECT COUNT(*) FROM `得分表` WHERE `项目ID` = :project_id"),
+                {"project_id": project_id}
+            )
+            count = result.scalar()
+            logger.info(f"得分表中项目ID={project_id}的记录数: {count}")
+        except Exception as e:
+            logger.error(f"查询得分表记录数时出错: {str(e)}")
+            
+        # 如果不存在记录，跳过同步
+        if count == 0:
+            logger.warning(f"得分表中不存在项目ID={project_id}的记录，跳过同步")
+            return False
+            
+        # 从得分表中获取数据，考虑缺失的列
+        try:
+            # 使用安全的查询方式
+            result = db.session.execute(
+                text("""
+                    SELECT 
+                        `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
+                        `分类`, `是否达标`, `得分`, `技术措施`, 
+                        COALESCE(`评价标准`, :default_standard) as `评价标准`
+                    FROM `得分表` 
+                    WHERE `项目ID` = :project_id
+                """),
+                {"project_id": project_id, "default_standard": project_standard}
+            )
+            
+            scores = result.fetchall()
+            logger.info(f"从得分表中获取到 {len(scores)} 条记录")
+            
+            if not scores:
+                logger.warning(f"得分表中不存在项目ID={project_id}的记录，跳过同步")
+                return False
+                
+            # 先删除project_scores表中的相关记录
+            try:
+                delete_result = db.session.execute(
+                    text("DELETE FROM project_scores WHERE project_id = :project_id"),
+                    {"project_id": project_id}
+                )
+                logger.info(f"已从project_scores表中删除 {delete_result.rowcount} 条记录")
+                db.session.flush()
+            except Exception as e:
+                logger.error(f"删除project_scores表记录时出错: {str(e)}")
+                db.session.rollback()
+                raise
+                
+            # 批量插入数据到project_scores表
+            inserted_count = 0
+            for score in scores:
+                try:
+                    # 解包得分数据，避免数组越界错误
+                    项目ID = score[0] if len(score) > 0 else project_id
+                    项目名称 = score[1] if len(score) > 1 else ""
+                    专业 = score[2] if len(score) > 2 else ""
+                    评价等级 = score[3] if len(score) > 3 else "基本级"
+                    条文号 = score[4] if len(score) > 4 else ""
+                    分类 = score[5] if len(score) > 5 else ""
+                    是否达标 = score[6] if len(score) > 6 else "是"
+                    得分 = score[7] if len(score) > 7 else 0
+                    技术措施 = score[8] if len(score) > 8 else ""
+                    评价标准 = score[9] if len(score) > 9 else project_standard
+                    
+                    # 转换得分为浮点数
+                    try:
+                        if 得分 and str(得分).strip():
+                            score_float = float(得分)
+                        else:
+                            score_float = 0
+                    except (ValueError, TypeError):
+                        logger.warning(f"无法将得分转换为浮点数: {得分}，使用默认值0")
+                        score_float = 0
+                    
+                    # 插入数据到project_scores表
+                    db.session.execute(
+                        text("""
+                            INSERT INTO project_scores (
+                                project_id, project_name, specialty, level, clause_number, 
+                                category, is_achieved, score, technical_measures, standard
+                            ) VALUES (
+                                :project_id, :project_name, :specialty, :level, :clause_number,
+                                :category, :is_achieved, :score, :technical_measures, :standard
+                            )
+                        """),
+                        {
+                            "project_id": 项目ID,
+                            "project_name": 项目名称,
+                            "specialty": 专业,
+                            "level": 评价等级,
+                            "clause_number": 条文号,
+                            "category": 分类,
+                            "is_achieved": 是否达标,
+                            "score": score_float,
+                            "technical_measures": 技术措施,
+                            "standard": 评价标准
+                        }
+                    )
+                    inserted_count += 1
+                except Exception as e:
+                    logger.error(f"插入project_scores表时出错: {str(e)}, 条文号: {条文号}")
+                    # 继续处理下一条记录
+                    
+            # 提交事务
+            db.session.commit()
+            end_time = datetime.now()
+            logger.info(f"同步完成，共插入 {inserted_count} 条记录，耗时: {(end_time - start_time).total_seconds()} 秒")
+            return True
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"同步数据时出错: {str(e)}")
+            logger.error(traceback.format_exc())
+            return False
+            
+    except Exception as e:
+        logger.error(f"同步得分表和project_scores表数据时出错: {str(e)}")
+        logger.error(traceback.format_exc())
+        return False
+
+
+# 缓存所有数据的函数
+@cache.cached(key_prefix='all_standards')
+def get_all_standards():
+    print("从数据库获取所有标准数据...")
+    start_time = time.time()
+    standards = review_standard.query.all()
+    end_time = time.time()
+    print(f"查询耗时: {end_time - start_time:.2f}秒，获取到 {len(standards)} 条记录")
+    return standards
+
+# 按专业和级别缓存数据的函数
+@cache.memoize()
+def get_filtered_standards(level, specialty):
+    print(f"从数据库获取筛选数据: 级别={level}, 专业={specialty}")
+    start_time = time.time()
+    # 将级别转换为对应的属性值
+    attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
+    if attribute:
+        print(f"级别 '{level}' 对应属性值 '{attribute}'")
+    
+    # 获取当前项目
+    project = get_project()
+    standard_name = project.standard if project and project.standard else '成都市标'
+    print(f"当前评价标准: {standard_name}")
+    
+    # 使用新的评价标准模型
+    model_class = review_standard
+    
+    # 尝试多种筛选方法
+    standards = []
+    
+    # 方法1: 使用属性字段精确匹配并按标准名称筛选
+    if attribute and specialty:
+        try:
+            query1 = model_class.query.filter(getattr(model_class, '属性') == attribute)
+            query1 = query1.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query1 = query1.filter(getattr(model_class, '标准名称') == standard_name)
+            # 添加按序号排序
+            query1 = query1.order_by(getattr(model_class, '序号'))
+            standards1 = query1.all()
+            print(f"方法1 (属性精确匹配): 找到 {len(standards1)} 条记录")
+            if standards1:
+                standards = standards1
+        except Exception as e:
+            print(f"方法1查询错误: {str(e)}")
+    
+    # 方法2: 使用属性字段模糊匹配并按标准名称筛选
+    if not standards and attribute:
+        try:
+            query2 = model_class.query
+            query2 = query2.filter(getattr(model_class, '属性').like(f'%{attribute}%'))
+            if specialty:
+                query2 = query2.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query2 = query2.filter(getattr(model_class, '标准名称') == standard_name)
+            # 添加按序号排序
+            query2 = query2.order_by(getattr(model_class, '序号'))
+            standards2 = query2.all()
+            print(f"方法2 (属性模糊匹配): 找到 {len(standards2)} 条记录")
+            if standards2:
+                standards = standards2
+        except Exception as e:
+            print(f"方法2查询错误: {str(e)}")
+    
+    # 方法3: 只按专业和标准名称筛选
+    if not standards and specialty:
+        try:
+            query3 = model_class.query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            query3 = query3.filter(getattr(model_class, '标准名称') == standard_name)
+            # 添加按序号排序
+            query3 = query3.order_by(getattr(model_class, '序号'))
+            standards3 = query3.all()
+            print(f"方法3 (仅按专业): 找到 {len(standards3)} 条记录")
+            if standards3:
+                standards = standards3
+        except Exception as e:
+            print(f"方法3查询错误: {str(e)}")
+    
+    # 方法4: 使用SQL文本查询
+    if not standards:
+        try:
+            sql = f"SELECT * FROM `{model_class.__tablename__}`"
+            conditions = []
+            if attribute:
+                conditions.append(f"属性 = '{attribute}'")
+            if specialty:
+                conditions.append(f"专业 LIKE '%{specialty}%'")
+            conditions.append(f"标准名称 = '{standard_name}'")
+            
+            if conditions:
+                sql += " WHERE " + " AND ".join(conditions)
+            
+            # 添加按序号排序
+            sql += " ORDER BY 序号"
+            
+            print(f"执行SQL: {sql}")
+            result = db.session.execute(text(sql))
+            standards = [dict(zip(result.keys(), row)) for row in result]
+            print(f"方法4 (SQL文本查询): 找到 {len(standards)} 条记录")
+        except Exception as e:
+            print(f"方法4查询错误: {str(e)}")
+    
+    # 如果所有方法都失败，返回当前标准下的所有记录（同样按序号排序）
+    if not standards:
+        try:
+            standards = model_class.query.filter(getattr(model_class, '标准名称') == standard_name).order_by(getattr(model_class, '序号')).all()
+            print(f"所有筛选方法都失败，返回所有 {len(standards)} 条记录")
+        except Exception as e:
+            print(f"获取所有记录错误: {str(e)}")
+            standards = []
+    
+    end_time = time.time()
+    print(f"筛选查询耗时: {end_time - start_time:.2f}秒")
+    
+    return standards
+
+# 根据标准名称获取对应的标准数据
+def get_standards_by_name(standard_name):
+    print(f"获取标准数据: {standard_name}")
+    return review_standard.query.filter(review_standard.标准名称 == standard_name).all()
+
+# 获取项目信息
+def get_project(project_id=None):
+    try:
+        if project_id:
+            # 获取指定ID的项目
+            project = Project.query.get(project_id)
+        else:
+            # 获取第一个项目
+            project = Project.query.first()
+        return project
+    except Exception as e:
+        print(f"获取项目信息时出错: {str(e)}")
+        return None
+
+# 保存项目信息
+def save_project_info(form_data):
+    try:
+        # 获取项目ID
+        project_id = form_data.get('project_id', '')
+        if project_id:
+            try:
+                project_id = int(project_id)
+            except ValueError:
+                project_id = None
+        
+        # 如果有项目ID，获取现有项目；否则创建新项目
+        if project_id:
+            project = Project.query.get(project_id)
+            if not project:
+                print(f"未找到ID为{project_id}的项目，创建新项目")
+                project = Project()
+        else:
+            print("未提供项目ID，创建新项目")
+            project = Project()
+        
+        # 检查是否是详细信息表单
+        is_detail_form = form_data.get('detail_form') == '1'
+        print(f"表单类型: {'详细信息表单' if is_detail_form else '基本信息表单'}")
+        
+        # 获取新的项目名称
+        new_project_name = form_data.get('project_name', '')
+        if not new_project_name:
+            print("错误：未提供项目名称")
+            return None
+        
+        # 获取当前登录用户的ID
+        user_id = session.get('user_id')
+        if not user_id:
+            print("错误：用户未登录")
+            return None
+        
+        # 检查项目标准
+        standard = form_data.get('standard_selection', '')
+        if not standard:
+            print("错误：未提供评价标准")
+            return None
+            
+        # 检查建筑类型
+        building_type = form_data.get('building_type', '')
+        
+        # 检查星级目标
+        star_rating_target = form_data.get('star_rating_target', '')
+        
+        # 基本信息表单数据
+        project.name = new_project_name
+        project.user_id = user_id
+        project.standard = standard
+        project.building_type = building_type
+        project.star_rating_target = star_rating_target
+        project.code = form_data.get('project_code', '')
+        project.construction_unit = form_data.get('construction_unit', '')
+        project.design_unit = form_data.get('design_unit', '')
+        project.location = form_data.get('project_location', '')
+        project.climate_zone = form_data.get('climate_zone', '')
+        # 设置项目状态为"进行中"
+        project.status = '进行中'
+        
+        # 始终处理详细字段，不再依赖is_detail_form标志
+        # 尝试将表单值转换为浮点数
+        try_parse_float(form_data, 'total_land_area', project, 'total_land_area')
+        try_parse_float(form_data, 'total_building_area', project, 'total_building_area')
+        try_parse_float(form_data, 'above_ground_area', project, 'above_ground_area')
+        try_parse_float(form_data, 'underground_area', project, 'underground_area')
+        try_parse_float(form_data, 'first_floor_underground_area', project, 'underground_floor_area')
+        try_parse_float(form_data, 'plot_ratio', project, 'plot_ratio')
+        try_parse_float(form_data, 'building_base_area', project, 'building_base_area')
+        try_parse_float(form_data, 'building_density', project, 'building_density')
+        
+        # 特别记录绿地面积的处理
+        green_area_value = form_data.get('green_area', '')
+        print(f"处理绿地面积字段: 原始值={green_area_value}")
+        try_parse_float(form_data, 'green_area', project, 'green_area')
+        print(f"绿地面积处理后的值: {project.green_area}")
+        
+        try_parse_float(form_data, 'green_ratio', project, 'green_ratio')
+        try_parse_float(form_data, 'building_height', project, 'building_height')
+        
+        # 尝试将表单值转换为整数
+        try_parse_int(form_data, 'ground_parking_spaces', project, 'ground_parking_spaces')
+        try_parse_int(form_data, 'residential_units', project, 'residential_units')
+        
+        # 设置其他字段
+        project.building_floors = form_data.get('building_floors', '')
+        project.air_conditioning_type = form_data.get('ac_type', '')
+        project.average_floors = form_data.get('avg_floors', '')
+        project.has_garbage_room = form_data.get('has_garbage_room', '')
+        project.has_elevator = form_data.get('has_elevator', '')
+        project.has_underground_garage = form_data.get('has_underground_garage', '')
+        project.construction_type = form_data.get('construction_type', '')
+        project.has_water_landscape = form_data.get('has_water_landscape', '')
+        project.is_fully_decorated = form_data.get('is_fully_decorated', '')
+        project.public_building_type = form_data.get('public_building_type', '')
+        project.public_green_space = form_data.get('public_green_space', '')
+        
+        # 记录将要保存的数据内容
+        print(f"正在保存项目信息，详细字段包括：总用地面积={project.total_land_area}, 总建筑面积={project.total_building_area}, 地上建筑面积={project.above_ground_area}, 地下建筑面积={project.underground_area}")
+        
+        # 保存项目信息到数据库
+        db.session.add(project)
+        db.session.commit()
+        db.session.refresh(project)  # 刷新对象以获取最新值
+        
+        print(f"项目信息保存成功: ID={project.id}, 名称={project.name}")
+        # 打印详细字段是否成功保存
+        print(f"详细字段保存结果：总用地面积={project.total_land_area}, 总建筑面积={project.total_building_area}, 地上建筑面积={project.above_ground_area}, 地下建筑面积={project.underground_area}")
+        
+        return project
+    except Exception as e:
+        db.session.rollback()
+        print(f"保存项目信息时出错: {str(e)}")
+        print(traceback.format_exc())
+        return None
+
+# 辅助函数：尝试解析浮点数
+def try_parse_float(form_data, form_field, model_obj, model_field):
+    """尝试将表单字段解析为浮点数并赋值给模型对象"""
+    try:
+        value = form_data.get(form_field, '')
+        if value is not None and value != '':
+            # 清理数值字符串，移除可能的非数字字符
+            clean_value = str(value).replace(',', '').strip()
+            # 尝试转换为浮点数
+            float_value = float(clean_value)
+            # 确保值为0也被正确保存，而不是被当作空值处理
+            model_obj.__setattr__(model_field, float_value)
+            
+            if form_field == 'green_area':
+                print(f"成功将绿地面积 '{value}' 转换为浮点数: {float_value}")
+        else:
+            if form_field == 'green_area':
+                print(f"绿地面积字段为空或无效: '{value}'")
+            model_obj.__setattr__(model_field, None)
+    except (ValueError, TypeError) as e:
+        print(f"无法将字段 {form_field} 值 '{value}' 转换为浮点数: {str(e)}")
+        # 如果转换失败，设置为None
+        model_obj.__setattr__(model_field, None)
+
+# 辅助函数：尝试解析整数
+def try_parse_int(form_data, form_field, model_obj, model_field):
+    """尝试将表单字段解析为整数并赋值给模型对象"""
+    try:
+        value = form_data.get(form_field, '')
+        if value is not None and value != '':
+            # 清理数值字符串，移除可能的非数字字符
+            clean_value = str(value).replace(',', '').strip()
+            # 尝试转换为整数
+            int_value = int(float(clean_value))  # 先转为float再转为int，处理可能的小数点
+            # 确保值为0也被正确保存，而不是被当作空值处理
+            model_obj.__setattr__(model_field, int_value)
+            print(f"成功将字段 {form_field} 值 '{value}' 转换为整数: {int_value}")
+        else:
+            model_obj.__setattr__(model_field, None)
+            print(f"字段 {form_field} 为空，设置为None")
+    except (ValueError, TypeError) as e:
+        print(f"无法将字段 {form_field} 值 '{value}' 转换为整数: {str(e)}")
+        # 如果转换失败，设置为None
+        model_obj.__setattr__(model_field, None)
+
+# 项目管理页面路由
+@app.route('/projects')
+@app.route('/project_management')
+@login_required
+def project_management():
+    try:
+        username = session.get('username', '未登录')
+        return render_template('project_management.html', username=username)
+    except Exception as e:
+        print(f"项目管理页面出错: {str(e)}")
+        print(traceback.format_exc())
+        return render_template('error.html', error=str(e))
+
+# 创建项目路由
+@app.route('/create_project', methods=['POST'])
+@login_required
+def create_project():
+    try:
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': '用户未登录'}), 401
+        
+        data = request.get_json()
+        project_name = data.get('name')
+        standard = data.get('standard')
+        star_rating_target = data.get('star_rating_target')
+        building_type = data.get('building_type')
+        
+        if not project_name:
+            return jsonify({'error': '项目名称不能为空'}), 400
+        
+        if not standard:
+            return jsonify({'error': '请选择评价标准'}), 400
+        
+        try:
+            # 创建新项目
+            project = Project(
+                name=project_name,
+                user_id=user_id,
+                standard=standard,
+                building_type=building_type,
+                star_rating_target=star_rating_target,
+                code=data.get('code'),
+                construction_unit=data.get('construction_unit'),
+                design_unit=data.get('design_unit'),
+                location=data.get('location'),
+                climate_zone=data.get('climate_zone'),
+                total_land_area=data.get('total_land_area'),
+                total_building_area=data.get('total_building_area'),
+                above_ground_area=data.get('above_ground_area'),
+                underground_area=data.get('underground_area'),
+                plot_ratio=data.get('plot_ratio'),
+                building_base_area=data.get('building_base_area'),
+                building_density=data.get('building_density'),
+                green_area=data.get('green_area'),
+                green_ratio=data.get('green_ratio'),
+                building_height=data.get('building_height'),
+                building_floors=data.get('building_floors'),
+                air_conditioning_type=data.get('air_conditioning_type'),
+                has_garbage_room=data.get('has_garbage_room'),
+                has_elevator=data.get('has_elevator'),
+                has_underground_garage=data.get('has_underground_garage'),
+                construction_type=data.get('construction_type'),
+                has_water_landscape=data.get('has_water_landscape'),
+                is_fully_decorated=data.get('is_fully_decorated'),
+                public_building_type=data.get('public_building_type'),
+                public_green_space=data.get('public_green_space')
+            )
+            
+            # 尝试添加项目并提交事务
+            db.session.add(project)
+            db.session.flush()  # 获取项目ID但不提交事务
+            
+            project_id = project.id
+            app.logger.info(f"项目创建成功: ID={project_id}, 名称={project_name}")
+            
+            # 创建成功后尝试创建默认评分数据
+            try:
+                # 直接创建默认评分数据
+                app.logger.info(f"创建项目默认评分数据: 项目ID={project_id}, 名称={project_name}, 标准={standard}")
+                create_default_scores(project_id, project_name, standard)
+                
+                # 提交事务
+                db.session.commit()
+                return jsonify({
+                    'id': project_id,
+                    'name': project.name,
+                    'message': '项目创建成功'
+                })
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"创建默认评分数据失败: {str(e)}")
+                app.logger.error(traceback.format_exc())
+                
+                # 虽然评分数据创建失败，但项目创建已成功，返回项目ID
+                return jsonify({
+                    'id': project_id,
+                    'name': project_name,
+                    'error': '创建默认评分数据失败，但项目已创建'
+                })
+                
+        except Exception as db_error:
+            db.session.rollback()
+            app.logger.error(f"数据库操作失败: {str(db_error)}")
+            app.logger.error(traceback.format_exc())
+            
+            # 检查是否是ID字段无默认值错误
+            if "Field 'id' doesn't have a default value" in str(db_error):
+                return jsonify({
+                    'error': '数据库配置错误：ID字段未配置为自动递增。请检查数据库表结构或联系管理员。'
+                }), 500
+            else:
+                return jsonify({
+                    'error': f'数据库写入失败: {str(db_error)}'
+                }), 500
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"创建项目失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'创建项目失败: {str(e)}'}), 500
+
+# 修改项目访问权限检查
+def check_project_access(project_id):
+    """检查当前用户是否有权限访问指定项目"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return False
+        
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        return project is not None
+    except Exception as e:
+        print(f"检查项目访问权限失败: {str(e)}")
+        return False
+
+# 修改项目详情页面访问
+@app.route('/project/<int:project_id>')
+@login_required
+def project_detail(project_id):
+    # 检查访问权限
+    if not check_project_access(project_id):
+        flash('您没有权限访问该项目', 'error')
+        return redirect(url_for('project_management'))
+    
+    try:
+        project = Project.query.get_or_404(project_id)
+        # 获取page参数，默认为project_info
+        page = request.args.get('page', 'project_info')
+        
+        # 如果页面类型为公共交通分析，使用iframe加载页面
+        if page == 'public_transport_analysis':
+            app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
+            return render_template('dashboard.html', project=project, current_page=page)
+        
+        app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
+        return render_template('dashboard.html', project=project, current_page=page)
+    except Exception as e:
+        app.logger.error(f"获取项目详情失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return render_template('error.html', error=f"获取项目详情失败: {str(e)}")
+
+# 修改项目删除函数
+@app.route('/delete_project/<int:project_id>', methods=['DELETE'])
+@login_required
+def delete_project(project_id):
+    try:
+        # 检查访问权限
+        if not check_project_access(project_id):
+            return jsonify({'error': '您没有权限删除该项目'}), 403
+        
+        project = Project.query.get_or_404(project_id)
+        db.session.delete(project)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '项目删除成功'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"删除项目失败: {str(e)}")
+        return jsonify({'error': '删除项目失败'}), 500
+
+@app.route('/')
+def index():
+    return render_template('login.html')
+
+@app.route('/reset_password')
+def reset_password_page():
+    """处理密码重置页面路由"""
+    try:
+        return render_template('reset_password.html')
+    except Exception as e:
+        app.logger.error(f"渲染密码重置页面错误: {str(e)}")
+        return "页面加载失败", 500
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/register')
+def register_page():
+    return render_template('register.html')
+
+@app.route('/', methods=['POST'])
+def handle_form():
+    try:
+        form_type = request.form.get('form_type', '')
+        print(f"接收到表单提交: form_type={form_type}")
+        
+        # 检查是否为AJAX请求
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or 'application/json' in request.headers.get('Accept', '')
+        print(f"是否是AJAX请求: {is_ajax}")
+        
+        # 打印所有表单字段
+        print("表单数据:")
+        for key, value in request.form.items():
+            print(f"  {key}: {value}")
+        
+        if form_type == 'project_info':
+            # 处理项目信息表单提交
+            print("处理项目信息表单...")
+            # 检查是否是详细信息表单
+            is_detail_form = request.form.get('detail_form') == '1'
+            print(f"表单类型: {'详细信息表单' if is_detail_form else '基本信息表单'}")
+            
+            # 检查public_green_space字段
+            public_green_space = request.form.get('public_green_space', '')
+            print(f"绿地向公众开放: {public_green_space}")
+            
+            project = save_project_info(request.form)
+            if project:
+                print(f"项目信息保存成功: ID={project.id}, 名称={project.name}, 标准={project.standard}, 绿地向公众开放={project.public_green_space}")
+                
+                if is_ajax:
+                    # 如果是AJAX请求，返回JSON响应
+                    return jsonify({
+                        'success': True,
+                        'message': '项目信息保存成功',
+                        'project_id': project.id,
+                        'project_name': project.name,
+                        'is_detail_form': is_detail_form  # 添加这个字段以便前端知道是详细表单
+                    })
+                else:
+                    # 如果是传统表单提交，重定向回项目详情页面
+                    return redirect(url_for('project_detail', project_id=project.id))
+            else:
+                print("项目信息保存失败")
+                
+                if is_ajax:
+                    # 如果是AJAX请求，返回错误JSON响应
+                    return jsonify({
+                        'success': False,
+                        'message': '项目信息保存失败'
+                    }), 400
+                else:
+                    # 如果是传统表单提交，重定向到项目管理页面
+                    return redirect(url_for('project_management'))
+        else:
+            print(f"未知的表单类型: {form_type}")
+            
+            if is_ajax:
+                return jsonify({
+                    'success': False,
+                    'message': f'未知的表单类型: {form_type}'
+                }), 400
+        
+        # 如果不是已知的表单类型且不是AJAX请求，返回首页
+        return redirect(url_for('index'))
+    except Exception as e:
+        print(f"处理表单时发生错误: {str(e)}")
+        print(traceback.format_exc())
+        
+        # 检查是否为AJAX请求
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or 'application/json' in request.headers.get('Accept', '')
+        
+        if is_ajax:
+            # 如果是AJAX请求，返回错误JSON响应
+            return jsonify({
+                'success': False,
+                'message': f'处理表单时发生错误: {str(e)}'
+            }), 500
+        else:
+            # 如果是传统表单提交，渲染错误页面
+            return render_template('error.html', error=str(e))
+
+@app.route('/filter')
+def filter_standards():
+    try:
+        level = request.args.get('level', '基本级')
+        specialty = request.args.get('specialty', '建筑')
+        project_id = request.args.get('project_id')
+        
+        # 获取项目信息
+        project = None
+        if project_id:
+            project = Project.query.get(project_id)
+        
+        # 获取项目对应的标准名称
+        standard_name = None
+        if project and project.standard:
+            standard_name = project.standard
+            print(f"使用项目设置的评价标准: {standard_name}")
+        else:
+            standard_name = request.args.get('standard', '成都市标')
+            print(f"项目未设置评价标准，使用默认标准: {standard_name}")
+        
+        # 获取过滤后的标准
+        standards = []
+        
+        # 使用新的评价标准模型
+        model_class = review_standard
+        
+        # 获取属性值
+        attribute = LEVEL_TO_ATTRIBUTE.get(level, '')
+        
+        # 查询数据
+        try:
+            query = model_class.query
+            if attribute:
+                query = query.filter(getattr(model_class, '属性') == attribute)
+            if specialty:
+                query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+            # 按标准名称筛选
+            query = query.filter(getattr(model_class, '标准名称') == standard_name)
+            
+            # 添加按序号排序
+            query = query.order_by(getattr(model_class, '序号').asc())
+            standards = query.all()
+            print(f"从 {standard_name} 获取标准数据: level={level}, specialty={specialty}, 找到{len(standards)}条记录")
+        except Exception as e:
+            print(f"查询标准数据出错: {str(e)}")
+            print(traceback.format_exc())
+        
+        # 如果没有找到数据，尝试使用更宽松的条件
+        if not standards:
+            try:
+                query = model_class.query
+                if specialty:
+                    query = query.filter(getattr(model_class, '专业').like(f'%{specialty}%'))
+                # 按标准名称筛选
+                query = query.filter(getattr(model_class, '标准名称') == standard_name)
+                
+                # 添加按序号排序
+                query = query.order_by(getattr(model_class, '序号').asc())
+                standards = query.all()
+                print(f"使用宽松条件从 {standard_name} 获取标准数据: specialty={specialty}, 找到{len(standards)}条记录")
+            except Exception as e:
+                print(f"宽松查询标准数据出错: {str(e)}")
+                print(traceback.format_exc())
+        
+        # 打印调试信息
+        print(f"过滤标准: level={level}, specialty={specialty}, standard={standard_name}, 找到{len(standards)}条记录")
+        
+        # 渲染模板
+        return render_template(
+            'dashboard.html', 
+            standards=standards, 
+            current_level=level, 
+            current_specialty=specialty,
+            current_page='specialty',  # 设置为specialty页面，确保保存按钮正常工作
+            project=project
+        )
+    except Exception as e:
+        app.logger.error(f"过滤标准时出错: {str(e)}")
+        traceback.print_exc()
+        return render_template('error.html', error=str(e))
+
+@app.route('/calculator')
+@login_required
+def calculator():
+    return render_template('calculator.html')
+
+@app.route('/solar_calculator')
+@login_required
+def solar_calculator():
+    # 获取项目ID参数
+    project_id = request.args.get('project_id')
+    project = None
+    
+    # 如果提供了项目ID，获取项目信息
+    if project_id:
+        project = Project.query.get(project_id)
+    
+    return render_template('solar_calculator.html', project=project)
+
+# 添加清除缓存的路由（可选，用于管理员手动刷新缓存）
+@app.route('/clear_cache')
+def clear_cache():
+    try:
+        cache.clear()
+        return "缓存已清除"
+    except Exception as e:
+        return f"清除缓存时出错: {str(e)}"
+
+@app.route('/api/save_form', methods=['POST'])
+def save_form():
+    try:
+        import json
+        data = request.json
+        
+        if not data:
+            return jsonify({'error': '没有收到数据'}), 400
+            
+        # 检查当前项目
+        project = Project.query.first()
+        project_id = project.id if project else None
+        
+        # 查找现有表单数据或创建新的
+        form_data = FormData.query.first()
+        if not form_data:
+            form_data = FormData()
+            form_data.project_id = project_id
+        
+        # 更新表单数据
+        form_data.project_name = data.get('projectName', '')
+        form_data.building_no = data.get('buildingNo', '')
+        form_data.project_location = data.get('projectLocation', '')
+        form_data.design_no = data.get('designNo', '')
+        form_data.construction_unit = data.get('constructionUnit', '')
+        form_data.design_unit = data.get('designUnit', '')
+        form_data.standard_selection = data.get('standardSelection', 'municipal')
+        
+        # 将form_data对象转换为JSON字符串存储
+        form_data.form_data = json.dumps(data.get('formData', {}), ensure_ascii=False)
+        
+        # 保存到数据库
+        db.session.add(form_data)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '数据保存成功'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"保存表单数据时出错: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/load_form', methods=['GET'])
+def load_form():
+    try:
+        import json
+        
+        # 获取最新的表单数据
+        form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
+        
+        if not form_data:
+            return jsonify({'error': '没有找到保存的数据'}), 404
+            
+        result = {
+            'projectName': form_data.project_name,
+            'buildingNo': form_data.building_no,
+            'projectLocation': form_data.project_location,
+            'designNo': form_data.design_no,
+            'constructionUnit': form_data.construction_unit,
+            'designUnit': form_data.design_unit,
+            'standardSelection': form_data.standard_selection,
+            'formData': json.loads(form_data.form_data) if form_data.form_data else {}
+        }
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"加载表单数据时出错: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/project_info', methods=['GET'])
+def get_project_info():
+    from flask import request
+    try:
+        # 获取项目ID参数
+        project_id = request.args.get('project_id')
+        
+        # 根据项目ID获取项目信息
+        if project_id:
+            project = Project.query.filter_by(id=project_id).first()
+        else:
+            # 如果没有提供项目ID，则获取第一个项目
+            project = Project.query.first()
+        
+        # 获取最新的表单数据
+        form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
+        
+        # 辅助函数：格式化浮点数，保留2位小数
+        def format_float(value):
+            if value is not None:
+                return round(value, 2)
+            return ''
+        
+        result = {
+            'projectName': project.name if project and project.name is not None else '',
+            'projectCode': project.code if project and project.code is not None else '',
+            'constructionUnit': project.construction_unit if project and project.construction_unit is not None else '',
+            'designUnit': project.design_unit if project and project.design_unit is not None else '',
+            'projectLocation': project.location if project and project.location is not None else '',
+            'buildingArea': format_float(project.building_area) if project else '',
+            'buildingType': project.building_type if project and project.building_type is not None else '',  # 添加建筑类型
+            'buildingNo': form_data.building_no if form_data and form_data.building_no is not None else '',
+            'designNo': form_data.design_no if form_data and form_data.design_no is not None else '',
+            'standardSelection': form_data.standard_selection if form_data and form_data.standard_selection is not None else 'municipal',
+            'buildingHeight': format_float(project.building_height) if project else '',
+            'buildingFloors': project.building_floors if project and project.building_floors is not None else ''
+        }
+        
+        return jsonify(result)
+    except Exception as e:
+        print(f"获取项目信息时出错: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/get_template', methods=['GET'])
+def get_template():
+    try:
+        template_path = os.path.join(app.static_folder, '绿色建材应用比例计算书.docx')
+        if not os.path.exists(template_path):
+            return jsonify({'error': '模板文件不存在'}), 404
+            
+        return send_file(template_path, as_attachment=True)
+    except Exception as e:
+        print(f"获取模板文件时出错: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+# 添加一个函数来生成得分表缓存的键
+def get_scores_cache_key(level, specialty, project_id=None, standard=None):
+    """
+    生成评分数据的缓存键
+    
+    参数:
+        level: 评价等级
+        specialty: 专业
+        project_id: 项目ID
+        standard: 评价标准
+        
+    返回值:
+        缓存键字符串
+    """
+    # 构建基本缓存键
+    cache_key = f"scores_{level}_{specialty}"
+    
+    # 如果有项目ID，添加到缓存键
+    if project_id:
+        cache_key += f"_{project_id}"
+    
+    # 如果有评价标准，添加到缓存键
+    if standard:
+        cache_key += f"_{standard}"
+    
+    return cache_key
+
+@app.route('/api/save_score', methods=['POST'])
+def save_score():
+    """保存评分数据的API端点"""
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        
+        # 验证数据
+        if not data:
+            return jsonify({'error': '请求数据为空'}), 400
+        
+        # 获取评价等级和专业
+        level = data.get('level')
+        specialty = data.get('specialty')
+        project_id = data.get('project_id')
+        scores = data.get('scores', [])
+        standard = data.get('standard', '成都市标')  # 获取评价标准，默认为成都市标
+        
+        # 验证必要字段
+        if not level or not specialty:
+            return jsonify({'error': '缺少必要字段: level, specialty'}), 400
+        
+        # 如果没有提供项目ID，尝试从第一个评分记录中获取项目名称
+        project_name = None
+        if not project_id and scores and len(scores) > 0:
+            project_name = scores[0].get('project_name')
+        
+        # 记录请求信息
+        app.logger.info(f"保存评分数据: 级别={level}, 专业={specialty}, 项目ID={project_id}, 项目名称={project_name}, 评价标准={standard}, 评分数量={len(scores)}")
+        
+        # 如果提供了项目ID，获取项目信息
+        if project_id:
+            try:
+                project = get_project(project_id)
+                if project:
+                    project_name = project.name
+                    # 如果项目有评价标准，使用项目的评价标准
+                    if project.standard:
+                        standard = project.standard
+                        app.logger.info(f"使用项目的评价标准: {standard}")
+            except Exception as e:
+                app.logger.error(f"获取项目信息失败: {str(e)}")
+        
+        try:
+            # 开始数据库事务
+            # 如果提供了项目ID，先删除该项目该专业该级别的所有评分记录
+            if project_id:
+                delete_query = """
+                DELETE FROM `得分表`
+                WHERE `项目ID` = :project_id AND `专业` = :specialty AND `评价等级` = :level
+                """
+                result = db.session.execute(
+                    text(delete_query), 
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
+                
+                # 同时删除project_scores表中的记录
+                delete_ps_query = """
+                DELETE FROM project_scores
+                WHERE project_id = :project_id AND specialty = :specialty AND level = :level
+                """
+                result = db.session.execute(
+                    text(delete_ps_query), 
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
+            
+            # 如果提供了项目名称但没有项目ID，先删除该项目名称该专业该级别的所有评分记录
+            elif project_name:
+                delete_query = """
+                DELETE FROM `得分表`
+                WHERE `项目名称` = :project_name AND `专业` = :specialty AND `评价等级` = :level
+                """
+                result = db.session.execute(
+                    text(delete_query), 
+                    {"project_name": project_name, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除项目 '{project_name}' 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
+            
+            # 插入新的评分记录
+            insert_count = 0
+            for score_data in scores:
+                # 获取评分数据
+                clause_number = score_data.get('clause_number')
+                category = score_data.get('category')
+                is_achieved = score_data.get('is_achieved')
+                score = score_data.get('score', '0')
+                technical_measures = score_data.get('technical_measures', '')
+                
+                # 如果没有条文号，跳过
+                if not clause_number:
+                    continue
+                
+                # 插入评分记录到得分表
+                insert_query = """
+                INSERT INTO `得分表` (
+                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category, 
+                         :is_achieved, :score, :technical_measures, :standard)
+                """
+                
+                try:
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "project_id": project_id,
+                            "project_name": project_name,
+                            "specialty": specialty,
+                            "level": level,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "standard": standard
+                        }
+                    )
+                    
+                    # 同时插入到project_scores表
+                    if project_id:
+                        # 尝试将得分转换为浮点数
+                        try:
+                            if score and score.strip():
+                                score_float = float(score)
+                            else:
+                                score_float = 0
+                        except (ValueError, TypeError):
+                            score_float = 0
+                        
+                        insert_ps_query = """
+                        INSERT INTO project_scores (
+                            project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
+                        ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
+                        """
+                        
+                        db.session.execute(
+                            text(insert_ps_query),
+                            {
+                                "project_id": project_id,
+                                "level": level,
+                                "specialty": specialty,
+                                "clause_number": clause_number,
+                                "category": category,
+                                "is_achieved": is_achieved,
+                                "score_float": score_float,
+                                "technical_measures": technical_measures
+                            }
+                        )
+                    
+                    insert_count += 1
+                except Exception as insert_error:
+                    print(f"插入评分记录失败: {str(insert_error)}, 条文号: {clause_number}")
+                    continue
+            
+            # 提交事务
+            db.session.commit()
+            app.logger.info(f"成功插入 {insert_count} 条评分记录")
+            
+            # 清除缓存
+            cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+            if cache.has(cache_key):
+                cache.delete(cache_key)
+                app.logger.info(f"清除缓存: {cache_key}")
+            
+            return jsonify({
+                'success': True,
+                'message': f'成功保存 {insert_count} 条评分记录'
+            }), 200
+        
+        except Exception as e:
+            # 回滚事务
+            db.session.rollback()
+            app.logger.error(f"保存评分数据失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            
+            return jsonify({'error': f'保存评分数据失败: {str(e)}'}), 500
+    
+    except Exception as e:
+        app.logger.error(f"处理保存评分请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'处理请求失败: {str(e)}'}), 500
+
+@app.route('/api/load_scores', methods=['GET'])
+def load_scores():
+    """加载评分数据的API端点"""
+    try:
+        # 获取请求参数
+        level = request.args.get('level')
+        specialty = request.args.get('specialty')
+        project_id = request.args.get('project_id')
+        standard = request.args.get('standard', '成都市标')  # 获取评价标准，默认为成都市标
+        
+        # 验证必要参数
+        if not level or not specialty:
+            return jsonify({'error': '缺少必要参数: level, specialty'}), 400
+        
+        # 记录请求信息
+        app.logger.info(f"加载评分数据: 级别={level}, 专业={specialty}, 项目ID={project_id}, 评价标准={standard}")
+        
+        # 如果提供了项目ID，获取项目信息
+        project_name = None
+        if project_id:
+            try:
+                project = get_project(project_id)
+                if project:
+                    project_name = project.name
+                    # 如果项目有评价标准，使用项目的评价标准
+                    if project.standard:
+                        standard = project.standard
+                        app.logger.info(f"使用项目的评价标准: {standard}")
+            except Exception as e:
+                app.logger.error(f"获取项目信息失败: {str(e)}")
+        
+        # 构建缓存键
+        cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+        
+        # 尝试从缓存获取数据
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            app.logger.info(f"从缓存获取评分数据: {cache_key}")
+            return jsonify(cached_data)
+        
+        # 构建查询条件
+        query_conditions = []
+        query_params = {}
+        
+        # 添加必要条件
+        query_conditions.append("`评价等级` = :level")
+        query_params["level"] = level
+        
+        query_conditions.append("`专业` = :specialty")
+        query_params["specialty"] = specialty
+        
+        # 如果指定了项目ID，添加到查询条件
+        if project_id:
+            query_conditions.append("`项目ID` = :project_id")
+            query_params["project_id"] = project_id
+            
+            # 如果项目有评价标准，添加到查询条件
+            if standard:
+                query_conditions.append("`评价标准` = :standard")
+                query_params["standard"] = standard
+        # 如果指定了项目名称，添加到查询条件
+        elif project_name:
+            query_conditions.append("`项目名称` = :project_name")
+            query_params["project_name"] = project_name
+            
+            # 如果项目有评价标准，添加到查询条件
+            if standard:
+                query_conditions.append("`评价标准` = :standard")
+                query_params["standard"] = standard
+        # 如果没有指定项目ID和项目名称，但指定了评价标准，添加到查询条件
+        elif standard:
+            query_conditions.append("`评价标准` = :standard")
+            query_params["standard"] = standard
+        
+        # 构建查询语句
+        query = f"""
+        SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+        FROM `得分表`
+        WHERE {' AND '.join(query_conditions)}
+        ORDER BY `条文号`
+        """
+        
+        # 打印查询语句和参数，用于调试
+        app.logger.info(f"执行查询1 (所有条件): {query}")
+        app.logger.info(f"查询参数: {query_params}")
+        
+        try:
+            # 执行查询
+            result = db.session.execute(text(query), query_params)
+            rows = result.fetchall()
+            
+            # 打印查询结果的行数，用于调试
+            app.logger.info(f"查询结果1: {len(rows)} 行")
+            
+            # 如果没有结果，尝试只按项目ID查询
+            if len(rows) == 0 and project_id:
+                query_conditions = ["`项目ID` = :project_id"]
+                query_params = {"project_id": project_id}
+                
+                query = f"""
+                SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                WHERE {' AND '.join(query_conditions)}
+                ORDER BY `条文号`
+                """
+                
+                app.logger.info(f"执行查询2 (只按项目ID): {query}")
+                app.logger.info(f"查询参数: {query_params}")
+                
+                result = db.session.execute(text(query), query_params)
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果2: {len(rows)} 行")
+            
+            # 如果仍然没有结果，尝试不加任何条件查询
+            if len(rows) == 0:
+                query = """
+                SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                LIMIT 10
+                """
+                
+                app.logger.info(f"执行查询3 (不加条件): {query}")
+                
+                result = db.session.execute(text(query))
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果3: {len(rows)} 行")
+            
+            # 处理查询结果
+            scores = []
+            for row in rows:
+                scores.append({
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'is_achieved': row[2],
+                    'score': row[3],
+                    'technical_measures': row[4]
+                })
+            
+            # 构建响应数据
+            response_data = {
+                'success': True,
+                'scores': scores,
+                'count': len(scores),
+                'level': level,
+                'specialty': specialty,
+                'project_id': project_id,
+                'standard': standard
+            }
+            
+            # 缓存响应数据
+            cache.set(cache_key, response_data)
+            app.logger.info(f"缓存评分数据: {cache_key}, 记录数: {len(scores)}")
+            
+            return jsonify(response_data)
+        
+        except Exception as db_error:
+            app.logger.error(f"数据库查询失败: {str(db_error)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({'error': f'数据库查询失败: {str(db_error)}'}), 500
+        
+    except Exception as e:
+        app.logger.error(f"加载评分数据失败: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': f'加载评分数据失败: {str(e)}'}), 500
+
+# 在文件顶部添加以下代码
+import platform
+import os
+
+# 检查是否在WSL环境中
+IS_WSL = 'WSL' in platform.uname().release or \
+         (os.path.exists('/proc/version') and 'microsoft' in open('/proc/version').read().lower())
+
+# 根据环境导入相应的模块
+import pymysql
+pymysql.install_as_MySQLdb()
+
+if not IS_WSL:
+    try:
+        import pyodbc
+    except ImportError:
+        print("警告: pyodbc模块未安装，某些功能可能不可用")
+        print("请运行 'pip install pyodbc' 安装所需模块")
+
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory, session, flash, Response, Blueprint
+from flask_caching import Cache
+from flask_migrate import Migrate
+from functools import wraps
+import os
+from dotenv import load_dotenv
+import urllib.parse
+import traceback
+import time
+import sqlite3
+from sqlalchemy import text
+import json
+from datetime import datetime, timedelta
+import logging
+from logging.handlers import RotatingFileHandler
+from flask_cors import CORS
+from word_template import process_template
+from export import generate_word, generate_dwg, generate_self_assessment_report
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from models import db, User, InvitationCode, LogRecord, Project  # 导入Project模型
 import random
 import string
@@ -476,36 +2153,7 @@ def sync_score_tables(project_id):
         logger.error(traceback.format_exc())
         return False
 
-# 添加评价标准的模型
-class review_standard(db.Model):
-    __tablename__ = '评价标准'
-    
-    # 使用中文字段名
-    序号 = db.Column(db.Integer, primary_key=True)
-    条文号 = db.Column(db.String(20))
-    分类 = db.Column(db.String(50))
-    专业 = db.Column(db.String(50))
-    条文内容 = db.Column(db.Text)
-    分值 = db.Column(db.String(10))
-    审查材料 = db.Column(db.Text)
-    属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
-    标准名称 = db.Column(db.String(20))  # 标准名称字段
 
-class FormData(db.Model):
-    __tablename__ = 'form_data'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
-    project_name = db.Column(db.String(100))
-    building_no = db.Column(db.String(50))
-    project_location = db.Column(db.String(200))
-    design_no = db.Column(db.String(50))
-    construction_unit = db.Column(db.String(100))
-    design_unit = db.Column(db.String(100))
-    standard_selection = db.Column(db.String(20))
-    form_data = db.Column(db.Text)  # 存储JSON格式的表单数据
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 
 # 缓存所有数据的函数
 @cache.cached(key_prefix='all_standards')
@@ -5677,9 +7325,9 @@ def fill_transport_report_template():
                     paragraph.add_run(new_text)
                 
                 # 替换日期占位符
-                if '{日期}' in paragraph.text:
+                if '{设计日期}' in paragraph.text:
                     # 获取整个段落的文本并替换占位符
-                    new_text = paragraph.text.replace('{日期}', datetime.now().strftime('%Y年%m月%d日'))
+                    new_text = paragraph.text.replace('{设计日期}', datetime.now().strftime('%Y年%m月%d日'))
                     app.logger.info(f"替换日期占位符: '{paragraph.text}' -> '{new_text}'")
                     
                     # 清空段落中所有runs，但保持段落本身
