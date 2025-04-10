@@ -138,11 +138,6 @@ login_manager.login_message_category = 'info'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# 添加根路由重定向到index.html
-@app.route('/')
-def home():
-    return render_template('index.html')
-
 @app.route('/privacy_policy')
 def privacy_policy():
     return render_template('privacy_policy.html')
@@ -959,10 +954,6 @@ def delete_project(project_id):
         db.session.rollback()
         print(f"删除项目失败: {str(e)}")
         return jsonify({'error': '删除项目失败'}), 500
-
-@app.route('/')
-def index():
-    return render_template('login.html')
 
 @app.route('/reset_password')
 def reset_password_page():
@@ -1815,10 +1806,6 @@ login_manager.login_message_category = 'info'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# 添加根路由重定向到index.html
-@app.route('/')
-def home():
-    return render_template('index.html')
 
 @app.route('/privacy_policy')
 def privacy_policy():
