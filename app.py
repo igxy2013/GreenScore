@@ -5428,6 +5428,7 @@ def fill_transport_report_template():
         stations = data.get('stations', [])
         map_image_data = data.get('mapImage', '')
         map_info = data.get('mapInfo', {})
+        project_id = data.get('project_id')  # 获取项目ID
         
         # 检查必要的数据是否存在
         if not stations:
@@ -5454,12 +5455,54 @@ def fill_transport_report_template():
         shutil.copy2(template_path, output_path)
         app.logger.info(f"已将模板复制到: {output_path}")
         
+        # 获取项目信息
+        project_info = {}
+        if project_id:
+            try:
+                # 从数据库获取项目信息
+                project = Project.query.get(project_id)
+                if project:
+                    project_info = {
+                        '项目名称': project.name or '',
+                        '项目地点': project.location or '',
+                        '项目编号': project.code or '',  # 使用项目编号字段
+                        '建设单位': project.construction_unit or '',
+                        '设计单位': project.design_unit or '',
+                        '总建筑面积': str(project.total_building_area or '') + ' 平方米' if project.total_building_area else '',
+                        '总用地面积': str(project.total_land_area or '') + ' 平方米' if project.total_land_area else '',
+                        '建筑密度': str(project.building_density or '') + ' %' if project.building_density else '',
+                        '容积率': str(project.plot_ratio or '') if project.plot_ratio else '',
+                        '绿地率': str(project.green_ratio or '') + ' %' if project.green_ratio else '',
+                        '设计日期': datetime.now().strftime('%Y年%m月%d日')
+                    }
+                    
+                    # 表单数据中可能有其他字段，但我们已经直接使用了project.code
+                    # 所以不需要再次从form_data获取设计编号
+                    
+                    app.logger.info(f"成功获取项目信息: {project_info}")
+                else:
+                    app.logger.warning(f"未找到ID为{project_id}的项目")
+            except Exception as e:
+                app.logger.error(f"获取项目信息时出错: {str(e)}")
+                app.logger.error(traceback.format_exc())
+                # 继续执行，即使没有项目信息
+        else:
+            app.logger.info("未提供项目ID，将使用默认项目信息")
+            
+        # 确保项目信息中的占位符值不是None
+        for key in list(project_info.keys()):
+            if project_info[key] is None:
+                project_info[key] = ''
+                
+        app.logger.info(f"最终项目信息: {json.dumps(project_info, ensure_ascii=False)}")
+        
         try:
             from docx import Document
             from docx.shared import Inches, Pt
             from docx.enum.text import WD_ALIGN_PARAGRAPH
             import io
             import base64
+            import re
             
             # 打开复制的模板文件
             doc = Document(output_path)
@@ -5472,6 +5515,47 @@ def fill_transport_report_template():
             placeholder_found = False
             map_image_added = False
             temp_image_path = None
+            
+            # 在处理段落占位符前，先扫描整个文档以识别所有可能的占位符
+            all_placeholders = []
+            for i, paragraph in enumerate(doc.paragraphs):
+                original_text = paragraph.text
+                
+                # 使用正则表达式查找所有花括号格式的文本
+                placeholders = re.findall(r'\{([^}]+)\}', original_text)
+                for p in placeholders:
+                    if p not in all_placeholders:
+                        all_placeholders.append(p)
+                        
+            # 也检查表格中的占位符
+            for table_idx, table in enumerate(doc.tables):
+                for row_idx, row in enumerate(table.rows):
+                    for cell_idx, cell in enumerate(row.cells):
+                        for para_idx, paragraph in enumerate(cell.paragraphs):
+                            original_text = paragraph.text
+                            placeholders = re.findall(r'\{([^}]+)\}', original_text)
+                            for p in placeholders:
+                                if p not in all_placeholders:
+                                    all_placeholders.append(p)
+            
+            app.logger.info(f"在整个文档中找到的所有占位符: {all_placeholders}")
+            
+            # 更新项目信息字典，确保包含所有可能的占位符变体
+            extended_project_info = project_info.copy()
+            
+            # 添加潜在的格式变体
+            for placeholder in all_placeholders:
+                # 检查是否有相似的键
+                for key in project_info.keys():
+                    # 简单的相似度检查 - 移除空格和标点后比较
+                    cleaned_placeholder = re.sub(r'[\s\W]+', '', placeholder.lower())
+                    cleaned_key = re.sub(r'[\s\W]+', '', key.lower())
+                    
+                    if cleaned_placeholder == cleaned_key and placeholder not in extended_project_info:
+                        extended_project_info[placeholder] = project_info[key]
+                        app.logger.info(f"添加占位符变体映射: {placeholder} -> {key} = {project_info[key]}")
+            
+            app.logger.info(f"扩展后的项目信息字典: {json.dumps(extended_project_info, ensure_ascii=False)}")
             
             # 处理地图图片
             if map_image_data and map_image_data.startswith('data:image/png;base64,'):
@@ -5502,12 +5586,14 @@ def fill_transport_report_template():
             
             # 遍历所有段落查找占位符
             for i, paragraph in enumerate(doc.paragraphs):
-                app.logger.info(f"检查段落 {i+1}: {paragraph.text[:50]}...")
+                original_text = paragraph.text
+                app.logger.info(f"检查段落 {i+1}: \"{original_text}\"")
                 
                 # 替换地址占位符
-                if '{地址}' in paragraph.text:
+                if '{地址}' in original_text:
                     # 获取整个段落的文本并替换占位符
-                    new_text = paragraph.text.replace('{地址}', address)
+                    new_text = original_text.replace('{地址}', address)
+                    app.logger.info(f"替换地址占位符: '{original_text}' -> '{new_text}'")
                     
                     # 清空段落中所有runs，但保持段落本身
                     p = paragraph._p
@@ -5516,12 +5602,12 @@ def fill_transport_report_template():
                         
                     # 添加新的文本
                     paragraph.add_run(new_text)
-                    app.logger.info(f"替换了地址占位符")
                 
                 # 替换日期占位符
                 if '{日期}' in paragraph.text:
                     # 获取整个段落的文本并替换占位符
                     new_text = paragraph.text.replace('{日期}', datetime.now().strftime('%Y年%m月%d日'))
+                    app.logger.info(f"替换日期占位符: '{paragraph.text}' -> '{new_text}'")
                     
                     # 清空段落中所有runs，但保持段落本身
                     p = paragraph._p
@@ -5530,7 +5616,40 @@ def fill_transport_report_template():
                         
                     # 添加新的文本
                     paragraph.add_run(new_text)
-                    app.logger.info(f"替换了日期占位符")
+                
+                # 替换项目信息占位符
+                # 创建一个副本，因为我们将在迭代过程中修改文本
+                original_text = paragraph.text
+                new_text = original_text
+                text_changed = False
+                
+                # 先检查段落文本中是否包含任何花括号
+                if '{' in original_text and '}' in original_text:
+                    app.logger.info(f"段落 {i+1} 包含花括号，可能包含占位符")
+                    
+                    # 使用正则表达式查找所有占位符
+                    import re
+                    placeholders = re.findall(r'\{([^}]+)\}', original_text)
+                    app.logger.info(f"找到的占位符: {placeholders}")
+                    
+                    # 检查是否包含任何项目信息占位符
+                    for placeholder, value in project_info.items():
+                        placeholder_text = '{' + placeholder + '}'
+                        if placeholder_text in new_text:
+                            new_text = new_text.replace(placeholder_text, value)
+                            text_changed = True
+                            app.logger.info(f"替换了项目信息占位符 {placeholder_text} -> {value}")
+                
+                # 如果文本已更改，应用新文本
+                if text_changed:
+                    app.logger.info(f"段落 {i+1} 文本已更改: '{original_text}' -> '{new_text}'")
+                    # 清空段落中所有runs，但保持段落本身
+                    p = paragraph._p
+                    for run in list(paragraph.runs):  # 使用列表复制，因为我们在修改集合
+                        p.remove(run._r)
+                        
+                    # 添加新的文本
+                    paragraph.add_run(new_text)
                 
                 # 替换地图占位符，并插入地图图片
                 if '{地图截图}' in paragraph.text and temp_image_path:
