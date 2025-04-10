@@ -231,11 +231,15 @@
             const map = new AMap.Map('gaode-map-container', {
                 zoom: 15,  // 与百度地图保持一致
                 center: [104.065735, 30.659462], // 成都中心点
-                viewMode: '2D'
+                viewMode: '2D',
+                scrollWheel: false // 禁用鼠标滚轮缩放
             });
             
             // 保存到全局变量
             gaodeMapInstance = map;
+            
+            // 禁用滚轮缩放
+            map.setStatus({scrollWheel: false});
             
             // 添加地图控件 - 使用新版本的控件创建方式
             AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], function(){

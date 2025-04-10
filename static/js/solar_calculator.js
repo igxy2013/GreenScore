@@ -55,17 +55,29 @@ function initMap() {
         var point = new BMap.Point(104.06, 30.67);
         map.centerAndZoom(point, 15);
         map.enableScrollWheelZoom(false);
+        map.disableScrollWheelZoom(); // 使用更强制的禁用方法
         
         // 设置地图区域的鼠标样式为默认箭头
         document.getElementById("map").style.cursor = "default";
         
-        // 额外添加DOM事件监听器来阻止地图区域的滚轮事件，确保禁用滚轮缩放
+        // 修改DOM事件监听器，只在特定情况下阻止滚轮事件，允许正常页面滚动
         const mapContainer = document.getElementById("map");
         mapContainer.addEventListener('wheel', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
+            // 只有在按下Ctrl键时才阻止事件（模拟缩放操作）
+            // 或者如果用户似乎正在尝试缩放地图（例如使用触控板的捏合手势）
+            if (e.ctrlKey || e.deltaMode === 0 && Math.abs(e.deltaY) < 10) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            // 正常滚动页面时不干预，事件会自然冒泡
         }, { passive: false });
+        
+        // 添加鼠标按下事件，防止拖拽滚动页面
+        mapContainer.addEventListener('mousedown', function(e) {
+            // 阻止地图区域的鼠标按下事件冒泡，避免拖拽地图时影响页面滚动
+            e.stopPropagation();
+        });
         
         // 添加控件
         map.addControl(new BMap.NavigationControl());
@@ -111,7 +123,12 @@ function initMap() {
                 myGeo.getPoint(location, function(point) {
                     if (point) {
                         map.centerAndZoom(point, 15);
+                        // 确保地图禁用滚轮缩放功能
                         map.enableScrollWheelZoom(false);
+                        map.disableScrollWheelZoom();
+                        
+                        // 此处不需要重新添加wheel事件处理，因为已经在初始化时添加
+                        
                         marker.setPosition(point);
                         document.getElementById("longitude").textContent = point.lng.toFixed(6);
                         document.getElementById("latitude").textContent = point.lat.toFixed(6);
