@@ -7,6 +7,7 @@
             // --- 地图API Key ---
             let baiduApiKey = null;
             let gaodeApiKey = null; // 需要从后端获取
+            window.securityJsCode = null; // 添加安全码全局变量
 
             // --- 切换地图提供商 ---
             function switchMapProvider(provider) {
@@ -184,28 +185,26 @@
                     throw new Error("API返回中没有高德地图密钥");
                 }
                 
-                // 获取到API密钥后，加载高德地图脚本
+                // 保存API密钥
                 gaodeApiKey = data.api_key;
                 
-                // 创建script标签
-                const script = document.createElement('script');
-                script.type = 'text/javascript';
-                script.src = `https://webapi.amap.com/maps?v=2.0&key=${gaodeApiKey}&callback=initGaodeMap`;
-                script.onerror = function() {
-                    console.error("加载高德地图API失败");
-                    const mapContainer = document.getElementById('gaode-map-container');
-                    if (mapContainer) {
-                        mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">高德地图API加载失败</div>`;
+                try {
+                    // 检查是否已有安全设置
+                    if (!window._AMapSecurityConfig) {
+                        // 直接创建安全配置对象
+                        window._AMapSecurityConfig = {
+                            securityJsCode: data.security_js_code || '',
+                            serviceHost: data.service_host || "https://lbs.amap.com"
+                        };
+                        console.log("已创建高德地图安全配置对象");
                     }
-                };
-                document.body.appendChild(script);
-                
-                // 如有安全码，也添加
-                if (data.security_js_code) {
-                    const secScript = document.createElement('script');
-                    secScript.type = 'text/javascript';
-                    secScript.text = data.security_js_code;
-                    document.head.appendChild(secScript);
+                    
+                    // 加载高德地图主脚本
+                    loadAMapMainScript(gaodeApiKey);
+                } catch (e) {
+                    console.error("设置高德地图安全码失败:", e);
+                    // 失败后仍尝试加载主脚本
+                    loadAMapMainScript(gaodeApiKey);
                 }
             })
             .catch(error => {
@@ -215,6 +214,47 @@
                     mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">高德地图加载失败: ${error.message}</div>`;
                 }
             });
+    }
+    
+    // 加载高德地图主脚本的函数
+    function loadAMapMainScript(apiKey) {
+        console.log("开始加载高德地图主脚本");
+        
+        // 检查是否已存在脚本
+        const existingScript = document.querySelector('script[src*="webapi.amap.com/maps"]');
+        if (existingScript) {
+            console.log("高德地图脚本已存在，不重复加载");
+            // 如果AMap对象已存在，则初始化地图
+            if (typeof AMap !== 'undefined') {
+                setTimeout(() => {
+                    try {
+                        initGaodeMap();
+                    } catch (e) {
+                        console.error("尝试初始化高德地图失败:", e);
+                    }
+                }, 500);
+            }
+            return;
+        }
+        
+        // 创建script标签
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        // 添加必要的插件到URL中，预先加载所需插件
+        script.src = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&callback=initGaodeMap&plugin=AMap.Geocoder,AMap.PlaceSearch,AMap.Scale,AMap.ToolBar`;
+        
+        // 添加加载错误处理
+        script.onerror = function() {
+            console.error("加载高德地图API失败");
+            const mapContainer = document.getElementById('gaode-map-container');
+            if (mapContainer) {
+                mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">高德地图API加载失败</div>`;
+            }
+        };
+        
+        // 添加到文档中加载脚本
+        document.body.appendChild(script);
+        console.log("高德地图脚本标签已添加到文档");
     }
     
     // 初始化高德地图函数
@@ -242,7 +282,7 @@
             map.setStatus({scrollWheel: false});
             
             // 添加地图控件 - 使用新版本的控件创建方式
-            AMap.plugin(['AMap.Scale', 'AMap.ToolBar'], function(){
+            AMap.plugin(['AMap.Scale', 'AMap.ToolBar', 'AMap.Geocoder', 'AMap.PlaceSearch'], function(){
                 // 添加比例尺
                 const scale = new AMap.Scale();
                 map.addControl(scale);
@@ -250,6 +290,8 @@
                 // 添加工具条
                 const toolBar = new AMap.ToolBar();
                 map.addControl(toolBar);
+                
+                console.log("高德地图插件加载成功：AMap.Scale, AMap.ToolBar, AMap.Geocoder, AMap.PlaceSearch");
             });
             
             // 确保地图容器可见
@@ -938,19 +980,22 @@
                 conclusion: conclusion
             };
             
-            // 确保所有站点都有详细信息字段
+            // 确保所有站点都有详细信息字段并且距离字段为字符串
             if (requestData.stations && requestData.stations.length > 0) {
                 console.log("处理站点详细信息字段...");
                 requestData.stations = requestData.stations.map((station, index) => {
                     // 记录原始站点数据
                     console.log(`原始站点数据 ${index + 1}:`, JSON.stringify(station));
                     
-                    // 确保所有重要字段都存在
+                    // 确保所有重要字段都存在，并且distance为字符串
                     const normalizedStation = {
                         index: station.index || (index + 1),
                         name: station.name || '未知站点',
                         type: station.type || '公交站',
-                        distance: station.distance || '0',
+                        // 确保distance字段为字符串类型
+                        distance: typeof station.distance === 'number' ? 
+                                 String(station.distance) : 
+                                 (station.distance || '0'),
                         // 优先使用detail字段，如果没有则使用其他可能的字段
                         detail: station.detail || 
                                station.address || 
@@ -1234,72 +1279,89 @@
     // 搜索高德地图
     function searchGaodeMap(address) {
         if (!gaodeMapInstance) {
+            console.error("高德地图实例不存在，尝试重新初始化");
             alert("高德地图未初始化，请刷新页面重试");
             document.getElementById('loading').style.display = 'none';
+            // 尝试重新加载高德地图
+            loadGaodeMapScript();
             return;
         }
         
         try {
-            // 创建高德地图地理编码实例
-            AMap.plugin('AMap.Geocoder', function() {
-                const geocoder = new AMap.Geocoder();
-                
-                // 将地址解析成经纬度
-                geocoder.getLocation(address, function(status, result) {
-                    if (status === 'complete' && result.info === 'OK') {
-                        // 获取第一个地址的位置
-                        const location = result.geocodes[0].location;
+            console.log("开始搜索高德地图地址:", address);
+            
+            // 加载地理编码插件
+            AMap.plugin(['AMap.Geocoder'], function() {
+                try {
+                    console.log("AMap.Geocoder插件加载中");
+                    
+                    // 创建高德地图地理编码实例
+                    const geocoder = new AMap.Geocoder();
+                    
+                    // 将地址解析成经纬度
+                    geocoder.getLocation(address, function(status, result) {
+                        console.log("高德地图地址解析结果:", status, result);
                         
-                        // 清空地图上现有标记
-                        gaodeMapInstance.clearMap();
-                        
-                        // 设置地图中心点和缩放级别
-                        gaodeMapInstance.setCenter([location.lng, location.lat]);
-                        gaodeMapInstance.setZoom(15);
-                        
-                        // 添加标记
-                        const marker = new AMap.Marker({
-                            position: [location.lng, location.lat],
-                            map: gaodeMapInstance
-                        });
-                        
-                        // 显示800米半径圆
-                        const circle = new AMap.Circle({
-                            center: [location.lng, location.lat],
-                            radius: 800,
-                            strokeColor: "#FF0000",
-                            strokeOpacity: 0.8,
-                            strokeWeight: 2,
-                            fillColor: "#FF0000",
-                            fillOpacity: 0.1,
-                            map: gaodeMapInstance
-                        });
-                        
-                        // 存储中心点信息用于后续导出
-                        window.center = {
-                            lng: location.lng,
-                            lat: location.lat
-                        };
-                        window.zoom = 15;
-                        window.address = address;
-                        
-                        // 存储圆圈信息用于后续导出
-                        window.circleInfo = {
-                            center: {
+                        if (status === 'complete' && result.info === 'OK') {
+                            // 获取第一个地址的位置
+                            const location = result.geocodes[0].location;
+                            console.log("解析到的位置:", location);
+                            
+                            // 清空地图上现有标记
+                            gaodeMapInstance.clearMap();
+                            
+                            // 设置地图中心点和缩放级别
+                            gaodeMapInstance.setCenter([location.lng, location.lat]);
+                            gaodeMapInstance.setZoom(15);
+                            
+                            // 添加标记
+                            const marker = new AMap.Marker({
+                                position: [location.lng, location.lat],
+                                map: gaodeMapInstance
+                            });
+                            
+                            // 显示800米半径圆
+                            const circle = new AMap.Circle({
+                                center: [location.lng, location.lat],
+                                radius: 800,
+                                strokeColor: "#FF0000",
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: "#FF0000",
+                                fillOpacity: 0.1,
+                                map: gaodeMapInstance
+                            });
+                            
+                            // 存储中心点信息用于后续导出
+                            window.center = {
                                 lng: location.lng,
                                 lat: location.lat
-                            },
-                            radius: 800
-                        };
-                        
-                        // 搜索周边公交站
-                        searchGaodeNearbyTransit(location);
-                    } else {
-                        console.error("高德地图地址解析失败:", result);
-                        alert("未找到该地址");
-                        document.getElementById('loading').style.display = 'none';
-                    }
-                });
+                            };
+                            window.zoom = 15;
+                            window.address = address;
+                            
+                            // 存储圆圈信息用于后续导出
+                            window.circleInfo = {
+                                center: {
+                                    lng: location.lng,
+                                    lat: location.lat
+                                },
+                                radius: 800
+                            };
+                            
+                            // 搜索周边公交站
+                            searchGaodeNearbyTransit(location);
+                        } else {
+                            console.error("高德地图地址解析失败:", result);
+                            alert("未找到该地址，请输入更精确的地址");
+                            document.getElementById('loading').style.display = 'none';
+                        }
+                    });
+                } catch (error) {
+                    console.error("创建地理编码实例失败:", error);
+                    document.getElementById('loading').style.display = 'none';
+                    alert("搜索地址时出错: " + error.message);
+                }
             });
         } catch (error) {
             console.error("高德地图搜索地址失败:", error);
@@ -1311,6 +1373,8 @@
     // 搜索高德地图周边公交站
     function searchGaodeNearbyTransit(location) {
         try {
+            console.log("开始搜索高德地图周边公交站:", location);
+            
             // 清空现有标记（保留中心点和圆圈）
             gaodeMapInstance.clearMap();
             
@@ -1332,37 +1396,50 @@
                 map: gaodeMapInstance
             });
             
-            // 初始化 AMap.PlaceSearch
+            // 加载周边搜索插件
             AMap.plugin(['AMap.PlaceSearch'], function() {
-                // 创建公交站点搜索实例
-                const placeSearch = new AMap.PlaceSearch({
-                    pageSize: 50,
-                    type: '公交车站|地铁站',
-                    pageIndex: 1,
-                    city: '全国',
-                    radius: 800,
-                    autoFitView: false
-                });
-                
-                // 周边搜索
-                placeSearch.searchNearBy('', [location.lng, location.lat], 800, function(status, result) {
-                    document.getElementById('loading').style.display = 'none';
+                try {
+                    console.log("AMap.PlaceSearch插件加载中");
                     
-                    if (status === 'complete' && result.info === 'OK') {
-                        const pois = result.poiList.pois;
+                    // 创建公交站点搜索实例
+                    const placeSearch = new AMap.PlaceSearch({
+                        pageSize: 50,
+                        type: '公交车站|地铁站',
+                        pageIndex: 1,
+                        city: '全国',
+                        radius: 800,
+                        autoFitView: false
+                    });
+                    
+                    console.log("开始周边搜索，中心点:", [location.lng, location.lat]);
+                    
+                    // 周边搜索
+                    placeSearch.searchNearBy('', [location.lng, location.lat], 800, function(status, result) {
+                        document.getElementById('loading').style.display = 'none';
                         
-                        if (!pois || pois.length === 0) {
-                            document.getElementById('result-count').textContent = '未找到周边800米内的公交站和地铁站，请尝试其他地点';
-                            return;
+                        console.log("高德地图周边搜索结果:", status, result);
+                        
+                        if (status === 'complete' && result.info === 'OK') {
+                            const pois = result.poiList.pois;
+                            console.log("找到POI数量:", pois ? pois.length : 0);
+                            
+                            if (!pois || pois.length === 0) {
+                                document.getElementById('result-count').textContent = '未找到周边800米内的公交站和地铁站，请尝试其他地点';
+                                return;
+                            }
+                            
+                            // 处理搜索结果
+                            processGaodeSearchResults(pois, location);
+                        } else {
+                            console.error("高德地图搜索周边公交站失败:", result);
+                            document.getElementById('result-count').textContent = '未找到周边公交站点，请尝试其他地点或切换百度地图';
                         }
-                        
-                        // 处理搜索结果
-                        processGaodeSearchResults(pois, location);
-                    } else {
-                        console.error("高德地图搜索周边公交站失败:", result);
-                        document.getElementById('result-count').textContent = '未找到周边公交站点';
-                    }
-                });
+                    });
+                } catch (error) {
+                    console.error("创建周边搜索实例失败:", error);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('result-count').textContent = '搜索周边公交站点失败，请刷新页面重试';
+                }
             });
         } catch (error) {
             console.error("高德地图搜索周边公交站失败:", error);
@@ -1374,6 +1451,8 @@
     // 处理高德地图搜索结果
     function processGaodeSearchResults(pois, centerLocation) {
         try {
+            console.log("处理高德地图搜索结果，共", pois.length, "个POI");
+            
             // 初始化结果数组
             window.stations = [];
             window.markers = [];
@@ -1387,22 +1466,37 @@
             
             // 清空结果表格
             const resultBody = document.getElementById('result-body');
+            if (!resultBody) {
+                console.error("未找到结果表格元素 'result-body'");
+                return;
+            }
             resultBody.innerHTML = '';
             
             // 更新结果计数
             const resultCount = document.getElementById('result-count');
+            if (!resultCount) {
+                console.error("未找到结果计数元素 'result-count'");
+                return;
+            }
             resultCount.textContent = `共找到 ${pois.length} 个交通站点`;
             
             // 处理每个POI
             pois.forEach((poi, index) => {
+                // 检查POI是否有效
+                if (!poi || !poi.location) {
+                    console.warn("跳过无效的POI:", poi);
+                    return;
+                }
+                
                 // 获取坐标点
                 const poiLocation = poi.location;
                 
                 // 计算与中心点的距离（高德API返回的距离单位为米）
-                const distance = poi.distance;
+                // 确保距离始终为字符串类型
+                const distance = typeof poi.distance === 'number' ? String(poi.distance) : (poi.distance || '0');
                 
                 // 获取类型名称
-                const typeName = poi.type.includes('地铁') ? '地铁站' : '公交站';
+                const typeName = poi.type && poi.type.includes('地铁') ? '地铁站' : '公交站';
                 
                 // 获取POI名称和地址
                 const title = poi.name || "未知站点";
@@ -1428,7 +1522,7 @@
                     index: index + 1,
                     name: title,
                     type: typeName,
-                    distance: distance,
+                    distance: distance, // 确保是字符串
                     detail: details,
                     location: {
                         lng: poiLocation.lng,
@@ -1456,10 +1550,17 @@
             });
             
             // 启用导出按钮
-            document.getElementById('export-btn').disabled = false;
+            const exportBtn = document.getElementById('export-btn');
+            if (exportBtn) {
+                exportBtn.disabled = false;
+                // 添加导出按钮点击事件
+                exportBtn.onclick = executeMapScreenshot;
+            } else {
+                console.error("未找到导出按钮元素 'export-btn'");
+            }
             
-            // 添加导出按钮点击事件
-            document.getElementById('export-btn').onclick = executeMapScreenshot;
+            // 生成评价结论
+            generateConclusion();
             
         } catch (error) {
             console.error("处理高德地图搜索结果失败:", error);
