@@ -3403,6 +3403,9 @@ def create_default_scores(project_id, project_name, standard_selection):
         traceback.print_exc()
         return False
 
+# 注册蓝图
+app.register_blueprint(admin_app, url_prefix='/admin')  # 使用admin_app，添加/admin前缀
+
 if __name__ == '__main__':
     # 初始化数据库
     init_db()
