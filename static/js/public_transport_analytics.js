@@ -257,7 +257,109 @@
         console.log("高德地图脚本标签已添加到文档");
     }
     
-    // 初始化高德地图函数
+    // --- 初始化百度地图函数
+    function initBaiduMap() {
+        try {
+            console.log("正在初始化百度地图...");
+            // 确保地图容器存在
+            const mapContainer = document.getElementById('baidu-map-container');
+            if (!mapContainer) {
+                throw new Error("地图容器不存在");
+            }
+            
+            // 创建地图实例
+            const map = new BMap.Map('baidu-map-container');
+            // 保存到全局变量
+            baiduMapInstance = map;
+            window.map = map; // 为了兼容现有代码
+            
+            // 初始中心点 (成都)
+            const point = new BMap.Point(104.065735, 30.659462);
+            map.centerAndZoom(point, 15);
+            
+            // 创建标记并添加到地图中
+            const marker = new BMap.Marker(point);
+            baiduMapInstance.addOverlay(marker);
+            
+            // 禁用滚轮缩放
+            map.disableScrollWheelZoom();
+            
+            // 添加地图控件
+            map.addControl(new BMap.NavigationControl());
+            map.addControl(new BMap.ScaleControl());
+            
+            // 为搜索按钮添加事件监听器
+            const searchBtn = document.getElementById('search-btn');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', searchAddress);
+            }
+            
+            // 监听地址输入框回车事件
+            const addressInput = document.getElementById('address');
+            if (addressInput) {
+                addressInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        searchAddress();
+                    }
+                });
+            }
+            
+            // 添加地图点击事件
+            map.addEventListener('click', function(e) {
+                // 显示加载中
+                document.getElementById('loading').style.display = 'block';
+                
+                // 清除原有覆盖物
+                map.clearOverlays();
+                
+                // 添加新的标记
+                const newPoint = new BMap.Point(e.point.lng, e.point.lat);
+                const newMarker = new BMap.Marker(newPoint);
+                map.addOverlay(newMarker);
+                
+                // 反向地理编码获取地址
+                const geoCoder = new BMap.Geocoder();
+                geoCoder.getLocation(newPoint, function(result) {
+                    if (result && result.address) {
+                        // 更新地址输入框
+                        const addressInput = document.getElementById('address');
+                        if (addressInput) {
+                            addressInput.value = result.address;
+                        }
+                        
+                        // 保存地址信息
+                        window.address = result.address;
+                        
+                        // 保存中心点
+                        window.center = {
+                            lng: newPoint.lng,
+                            lat: newPoint.lat
+                        };
+                        
+                        // 搜索周边公交站
+                        searchNearbyTransit(newPoint);
+                    } else {
+                        document.getElementById('loading').style.display = 'none';
+                        alert("无法获取该位置的地址信息");
+                    }
+                });
+            });
+            
+            console.log("百度地图初始化成功");
+            
+            // 确保地图容器可见
+            mapContainer.style.display = "block";
+        } catch (error) {
+            console.error("初始化百度地图失败:", error);
+            const mapContainer = document.getElementById('baidu-map-container');
+            if (mapContainer) {
+                mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图初始化失败: ${error.message}</div>`;
+                mapContainer.style.display = "block"; // 确保错误信息可见
+            }
+        }
+    }
+    
+    // --- 初始化高德地图函数
     function initGaodeMap() {
         try {
             console.log("正在初始化高德地图...");
@@ -291,6 +393,60 @@
                 const toolBar = new AMap.ToolBar();
                 map.addControl(toolBar);
                 
+                // 初始化地理编码服务，用于后续点击事件
+                const geocoder = new AMap.Geocoder({
+                    city: "全国", // 城市，默认"全国"
+                    radius: 1000 // 范围，默认1000米
+                });
+                
+                // 添加地图点击事件
+                map.on('click', function(e) {
+                    // 显示加载中
+                    document.getElementById('loading').style.display = 'block';
+                    
+                    // 清除地图上现有标记
+                    map.clearMap();
+                    
+                    // 添加新的标记
+                    const marker = new AMap.Marker({
+                        position: [e.lnglat.getLng(), e.lnglat.getLat()],
+                        map: map
+                    });
+                    
+                    // 逆地理编码，获取地址信息
+                    geocoder.getAddress([e.lnglat.getLng(), e.lnglat.getLat()], function(status, result) {
+                        if (status === 'complete' && result.info === 'OK') {
+                            // 获取地址
+                            const address = result.regeocode.formattedAddress;
+                            
+                            // 更新地址输入框
+                            const addressInput = document.getElementById('address');
+                            if (addressInput) {
+                                addressInput.value = address;
+                            }
+                            
+                            // 保存地址信息
+                            window.address = address;
+                            
+                            // 保存中心点
+                            window.center = {
+                                lng: e.lnglat.getLng(),
+                                lat: e.lnglat.getLat()
+                            };
+                            
+                            // 搜索周边公交站
+                            searchGaodeNearbyTransit({
+                                lng: e.lnglat.getLng(),
+                                lat: e.lnglat.getLat()
+                            });
+                        } else {
+                            document.getElementById('loading').style.display = 'none';
+                            console.error("高德地图逆地理编码失败:", result);
+                            alert("无法获取该位置的地址信息");
+                        }
+                    });
+                });
+                
                 console.log("高德地图插件加载成功：AMap.Scale, AMap.ToolBar, AMap.Geocoder, AMap.PlaceSearch");
             });
             
@@ -303,67 +459,6 @@
             const mapContainer = document.getElementById('gaode-map-container');
             if (mapContainer) {
                 mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">高德地图初始化失败: ${error.message}</div>`;
-                mapContainer.style.display = "block"; // 确保错误信息可见
-            }
-        }
-    }
-    
-    // 初始化百度地图函数
-    function initBaiduMap() {
-        try {
-            console.log("正在初始化百度地图...");
-            // 确保地图容器存在
-            const mapContainer = document.getElementById('baidu-map-container');
-            if (!mapContainer) {
-                throw new Error("地图容器不存在");
-            }
-            
-            // 创建地图实例
-            const map = new BMap.Map('baidu-map-container');
-            // 保存到全局变量
-            baiduMapInstance = map;
-            window.map = map; // 为了兼容现有代码
-            
-            // 初始中心点 (成都)
-            const point = new BMap.Point(104.065735, 30.659462);
-            map.centerAndZoom(point, 17);
-            
-            // 创建标记并添加到地图中
-            const marker = new BMap.Marker(point);
-            map.addOverlay(marker);
-            
-            // 禁用滚轮缩放
-            map.disableScrollWheelZoom();
-            
-            // 添加地图控件
-            map.addControl(new BMap.NavigationControl());
-            map.addControl(new BMap.ScaleControl());
-            
-            // 为搜索按钮添加事件监听器
-            const searchBtn = document.getElementById('search-btn');
-            if (searchBtn) {
-                searchBtn.addEventListener('click', searchAddress);
-            }
-            
-            // 监听地址输入框回车事件
-            const addressInput = document.getElementById('address');
-            if (addressInput) {
-                addressInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        searchAddress();
-                    }
-                });
-            }
-            
-            console.log("百度地图初始化成功");
-            
-            // 确保地图容器可见
-            mapContainer.style.display = "block";
-        } catch (error) {
-            console.error("初始化百度地图失败:", error);
-            const mapContainer = document.getElementById('baidu-map-container');
-            if (mapContainer) {
-                mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图初始化失败: ${error.message}</div>`;
                 mapContainer.style.display = "block"; // 确保错误信息可见
             }
         }
@@ -479,6 +574,9 @@
                 radius: 800
             };
             
+            // 创建存储所有站点的数组
+            window.allStations = [];
+            
             // 创建周边搜索实例
             const local = new BMap.LocalSearch(baiduMapInstance, {
                 renderOptions: { 
@@ -497,8 +595,8 @@
                         return;
                     }
                     
-                    // 处理搜索结果
-                    processSearchResults(results, point, "公交站");
+                    // 处理搜索结果，但不直接渲染，而是存储在 window.allStations
+                    collectSearchResults(results, point, "公交站");
                     
                     // 继续搜索地铁站
                     searchSubwayStations(point);
@@ -530,24 +628,34 @@
                 },
                 pageCapacity: 50,
                 onSearchComplete: function(results) {
-                    if (!results || results.getNumPois() === 0) {
-                        const resultCount = document.getElementById('result-count');
-                        const currentText = resultCount.textContent || '';
+                    // 检查搜索结果的有效性
+                    if (!results || typeof results !== 'object' || 
+                        (typeof results.getNumPois === 'function' && results.getNumPois() === 0)) {
                         
-                        if (currentText.includes('未找到周边公交站点')) {
-                            resultCount.textContent = '未找到周边800米内的公交站和地铁站，请尝试其他地点';
+                        // 如果没有地铁站但有公交站
+                        if (window.allStations && window.allStations.length > 0) {
+                            // 处理收集的所有站点
+                            processCombinedResults(point);
                         } else {
-                            // 如果已经找到了公交站，但没有地铁站
-                            // 不需要更新文本
+                            // 如果没有找到任何站点
+                            const resultCount = document.getElementById('result-count');
+                            resultCount.textContent = '未找到周边800米内的公交站和地铁站，请尝试其他地点';
                         }
                         return;
                     }
                     
-                    // 处理搜索结果，合并到现有结果
-                    processSearchResults(results, point, "地铁站", true);
+                    // 收集地铁站搜索结果
+                    collectSearchResults(results, point, "地铁站");
+                    
+                    // 处理所有收集的站点（公交站+地铁站）
+                    processCombinedResults(point);
                 },
                 onError: function(error) {
                     console.error("搜索周边地铁站点失败:", error);
+                    // 如果至少有公交站，仍然处理结果
+                    if (window.allStations && window.allStations.length > 0) {
+                        processCombinedResults(point);
+                    }
                 }
             });
             
@@ -555,6 +663,220 @@
             local.searchNearby('地铁站', point, 800);
         } catch (error) {
             console.error("搜索周边地铁站失败:", error);
+            // 如果至少有公交站，仍然处理结果
+            if (window.allStations && window.allStations.length > 0) {
+                processCombinedResults(point);
+            }
+        }
+    }
+    
+    // 收集搜索结果但不渲染
+    function collectSearchResults(results, centerPoint, stationType) {
+        try {
+            // 获取所有POI点，兼容不同格式的搜索结果
+            let pois = [];
+            if (results.getPois && typeof results.getPois === 'function') {
+                pois = results.getPois();
+            } else if (results.Ar && Array.isArray(results.Ar)) {
+                pois = results.Ar;
+            } else if (results.Ir && Array.isArray(results.Ir)) {
+                pois = results.Ir;
+            } else if (results instanceof Array) {
+                pois = results;
+            } else if (results.Ha && Array.isArray(results.Ha)) {
+                pois = results.Ha;
+            } else if (Array.isArray(results._pois)) {
+                pois = results._pois;
+            } else {
+                for (let key in results) {
+                    if (Array.isArray(results[key]) && results[key].length > 0 && results[key][0].title) {
+                        pois = results[key];
+                        break;
+                    }
+                }
+                
+                if (pois.length === 0) {
+                    console.error("无法识别的搜索结果格式:", results);
+                    return;
+                }
+            }
+            
+            // 如果没有找到结果
+            if (pois.length === 0) {
+                return;
+            }
+            
+            // 处理所有POI
+            pois.forEach(poi => {
+                // 获取坐标点
+                let poiPoint;
+                if (poi.point) {
+                    poiPoint = poi.point;
+                } else if (poi.location) {
+                    poiPoint = poi.location;
+                } else if (poi.latLng) {
+                    poiPoint = new BMap.Point(poi.latLng.lng, poi.latLng.lat);
+                } else if (poi.lng && poi.lat) {
+                    poiPoint = new BMap.Point(poi.lng, poi.lat);
+                } else {
+                    console.warn("无法获取POI坐标:", poi);
+                    return; // 跳过这个POI
+                }
+                
+                // 计算与中心点的距离
+                const distance = parseInt(baiduMapInstance.getDistance(
+                    new BMap.Point(centerPoint.lng, centerPoint.lat),
+                    poiPoint
+                ).toFixed(0), 10);
+                
+                // 获取POI名称
+                const title = poi.title || poi.name || poi.address || "未知站点";
+                
+                // 获取详细信息
+                const details = poi.address || poi.addressDetail || poi.province + poi.city || "无详细信息";
+                
+                // 添加到所有站点数组
+                window.allStations.push({
+                    poi,
+                    poiPoint,
+                    distance,
+                    title,
+                    details,
+                    stationType
+                });
+            });
+            
+        } catch (error) {
+            console.error("收集搜索结果失败:", error);
+        }
+    }
+    
+    // 处理合并后的站点结果
+    function processCombinedResults(centerPoint) {
+        try {
+            if (!window.allStations) {
+                window.allStations = [];
+            }
+            
+            // 按距离排序所有站点
+            window.allStations.sort((a, b) => a.distance - b.distance);
+            
+            // 统计原始总数
+            const originalCount = window.allStations.length;
+            const busStationsCount = window.allStations.filter(s => s.stationType === "公交站").length;
+            const metroStationsCount = window.allStations.filter(s => s.stationType === "地铁站").length;
+            
+            // 只取最近的10个站点
+            const displayStations = window.allStations.slice(0, 10);
+            
+            // 初始化结果数组
+            window.stations = [];
+            window.markers = [];
+            
+            // 添加中心点标记
+            window.markers.push({
+                lng: centerPoint.lng,
+                lat: centerPoint.lat,
+                isCenter: true
+            });
+            
+            // 清空结果表格
+            const resultBody = document.getElementById('result-body');
+            resultBody.innerHTML = '';
+            
+            // 更新结果计数
+            const resultCount = document.getElementById('result-count');
+            if (originalCount > 10) {
+                resultCount.textContent = `共找到 ${originalCount} 个交通站点 (包括 ${busStationsCount} 个公交站和 ${metroStationsCount} 个地铁站)，显示最近的 10 个`;
+            } else {
+                resultCount.textContent = `共找到 ${originalCount} 个交通站点 (包括 ${busStationsCount} 个公交站和 ${metroStationsCount} 个地铁站)`;
+            }
+            
+            // 处理选定的站点
+            displayStations.forEach((station, index) => {
+                // 创建表格行
+                const row = document.createElement('tr');
+                
+                // 添加单元格
+                row.innerHTML = `
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${index + 1}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${station.title}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${station.stationType}</td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${station.distance}</td>
+                    <td class="px-4 py-2 text-sm text-gray-900">${station.details}</td>
+                `;
+                
+                // 添加行到表格
+                resultBody.appendChild(row);
+                
+                // 添加到站点数组
+                window.stations.push({
+                    index: index + 1,
+                    name: station.title,
+                    type: station.stationType,
+                    distance: station.distance.toString(), // 确保是字符串
+                    detail: station.details,
+                    location: {
+                        lng: station.poiPoint.lng,
+                        lat: station.poiPoint.lat
+                    }
+                });
+                
+                // 添加到标记数组
+                window.markers.push({
+                    lng: station.poiPoint.lng,
+                    lat: station.poiPoint.lat,
+                    stationIndex: index + 1,
+                    stationType: station.stationType
+                });
+                
+                // 选择图标颜色（公交站红色，地铁站蓝色）
+                const iconColor = station.stationType === "地铁站" ? "blue" : "red";
+                
+                // 在地图上添加标记
+                const marker = new BMap.Marker(
+                    station.poiPoint,
+                    {
+                        icon: new BMap.Symbol(BMap_Symbol_SHAPE_POINT, {
+                            scale: 1,
+                            fillColor: iconColor,
+                            fillOpacity: 0.8
+                        })
+                    }
+                );
+                
+                // 添加标记标签
+                const label = new BMap.Label(index + 1, {
+                    offset: new BMap.Size(0, 0),
+                    position: station.poiPoint
+                });
+                label.setStyle({
+                    color: 'white',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    fontSize: '12px',
+                    textAlign: 'center',
+                    fontWeight: 'bold',
+                    zIndex: 999
+                });
+                marker.setLabel(label);
+                
+                baiduMapInstance.addOverlay(marker);
+            });
+            
+            // 启用导出按钮
+            document.getElementById('export-btn').disabled = false;
+            
+            // 添加导出按钮点击事件
+            document.getElementById('export-btn').onclick = executeMapScreenshot;
+            
+            // 生成评价结论
+            generateConclusion();
+            
+        } catch (error) {
+            console.error("处理合并搜索结果失败:", error);
+            console.log("站点数据:", window.allStations);
+            alert("处理搜索结果时出错: " + error.message);
         }
     }
     
@@ -622,21 +944,8 @@
                 return;
             }
             
-            // 获取现有结果数量作为索引起点
-            const startIndex = window.stations ? window.stations.length : 0;
-            
-            // 更新结果计数
-            const resultCount = document.getElementById('result-count');
-            if (!appendResults) {
-                resultCount.textContent = `共找到 ${pois.length} 个${stationType}`;
-            } else {
-                // 附加新结果数量
-                const currentCount = parseInt(resultCount.textContent.match(/\d+/) || [0])[0];
-                resultCount.textContent = `共找到 ${currentCount + pois.length} 个交通站点 (包括 ${startIndex} 个公交站和 ${pois.length} 个地铁站)`;
-            }
-            
-            // 处理每个POI
-            pois.forEach((poi, index) => {
+            // 在遍历所有站点之前对其按距离排序
+            const processablePois = pois.map(poi => {
                 // 获取坐标点
                 let poiPoint;
                 if (poi.point) {
@@ -649,15 +958,68 @@
                     poiPoint = new BMap.Point(poi.lng, poi.lat);
                 } else {
                     console.warn("无法获取POI坐标:", poi);
-                    return; // 跳过这个POI
+                    return null; // 跳过这个POI
                 }
                 
                 // 计算与中心点的距离
-                const distance = baiduMapInstance.getDistance(
+                const distance = parseInt(baiduMapInstance.getDistance(
                     new BMap.Point(centerPoint.lng, centerPoint.lat),
                     poiPoint
-                ).toFixed(0);
+                ).toFixed(0), 10);
                 
+                return {
+                    poi,
+                    poiPoint,
+                    distance
+                };
+            }).filter(item => item !== null);
+            
+            // 按距离排序
+            processablePois.sort((a, b) => a.distance - b.distance);
+            
+            // 记录原始数量
+            const originalCount = processablePois.length;
+            
+            // 无论是否为附加结果，只保留前10个站点
+            let displayedPois = processablePois;
+            if (processablePois.length > 10) {
+                displayedPois = processablePois.slice(0, 10);
+            }
+            
+            // 获取现有结果数量作为索引起点
+            const startIndex = window.stations ? window.stations.length : 0;
+            
+            // 更新结果计数
+            const resultCount = document.getElementById('result-count');
+            if (!appendResults) {
+                // 第一次搜索结果（公交站）
+                if (originalCount > 10) {
+                    resultCount.textContent = `共找到 ${originalCount} 个${stationType}，显示最近的 10 个`;
+                } else {
+                    resultCount.textContent = `共找到 ${originalCount} 个${stationType}`;
+                }
+            } else {
+                // 这是地铁站搜索结果，也限制为10个
+                // 计算公交站数量
+                const busStations = window.stations.filter(s => s.type === "公交站").length;
+                
+                // 总数 = 已有的公交站 + 这次找到的地铁站
+                const totalStations = busStations + originalCount;
+                
+                if (originalCount > 0) {
+                    if (originalCount > 10) {
+                        resultCount.textContent = `共找到 ${totalStations} 个交通站点 (包括 ${busStations} 个公交站和 ${originalCount} 个地铁站)，显示最近的站点`;
+                    } else {
+                        resultCount.textContent = `共找到 ${totalStations} 个交通站点 (包括 ${busStations} 个公交站和 ${originalCount} 个地铁站)`;
+                    }
+                } else {
+                    // 没找到地铁站
+                    resultCount.textContent = `共找到 ${busStations} 个公交站，周边800米内无地铁站`;
+                }
+            }
+            
+            // 处理每个POI
+            displayedPois.forEach(({poi, poiPoint, distance}, index) => {
                 // 获取POI名称
                 const title = poi.title || poi.name || poi.address || "未知站点";
                 
@@ -685,7 +1047,7 @@
                     index: startIndex + index + 1,
                     name: title,
                     type: stationType,
-                    distance: distance, // 确保是字符串
+                    distance: distance.toString(), // 确保是字符串
                     detail: details,
                     location: {
                         lng: poiPoint.lng,
@@ -783,6 +1145,9 @@
                 radius: 800
             };
             
+            // 创建存储所有站点的数组
+            window.allStations = [];
+            
             // 创建周边搜索实例
             const local = new BMap.LocalSearch(baiduMapInstance, {
                 renderOptions: { 
@@ -803,8 +1168,8 @@
                         return;
                     }
                     
-                    // 处理搜索结果
-                    processSearchResults(results, point, "公交站");
+                    // 处理搜索结果，但不直接渲染，而是存储在 window.allStations
+                    collectSearchResults(results, point, "公交站");
                     
                     // 继续搜索地铁站
                     searchSubwayStations(point);
@@ -840,23 +1205,31 @@
                     // 检查搜索结果的有效性
                     if (!results || typeof results !== 'object' || 
                         (typeof results.getNumPois === 'function' && results.getNumPois() === 0)) {
-                        const resultCount = document.getElementById('result-count');
-                        const currentText = resultCount.textContent || '';
                         
-                        if (currentText.includes('未找到周边公交站点')) {
-                            resultCount.textContent = '未找到周边800米内的公交站和地铁站，请尝试其他地点';
+                        // 如果没有地铁站但有公交站
+                        if (window.allStations && window.allStations.length > 0) {
+                            // 处理收集的所有站点
+                            processCombinedResults(point);
                         } else {
-                            // 如果已经找到了公交站，但没有地铁站，保持原文本
+                            // 如果没有找到任何站点
+                            const resultCount = document.getElementById('result-count');
+                            resultCount.textContent = '未找到周边800米内的公交站和地铁站，请尝试其他地点';
                         }
                         return;
                     }
                     
-                    // 处理搜索结果，合并到现有结果
-                    processSearchResults(results, point, "地铁站", true);
+                    // 收集地铁站搜索结果
+                    collectSearchResults(results, point, "地铁站");
+                    
+                    // 处理所有收集的站点（公交站+地铁站）
+                    processCombinedResults(point);
                 },
                 onError: function(error) {
                     console.error("搜索周边地铁站点失败:", error);
-                    // 仅记录错误，不需要提示用户
+                    // 如果至少有公交站，仍然处理结果
+                    if (window.allStations && window.allStations.length > 0) {
+                        processCombinedResults(point);
+                    }
                 }
             });
             
@@ -864,9 +1237,14 @@
             local.searchNearby('地铁站', point, 800);
         } catch (error) {
             console.error("搜索周边地铁站失败:", error);
-            // 仅记录错误，不需要提示用户
+            // 如果至少有公交站，仍然处理结果
+            if (window.allStations && window.allStations.length > 0) {
+                processCombinedResults(point);
+            }
         }
     }
+
+
 
     // 执行地图截图前先检查地图状态
     function executeMapScreenshot() {
@@ -1211,6 +1589,43 @@
                 switchMapProvider(preferredMapProvider);
             }, 1000); // 稍微延迟，确保页面已完全加载
         }
+        
+        
+        // 添加地图上的浮动提示
+        const mapContainers = [
+            document.getElementById('baidu-map-container'),
+            document.getElementById('gaode-map-container')
+        ];
+        
+        mapContainers.forEach(container => {
+            if (container && !container.querySelector('.map-overlay-tip')) {
+                const overlayTip = document.createElement('div');
+                overlayTip.className = 'map-overlay-tip';
+                overlayTip.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background-color:rgba(0,0,0,0.6); color:white; padding:8px 12px; border-radius:4px; z-index:1000; pointer-events:none; transition:opacity 0.5s;';
+                overlayTip.innerHTML = '点击地图任意位置选择项目地点';
+                
+                // 创建一个容器用于控制位置
+                const tipContainer = document.createElement('div');
+                tipContainer.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:999;';
+                tipContainer.appendChild(overlayTip);
+                container.appendChild(tipContainer);
+                
+                // 3秒后淡出提示
+                setTimeout(() => {
+                    overlayTip.style.opacity = '0';
+                    // 完全淡出后移除DOM元素
+                    setTimeout(() => {
+                        try {
+                            if (tipContainer.parentNode) {
+                                tipContainer.parentNode.removeChild(tipContainer);
+                            }
+                        } catch (e) {
+                            console.error("移除提示元素失败:", e);
+                        }
+                    }, 500);
+                }, 3000);
+            }
+        });
     });
 
     // 全局函数，供高德地图API回调
