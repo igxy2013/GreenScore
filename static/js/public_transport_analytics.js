@@ -551,14 +551,17 @@
             // 清空原有覆盖物
             baiduMapInstance.clearOverlays();
             
-            // 添加中心点标记
-            const marker = new BMap.Marker(point);
+            // 添加中心点标记，使用更大的图标
+            const centerIcon = new BMap.Icon("/api/map_proxy?service_path=images/marker_red.png", new BMap.Size(39, 50), {
+                anchor: new BMap.Size(20, 50)  // 调整锚点位置
+            });
+            const marker = new BMap.Marker(point, {icon: centerIcon});
             baiduMapInstance.addOverlay(marker);
             
             // 显示800米半径圆圈
             const circle = new BMap.Circle(point, 800, {
                 strokeColor: "red",
-                strokeWeight: 2,
+                strokeWeight: 3,  // 增加线宽
                 strokeOpacity: 0.8,
                 fillColor: "red",
                 fillOpacity: 0.1
@@ -1039,7 +1042,6 @@
                 `;
                 
                 // 添加行到表格
-                const resultBody = document.getElementById('result-body');
                 resultBody.appendChild(row);
                 
                 // 添加到站点数组
@@ -1122,14 +1124,17 @@
             // 清空原有覆盖物
             baiduMapInstance.clearOverlays();
             
-            // 添加中心点标记
-            const marker = new BMap.Marker(point);
+            // 添加中心点标记，使用更大的图标
+            const centerIcon = new BMap.Icon("/api/map_proxy?service_path=images/marker_red.png", new BMap.Size(39, 50), {
+                anchor: new BMap.Size(10, 20)  // 调整锚点位置
+            });
+            const marker = new BMap.Marker(point, {icon: centerIcon});
             baiduMapInstance.addOverlay(marker);
             
             // 显示800米半径圆圈
             const circle = new BMap.Circle(point, 800, {
                 strokeColor: "red",
-                strokeWeight: 2,
+                strokeWeight: 3,  // 增加线宽
                 strokeOpacity: 0.8,
                 fillColor: "red",
                 fillOpacity: 0.1
@@ -1159,9 +1164,7 @@
                 onSearchComplete: function(results) {
                     document.getElementById('loading').style.display = 'none';
                     
-                    // 检查搜索结果有效性
-                    if (!results || typeof results !== 'object' || 
-                        (typeof results.getNumPois === 'function' && results.getNumPois() === 0)) {
+                    if (!results || results.getNumPois() === 0) {
                         document.getElementById('result-count').textContent = '未找到周边公交站点，正在尝试搜索地铁站...';
                         // 继续搜索地铁站
                         searchSubwayStations(point);
@@ -1177,8 +1180,7 @@
                 onError: function(error) {
                     document.getElementById('loading').style.display = 'none';
                     console.error("搜索周边公交站点失败:", error);
-                    // 尝试继续搜索地铁站，不要立即警告用户
-                    searchSubwayStations(point);
+                    alert("搜索周边公交站点失败，请重试");
                 }
             });
             
@@ -1306,10 +1308,11 @@
                 html2canvas(mapContainer, {
                     useCORS: true,
                     allowTaint: true,
-                    logging: false,
-                    scale: window.devicePixelRatio || 1, // 使用设备像素比来提高清晰度
+                    logging: true, // 开启日志以便调试
+                    scale: window.devicePixelRatio || 2, // 提高清晰度
                     backgroundColor: "#ffffff",
-                    willReadFrequently: true, // 添加willReadFrequently属性
+                    willReadFrequently: true,
+                    foreignObjectRendering: false, // 禁用foreignObject渲染以避免某些浏览器的兼容性问题
                     ignoreElements: (element) => {
                         // 忽略任何隐藏的元素
                         return element.style.display === 'none';
@@ -1323,6 +1326,29 @@
                         if (clonedContainer) {
                             clonedContainer.style.opacity = '1';
                             clonedContainer.style.visibility = 'visible';
+                            
+                            // 百度地图特殊处理
+                            if (currentMapProvider === 'baidu') {
+                                // 确保所有百度地图元素可见
+                                const mapElements = clonedContainer.querySelectorAll('.BMap_mask, .BMap_shadow, .BMap_circle, .BMap_Marker, .BMap_Overlay, canvas');
+                                mapElements.forEach(element => {
+                                    if (element) {
+                                        element.style.opacity = '1';
+                                        element.style.visibility = 'visible';
+                                    }
+                                });
+                                
+                                // 特别强调圆形元素的显示
+                                const circles = clonedContainer.querySelectorAll('.BMap_circle');
+                                circles.forEach(circle => {
+                                    if (circle) {
+                                        circle.style.strokeOpacity = '1';
+                                        circle.style.fillOpacity = '0.2';
+                                        circle.style.strokeWidth = '3px';
+                                        circle.style.zIndex = '1000';
+                                    }
+                                });
+                            }
                             
                             // 特殊处理高德地图
                             if (currentMapProvider === 'gaode') {
@@ -1940,145 +1966,6 @@
             console.error("处理高德地图搜索结果失败:", error);
             document.getElementById('result-count').textContent = '处理搜索结果时出错';
         }
-    }
-    
-    // 创建高德地图静态图API
-    function createGaodeStaticMap() {
-        return new Promise((resolve, reject) => {
-            try {
-                if (!gaodeApiKey) {
-                    throw new Error("未找到高德地图API密钥");
-                }
-                
-                if (!window.center || !window.center.lng || !window.center.lat) {
-                    throw new Error("未找到中心点坐标");
-                }
-                
-                console.log("开始创建高德地图静态图...");
-                
-                // 使用Canvas直接创建地图图片，避免加载静态图片API
-                const width = 800;
-                const height = 600;
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d', { willReadFrequently: true }); // 添加willReadFrequently属性
-                
-                // 绘制背景
-                ctx.fillStyle = '#E6EFF8';  // 浅蓝色背景，类似地图底色
-                ctx.fillRect(0, 0, width, height);
-                
-                // 绘制简单的网格，模拟地图
-                ctx.strokeStyle = '#CCDDEE';
-                ctx.lineWidth = 1;
-                
-                // 水平线
-                for (let y = 50; y < height; y += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(width, y);
-                    ctx.stroke();
-                }
-                
-                // 垂直线
-                for (let x = 50; x < width; x += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, 0);
-                    ctx.lineTo(x, height);
-                    ctx.stroke();
-                }
-                
-                // 添加圆圈表示800米范围
-                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                // 使用固定大小的圆表示搜索范围
-                const radiusPixels = 200;  // 固定半径像素
-                ctx.arc(width/2, height/2, radiusPixels, 0, 2 * Math.PI);
-                ctx.stroke();
-                
-                // 填充圆圈
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-                ctx.fill();
-                
-                // 添加中心点标记
-                ctx.fillStyle = '#FF0000';
-                ctx.beginPath();
-                ctx.arc(width/2, height/2, 8, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // 在中心点添加"A"标识
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('A', width/2, height/2);
-                
-                // 如果有标记，添加到地图上
-                if (window.markers && window.markers.length > 1) {
-                    const stationMarkers = window.markers.filter(marker => !marker.isCenter).slice(0, 30); // 最多30个标记
-                    
-                    // 计算所有标记相对于中心点的偏移量
-                    const centerLng = window.center.lng;
-                    const centerLat = window.center.lat;
-                    
-                    stationMarkers.forEach((marker, index) => {
-                        // 计算偏移像素（简单线性映射）
-                        const lngDiff = marker.lng - centerLng;
-                        const latDiff = marker.lat - centerLat;
-                        
-                        // 缩放因子，确保标记在画布范围内
-                        const scaleFactor = 15000;
-                        const x = width/2 + lngDiff * scaleFactor;
-                        const y = height/2 - latDiff * scaleFactor;  // 纬度方向反转
-                        
-                        // 确保标记在画布内
-                        if (x >= 0 && x <= width && y >= 0 && y <= height) {
-                            // 确定颜色
-                            const color = marker.stationType === "地铁站" ? "#1890FF" : "#FF0000";
-                            
-                            // 绘制标记圆点
-                            ctx.fillStyle = color;
-                            ctx.beginPath();
-                            ctx.arc(x, y, 10, 0, 2 * Math.PI);
-                            ctx.fill();
-                            
-                            // 添加编号
-                            ctx.fillStyle = 'white';
-                            ctx.font = 'bold 10px Arial';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-                            ctx.fillText(index + 1, x, y);
-                        }
-                    });
-                }
-                
-                // 添加地址文本
-                ctx.fillStyle = '#333333';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                ctx.fillText(window.address || '未指定地址', width/2, 20);
-                
-                // 在右下角添加版权声明
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.fillRect(width - 150, height - 20, 150, 20);
-                ctx.fillStyle = '#666666';
-                ctx.font = '12px Arial';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('© 高德地图', width - 10, height - 10);
-                
-                // 生成图片数据
-                const imgData = canvas.toDataURL('image/png');
-                console.log("地图静态图生成成功");
-                resolve(imgData);
-                
-            } catch (error) {
-                console.error("创建高德静态地图失败:", error);
-                reject(error);
-            }
-        });
     }
     
     // 执行地图截图并处理后续操作 (改进版)

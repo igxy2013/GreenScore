@@ -257,7 +257,7 @@ def replace_placeholders(template_path, data):
                     placeholder_with_braces = match.group(0)
                     
                     # 获取值
-                    field_value = ''
+                    field_value = None
                     is_measure = placeholder.endswith('措施')
                     clause_number = placeholder[:-2] if is_measure else placeholder
                     
@@ -265,12 +265,21 @@ def replace_placeholders(template_path, data):
                         for item in data:
                             if str(item.get('条文号', '')) == clause_number:
                                 if is_measure:
-                                    field_value = str(item.get('技术措施', ''))
-                                    print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
+                                    field_value = item.get('技术措施')
                                 else:
-                                    field_value = str(item.get('得分', ''))
-                                    print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
+                                    field_value = item.get('得分')
                                 break
+                    
+                    # 如果字段值为None，替换为空字符串
+                    if field_value is None:
+                        field_value = ""
+                    else:
+                        field_value = str(field_value)
+                    
+                    if is_measure:
+                        print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
+                    else:
+                        print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
                     
                     # 替换占位符
                     new_text = new_text.replace(placeholder_with_braces, field_value)
@@ -279,32 +288,44 @@ def replace_placeholders(template_path, data):
                 for field in project_fields:
                     placeholder = '{' + field + '}'
                     if placeholder in text:
-                        field_value = ''
+                        field_value = None
                         if data and isinstance(data[0], dict):
-                            field_value = str(data[0].get(field, ''))
-                            if not field_value and field in ['地址', '项目地址', '公共交通地址', 'address']:
+                            field_value = data[0].get(field)
+                            if field_value is None and field in ['地址', '项目地址', '公共交通地址', 'address']:
                                 # 如果是地址相关字段但值为空，尝试从详细地址获取
-                                field_value = str(data[0].get('详细地址', ''))
+                                field_value = data[0].get('详细地址')
+                            
+                            # 如果字段值为None，替换为空字符串
+                            if field_value is None:
+                                field_value = ""
+                            else:
+                                field_value = str(field_value)
+                            
                             print(f"替换占位符 {placeholder} -> {field_value}")
-                        
-                        # 替换占位符
-                        new_text = new_text.replace(placeholder, field_value)
+                            # 替换占位符
+                            new_text = new_text.replace(placeholder, field_value)
                 
                 # 查找映射的简写字段
                 for short_name, full_name in placeholder_mapping.items():
                     placeholder = '{' + short_name + '}'
                     if placeholder in text:
-                        field_value = ''
+                        field_value = None
                         if data and isinstance(data[0], dict):
                             # 先查找全名
-                            field_value = str(data[0].get(full_name, ''))
+                            field_value = data[0].get(full_name)
                             # 如果没有值，再查找简写名
-                            if not field_value:
-                                field_value = str(data[0].get(short_name, ''))
+                            if field_value is None:
+                                field_value = data[0].get(short_name)
+                            
+                            # 如果字段值为None，替换为空字符串
+                            if field_value is None:
+                                field_value = ""
+                            else:
+                                field_value = str(field_value)
+                            
                             print(f"替换简写占位符 {placeholder} -> {field_value}")
-                        
-                        # 替换占位符
-                        new_text = new_text.replace(placeholder, field_value)
+                            # 替换占位符
+                            new_text = new_text.replace(placeholder, field_value)
                 
                 # 如果文本已更改，创建新段落内容
                 if new_text != text:
@@ -344,7 +365,7 @@ def replace_placeholders(template_path, data):
                                 placeholder_with_braces = match.group(0)
                                 
                                 # 获取值
-                                field_value = ''
+                                field_value = None
                                 is_measure = placeholder.endswith('措施')
                                 clause_number = placeholder[:-2] if is_measure else placeholder
                                 
@@ -352,12 +373,21 @@ def replace_placeholders(template_path, data):
                                     for item in data:
                                         if str(item.get('条文号', '')) == clause_number:
                                             if is_measure:
-                                                field_value = str(item.get('技术措施', ''))
-                                                print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
+                                                field_value = item.get('技术措施')
                                             else:
-                                                field_value = str(item.get('得分', ''))
-                                                print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
+                                                field_value = item.get('得分')
                                             break
+                                
+                                # 如果字段值为None，替换为空字符串
+                                if field_value is None:
+                                    field_value = ""
+                                else:
+                                    field_value = str(field_value)
+                                
+                                if is_measure:
+                                    print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
+                                else:
+                                    print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
                                 
                                 # 替换占位符
                                 new_text = new_text.replace(placeholder_with_braces, field_value)
@@ -366,32 +396,44 @@ def replace_placeholders(template_path, data):
                             for field in project_fields:
                                 placeholder = '{' + field + '}'
                                 if placeholder in text:
-                                    field_value = ''
+                                    field_value = None
                                     if data and isinstance(data[0], dict):
-                                        field_value = str(data[0].get(field, ''))
-                                        if not field_value and field in ['地址', '项目地址', '公共交通地址', 'address']:
+                                        field_value = data[0].get(field)
+                                        if field_value is None and field in ['地址', '项目地址', '公共交通地址', 'address']:
                                             # 如果是地址相关字段但值为空，尝试从详细地址获取
-                                            field_value = str(data[0].get('详细地址', ''))
+                                            field_value = data[0].get('详细地址')
+                                        
+                                        # 如果字段值为None，替换为空字符串
+                                        if field_value is None:
+                                            field_value = ""
+                                        else:
+                                            field_value = str(field_value)
+                                        
                                         print(f"替换占位符 {placeholder} -> {field_value}")
-                                    
-                                    # 替换占位符
-                                    new_text = new_text.replace(placeholder, field_value)
+                                        # 替换占位符
+                                        new_text = new_text.replace(placeholder, field_value)
                             
                             # 查找映射的简写字段
                             for short_name, full_name in placeholder_mapping.items():
                                 placeholder = '{' + short_name + '}'
                                 if placeholder in text:
-                                    field_value = ''
+                                    field_value = None
                                     if data and isinstance(data[0], dict):
                                         # 先查找全名
-                                        field_value = str(data[0].get(full_name, ''))
+                                        field_value = data[0].get(full_name)
                                         # 如果没有值，再查找简写名
-                                        if not field_value:
-                                            field_value = str(data[0].get(short_name, ''))
+                                        if field_value is None:
+                                            field_value = data[0].get(short_name)
+                                        
+                                        # 如果字段值为None，替换为空字符串
+                                        if field_value is None:
+                                            field_value = ""
+                                        else:
+                                            field_value = str(field_value)
+                                        
                                         print(f"替换简写占位符 {placeholder} -> {field_value}")
-                                    
-                                    # 替换占位符
-                                    new_text = new_text.replace(placeholder, field_value)
+                                        # 替换占位符
+                                        new_text = new_text.replace(placeholder, field_value)
                             
                             # 如果文本已更改，创建新段落内容
                             if new_text != text:
