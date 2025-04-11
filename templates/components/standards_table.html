@@ -1,6 +1,12 @@
 <!-- 标准列表内容 -->
 <!-- 添加隐藏的项目ID字段 -->
 <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
+<input type="hidden" id="current-project-id" name="current-project-id" value="{{ project.id if project else '' }}">
+
+{% if current_level == '提高级' %}
+<!-- 在提高级页面加载浮动徽章组件 -->
+{% include 'components/floating_badge.html' %}
+{% endif %}
 
 <div class="overflow-x-auto">
     {% if standards %}
@@ -162,6 +168,16 @@
         
         // 加载页面时获取保存的评分信息
         loadScores();
+        
+        // 如果是提高级，初始化徽章过滤器和更新徽章状态
+        if ('{{ current_level }}' === '提高级') {
+            if (typeof initializeBadgeFilters === 'function') {
+                initializeBadgeFilters();
+            }
+            if (typeof updateCategoryBadges === 'function') {
+                setTimeout(updateCategoryBadges, 1500);
+            }
+        }
     });
     
     // 保存评分信息
@@ -249,6 +265,10 @@
                 // 刷新评分汇总
                 if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
                     scoreUtils.fetchScoreSummary();
+                }
+                // 更新分类达标徽章状态
+                if ('{{ current_level }}' === '提高级' && typeof updateCategoryBadges === 'function') {
+                    setTimeout(updateCategoryBadges, 1000);
                 }
             } else {
                 alert(data.message || '保存失败');
