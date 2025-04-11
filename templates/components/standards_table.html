@@ -450,9 +450,9 @@
         }
         
         try {
-            console.log('使用/api/load_scores端点');
+            console.log('使用/api/project_scores端点');
             
-            const url = `/api/load_scores?project_id=${projectId}&level={{ current_level }}&specialty={{ current_specialty }}&force_refresh=${forceRefresh}`;
+            const url = `/api/project_scores?project_id=${projectId}&level={{ current_level }}&specialty={{ current_specialty }}&force_refresh=${forceRefresh}`;
             
             console.log('请求URL:', url);
             
@@ -466,7 +466,8 @@
                 })
                 .then(data => {
                     console.log('加载的评分数据:', data);
-                    if (data.success && data.scores && Array.isArray(data.scores)) {
+                    // 修改解析数据的方式，以匹配新API的返回格式
+                    if (data.success && data.sample_scores && Array.isArray(data.sample_scores)) {
                         // 获取页面上所有的输入元素
                         const allInputs = document.querySelectorAll('input[name="score"]');
                         const allTextareas = document.querySelectorAll('textarea[name="technical_measures"]');
@@ -503,8 +504,8 @@
                             }
                         });
                         
-                        // 填充表格
-                        data.scores.forEach(item => {
+                        // 填充表格 - 注意：从sample_scores字段提取数据
+                        data.sample_scores.forEach(item => {
                             try {
                                 // 获取条文号
                                 const clause = item.clause_number;

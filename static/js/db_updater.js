@@ -836,40 +836,71 @@ function batchUpdateScoresPromise(scoresData, projectId, isAchieved = true) {
 
 /**
  * 获取当前项目ID
- * @returns {number} 当前项目ID，如果未找到则返回1
+ * @returns {number} 当前项目ID
  */
 function getCurrentProjectId() {
-    const projectIdElement = document.getElementById('current-project-id');
-    if (projectIdElement) {
-        return projectIdElement.value || 1;
-    }
+    // 尝试从多个可能的位置获取项目ID
     
-    // 尝试从URL中获取项目ID
+    // 1. 从URL参数获取
     const urlParams = new URLSearchParams(window.location.search);
-    const projectId = urlParams.get('project_id');
-    if (projectId) {
-        return projectId;
+    const projectIdFromUrl = urlParams.get('project_id');
+    if (projectIdFromUrl) {
+        return parseInt(projectIdFromUrl, 10);
     }
     
-    // 默认返回1
-    return 1;
+    // 2. 从隐藏输入字段获取
+    const projectIdInput = document.getElementById('project_id');
+    if (projectIdInput && projectIdInput.value) {
+        return parseInt(projectIdInput.value, 10);
+    }
+    
+    // 3. 从data属性获取
+    const projectIdData = document.body.getAttribute('data-project-id');
+    if (projectIdData) {
+        return parseInt(projectIdData, 10);
+    }
+    
+    // 4. 从localStorage获取
+    const projectIdFromStorage = localStorage.getItem('currentProjectId');
+    if (projectIdFromStorage) {
+        return parseInt(projectIdFromStorage, 10);
+    }
+    
+    // 如果都没有找到，返回null
+    console.warn('无法确定当前项目ID');
+    return null;
 }
 
 /**
- * 获取当前项目标准
- * @returns {string} 当前项目标准，如果未找到则返回'成都市标'
+ * 获取当前项目评价标准
+ * @returns {string} 当前项目评价标准
  */
 function getCurrentProjectStandard() {
-    const standardElement = document.getElementById('current-project-standard');
-    if (standardElement) {
-        return standardElement.value || '成都市标';
+    // 尝试从多个可能的位置获取项目标准
+    
+    // 1. 从URL参数获取
+    const urlParams = new URLSearchParams(window.location.search);
+    const standardFromUrl = urlParams.get('standard');
+    if (standardFromUrl) {
+        return standardFromUrl;
     }
     
-    // 尝试从URL中获取标准
-    const urlParams = new URLSearchParams(window.location.search);
-    const standard = urlParams.get('standard');
-    if (standard) {
-        return standard;
+    // 2. 从隐藏输入字段获取
+    const standardInput = document.getElementById('current-project-standard');
+    if (standardInput && standardInput.value) {
+        return standardInput.value;
+    }
+    
+    // 3. 从data属性获取
+    const standardData = document.body.getAttribute('data-standard');
+    if (standardData) {
+        return standardData;
+    }
+    
+    // 4. 从localStorage获取
+    const standardFromStorage = localStorage.getItem('currentProjectStandard');
+    if (standardFromStorage) {
+        return standardFromStorage;
     }
     
     // 默认返回成都市标

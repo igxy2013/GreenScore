@@ -357,6 +357,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 这是一个导航链接，让它正常工作
                 console.log("这是一个导航链接，正常跳转");
                 
+                // 获取菜单项的层级和专业信息
+                const menuLevel = this.getAttribute('data-level') || 
+                                  (this.closest('.menu-content').id.includes('basic') ? '基本级' : 
+                                  this.closest('.menu-content').id.includes('advanced') ? '提高级' : '');
+                
+                const menuSpecialty = this.getAttribute('data-specialty') || '';
+                
+                // 保存当前选中的菜单信息，用于页面加载后自动加载数据
+                if (menuLevel && menuSpecialty) {
+                    console.log(`保存菜单信息: 级别=${menuLevel}, 专业=${menuSpecialty}`);
+                    sessionStorage.setItem('selectedMenuLevel', menuLevel);
+                    sessionStorage.setItem('selectedMenuSpecialty', menuSpecialty);
+                    
+                    // 如果页面已经加载完成并匹配当前选择，直接加载数据
+                    if (document.readyState === 'complete') {
+                        console.log('页面已加载完成，尝试直接加载数据');
+                        loadFormDataFromDatabase(menuLevel, menuSpecialty);
+                    }
+                }
+                
                 // 在导航前调用防止页面跳动的函数
                 preventPageJump();
                 
@@ -380,6 +400,222 @@ document.addEventListener('DOMContentLoaded', function() {
             // 对于其他子菜单项的处理...
         });
     });
+    
+    // 页面加载完成后尝试加载表单数据
+    document.addEventListener('DOMContentLoaded', function() {
+        // 从sessionStorage获取之前选择的菜单信息
+        const selectedLevel = sessionStorage.getItem('selectedMenuLevel');
+        const selectedSpecialty = sessionStorage.getItem('selectedMenuSpecialty');
+        
+        // 检查当前页面是否与选择的菜单匹配
+        const currentLevel = document.body.getAttribute('data-level') || '';
+        const currentSpecialty = document.body.getAttribute('data-specialty') || '';
+        
+        if (selectedLevel && selectedSpecialty && 
+            (currentLevel === selectedLevel || !currentLevel) && 
+            (currentSpecialty === selectedSpecialty || !currentSpecialty)) {
+            console.log('页面加载完成，开始加载数据库数据');
+            // 等待页面完全渲染后再加载数据
+            setTimeout(() => {
+                loadFormDataFromDatabase(selectedLevel, selectedSpecialty);
+            }, 500);
+        }
+    });
+    
+    /**
+     * 从数据库加载表单数据
+     * @param {string} level - 级别（基本级/提高级）
+     * @param {string} specialty - 专业名称
+     */
+    function loadFormDataFromDatabase(level, specialty) {
+        console.log(`开始从数据库加载数据: 级别=${level}, 专业=${specialty}`);
+        
+        // 获取当前项目ID
+        const projectId = getCurrentProjectId();
+        if (!projectId) {
+            console.error('无法获取项目ID，数据加载失败');
+            return;
+        }
+        
+        // 获取当前项目标准
+        const standard = getCurrentProjectStandard() || '成都市标';
+        
+        // 准备请求数据
+        const requestData = {
+            project_id: projectId,
+            level: level,
+            specialty: specialty,
+            standard: standard
+        };
+        
+        // 显示加载中提示
+        const loaderElement = document.getElementById('page-loader');
+        if (loaderElement) loaderElement.style.display = 'flex';
+        
+        // 发送API请求获取数据
+        fetch('/api/project_scores?' + new URLSearchParams({
+            project_id: projectId,
+            level: level,
+            specialty: specialty,
+            standard: standard
+        }))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP错误，状态码: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('获取到的数据:', data);
+            
+            if (!data.success) {
+                throw new Error(data.message || '获取数据失败');
+            }
+            
+            // 更新表单数据
+            updateFormWithData(data, level);
+            
+            // 显示成功提示
+            showToast('数据加载成功', 'success');
+        })
+        .catch(error => {
+            console.error('加载数据出错:', error);
+            showToast(`加载数据失败: ${error.message}`, 'error');
+        })
+        .finally(() => {
+            // 隐藏加载中提示
+            if (loaderElement) loaderElement.style.display = 'none';
+        });
+    }
+    
+    /**
+     * 更新表单数据
+     * @param {Object} data - 从服务器获取的数据
+     * @param {string} level - 级别（基本级/提高级）
+     */
+    function updateFormWithData(data, level) {
+        console.log('开始更新表单数据');
+        
+        // 获取表格中的所有行
+        const tableRows = document.querySelectorAll('tbody tr');
+        if (!tableRows.length) {
+            console.log('未找到表格行，可能页面还未完全加载');
+            return;
+        }
+        
+        // 从数据中提取评分信息
+        const scores = data.sample_scores || [];
+        const scoreMap = {};
+        
+        // 将数据整理成以条文号为键的映射
+        scores.forEach(score => {
+            scoreMap[score.clause_number] = {
+                is_achieved: score.is_achieved,
+                score: score.score,
+                technical_measures: score.technical_measures || ''
+            };
+        });
+        
+        console.log('整理后的数据映射:', scoreMap);
+        
+        // 更新表格数据
+        tableRows.forEach(row => {
+            // 获取条文号
+            const clauseCell = row.querySelector('td:first-child');
+            if (!clauseCell) return;
+            
+            const clauseNumber = clauseCell.textContent.trim();
+            const scoreData = scoreMap[clauseNumber];
+            
+            if (scoreData) {
+                console.log(`更新条文 ${clauseNumber} 的数据:`, scoreData);
+                
+                if (level === '基本级') {
+                    // 对于基本级，更新是否达标和技术措施
+                    const isAchievedSelect = row.querySelector('.is-achieved-select');
+                    const technicalMeasuresTextarea = row.querySelector('textarea[data-clause]');
+                    
+                    if (isAchievedSelect) {
+                        isAchievedSelect.value = scoreData.is_achieved;
+                    }
+                    
+                    if (technicalMeasuresTextarea) {
+                        technicalMeasuresTextarea.value = scoreData.technical_measures;
+                    }
+                } else if (level === '提高级') {
+                    // 对于提高级，更新得分和技术措施
+                    const scoreInput = row.querySelector('input[type="number"]');
+                    const technicalMeasuresTextarea = row.querySelector('textarea[data-clause]');
+                    
+                    if (scoreInput) {
+                        scoreInput.value = scoreData.score;
+                    }
+                    
+                    if (technicalMeasuresTextarea) {
+                        technicalMeasuresTextarea.value = scoreData.technical_measures;
+                    }
+                }
+            }
+        });
+        
+        console.log('表单数据更新完成');
+    }
+    
+    /**
+     * 显示提示消息
+     * @param {string} message - 消息内容
+     * @param {string} type - 消息类型（success/error/info/warning）
+     */
+    function showToast(message, type = 'info') {
+        // 检查是否已存在toast容器
+        let toastContainer = document.getElementById('toast-container');
+        
+        // 如果没有toast容器，创建一个
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.style.position = 'fixed';
+            toastContainer.style.top = '20px';
+            toastContainer.style.right = '20px';
+            toastContainer.style.zIndex = '9999';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // 创建toast元素
+        const toast = document.createElement('div');
+        toast.className = `custom-toast ${type}`;
+        
+        // 设置图标
+        let icon = '';
+        switch (type) {
+            case 'success': icon = 'fa-check-circle'; break;
+            case 'error': icon = 'fa-times-circle'; break;
+            case 'warning': icon = 'fa-exclamation-triangle'; break;
+            default: icon = 'fa-info-circle';
+        }
+        
+        // 设置toast内容
+        toast.innerHTML = `
+            <div class="custom-toast-icon">
+                <i class="fas ${icon}"></i>
+            </div>
+            <div class="custom-toast-message">${message}</div>
+        `;
+        
+        // 添加到容器
+        toastContainer.appendChild(toast);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            toast.style.animation = 'toast-out 0.3s ease-out forwards';
+            setTimeout(() => {
+                toastContainer.removeChild(toast);
+                if (toastContainer.children.length === 0) {
+                    document.body.removeChild(toastContainer);
+                }
+            }, 300);
+        }, 3000);
+    }
     
     // 强制修复菜单展开状态（延迟执行以确保页面完全加载）
     setTimeout(function() {

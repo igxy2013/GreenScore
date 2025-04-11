@@ -22,11 +22,15 @@
                 <i class="ri-arrow-down-s-line ml-auto"></i>
             </div>
             <div id="basicMenuContent" class="menu-content">
-                <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}">
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" 
+                   class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}"
+                   data-level="基本级" data-specialty="建筑">
                         <i class="ri-building-line mr-3"></i>
                     <span>建筑</span>
                 </a>
-                <a href="{{ url_for('filter_standards', level='基本级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}">
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='结构', project_id=project.id if project else None) }}" 
+                   class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}"
+                   data-level="基本级" data-specialty="结构">
                     <i class="ri-layout-2-line mr-3"></i>
                     <span>结构</span>
                 </a>
@@ -61,11 +65,15 @@
                 <i class="ri-arrow-down-s-line ml-auto"></i>
             </div>
             <div id="advancedMenuContent" class="menu-content">
-                <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '建筑' %}active{% endif %}">
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑', project_id=project.id if project else None) }}" 
+                   class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '建筑' %}active{% endif %}"
+                   data-level="提高级" data-specialty="建筑">
                     <i class="ri-building-line mr-3"></i>
                     <span>建筑</span>
                 </a>
-                <a href="{{ url_for('filter_standards', level='提高级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '结构' %}active{% endif %}">
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='结构', project_id=project.id if project else None) }}" 
+                   class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '结构' %}active{% endif %}"
+                   data-level="提高级" data-specialty="结构">
                     <i class="ri-layout-2-line mr-3"></i>
                     <span>结构</span>
                 </a>
