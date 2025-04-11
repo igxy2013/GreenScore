@@ -414,10 +414,7 @@ def replace_placeholders(template_path, data):
         # 确保temp目录存在
         os.makedirs('temp', exist_ok=True)
         
-        # 生成带时间戳的输出文件名
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        output_path = os.path.join('temp', f'report_{timestamp}.docx')
+        output_path = os.path.join('temp', '公共交通站点分析报告.docx')
         
         # 保存修改后的文档
         doc.save(output_path)

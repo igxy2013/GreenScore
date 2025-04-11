@@ -1,8 +1,15 @@
 from word_template import replace_placeholders
 import os
 import json
+import base64
+import io
 from datetime import datetime
 from flask import current_app
+from docx import Document
+from docx.shared import Inches, Pt
+from docx.oxml.ns import qn
+# 导入我们的自定义占位符处理函数
+from process_custom_placeholders import process_custom_placeholders
 
 def generate_transport_report(data):
     """
@@ -12,7 +19,7 @@ def generate_transport_report(data):
         data: 包含以下字段的字典：
             - address: 详细地址
             - stations: 站点列表，每个站点包含 {name, type, distance, detail}
-            - map_image: 地图截图的base64编码
+            - mapImage: 地图截图的base64编码
             - conclusion: 分析结论，包含 {result6_1_2, result6_2_1, totalScore}
             - project_info: 项目基本信息
     
@@ -46,57 +53,130 @@ def generate_transport_report(data):
         print("\n项目信息内容:")
         print(json.dumps(project_info, ensure_ascii=False, indent=2))
         
-        # 准备数据
-        final_data = []
-        
-        # 创建完整的项目信息字典
+        # 准备数据 - 符合word_template.py期望的格式
+        # 创建项目基础信息字典作为列表第一个元素
         project_data = {}
         
-        # 首先添加所有原始项目信息字段
-        for key, value in project_info.items():
-            project_data[key] = value
+        # 添加项目基本信息
+        if isinstance(project_info, dict):
+            for key, value in project_info.items():
+                project_data[key] = value
         
-        # 添加地址相关字段，确保各种格式的占位符都能被替换
-        address_fields = ['详细地址', '地址', '项目地址', '公共交通地址', 'address']
-        for field in address_fields:
-            project_data[field] = address
+        # 用户提到的实际存在于模板中的占位符
+        # 1. 项目名称等基础信息 - 已从project_info中添加
+        # 2. 地址相关
+        project_data['详细地址'] = address
+        project_data['地址'] = address
         
-        # 添加结论字段，确保各种格式的占位符都能被替换
-        conclusion_text = ""
+        # 3. 结论
         if isinstance(conclusion, dict):
-            result6_1_2 = conclusion.get('result6_1_2', '')
-            result6_2_1 = conclusion.get('result6_2_1', '')
-            total_score = conclusion.get('totalScore', 0)
-            conclusion_text = f"{result6_1_2}\n\n{result6_2_1}\n\n总得分：{total_score}分"
-        elif isinstance(conclusion, str):
-            conclusion_text = conclusion
+            conclusion_text = f"{conclusion.get('result6_1_2', '')}\n\n{conclusion.get('result6_2_1', '')}总得分：{conclusion.get('totalScore', 0)}分"
+            project_data['结论'] = conclusion_text
         
-        conclusion_fields = ['结论', '交通分析结论', '分析结论', '评价结论']
-        for field in conclusion_fields:
-            project_data[field] = conclusion_text
-        
-        # 添加当前日期
+        # 4. 设计日期
         current_date = datetime.now().strftime("%Y年%m月%d日")
         project_data['设计日期'] = current_date
-        project_data['日期'] = current_date
         
-        # 将项目信息添加到final_data
-        final_data.append(project_data)
+        # 5. 地图截图 - 为了兼容现有的replace_placeholders函数，提供文本占位符
+        # 但实际图片会在后续步骤中处理
+        project_data['地图截图'] = "{地图截图}"
         
-        # 输出最终数据结构（部分）
-        print("\n最终处理的数据结构(部分):")
-        print(f"详细地址: {project_data.get('详细地址', '未设置')}")
-        print(f"项目名称: {project_data.get('projectName', '未设置')}")
-        print(f"结论: {project_data.get('结论', '未设置')[:100]}...")
+        # 6. 公交站点列表 - 同样提供文本占位符
+        project_data['公交站点列表'] = "{公交站点列表}"
         
-        # 调用Word模板处理函数
-        output_path = replace_placeholders(template_path, final_data)
+        # 创建最终的数据列表 - 第一个元素包含所有信息
+        final_data = [project_data]
         
-        print(f"\n报告生成完成: {output_path}")
+        # 将站点列表添加为单独的数据项（为表格处理准备）
+        for station in stations:
+            final_data.append(station)
         
-        return output_path
+        print("\n将传递给模板系统的数据结构:")
+        print(f"数据列表长度: {len(final_data)}")
+        print(f"第一个元素包含的字段: {', '.join(k for k in final_data[0].keys() if k not in ['地图截图', '公交站点列表'])}")
+        
+        # 第一步：调用基本的Word模板处理函数处理文本占位符
+        temp_output_path = replace_placeholders(template_path, final_data)
+        
+        # 检查第一步处理的结果文件是否存在
+        if not os.path.exists(temp_output_path):
+            raise Exception(f"文本占位符处理失败，输出文件不存在: {temp_output_path}")
+        
+        print(f"\n基本文本替换完成: {temp_output_path}")
+        
+        # 设置替换后的文本为宋体小四
+        set_replaced_text_font(temp_output_path, project_data)
+        
+        # 准备自定义占位符处理的数据
+        custom_data = {
+            '地图截图': map_image,
+            'stations': stations
+        }
+        
+        # 第二步：处理特殊占位符（图片和表格）
+        final_output_path = process_custom_placeholders(temp_output_path, custom_data)
+        
+        print(f"\n报告生成完成: {final_output_path}")
+        
+        return final_output_path
     except Exception as e:
         print(f"生成报告失败: {str(e)}")
         import traceback
         print(traceback.format_exc())
         raise Exception(f"生成报告失败: {str(e)}")
+
+def set_replaced_text_font(docx_path, project_data):
+    """
+    设置被替换的文本为宋体小四
+    
+    参数:
+        docx_path: Word文档路径
+        project_data: 包含替换值的字典
+    """
+    try:
+        # 加载文档
+        doc = Document(docx_path)
+        
+        # 获取替换值列表，用于识别哪些文本是我们替换的
+        replacement_values = []
+        for key, value in project_data.items():
+            if key not in ['地图截图', '公交站点列表'] and value:
+                replacement_values.append(str(value))
+        
+        # 遍历所有段落
+        for paragraph in doc.paragraphs:
+            # 检查段落文本是否包含我们的替换值
+            for value in replacement_values:
+                if value in paragraph.text:
+                    # 找到了可能包含替换值的段落，设置所有run的字体
+                    for run in paragraph.runs:
+                        if any(val in run.text for val in replacement_values):
+                            # 这个run包含我们替换的值
+                            run.font.name = '宋体'
+                            run.font.size = Pt(12)  # 小四字号为12磅
+                            run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        
+        # 遍历所有表格
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        # 检查段落文本是否包含我们的替换值
+                        for value in replacement_values:
+                            if value in paragraph.text:
+                                # 找到了可能包含替换值的段落，设置所有run的字体
+                                for run in paragraph.runs:
+                                    if any(val in run.text for val in replacement_values):
+                                        # 这个run包含我们替换的值
+                                        run.font.name = '宋体'
+                                        run.font.size = Pt(12)  # 小四字号为12磅
+                                        run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        
+        # 保存修改后的文档
+        doc.save(docx_path)
+        print("设置替换文本字体为宋体小四完成")
+        
+    except Exception as e:
+        print(f"设置替换文本字体时出错: {str(e)}")
+        import traceback
+        print(traceback.format_exc())

@@ -1052,8 +1052,8 @@
         // 检查是否有站点数据
         if (!window.stations || window.stations.length === 0) {
             return {
-                result6_1_2: "不符合规范6.1.2要求，场地人行出入口500m内未检测到公共交通站点。",
-                result6_2_1: "不符合规范6.2.1要求，场地周边未检测到公共交通站点，总得分为0分。",
+                result6_1_2: "不符合《绿色建筑评价标准》（2024版）6.1.2要求，场地人行出入口500m内无公共交通站点。建设单位需提供专用接驳车。",
+                result6_2_1: "不符合《绿色建筑评价标准》（2024版）6.2.1要求，场地周边无公共交通站点，总得分为0分。",
                 totalScore: 0
             };
         }
@@ -1134,8 +1134,8 @@
         
         // 合成最终结论
         const result = {
-            result6_1_2: `${conclusion.score6_1_2}规范6.1.2要求。${conclusion.distanceText}。`,
-            result6_2_1: `按照规范6.2.1评分，总得分为${conclusion.totalScore}分，其中：
+            result6_1_2: `${conclusion.score6_1_2}《绿色建筑评价标准》（2024版）6.1.2要求。${conclusion.distanceText}。`,
+            result6_2_1: `按照《绿色建筑评价标准》（2024版）6.2.1评分，总得分为${conclusion.totalScore}分，其中：
 - ${conclusion.distanceText}，得${conclusion.score6_2_1_1}分；
 - ${conclusion.routesText}，总计${totalLines}条线路，得${conclusion.score6_2_1_2}分。`,
             totalScore: conclusion.totalScore
@@ -1748,18 +1748,8 @@
                             }
                         }
                     } else {
-                        console.warn("未提供项目ID，无法获取项目信息，将使用默认信息");
-                        // 创建基本项目信息，使用地址和当前日期
-                        const today = new Date();
-                        const dateStr = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
-                        
-                        projectInfo = {
-                            "项目名称": "公共交通站点分析",
-                            "项目地点": window.address || "未指定地址",
-                            "设计日期": dateStr,
-                            "日期": dateStr
-                        };
-                        console.log("使用默认项目信息:", projectInfo);
+                        alert("未提供项目ID，无法获取项目信息!");
+                        return;
                     }
                 } catch (error) {
                     console.error("获取项目信息时发生错误:", error);
@@ -1775,14 +1765,6 @@
                     // 将项目信息整体传递，保留原始结构
                     project_info: projectInfo
                 };
-                
-                // 同时创建地址的别名，确保模板中的不同占位符都能被替换
-                if (data.address) {
-                    data.详细地址 = data.address;
-                    data.地址 = data.address;
-                    data.项目地址 = data.address;
-                    data.公共交通地址 = data.address;
-                }
                 
                 console.log("发送到后端的数据:", JSON.stringify(data));
                 
