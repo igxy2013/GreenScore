@@ -2626,8 +2626,12 @@ def delete_project(project_id):
         return jsonify({'error': '删除项目失败'}), 500
 
 @app.route('/')
-def index():
+def home():
     return render_template('login.html')
+
+@app.route('/index')
+def index():
+    return render_template('index.html')
 
 @app.route('/reset_password')
 def reset_password_page():
