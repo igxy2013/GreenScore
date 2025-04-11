@@ -977,6 +977,10 @@ def login_page():
 def register_page():
     return render_template('register.html')
 
+@app.route('/')
+def index():
+    return render_template('index.html')
+
 @app.route('/', methods=['POST'])
 def handle_form():
     try:
