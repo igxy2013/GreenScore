@@ -119,22 +119,20 @@
                 <i class="ri-arrow-down-s-line ml-auto"></i>
             </div>
             <div id="reportMenuContent" class="menu-content">
-                <div class="submenu-group" id="reportSubmenu">
-                    <a href="javascript:void(0)" onclick="generateWord()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
-                        <i class="ri-file-list-3-line mr-3"></i>
-                        <span>报审表</span>
-                    </a>
-                    <a href="javascript:void(0)" onclick="generateDWG()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'dwg_export' %}active{% endif %}">
-                        <i class="ri-leaf-line mr-3"></i>
-                        <span>绿色建筑设计专篇</span>
-                    </a>
-                    {% if project and project.standard == '国标' %}
-                    <a href="javascript:void(0)" onclick="generateSelfAssessmentReport(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
-                        <i class="ri-book-line mr-3"></i>
-                        <span>绿建自评估报告</span>
-                    </a>
-                    {% endif %}
-                </div>
+                <a href="javascript:void(0)" onclick="generateWord()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
+                    <i class="ri-file-list-3-line mr-3"></i>
+                    <span>报审表</span>
+                </a>
+                <a href="javascript:void(0)" onclick="generateDWG()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'dwg_export' %}active{% endif %}">
+                    <i class="ri-leaf-line mr-3"></i>
+                    <span>绿色建筑设计专篇</span>
+                </a>
+                {% if project and project.standard == '国标' %}
+                <a href="javascript:void(0)" onclick="generateSelfAssessmentReport(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                    <i class="ri-book-line mr-3"></i>
+                    <span>绿建自评估报告</span>
+                </a>
+                {% endif %}
             </div>
             
             <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="specialCalcMenuToggle">
@@ -143,20 +141,18 @@
                 <i class="ri-arrow-down-s-line ml-auto"></i>
             </div>
             <div id="specialCalcMenuContent" class="menu-content">
-                <div class="submenu-group" id="specialCalcSubmenu">
-                    <a href="{{ url_for('project_detail', project_id=project.id, page='solar_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'solar_calculator' %}active{% endif %}">
-                        <i class="ri-flashlight-line mr-3"></i>
-                        <span>太阳能计算</span>
-                    </a>
-                    <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
-                        <i class="ri-calculator-line mr-3"></i>
-                        <span>绿色建材应用比例</span>
-                    </a>
-                    <a href="{{ url_for('project_detail', project_id=project.id, page='public_transport_analysis') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'public_transport_analysis' %}active{% endif %}">
-                        <i class="ri-bus-line mr-3"></i>
-                        <span>公共交通分析</span>
-                    </a>
-                </div>
+                <a href="{{ url_for('project_detail', project_id=project.id, page='solar_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'solar_calculator' %}active{% endif %}">
+                    <i class="ri-flashlight-line mr-3"></i>
+                    <span>太阳能计算</span>
+                </a>
+                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                    <i class="ri-calculator-line mr-3"></i>
+                    <span>绿色建材应用比例</span>
+                </a>
+                <a href="{{ url_for('project_detail', project_id=project.id, page='public_transport_analysis') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'public_transport_analysis' %}active{% endif %}">
+                    <i class="ri-bus-line mr-3"></i>
+                    <span>公共交通分析</span>
+                </a>
             </div>
         </div>
     </nav>

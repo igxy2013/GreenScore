@@ -551,3 +551,23 @@ input[name="score"]:focus {
 #floatingSaveBtn button:active {
     transform: scale(0.95);
 }
+
+/* 统一所有子菜单图标样式 */
+.submenu-item i {
+    min-width: 20px;
+    text-align: center;
+    margin-right: 0.75rem !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 确保所有子菜单布局一致 */
+.menu-content .submenu-item {
+    display: flex !important;
+    align-items: center !important;
+    padding: 0.75rem 1rem !important;
+    height: 3rem !important; /* 固定高度 */
+    box-sizing: border-box !important;
+    line-height: 1.5 !important;
+}
