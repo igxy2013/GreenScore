@@ -11,12 +11,88 @@
     <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
-        <!-- 使用Font Awesome图标库 -->
     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+    <style>
+        @media (max-width: 768px) {
+            #sideNav {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                position: fixed;
+                z-index: 50;
+                width: 100%;
+                max-width: 20rem;
+            }
+            #sideNav.show {
+                transform: translateX(0);
+                box-shadow: 4px 0 6px rgba(0, 0, 0, 0.1);
+            }
+            #mainContent {
+                margin-left: 0;
+                padding-top: 1rem;
+            }
+            .grid-cols-1, .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+                gap: 1rem;
+            }
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin: 0 -1rem;
+                padding: 0 1rem;
+            }
+            .search-operation-bar {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .search-operation-bar > div {
+                width: 100%;
+            }
+            .pagination-controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+                text-align: center;
+            }
+            .table-card-view {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            .table-card-view .project-card {
+                background: white;
+                border-radius: 0.5rem;
+                padding: 1rem;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+            .table-card-view .card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 0.5rem;
+            }
+            .table-card-view .card-content {
+                display: grid;
+                gap: 0.5rem;
+            }
+            .table-card-view .card-footer {
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.5rem;
+                margin-top: 1rem;
+                padding-top: 0.5rem;
+                border-top: 1px solid #e5e7eb;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-100 flex">
+    <!-- 移动端菜单按钮 -->
+    <button id="menuToggle" class="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-lg shadow-lg">
+        <i class="fas fa-bars text-gray-600"></i>
+    </button>
     <!-- 左侧导航栏 -->
-    <nav class="w-64 bg-white shadow-lg h-screen fixed left-0 flex flex-col" id="sideNav">
+    <nav class="w-64 bg-white shadow-lg h-screen fixed left-0 flex flex-col z-40" id="sideNav">
         <div class="p-6 border-b">
             <h1 class="text-2xl font-bold text-primary flex items-center">                
                 <picture>
@@ -46,7 +122,7 @@
             </a>
         </div>
         <div class="p-4 border-t border-gray-200">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pagination-controls">
                 <div class="flex items-center text-gray-600">
                     <i class="fas fa-user-circle text-primary text-xl"></i>
                     <span class="ml-2">管理员</span>
@@ -65,7 +141,7 @@
             <!-- 项目管理卡片 -->
             <div id="project-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
                 <!-- 项目统计面板 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <!-- 总项目数 -->
                     <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
                         <div class="flex items-center">
@@ -121,7 +197,7 @@
 
                 <!-- 搜索和操作栏 -->
                 <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 search-operation-bar">
                         <div class="flex-1 max-w-sm">
                             <div class="relative">
                                 <input type="text" id="projectSearchInput" 
@@ -140,8 +216,16 @@
 
                 <!-- 项目列表表格 -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto table-container hidden md:block">
+                        <table class="min-w-full divide-y divide-gray-200 whitespace-nowrap">
+                            <colgroup>
+                                <col class="w-16">
+                                <col class="w-1/4">
+                                <col class="w-1/4">
+                                <col class="w-20">
+                                <col class="w-1/4">
+                                <col class="w-24">
+                            </colgroup>
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
@@ -172,9 +256,6 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button class="text-blue-600 hover:text-blue-900 view-project-btn" data-project-id="{{ project.id }}" title="查看详情">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
                                         <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -187,10 +268,50 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 移动端卡片视图 -->
+                    <div class="md:hidden table-card-view">
+                        {% for project in projects %}
+                        <div class="project-card">
+                            <div class="card-header">
+                                <span class="font-medium text-lg">{{ project.name }}</span>
+                                <span class="text-sm text-gray-500">#{{ project.id }}</span>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="text-sm text-gray-500">所属用户</div>
+                                    <div class="text-sm">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</div>
+                                    <div class="text-sm text-gray-500">分数</div>
+                                    <div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                                            {% if project.total_score is not none and project.total_score >= 80 %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.total_score is not none and project.total_score >= 60 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ project.total_score|default('尚未评分', true) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">创建时间</div>
+                                    <div class="text-sm">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                     
                     <!-- 分页控件 -->
                     <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pagination-controls">
                             <div class="text-sm text-gray-700">
                                 显示 <span id="projectStartIndex">1</span> 到 <span id="projectEndIndex">15</span> 条，共 <span id="projectTotalCount">{{ projects|length }}</span> 条
                                 <span class="ml-4">
@@ -213,7 +334,7 @@
             <!-- 用户管理卡片 -->
             <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
                 <!-- 用户统计面板 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <!-- 总用户数 -->
                     <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
                         <div class="flex items-center">
@@ -269,7 +390,7 @@
 
                 <!-- 搜索和操作栏 -->
                 <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 search-operation-bar">
                         <div class="flex-1 max-w-sm">
                             <div class="relative">
                                 <input type="text" id="userSearchInput" 
@@ -288,8 +409,16 @@
 
                 <!-- 用户列表表格 -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto table-container hidden md:block">
+                        <table class="min-w-full divide-y divide-gray-200 whitespace-nowrap">
+                            <colgroup>
+                                <col class="w-16">
+                                <col class="w-1/4">
+                                <col class="w-1/4">
+                                <col class="w-20">
+                                <col class="w-1/4">
+                                <col class="w-24">
+                            </colgroup>
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
@@ -339,10 +468,50 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 移动端卡片视图 -->
+                    <div class="md:hidden table-card-view">
+                        {% for project in projects %}
+                        <div class="project-card">
+                            <div class="card-header">
+                                <span class="font-medium text-lg">{{ project.name }}</span>
+                                <span class="text-sm text-gray-500">#{{ project.id }}</span>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="text-sm text-gray-500">所属用户</div>
+                                    <div class="text-sm">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</div>
+                                    <div class="text-sm text-gray-500">分数</div>
+                                    <div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                                            {% if project.total_score is not none and project.total_score >= 80 %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.total_score is not none and project.total_score >= 60 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ project.total_score|default('尚未评分', true) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">创建时间</div>
+                                    <div class="text-sm">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                     
                     <!-- 分页控件 -->
                     <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pagination-controls">
                             <div class="text-sm text-gray-700">
                                 显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
                                 <span class="ml-4">
@@ -365,7 +534,7 @@
             <div id="invite-code-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden mt-6">
                 <!-- 搜索和操作栏 -->
                 <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 search-operation-bar">
                         <div class="flex-1 max-w-sm">
                             <div class="relative">
                                 <input type="text" id="inviteCodeSearchInput" 
@@ -382,8 +551,16 @@
                     </div>
                 </div>
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto table-container hidden md:block">
+                        <table class="min-w-full divide-y divide-gray-200 whitespace-nowrap">
+                            <colgroup>
+                                <col class="w-16">
+                                <col class="w-1/4">
+                                <col class="w-1/4">
+                                <col class="w-20">
+                                <col class="w-1/4">
+                                <col class="w-24">
+                            </colgroup>
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邀请码</th>
@@ -440,6 +617,46 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 移动端卡片视图 -->
+                    <div class="md:hidden table-card-view">
+                        {% for project in projects %}
+                        <div class="project-card">
+                            <div class="card-header">
+                                <span class="font-medium text-lg">{{ project.name }}</span>
+                                <span class="text-sm text-gray-500">#{{ project.id }}</span>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="text-sm text-gray-500">所属用户</div>
+                                    <div class="text-sm">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</div>
+                                    <div class="text-sm text-gray-500">分数</div>
+                                    <div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                                            {% if project.total_score is not none and project.total_score >= 80 %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.total_score is not none and project.total_score >= 60 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ project.total_score|default('尚未评分', true) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">创建时间</div>
+                                    <div class="text-sm">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
             
@@ -447,7 +664,7 @@
             <div id="standard-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
                 <!-- 搜索和操作栏 -->
                 <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex items-center justify-between">
+                    <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pagination-controls">
                         <div class="flex items-center space-x-2">
                             <div class="relative">
                                 <input type="text" id="standardSearchInput" 
@@ -496,8 +713,16 @@
 
                 <!-- 标准列表表格 -->
                 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                    <div class="overflow-x-auto table-container hidden md:block">
+                        <table class="min-w-full divide-y divide-gray-200 whitespace-nowrap">
+                            <colgroup>
+                                <col class="w-16">
+                                <col class="w-1/4">
+                                <col class="w-1/4">
+                                <col class="w-20">
+                                <col class="w-1/4">
+                                <col class="w-24">
+                            </colgroup>
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">序号</th>
@@ -516,10 +741,50 @@
                             </tbody>
                         </table>
                     </div>
+                    <!-- 移动端卡片视图 -->
+                    <div class="md:hidden table-card-view">
+                        {% for project in projects %}
+                        <div class="project-card">
+                            <div class="card-header">
+                                <span class="font-medium text-lg">{{ project.name }}</span>
+                                <span class="text-sm text-gray-500">#{{ project.id }}</span>
+                            </div>
+                            <div class="card-content">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="text-sm text-gray-500">所属用户</div>
+                                    <div class="text-sm">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</div>
+                                    <div class="text-sm text-gray-500">分数</div>
+                                    <div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium
+                                            {% if project.total_score is not none and project.total_score >= 80 %}
+                                                bg-green-100 text-green-800
+                                            {% elif project.total_score is not none and project.total_score >= 60 %}
+                                                bg-yellow-100 text-yellow-800
+                                            {% else %}
+                                                bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ project.total_score|default('尚未评分', true) }}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">创建时间</div>
+                                    <div class="text-sm">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                     
                     <!-- 标准分页控件 -->
                     <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 pagination-controls">
                             <div class="text-sm text-gray-700">
                                 显示 <span id="standardStartIndex">0</span> 到 <span id="standardEndIndex">0</span> 条，共 <span id="standardTotalCount">0</span> 条
                                 <span class="ml-4">
@@ -2097,5 +2362,21 @@
         });
     });
     </script>
+<script>
+    document.getElementById('menuToggle').addEventListener('click', function() {
+        document.getElementById('sideNav').classList.toggle('show');
+        document.getElementById('mainContent').classList.toggle('nav-open');
+    });
+
+    // 在移动端点击导航链接后自动收起菜单
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', function() {
+            if (window.innerWidth <= 768) {
+                document.getElementById('sideNav').classList.remove('show');
+                document.getElementById('mainContent').classList.remove('nav-open');
+            }
+        });
+    });
+</script>
 </body>
 </html>
