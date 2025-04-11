@@ -28,7 +28,9 @@ def replace_placeholders(template_path, data):
             '设计日期', '环境健康与节能总分', '环境健康与节能创新总分',
             '总用地面积', '地上建筑面积', '地下建筑面积', '容积率', '建筑密度', '绿地率',
             '气候区划', '项目编号', '建设情况', '空调类型', '有无电梯', '有无地下车库',
-            '有无垃圾用房', '有无景观水体', '是否全装修', '公建类型', '绿地向公众开放'
+            '有无垃圾用房', '有无景观水体', '是否全装修', '公建类型', '绿地向公众开放',
+            # 添加地址相关字段和变体
+            '详细地址', '地址', '项目地址', '公共交通地址', 'address', '结论', '交通分析结论', '分析结论', '评价结论'
         ]
         
         print("\n可用字段列表:")
@@ -45,7 +47,12 @@ def replace_placeholders(template_path, data):
             '景创总分': '景观创新总分',
             '创新总分': '提高与创新总分',
             '节能总分': '环境健康与节能总分',
-            '节创总分': '环境健康与节能创新总分'
+            '节创总分': '环境健康与节能创新总分',
+            # 添加地址相关映射
+            '地址': '详细地址',
+            '项目地址': '详细地址',
+            '公共交通地址': '详细地址',
+            'address': '详细地址'
         }
         
         # 获取文档中的所有书签
@@ -275,6 +282,9 @@ def replace_placeholders(template_path, data):
                         field_value = ''
                         if data and isinstance(data[0], dict):
                             field_value = str(data[0].get(field, ''))
+                            if not field_value and field in ['地址', '项目地址', '公共交通地址', 'address']:
+                                # 如果是地址相关字段但值为空，尝试从详细地址获取
+                                field_value = str(data[0].get('详细地址', ''))
                             print(f"替换占位符 {placeholder} -> {field_value}")
                         
                         # 替换占位符
@@ -286,7 +296,11 @@ def replace_placeholders(template_path, data):
                     if placeholder in text:
                         field_value = ''
                         if data and isinstance(data[0], dict):
+                            # 先查找全名
                             field_value = str(data[0].get(full_name, ''))
+                            # 如果没有值，再查找简写名
+                            if not field_value:
+                                field_value = str(data[0].get(short_name, ''))
                             print(f"替换简写占位符 {placeholder} -> {field_value}")
                         
                         # 替换占位符
@@ -355,6 +369,9 @@ def replace_placeholders(template_path, data):
                                     field_value = ''
                                     if data and isinstance(data[0], dict):
                                         field_value = str(data[0].get(field, ''))
+                                        if not field_value and field in ['地址', '项目地址', '公共交通地址', 'address']:
+                                            # 如果是地址相关字段但值为空，尝试从详细地址获取
+                                            field_value = str(data[0].get('详细地址', ''))
                                         print(f"替换占位符 {placeholder} -> {field_value}")
                                     
                                     # 替换占位符
@@ -366,7 +383,11 @@ def replace_placeholders(template_path, data):
                                 if placeholder in text:
                                     field_value = ''
                                     if data and isinstance(data[0], dict):
+                                        # 先查找全名
                                         field_value = str(data[0].get(full_name, ''))
+                                        # 如果没有值，再查找简写名
+                                        if not field_value:
+                                            field_value = str(data[0].get(short_name, ''))
                                         print(f"替换简写占位符 {placeholder} -> {field_value}")
                                     
                                     # 替换占位符

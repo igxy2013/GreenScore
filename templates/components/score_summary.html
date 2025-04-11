@@ -1,0 +1,109 @@
+<!-- 评分汇总内容 -->
+<iframe id="score-summary-iframe" src="{{ url_for('score_summary_page', project_id=project.id if project else '21') }}" frameborder="0" class="w-full" style="min-height: 1200px;"></iframe>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const iframe = document.getElementById('score-summary-iframe');
+        
+        // 监听iframe中发送的消息
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'saveStarCase') {
+                // 处理保存星级案例的请求
+                saveStarCase();
+            } else if (event.data && event.data.type === 'iframeReady') {
+                // iframe已准备就绪，立即发送缓存数据(如果有)
+                console.log('iframe已准备就绪');
+                
+                // 优先使用缓存数据立即显示
+                const cachedData = sessionStorage.getItem('score_summary_data');
+                if (cachedData) {
+                    console.log('从缓存加载评分数据到iframe');
+                    updateIframeScores(JSON.parse(cachedData));
+                }
+                
+                // 然后在后台获取最新数据
+                fetchLatestScoreData();
+            } else if (event.data && event.data.type === 'toast') {
+                // 处理来自iframe的Toast通知
+                console.log('收到iframe发来的Toast通知:', event.data.message);
+                showToast(event.data.message, event.data.toastType || 'info');
+            }
+        });
+        
+        // 保存星级案例的函数
+        function saveStarCase() {
+        const projectId = document.getElementById('project_id').value;
+            fetch('/api/save_star_case', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ project_id: projectId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('保存成功', 'success');
+                } else {
+                    showToast(data.message || '保存失败', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('保存星级案例时出错:', error);
+                showToast('保存失败，请重试', 'error');
+            });
+        }
+        
+        // 向iframe发送评分数据更新的消息
+        function updateIframeScores(data) {
+            iframe.contentWindow.postMessage({
+                type: 'updateScores',
+                data: data
+            }, '*');
+        }
+        
+        // 导出updateIframeScores方法，使其可以从外部调用
+        window.updateScoreSummary = updateIframeScores;
+        
+        // 获取最新评分数据并更新iframe
+        function fetchLatestScoreData() {
+            const projectId = document.getElementById('project_id').value;
+            if (!projectId) return;
+            
+            console.log('在后台获取最新评分数据');
+            fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`获取评分数据失败: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('获取最新评分数据成功');
+                    // 更新缓存
+                    sessionStorage.setItem('score_summary_data', JSON.stringify(data));
+                    sessionStorage.setItem('score_summary_cache_time', new Date().getTime().toString());
+                    // 更新iframe
+                    updateIframeScores(data);
+                })
+                .catch(error => {
+                    console.error('获取最新评分数据失败:', error);
+                });
+        }
+        
+        // iframe加载完成后的处理
+        iframe.addEventListener('load', function() {
+            console.log('评分汇总iframe加载完成');
+            
+            // 优先使用缓存数据立即显示
+            const cachedData = sessionStorage.getItem('score_summary_data');
+            if (cachedData) {
+                console.log('从缓存加载评分数据到iframe');
+                updateIframeScores(JSON.parse(cachedData));
+            } else {
+                // 如果没有缓存，在后台获取数据
+                fetchLatestScoreData();
+            }
+        });
+    });
+</script> 

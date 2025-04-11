@@ -9,146 +9,146 @@
             let gaodeApiKey = null; // 需要从后端获取
             window.securityJsCode = null; // 添加安全码全局变量
 
-            // --- 切换地图提供商 ---
-            function switchMapProvider(provider) {
-                if (provider === currentMapProvider) return;
+    // --- 切换地图提供商 ---
+    function switchMapProvider(provider) {
+        if (provider === currentMapProvider) return;
 
-                console.log(`切换地图提供商从 ${currentMapProvider} 到 ${provider}`);
-                currentMapProvider = provider;
-                lastSearchResults = []; // 清空上次结果
-                document.getElementById('result-body').innerHTML = '';
-                document.getElementById('result-count').innerHTML = '';
-                document.getElementById('export-btn').disabled = true;
+        console.log(`切换地图提供商从 ${currentMapProvider} 到 ${provider}`);
+        currentMapProvider = provider;
+        lastSearchResults = []; // 清空上次结果
+        document.getElementById('result-body').innerHTML = '';
+        document.getElementById('result-count').innerHTML = '';
+        document.getElementById('export-btn').disabled = true;
 
-                // 更新标签页样式
-                document.querySelectorAll('.map-tab').forEach(tab => tab.classList.remove('active', 'text-primary', 'border-primary', 'border-b-2'));
-                document.querySelectorAll('.map-tab').forEach(tab => tab.classList.add('text-gray-500', 'hover:text-primary'));
-                const activeTab = document.getElementById(`${provider}-tab`);
-                if (activeTab) {
-                    activeTab.classList.add('active', 'text-primary', 'border-primary', 'border-b-2');
-                    activeTab.classList.remove('text-gray-500', 'hover:text-primary');
-                }
+        // 更新标签页样式
+        document.querySelectorAll('.map-tab').forEach(tab => tab.classList.remove('active', 'text-primary', 'border-primary', 'border-b-2'));
+        document.querySelectorAll('.map-tab').forEach(tab => tab.classList.add('text-gray-500', 'hover:text-primary'));
+        const activeTab = document.getElementById(`${provider}-tab`);
+        if (activeTab) {
+            activeTab.classList.add('active', 'text-primary', 'border-primary', 'border-b-2');
+            activeTab.classList.remove('text-gray-500', 'hover:text-primary');
+        }
 
-                // 显示/隐藏地图容器
-                document.getElementById('baidu-map-container').style.display = provider === 'baidu' ? 'block' : 'none';
-                document.getElementById('gaode-map-container').style.display = provider === 'gaode' ? 'block' : 'none';
+        // 显示/隐藏地图容器
+        document.getElementById('baidu-map-container').style.display = provider === 'baidu' ? 'block' : 'none';
+        document.getElementById('gaode-map-container').style.display = provider === 'gaode' ? 'block' : 'none';
 
-                // 初始化地图 (如果尚未初始化)
-                if (provider === 'baidu' && !baiduMapInstance) {
-                    loadBaiduMapScript();
-                } else if (provider === 'gaode' && !gaodeMapInstance) {
-                    loadGaodeMapScript(); 
-                }
+        // 初始化地图 (如果尚未初始化)
+        if (provider === 'baidu' && !baiduMapInstance) {
+            loadBaiduMapScript();
+        } else if (provider === 'gaode' && !gaodeMapInstance) {
+            loadGaodeMapScript(); 
+        }
 
-                // 清除地图上的覆盖物 (如果地图已初始化)
-                if (baiduMapInstance && provider === 'baidu') {
-                    baiduMapInstance.clearOverlays();
-                }
-                if (gaodeMapInstance && provider === 'gaode') {
-                    gaodeMapInstance.clearMap();
-                }
-                
-                // 重新绑定搜索按钮事件监听器
-                const searchBtn = document.getElementById('search-btn');
-                if (searchBtn) {
-                    // 移除所有现有的事件监听器
-                    const newSearchBtn = searchBtn.cloneNode(true);
-                    searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
-                    
-                    // 添加新的事件监听器
-                    newSearchBtn.addEventListener('click', searchAddress);
-                }
-                
-                // 重新绑定地址输入框回车事件
-                const addressInput = document.getElementById('address');
-                if (addressInput) {
-                    // 移除所有现有的事件监听器
-                    const newAddressInput = addressInput.cloneNode(true);
-                    addressInput.parentNode.replaceChild(newAddressInput, addressInput);
-                    
-                    // 添加新的事件监听器
-                    newAddressInput.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
-                            searchAddress();
-                        }
-                    });
-                }
-                
-                // 保存用户选择到localStorage
-                localStorage.setItem('preferred_map_provider', provider);
-            }
-
-            // --- 加载百度地图API (已有) ---
-            function loadBaiduMapScript() {
-                console.log("开始加载百度地图API");
-                
-                // 检查BMap对象是否已存在
-                if (typeof BMap !== 'undefined') {
-                    console.log("BMap对象已存在，直接初始化地图");
-                    setTimeout(() => {
-                        try {
-                            initBaiduMap();
-                        } catch (e) {
-                            console.error("延迟初始化百度地图失败:", e);
-                        }
-                    }, 500); // 添加延迟，确保BMap完全加载
-                    return;
-                }
-
-                // 添加全局错误处理，捕获"Cannot read properties of undefined (reading 'hc')"错误
-                window.onerror = function(message, source, lineno, colno, error) {
-                    console.error("全局错误:", message, "来源:", source, "行号:", lineno);
-                    if (message.includes("Cannot read properties of undefined") && message.includes("hc")) {
-                        console.error("捕获到百度地图初始化错误，尝试重新加载");
-                        setTimeout(() => {
-                            loadBaiduMapScript();
-                        }, 1000);
-                        return true; // 阻止默认错误处理
-                    }
-                    return false; // 允许其他错误正常处理
-                };
-
-                // 获取API密钥
-                fetch('/api/map_api_key')
-                    .then(response => {
-            if (!response.ok) {
-                    // 如果后端代理返回错误，尝试读取错误信息
-                return response.json().then(err => {
-                    throw new Error(err.error || `后端代理错误: ${response.status}`)
-                }).catch(() => {
-                    // 如果无法解析 JSON 错误信息，抛出通用错误
-                    throw new Error(`后端代理请求失败: ${response.status}`)
-                });
-            }
-            return response.json(); // 假设API返回JSON而不是Blob
-        })
-        .then(data => {
-            if (!data || !data.api_key) {
-                throw new Error("API返回中没有百度地图密钥");
-            }
+        // 清除地图上的覆盖物 (如果地图已初始化)
+        if (baiduMapInstance && provider === 'baidu') {
+            baiduMapInstance.clearOverlays();
+        }
+        if (gaodeMapInstance && provider === 'gaode') {
+            gaodeMapInstance.clearMap();
+        }
+        
+        // 重新绑定搜索按钮事件监听器
+        const searchBtn = document.getElementById('search-btn');
+        if (searchBtn) {
+            // 移除所有现有的事件监听器
+            const newSearchBtn = searchBtn.cloneNode(true);
+            searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
             
-            // 获取到API密钥后，加载百度地图脚本
-            baiduApiKey = data.api_key;
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = `https://api.map.baidu.com/api?v=3.0&ak=${baiduApiKey}&callback=initBaiduMap`;
-            script.onerror = function() {
-                console.error("直接加载百度地图API失败，尝试使用代理");
-                // 使用后端代理
-                const proxyScript = document.createElement('script');
-                proxyScript.type = 'text/javascript';
-                proxyScript.src = `/api/map_js_api?v=3.0&callback=initBaiduMap`;
-                document.body.appendChild(proxyScript);
-            };
-            document.body.appendChild(script);
-        })
-        .catch(error => {
-            console.error('获取API密钥或加载地图脚本失败:', error);
-            const mapContainer = document.getElementById('baidu-map-container');
-            if (mapContainer) {
-                mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图加载失败: ${error.message}</div>`;
+            // 添加新的事件监听器
+            newSearchBtn.addEventListener('click', searchAddress);
+        }
+        
+        // 重新绑定地址输入框回车事件
+        const addressInput = document.getElementById('address');
+        if (addressInput) {
+            // 移除所有现有的事件监听器
+            const newAddressInput = addressInput.cloneNode(true);
+            addressInput.parentNode.replaceChild(newAddressInput, addressInput);
+            
+            // 添加新的事件监听器
+            newAddressInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    searchAddress();
+                }
+            });
+        }
+        
+        // 保存用户选择到localStorage
+        localStorage.setItem('preferred_map_provider', provider);
+    }
+
+    // --- 加载百度地图API (已有) ---
+    function loadBaiduMapScript() {
+        console.log("开始加载百度地图API");
+        
+        // 检查BMap对象是否已存在
+        if (typeof BMap !== 'undefined') {
+            console.log("BMap对象已存在，直接初始化地图");
+            setTimeout(() => {
+                try {
+                    initBaiduMap();
+                } catch (e) {
+                    console.error("延迟初始化百度地图失败:", e);
+                }
+            }, 500); // 添加延迟，确保BMap完全加载
+            return;
+        }
+
+        // 添加全局错误处理，捕获"Cannot read properties of undefined (reading 'hc')"错误
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error("全局错误:", message, "来源:", source, "行号:", lineno);
+            if (message.includes("Cannot read properties of undefined") && message.includes("hc")) {
+                console.error("捕获到百度地图初始化错误，尝试重新加载");
+                setTimeout(() => {
+                    loadBaiduMapScript();
+                }, 1000);
+                return true; // 阻止默认错误处理
             }
+            return false; // 允许其他错误正常处理
+        };
+
+        // 获取API密钥
+        fetch('/api/map_api_key')
+            .then(response => {
+    if (!response.ok) {
+            // 如果后端代理返回错误，尝试读取错误信息
+        return response.json().then(err => {
+            throw new Error(err.error || `后端代理错误: ${response.status}`)
+        }).catch(() => {
+            // 如果无法解析 JSON 错误信息，抛出通用错误
+            throw new Error(`后端代理请求失败: ${response.status}`)
         });
+    }
+    return response.json(); // 假设API返回JSON而不是Blob
+})
+.then(data => {
+    if (!data || !data.api_key) {
+        throw new Error("API返回中没有百度地图密钥");
+    }
+    
+    // 获取到API密钥后，加载百度地图脚本
+    baiduApiKey = data.api_key;
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `https://api.map.baidu.com/api?v=3.0&ak=${baiduApiKey}&callback=initBaiduMap`;
+    script.onerror = function() {
+        console.error("直接加载百度地图API失败，尝试使用代理");
+        // 使用后端代理
+        const proxyScript = document.createElement('script');
+        proxyScript.type = 'text/javascript';
+        proxyScript.src = `/api/map_js_api?v=3.0&callback=initBaiduMap`;
+        document.body.appendChild(proxyScript);
+    };
+    document.body.appendChild(script);
+})
+.catch(error => {
+    console.error('获取API密钥或加载地图脚本失败:', error);
+    const mapContainer = document.getElementById('baidu-map-container');
+    if (mapContainer) {
+        mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图加载失败: ${error.message}</div>`;
+    }
+});
     }
     
     // --- 加载高德地图API ---
@@ -685,7 +685,7 @@
                     index: startIndex + index + 1,
                     name: title,
                     type: stationType,
-                    distance: distance,
+                    distance: distance, // 确保是字符串
                     detail: details,
                     location: {
                         lng: poiPoint.lng,
@@ -1024,120 +1024,6 @@
         resolve(fallbackCanvas.toDataURL('image/png'));
     }
     
-    // 处理地图图像并发送报告
-    async function processMapImageAndSendReport(mapImageData, conclusion) {
-        console.log("地图图像数据生成完成，准备处理报告");
-        
-        try {
-            // 显示加载中提示
-            document.getElementById('loading').style.display = 'block';
-            
-            // 准备数据
-            const data = {
-                address: window.address || '',
-                stations: window.stations || [],
-                mapImage: mapImageData,
-                project_id: new URLSearchParams(window.location.search).get('project_id'),
-                conclusion: conclusion
-            };
-            
-            // 获取项目信息
-            const projectInfoResponse = await fetch('/api/project_info');
-            const projectInfo = projectInfoResponse.ok ? await projectInfoResponse.json() : {};
-            
-            // 合并项目信息和结论
-            const templateData = {
-                ...projectInfo,
-                '项目地址': data.address,
-                '项目地点': data.address,
-                '项目位置': data.address,
-                '查询地址': data.address,
-                '设计日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                '评估日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                '分析日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                '报告日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                '当前日期': new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                '结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
-                '交通分析结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
-                '分析结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
-                '评价结论': conclusion.result6_1_2 + '\n\n' + conclusion.result6_2_1 + '\n\n总得分：' + conclusion.totalScore + '分',
-                '规范6.1.2评价': conclusion.result6_1_2,
-                '规范6.2.1评价': conclusion.result6_2_1,
-                '规范6_1_2评价': conclusion.result6_1_2,
-                '规范6_2_1评价': conclusion.result6_2_1,
-                '规范612评价': conclusion.result6_1_2,
-                '规范621评价': conclusion.result6_2_1,
-                '总得分': conclusion.totalScore + '分',
-                '得分': conclusion.totalScore + '分',
-                '评分': conclusion.totalScore + '分',
-                '总分': conclusion.totalScore + '分',
-                stations: data.stations.map((station, index) => ({
-                    index: index + 1,
-                    name: station.name || '未知站点',
-                    type: station.type || '公交站',
-                    distance: String(station.distance || '0'),
-                    detail: station.detail || station.address || station.description || '无详细信息'
-                })),
-                mapImage: mapImageData
-            };
-            
-            // 使用后端API生成报告
-            console.log("使用后端API生成报告...");
-            
-            // 准备要发送的数据
-            const reportData = {
-                address: data.address,
-                stations: templateData.stations,
-                map_image: mapImageData.split(',')[1], // 移除base64前缀
-                conclusion: {
-                    result6_1_2: conclusion.result6_1_2,
-                    result6_2_1: conclusion.result6_2_1,
-                    totalScore: conclusion.totalScore
-                },
-                project_info: projectInfo
-            };
-            
-            // 调用后端API
-            const reportResponse = await fetch('/api/generate_transport_report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(reportData)
-            });
-            
-            if (!reportResponse.ok) {
-                const errorText = await reportResponse.text();
-                throw new Error(`后端生成报告失败: ${reportResponse.status} - ${errorText}`);
-            }
-            
-            // 获取生成的报告文件
-            const reportBlob = await reportResponse.blob();
-            
-            // 创建下载链接
-            const link = document.createElement('a');
-            const fileName = `公共交通查询结果_${data.address || '地址'}_${new Date().toLocaleDateString().replace(/\//g, '-')}.docx`;
-            link.href = URL.createObjectURL(reportBlob);
-            link.download = fileName;
-            
-            // 隐藏加载中提示
-            document.getElementById('loading').style.display = 'none';
-            
-            // 显示成功消息并触发下载
-            alert('公共交通分析报告生成成功，即将开始下载');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            // 清理URL对象
-            URL.revokeObjectURL(link.href);
-        } catch (error) {
-            // 隐藏加载中提示
-            document.getElementById('loading').style.display = 'none';
-            console.error('生成报告失败:', error);
-            alert('生成报告失败: ' + error.message);
-        }
-    }
 
     // 加载百度地图API
     loadBaiduMapScript();
@@ -1806,4 +1692,139 @@
             alert('地图截图创建失败: ' + error.message);
         });
     }
+
+        // 处理地图图像并发送报告
+        async function processMapImageAndSendReport(mapImageData, conclusion) {
+            console.log("地图图像数据生成完成，准备处理报告");
+            
+            try {
+                // 显示加载中提示
+                document.getElementById('loading').style.display = 'block';
+                
+                // 获取项目信息
+                const urlParams = new URLSearchParams(window.location.search);
+                console.log("URL参数:", window.location.search);
+                console.log("URL路径:", window.location.pathname);
+                
+                // 从URL路径中提取项目ID - 格式通常是 /project/{project_id}
+                let projectIdFromPath = null;
+                const pathMatch = window.location.pathname.match(/\/project\/(\d+)/);
+                if (pathMatch && pathMatch[1]) {
+                    projectIdFromPath = pathMatch[1];
+                }
+                console.log("从URL路径提取的项目ID:", projectIdFromPath);
+                
+                // 从URL参数中获取项目ID
+                const projectIdFromUrl = urlParams.get('project_id');
+                console.log("从URL参数获取的项目ID:", projectIdFromUrl);
+                
+                // 从隐藏字段获取项目ID
+                const projectIdFromElement = document.getElementById('current-project-id')?.value;
+                const transportProjectId = document.getElementById('transport-project-id')?.value;
+                console.log("从页面元素获取的项目ID (current-project-id):", projectIdFromElement);
+                console.log("从页面元素获取的项目ID (transport-project-id):", transportProjectId);
+                
+                // 优先使用路径中的ID，然后是URL参数，然后是transport-project-id，最后是current-project-id
+                const projectId = projectIdFromPath || projectIdFromUrl || transportProjectId || projectIdFromElement;
+                console.log("最终使用的项目ID:", projectId);
+                
+                let projectInfo = {};
+                
+                try {
+                    if (projectId) {
+                        console.log("正在通过API获取项目信息...");
+                        const projectInfoResponse = await fetch(`/api/project_info?project_id=${projectId}`);
+                        
+                        if (projectInfoResponse.ok) {
+                            projectInfo = await projectInfoResponse.json();
+                            console.log("成功获取项目信息:", projectInfo);
+                        } else {
+                            console.error("获取项目信息失败:", projectInfoResponse.status, projectInfoResponse.statusText);
+                            try {
+                                const errorText = await projectInfoResponse.text();
+                                console.error("错误详情:", errorText);
+                            } catch (e) {
+                                console.error("无法获取错误详情:", e);
+                            }
+                        }
+                    } else {
+                        console.warn("未提供项目ID，无法获取项目信息，将使用默认信息");
+                        // 创建基本项目信息，使用地址和当前日期
+                        const today = new Date();
+                        const dateStr = `${today.getFullYear()}年${today.getMonth()+1}月${today.getDate()}日`;
+                        
+                        projectInfo = {
+                            "项目名称": "公共交通站点分析",
+                            "项目地点": window.address || "未指定地址",
+                            "设计日期": dateStr,
+                            "日期": dateStr
+                        };
+                        console.log("使用默认项目信息:", projectInfo);
+                    }
+                } catch (error) {
+                    console.error("获取项目信息时发生错误:", error);
+                }
+
+                // 准备传递给后端的数据
+                const data = {
+                    address: window.address || '',
+                    stations: window.stations || [],
+                    mapImage: mapImageData,
+                    conclusion: conclusion,
+                    project_id: projectId,
+                    // 将项目信息整体传递，保留原始结构
+                    project_info: projectInfo
+                };
+                
+                // 同时创建地址的别名，确保模板中的不同占位符都能被替换
+                if (data.address) {
+                    data.详细地址 = data.address;
+                    data.地址 = data.address;
+                    data.项目地址 = data.address;
+                    data.公共交通地址 = data.address;
+                }
+                
+                console.log("发送到后端的数据:", JSON.stringify(data));
+                
+                // 发送数据到后端
+                const response = await fetch('/generate_transport_report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                // 检查响应
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log("后端响应:", result);
+                    
+                    if (result.success) {
+                        // 下载报告
+                        window.location.href = result.file_url;
+                        console.log("报告生成成功，正在下载...");
+                    } else {
+                        alert("生成报告失败: " + (result.error || "未知错误"));
+                    }
+                } else {
+                    console.error("请求失败:", response.status, response.statusText);
+                    alert("请求失败，状态码: " + response.status);
+                    
+                    try {
+                        const errorText = await response.text();
+                        console.error("错误详情:", errorText);
+                    } catch (e) {
+                        console.error("无法获取错误详情:", e);
+                    }
+                }
+                
+            } catch (error) {
+                console.error("生成报告时发生错误:", error);
+                alert("生成报告时发生错误: " + error.message);
+            } finally {
+                // 隐藏加载中提示
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
     

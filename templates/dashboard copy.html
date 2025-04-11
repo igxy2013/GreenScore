@@ -1,0 +1,1325 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能绿建评价系统</title>
+    <script src="/static/js/iframe-resizer.js"></script>
+    <!-- 先加载Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- 加载loader.js -->
+    <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
+    <!-- 加载气候区划查询工具 -->
+    <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
+    <!-- 添加html2canvas库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
+    <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
+    
+    <!-- 绿色建材计算所需的外部库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+    <!-- 添加word_template_handler.js引用 -->
+    <script src="{{ url_for('static', filename='js/word_template_handler.js') }}" defer></script>
+    <script src="/static/js/green_building_score_calculator.js"></script>
+    <!-- 在 head 部分添加对 db_updater.js 的引用 -->
+    <script src="/static/js/db_updater.js"></script>
+     <!-- 使用Font Awesome图标库 -->
+     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+     <!-- 引入自定义样式表 -->
+     <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
+    
+    <!-- 引入样式文件 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
+    <!-- 使用本地Font Awesome图标库替代Remix Icon -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/icon-compatibility.css') }}">
+    
+    <!-- 引入JavaScript文件 -->
+    <script src="{{ url_for('static', filename='js/score_helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/score_summary.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/public_transport_analytics.js') }}"></script>
+    <script>
+    function filterTableByClause(query) {
+        // 获取所有表格行
+        const rows = document.querySelectorAll('table tbody tr');
+        
+        // 如果查询为空，显示所有行
+        if (!query.trim()) {
+            rows.forEach(row => row.style.display = '');
+            return;
+        }
+        
+        // 遍历每一行进行过滤
+        rows.forEach(row => {
+            // 获取条文号列的内容
+            const clauseCell = row.querySelector('td:first-child');
+            if (clauseCell) {
+                const clauseText = clauseCell.textContent.toLowerCase();
+                // 如果条文号包含查询文本，显示该行，否则隐藏
+                if (clauseText.includes(query.toLowerCase())) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        });
+    }
+    </script>
+    
+    <!-- 添加climate_zone.js引用，放在页面头部的script标签之前 -->
+    <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
+    <!-- 引入Chart.js用于数据可视化 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/green_building_score_calculator.js"></script>
+    <!-- 在 head 部分添加对 db_updater.js 的引用 -->
+    <script src="/static/js/db_updater.js"></script>
+    <!-- 引入iframe-resizer.js用于iframe高度自适应 -->
+    <script src="{{ url_for('static', filename='js/iframe-resizer.js') }}"></script>
+    <!-- 添加menu.js引用，确保在所有使用它的代码之前 -->
+    <script src="/static/js/menu.js"></script>
+    <script>
+        // 在这里添加自定义的updateScoreSummaryTables函数，它会被scoreUtils.fetchScoreSummary调用
+        // 更新评分汇总表格
+        function updateScoreSummaryTables(data) {
+            console.log('更新评分汇总表格:', data);
+            
+            // 如果数据为空或无效，显示提示并返回
+            if (!data || typeof data !== 'object') {
+                console.error('更新评分汇总表格失败: 无效的数据格式', data);
+                alert('获取评分数据失败，请刷新页面重试');
+                return;
+            }
+            
+            // 显示最后更新时间
+            const lastUpdateTimeElement = document.getElementById('lastUpdateTime');
+            if (lastUpdateTimeElement && data.timestamp) {
+                lastUpdateTimeElement.textContent = `最后更新时间: ${data.timestamp}`;
+            }
+            
+            // 更新专业得分行
+            const specialtyScoresRow = document.getElementById('specialty-scores-row');
+            if (specialtyScoresRow && data.specialty_scores) {
+                const specialtyScores = data.specialty_scores;
+                
+                // 获取项目评价标准
+                const projectStandard = data.project_standard || document.getElementById('current-project-standard')?.value || '';
+                
+                // 显示或隐藏环境健康与节能专业列
+                const envHealthEnergyHeader = document.getElementById('env_health_energy_header');
+                const envHealthEnergyColumn = document.getElementById('env_health_energy_column');
+                if (envHealthEnergyHeader) {
+                    envHealthEnergyHeader.style.display = projectStandard === '四川省标' ? '' : 'none';
+                    if (envHealthEnergyColumn) {
+                        envHealthEnergyColumn.style.display = projectStandard === '四川省标' ? '' : 'none';
+                    }
+                }
+                
+                // 更新各专业得分
+                updateCell(specialtyScoresRow, 1, specialtyScores['建筑专业'] || 0);
+                updateCell(specialtyScoresRow, 2, specialtyScores['结构专业'] || 0);
+                updateCell(specialtyScoresRow, 3, specialtyScores['给排水专业'] || 0);
+                updateCell(specialtyScoresRow, 4, specialtyScores['电气专业'] || 0);
+                updateCell(specialtyScoresRow, 5, specialtyScores['暖通专业'] || 0);
+                updateCell(specialtyScoresRow, 6, specialtyScores['景观专业'] || 0);
+                
+                // 如果是四川省标，更新环境健康与节能专业得分
+                if (projectStandard === '四川省标') {
+                    updateCell(specialtyScoresRow, 7, specialtyScores['环境健康与节能专业'] || 0);
+                }
+                
+                // 更新总分
+                const totalScore = data.total_score || 0;
+                const totalScoreCell = specialtyScoresRow.querySelector('.total-score');
+                if (totalScoreCell) {
+                    totalScoreCell.textContent = totalScore.toFixed(1);
+                }
+            }
+            
+            // 继续保留其余的updateScoreSummaryTables函数内容...
+        }
+    </script>
+
+    <!-- 更新所有调用fetchScoreSummary的地方改为使用scoreUtils.fetchScoreSummary -->
+    <script>
+        // 在页面加载完成后获取评分汇总数据
+        document.addEventListener('DOMContentLoaded', function() {
+            // 使用score_summary.js提供的initializeScoreSummary函数
+            if (typeof scoreUtils !== 'undefined' && scoreUtils.initializeScoreSummary) {
+
+            }
+        });
+    
+    </script>
+
+<style>
+    body {
+        font-family: 'Microsoft YaHei', sans-serif;
+        margin: 0;
+        padding: 20px;
+    }
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        color: #3c8dbc;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    .search-box {
+        display: flex;
+        margin-bottom: 20px;
+    }
+    #address {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px 0 0 4px;
+        font-size: 16px;
+    }
+    #search-btn {
+        padding: 10px 20px;
+        color: white;
+        border: none;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    #map-container {
+        height: 600px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .result-container {
+        margin-bottom: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    table th, table td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    table th {
+        background-color: #f2f2f2;
+    }
+    .export-btn {
+        padding: 10px 20px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .loading {
+        text-align: center;
+        display: none;
+        margin: 20px 0;
+    }
+    .loading img {
+        width: 50px;
+    }
+</style>
+
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 引入用户菜单组件 -->
+    {% include 'components/user_menu.html' %}
+
+    <!-- 隐藏字段，用于存储当前项目ID和标准 -->
+    <input type="hidden" id="current-project-id" value="{{ project.id if project else '21' }}">
+    <input type="hidden" id="current-project-standard" value="{{ project.standard if project else '成都市标' }}">
+    
+    <!-- 添加全局页面加载指示器 -->
+    <div id="page-loader" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" style="display: none;">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
+            <svg class="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-gray-700 font-medium">正在处理，请稍候...</p>
+        </div>
+    </div>
+    
+    <div class="page-container">
+        <div class="flex min-h-screen">
+            <!-- 侧边导航栏 -->
+            <aside class="w-72 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
+                <div class="p-6 border-b">
+                    <h1 class="text-2xl font-bold text-primary flex items-center">                
+                        <picture>
+                            <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                            <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                            <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+                        </picture>
+                        <span>智能绿建评价系统</span>
+                    </h1>
+                    </div>
+                <nav class="p-4">
+                    <div class="space-y-3">
+                        <a href="{{ url_for('project_detail', project_id=project.id) }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
+                            <i class="ri-file-list-line mr-3"></i>
+                            <span>项目信息</span>
+                        </a>
+                        <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="basicMenuToggle">
+                            <i class="ri-checkbox-line mr-3"></i>
+                            <span>基本级</span>
+                            <i class="ri-arrow-down-s-line ml-auto"></i>
+                        </div>
+                        <div id="basicMenuContent" class="menu-content">
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}">
+                                    <i class="ri-building-line mr-3"></i>
+                                <span>建筑</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}">
+                                <i class="ri-layout-2-line mr-3"></i>
+                                <span>结构</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '给排水' %}active{% endif %}">
+                                <i class="ri-drop-line mr-3"></i>
+                                <span>给排水</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '电气' %}active{% endif %}">
+                                <i class="ri-flashlight-line mr-3"></i>
+                                <span>电气</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '暖通' %}active{% endif %}">
+                                <i class="ri-temp-hot-line mr-3"></i>
+                                <span>暖通</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '景观' %}active{% endif %}">
+                                <i class="ri-plant-line mr-3"></i>
+                                <span>景观</span>
+                            </a>
+                            {% if project and project.standard == '四川省标' %}
+                            <a href="{{ url_for('filter_standards', level='基本级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '环境健康与节能' %}active{% endif %}">
+                                    <i class="ri-leaf-line mr-3"></i>
+                                    <span>环境健康与节能</span>
+                                </a>
+                                {% endif %}
+                            </div>
+
+                        {% if not project or project.star_rating_target != '基本级' %}
+                        <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
+                            <i class="ri-checkbox-multiple-line mr-3"></i>
+                            <span>提高级</span>
+                            <i class="ri-arrow-down-s-line ml-auto"></i>
+                        </div>
+                        <div id="advancedMenuContent" class="menu-content">
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '建筑' %}active{% endif %}">
+                                <i class="ri-building-line mr-3"></i>
+                                <span>建筑</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '结构' %}active{% endif %}">
+                                <i class="ri-layout-2-line mr-3"></i>
+                                <span>结构</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '给排水' %}active{% endif %}">
+                                    <i class="ri-drop-line mr-3"></i>
+                                <span>给排水</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
+                                <i class="ri-flashlight-line mr-3"></i>
+                                <span>电气</span>
+                            </a>
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '暖通' %}active{% endif %}">
+                                <i class="ri-temp-hot-line mr-3"></i>
+                                <span>暖通</span>
+                            </a>
+                            {% if project and project.standard == '成都市标' or project and project.standard == '四川省标' %}
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
+                                    <i class="ri-plant-line mr-3"></i>
+                                <span>景观</span>
+                            </a>
+                            {% endif %}
+                            {% if project and project.standard == '四川省标' %}
+                            <a href="{{ url_for('filter_standards', level='提高级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '环境健康与节能' %}active{% endif %}">
+                                <i class="ri-leaf-line mr-3"></i>
+                                    <span>环境健康与节能</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        {% if not project or project.star_rating_target != '基本级' %}
+                        <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" 
+                        class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}"
+                        id="scoreSummaryMenuItem">
+                         <i class="ri-bar-chart-line mr-3"></i>
+                         <span>评分汇总</span>
+                        </a>
+                        {% endif %}
+                        
+                        <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="reportMenuToggle">
+                            <i class="ri-file-download-line mr-3"></i>
+                            <span>报告导出</span>
+                            <i class="ri-arrow-down-s-line ml-auto"></i>
+                        </div>
+                        <div id="reportMenuContent" class="menu-content">
+                            <div class="submenu-group" id="reportSubmenu">
+                                <a href="javascript:void(0)" onclick="generateWord()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
+                                    <i class="ri-file-list-3-line mr-3"></i>
+                                    <span>报审表</span>
+                                </a>
+                                <a href="javascript:void(0)" onclick="generateDWG()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'dwg_export' %}active{% endif %}">
+                                    <i class="ri-leaf-line mr-3"></i>
+                                    <span>绿色建筑设计专篇</span>
+                                </a>
+                                {% if project and project.standard == '国标' %}
+                                <a href="javascript:void(0)" onclick="generateSelfAssessmentReport(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                                    <i class="ri-book-line mr-3"></i>
+                                    <span>绿建自评估报告</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="specialCalcMenuToggle">
+                            <i class="ri-calculator-line mr-3"></i>
+                            <span>专项计算</span>
+                            <i class="ri-arrow-down-s-line ml-auto"></i>
+                        </div>
+                        <div id="specialCalcMenuContent" class="menu-content">
+                            <div class="submenu-group" id="specialCalcSubmenu">
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='solar_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'solar_calculator' %}active{% endif %}">
+                                    <i class="ri-flashlight-line mr-3"></i>
+                                    <span>太阳能计算</span>
+                                </a>
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                                    <i class="ri-calculator-line mr-3"></i>
+                                    <span>绿色建材应用比例</span>
+                                </a>
+                                <a href="{{ url_for('project_detail', project_id=project.id, page='public_transport_analysis') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'public_transport_analysis' %}active{% endif %}">
+                                    <i class="ri-bus-line mr-3"></i>
+                                    <span>公共交通分析</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </aside>
+
+            <!-- 主内容区域 -->
+            <main class="flex-1 overflow-y-auto p-8 bg-transparent main-content" style="min-height: 100vh;">
+              
+                <div class="max-w-7xl mx-auto px-4 py-8">
+                    <!-- 添加项目管理按钮 -->
+
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-4">
+                            {% if current_page == 'score_summary' %}
+                            <h2 class="text-2xl font-bold text-primary">评分汇总</h2>
+                            {% elif current_page == 'project_info' %}
+                            <h2 class="text-2xl font-bold text-primary">项目信息</h2>
+                            {% elif current_page == 'report_table' %}
+                            <h2 class="text-2xl font-bold text-primary">报审表</h2>
+                            {% elif current_level %}
+                            <div class="flex flex-col gap-2">
+                                <h2 class="text-2xl font-bold text-primary">{{ current_specialty }}专业</h2>
+                                <div class="text-sm text-gray-600">
+                                    当前评价标准: {% if project and project.standard == '国标' %}
+                                        绿色建筑评价标准 GB/T 50378-2019（2024版）
+                                    {% elif project and project.standard == '四川省标' %}
+                                        四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）
+                                    {% elif project and project.standard == '成都市标' %}
+                                        成都市绿色建筑施工图设计与审查技术要点（2024版）
+                                    {% else %}
+                                        成都市绿色建筑施工图设计与审查技术要点（2024版）
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+
+                            {% endif %}
+                        </div>
+                        <div class="flex items-center gap-4">
+                            {% if current_level in ['基本级', '提高级'] %}
+                            <div class="relative" >
+                                <input type="text" id="clause-filter" placeholder="输入条文号过滤..." class="px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50" oninput="filterTableByClause(this.value)">
+                                <!-- <i class="ri-search-line text-gray-400 "></i> -->
+                            </div>
+                            {% endif %}
+                            {% if current_page == 'project_info' %}
+                            <a href="{{ url_for('project_management') }}" class="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="ri-arrow-left-line mr-2"></i>
+                                <span>返回项目管理</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- 添加隐藏的项目名称字段，在所有页面都可用 -->
+                    <input type="hidden" id="current_project_name" value="{{ project.name if project else '' }}">
+                    <!-- 添加隐藏的项目ID字段，在所有页面都可用 -->
+                    <input type="hidden" id="project_id" value="{{ project.id if project else '21' }}">
+
+                    {% if current_page == 'score_summary' %}
+                    <!-- 通过iframe引入评分汇总页面 -->
+                    <iframe id="score-summary-iframe" src="{{ url_for('score_summary_page', project_id=project.id if project else '21') }}" frameborder="0" class="w-full" style="min-height: 1200px;"></iframe>
+                    
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const iframe = document.getElementById('score-summary-iframe');
+                            
+                            // 监听iframe中发送的消息
+                            window.addEventListener('message', function(event) {
+                                if (event.data && event.data.type === 'saveStarCase') {
+                                    // 处理保存星级案例的请求
+                                    saveStarCase();
+                                } else if (event.data && event.data.type === 'iframeReady') {
+                                    // iframe已准备就绪，立即发送缓存数据(如果有)
+                                    console.log('iframe已准备就绪');
+                                    
+                                    // 优先使用缓存数据立即显示
+                                    const cachedData = sessionStorage.getItem('score_summary_data');
+                                    if (cachedData) {
+                                        console.log('从缓存加载评分数据到iframe');
+                                        updateIframeScores(JSON.parse(cachedData));
+                                    }
+                                    
+                                    // 然后在后台获取最新数据
+                                    fetchLatestScoreData();
+                                } else if (event.data && event.data.type === 'toast') {
+                                    // 处理来自iframe的Toast通知
+                                    console.log('收到iframe发来的Toast通知:', event.data.message);
+                                    showToast(event.data.message, event.data.toastType || 'info');
+                                }
+                            });
+                            
+                            // 保存星级案例的函数
+                            function saveStarCase() {
+                            const projectId = document.getElementById('project_id').value;
+                                fetch('/api/save_star_case', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ project_id: projectId })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        showToast('保存成功', 'success');
+                                    } else {
+                                        showToast(data.message || '保存失败', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('保存星级案例时出错:', error);
+                                    showToast('保存失败，请重试', 'error');
+                                });
+                            }
+                            
+                            // 向iframe发送评分数据更新的消息
+                            function updateIframeScores(data) {
+                                iframe.contentWindow.postMessage({
+                                    type: 'updateScores',
+                                    data: data
+                                }, '*');
+                            }
+                            
+                            // 导出updateIframeScores方法，使其可以从外部调用
+                            window.updateScoreSummary = updateIframeScores;
+                            
+                            // 获取最新评分数据并更新iframe
+                            function fetchLatestScoreData() {
+                                const projectId = document.getElementById('project_id').value;
+                                if (!projectId) return;
+                                
+                                console.log('在后台获取最新评分数据');
+                                fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=true`)
+                                    .then(response => {
+                                        if (!response.ok) {
+                                            throw new Error(`获取评分数据失败: ${response.status} ${response.statusText}`);
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
+                                        console.log('获取最新评分数据成功');
+                                        // 更新缓存
+                                        sessionStorage.setItem('score_summary_data', JSON.stringify(data));
+                                        sessionStorage.setItem('score_summary_cache_time', new Date().getTime().toString());
+                                        // 更新iframe
+                                        updateIframeScores(data);
+                                    })
+                                    .catch(error => {
+                                        console.error('获取最新评分数据失败:', error);
+                                    });
+                            }
+                            
+                            // iframe加载完成后的处理
+                            iframe.addEventListener('load', function() {
+                                console.log('评分汇总iframe加载完成');
+                                
+                                // 优先使用缓存数据立即显示
+                                const cachedData = sessionStorage.getItem('score_summary_data');
+                                if (cachedData) {
+                                    console.log('从缓存加载评分数据到iframe');
+                                    updateIframeScores(JSON.parse(cachedData));
+                                } else {
+                                    // 如果没有缓存，在后台获取数据
+                                    fetchLatestScoreData();
+                                }
+                            });
+                        });
+                    </script>
+                    {% endif %}
+                    {% block content %}
+                    {% if current_page == 'project_info' %}
+                    <!-- 项目信息表单 -->
+                    <div class="project-info-container">
+                        <!-- 使用iframe嵌入项目信息页面，并使用iframe-resizer.js管理高度 -->
+                        <iframe id="projectInfoIframe" src="{{ url_for('project_info_page', project_id=project.id if project else '') }}" 
+                            style="width:100%; border:none;" scrolling="no"
+                            title="项目信息" loading="eager"></iframe>
+                    </div>
+                    {% elif current_page == 'green_materials' %}
+                    <!-- 绿色建材计算器内容 -->
+                    <div class="green-materials-container">
+                        <!-- 使用iframe嵌入绿色建材计算器，并使用iframe-resizer.js管理高度 -->
+                        <iframe id="myIframe" src="{{ url_for('calculator') }}" 
+                            style="width:100%; border:none; min-height:800px;" scrolling="auto"
+                            title="绿色建材比例计算" loading="eager"></iframe>
+                    </div>
+                    <script>
+                    // 初始化iframe自适应高度
+                    document.addEventListener('DOMContentLoaded', function() {
+                        if (typeof iFrameResize === 'function') {
+                            iFrameResize({
+                                log: false,
+                                heightCalculationMethod: 'max',
+                                checkOrigin: false,
+                                scrolling: true,
+                                resizeFrom: 'child',
+                                autoResize: true,
+                                minHeight: 800
+                            }, '#myIframe');
+                            console.log('绿色建材iframe高度自适应已初始化');
+                        } else {
+                            console.error('iframe-resizer.js 未正确加载');
+                        }
+                    });
+                    </script>
+                    <!-- 移除旧的iframe调整脚本，使用iframe-resizer.js替代 -->
+                    {% elif current_page == 'solar_calculator' %}
+                    <!-- 太阳能计算器内容 -->
+                    <div class="solar-calculator-container">
+                        <!-- 使用iframe嵌入太阳能计算器，并使用iframe-resizer.js管理高度 -->
+                        <iframe id="solarIframe" src="{{ url_for('solar_calculator', project_id=project.id if project else '') }}" 
+                            style="width:100%; border:none;" scrolling="no"
+                            title="太阳能计算" loading="eager"></iframe>
+                    </div>
+                    <!-- 移除旧的iframe调整脚本，使用iframe-resizer.js替代 -->
+                    <script>
+                        // 初始化太阳能计算器iframe自适应高度
+                        document.addEventListener('DOMContentLoaded', function() {
+                            if (typeof iFrameResize === 'function') {
+                                iFrameResize({
+                                    log: false,
+                                    heightCalculationMethod: 'bodyOffset',
+                                    autoResize: true,
+                                    maxHeight: 50000,
+                                    scrolling: false,
+                                    checkOrigin: false,
+                                    resizeFrom: 'child',
+                                    inPageLinks: true,
+                                    sizeHeight: true,
+                                    sizeWidth: false
+                                }, '#solarIframe');
+                                console.log('太阳能计算器iframe高度自适应已初始化');
+                            } else {
+                                console.error('太阳能计算器iframe: iframe-resizer.js 未正确加载');
+                            }
+                        });
+                    </script>
+                    {% elif current_page == 'specialty' %}
+                    <!-- 标准列表内容 -->
+                    <!-- 添加隐藏的项目ID字段 -->
+                    <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
+                    
+                    <div class="overflow-x-auto ">
+                        {% if standards %}
+                        
+                        {% if current_level == '提高级' %}
+                        <!-- 提高级分类过滤器 -->
+                        <div class="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
+                            <div class="flex flex-wrap items-center">
+                                <span class="mr-2 font-medium">分类过滤:</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <button id="filter-all" class="px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium category-filter active">全部</button>
+                                    <button id="filter-安全耐久" data-category="安全耐久" class="px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm font-medium category-filter">安全耐久</button>
+                                    <button id="filter-健康舒适" data-category="健康舒适" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">健康舒适</button>
+                                    <button id="filter-生活便利" data-category="生活便利" class="px-3 py-1 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-sm font-medium category-filter">生活便利</button>
+                                    <button id="filter-资源节约" data-category="资源节约" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">资源节约</button>
+                                    <button id="filter-环境宜居" data-category="环境宜居" class="px-3 py-1 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-sm font-medium category-filter">环境宜居</button>
+                                    <button id="filter-提高与创新" data-category="提高与创新" class="px-3 py-1 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium category-filter">提高与创新</button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <table class="min-w-full divide-y divide-gray-200 table-fixed">
+                            <thead class="bg-primary">
+                                <tr>
+                                    {% if current_level == '基本级' %}
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">条文号</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-30">条文内容</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分值</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">是否达标</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap technical-measures-cell">技术措施</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">审查材料</th>
+                                    {% elif current_level == '提高级' %}
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">条文号</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分类</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-30">条文内容</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分值</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">得分</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap technical-measures-cell">技术措施</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">审查材料</th>
+                                    {% else %}
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">条文号</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">分类</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">条文内容</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">分值</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">审查材料</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for standard in standards %}
+                                <tr class="table-row-hover">
+                                    <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.条文号 }}</td>
+                                    {% if current_level == '提高级' %}
+                                    <td class="px-6 py-4 whitespace-normal h-16 text-base text-gray-700">
+                                        <span class="category-tag category-{{ standard.分类 }}">{{ standard.分类 }}</span>
+                                    </td>
+                                    {% endif %}
+                                    <td class="px-6 py-4 text-base text-gray-700">{{ standard.条文内容 }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.分值 }}</td>
+                                    
+                                    {% if current_level == '基本级' %}
+                                    <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
+                                        <select name="is_achieved" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary is-achieved-select" title="符合性判断">
+                                            <option value="是">是</option>
+                                            <option value="否">否</option>
+                                            <option value="不参评">不参评</option>
+                                        </select>
+                                    </td>
+                                    <td class="px-6 py-4 text-base text-gray-700">
+                                        <textarea name="technical_measures" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary technical-measures" placeholder="请输入技术措施"></textarea>
+                                    </td>
+                                    <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
+                                    {% elif current_level == '提高级' %}
+                                    <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
+                                        {% if standard.分值 == '—' %}
+                                        <span class="text-gray-500">—</span>
+                                        {% else %}
+                                        <input type="text" name="score" data-clause="{{ standard.条文号 }}" data-maxscore="{{ standard.分值 }}" class="w-full rounded focus:border-primary" placeholder="得分">
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 text-base text-gray-700 technical-measures-cell">
+                                        <textarea name="technical_measures" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary technical-measures" placeholder="请输入技术措施"></textarea>
+                                    </td>
+                                    <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
+                                    {% else %}
+                                    <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+
+                        <!-- 添加保存按钮 -->
+                        <div class="mt-8 flex justify-center">
+                            <button type="button" id="saveScoreBtn" class="px-6 py-3 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                                保存评分信息
+                            </button>
+                        </div>
+
+                        <!-- 评分统计表格 -->
+                        {% if current_level == '提高级' %}
+
+                        {% endif %}
+                        {% else %}
+                        <div class="text-center py-10">
+                            <p class="text-gray-500 text-xl">没有找到符合条件的记录</p>
+                            <p class="text-gray-400 text-lg mt-2">请尝试其他筛选条件</p>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if current_page == 'public_transport_analysis' %}
+                    <h1 class="text-3xl font-bold text-primary mb-6 text-center">公共交通站点分析</h1>
+                    {% include 'components/transport_analysis.html' %}
+                    {% endif %}
+                    {% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+            // 添加生成Word文档的函数
+    function generateWord() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
+        if (currentProjectStandard=='国标') {
+            alert('当前标准下暂无报审表模板!');
+            return;
+        }
+        
+        // 确保报告导出菜单保持展开状态
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+        
+        // 找到报审表菜单项并添加active类
+        const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
+        let progressInterval;
+        
+        if (wordMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== wordMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            wordMenuItem.classList.add('active');
+            wordMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            wordMenuItem.style.display = 'flex';
+            wordMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (wordMenuItem) {
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                wordMenuItem.classList.add('keep-visible');
+            }
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+            return;
+        }
+        
+        // 调用generate_word接口
+        fetch('/api/generate_word', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                standard: currentProjectStandard
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成报审表失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            if (currentProjectStandard=='四川省标') {
+                a.download = '四川省绿色建筑报审表.docx';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '成都市绿色建筑报审表.docx';
+            } else {
+                a.download = '报审表.docx';
+            }
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    wordMenuItem.classList.remove('loading');
+                    wordMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    wordMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        })
+        .catch(error => {
+            console.error('生成报审表失败:', error);
+            alert(error.message || '生成报审表失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                wordMenuItem.classList.add('keep-visible');
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        });
+    }
+    
+    // 添加生成DWG文档的函数
+    function generateDWG() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard').value;
+        
+        // 确保报告导出菜单保持展开状态
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+        
+        // 找到绿色建筑设计专篇菜单项并添加active类
+        const dwgMenuItem = document.querySelector('a[onclick="generateDWG()"]');
+        let progressInterval;
+        
+        if (dwgMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== dwgMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            dwgMenuItem.classList.add('active');
+            dwgMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            dwgMenuItem.style.display = 'flex';
+            dwgMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('current-project-id').value;
+        if (!projectId) {
+            alert('请先选择项目');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (dwgMenuItem) {
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                dwgMenuItem.classList.add('keep-visible');
+            }
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+            return;
+        }
+        
+        // 调用generate_dwg接口
+        fetch(`${window.location.protocol}//${window.location.host}/api/generate_dwg`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId,
+                standard: currentProjectStandard
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || '生成绿色建筑设计专篇失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            if (currentProjectStandard=='四川省标') {
+                a.download = '绿色建筑设计专篇（四川省标）.dwg';
+            } else if (currentProjectStandard=='成都市标') {
+                a.download = '绿色建筑设计专篇（成都市标）.dwg';
+            } else {
+                a.download = '绿色建筑设计专篇.dwg';
+            }
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    dwgMenuItem.classList.remove('loading');
+                    dwgMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    dwgMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        })
+        .catch(error => {
+            console.error('生成绿色建筑设计专篇失败:', error);
+            alert(error.message || '生成绿色建筑设计专篇失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (dwgMenuItem) {
+                clearInterval(progressInterval);
+                dwgMenuItem.classList.remove('loading');
+                dwgMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                dwgMenuItem.classList.add('keep-visible');
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        });
+    }
+    
+    // 绿建自评估报告生成函数
+    function generateSelfAssessmentReport() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard')?.value || '国标';
+        
+        // 只有国标项目才能生成绿建自评估报告
+        if (currentProjectStandard !== '国标') {
+            alert('只有国标项目才能生成绿建自评估报告！');
+            return;
+        }
+        
+        // 确保报告导出菜单保持展开状态
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+        
+        // 找到绿建自评估报告菜单项并添加active类
+        const reportMenuItem = document.querySelector('a[onclick="generateSelfAssessmentReport(); return false;"]');
+        let progressInterval;
+        
+        if (reportMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== reportMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            reportMenuItem.classList.add('active');
+            reportMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            reportMenuItem.style.display = 'flex';
+            reportMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+
+        // 获取当前项目ID
+        const projectId = document.getElementById('project_id').value;
+        console.log("项目ID:", projectId);
+        
+        if (!projectId) {
+            alert('未找到项目ID');
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            if (reportMenuItem) {
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                reportMenuItem.classList.add('keep-visible');
+            }
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+            return;
+        }
+
+        console.log("正在生成绿建自评估报告，项目ID: " + projectId);
+
+        // 发送请求
+        fetch('/api/self-assessment-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId
+            })
+        })
+        .then(response => {
+            console.log("收到服务器响应状态:", response.status);
+            
+            if (!response.ok) {
+                // 如果服务器返回错误，尝试获取错误信息
+                return response.json().then(data => {
+                    console.error("服务器返回错误:", data);
+                    throw new Error(data.error || '生成绿建自评估报告失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            console.log("收到blob数据，类型:", blob.type, "大小:", blob.size, "bytes");
+            
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            const projectName = document.getElementById('current_project_name').value || '';
+            console.log("项目名称:", projectName);
+            
+            a.href = url;
+            a.download = projectName ? `${projectName}_绿建自评估报告.docx` : '绿建自评估报告.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 完成进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    reportMenuItem.classList.remove('loading');
+                    reportMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    reportMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        })
+        .catch(error => {
+            console.error('生成报告失败:', error);
+            alert(error.message || '生成绿建自评估报告失败，请稍后重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            // 重置进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                reportMenuItem.classList.add('keep-visible');
+            }
+            
+            // 确保报告导出菜单保持展开状态
+            ensureReportMenuOpen();
+        });
+    }
+
+    // 确保报告导出菜单保持展开状态的辅助函数
+    function ensureReportMenuOpen() {
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            reportMenuContent.classList.add('expanded');
+            reportMenuContent.classList.add('keep-open');
+            reportMenuContent.style.display = 'block';
+            // 设置箭头图标为展开状态
+            const reportMenuToggle = document.getElementById('reportMenuToggle');
+            if (reportMenuToggle) {
+                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) {
+                    arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+            
+            // 确保所有子菜单项保持原有样式
+            const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
+            subMenuItems.forEach(item => {
+                // 保持原有的类，但确保可见性
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.paddingLeft = '1rem';
+                item.style.paddingRight = '1rem';
+                item.style.paddingTop = '0.75rem';
+                item.style.paddingBottom = '0.75rem';
+            });
+        }
+    }
+
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 确保报告导出菜单子项保持可见并且样式一致
+            const reportMenuContent = document.getElementById('reportMenuContent');
+            if (reportMenuContent) {
+                const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
+                subMenuItems.forEach(item => {
+                    // 保持原有的布局和样式
+                    item.style.display = 'flex';
+                    item.style.alignItems = 'center';
+                    item.style.paddingLeft = '1rem';
+                    item.style.paddingRight = '1rem';
+                    item.style.paddingTop = '0.75rem';
+                    item.style.paddingBottom = '0.75rem';
+                    console.log("初始化: 保持报告子菜单项样式一致", item.textContent.trim());
+                });
+            }
+        });
+    </script>
+</body>
+</html>

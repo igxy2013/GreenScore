@@ -91,3 +91,4 @@ static/exports/
 logs/
 uploads/
 __pycache__/
+static/reports/

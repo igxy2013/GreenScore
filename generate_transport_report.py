@@ -10,7 +10,7 @@ def generate_transport_report(data):
     
     参数:
         data: 包含以下字段的字典：
-            - address: 项目地址
+            - address: 详细地址
             - stations: 站点列表，每个站点包含 {name, type, distance, detail}
             - map_image: 地图截图的base64编码
             - conclusion: 分析结论，包含 {result6_1_2, result6_2_1, totalScore}
@@ -20,105 +20,83 @@ def generate_transport_report(data):
         生成的文档路径
     """
     try:
-        print("开始生成公共交通站点分析报告...")
+        print("\n=== 开始生成公共交通站点分析报告 ===")
         
         # 获取模板文件路径
         template_path = os.path.join("static", "templates", "公共交通站点分析报告.docx")
         if not os.path.exists(template_path):
             raise Exception(f"模板文件不存在: {template_path}")
         
-        # 准备数据
+        print(f"使用模板: {template_path}")
+        
+        # 提取数据
         address = data.get('address', '')
         stations = data.get('stations', [])
-        map_image = data.get('map_image', '')
+        map_image = data.get('mapImage', '')
         conclusion = data.get('conclusion', {})
         project_info = data.get('project_info', {})
+        project_id = data.get('project_id', '')
         
-        # 生成站点表格HTML
-        stations_table = "<table border='1' style='width:100%; border-collapse: collapse;'>"
-        stations_table += "<tr><th>序号</th><th>站点名称</th><th>类型</th><th>距离(m)</th><th>详细信息</th></tr>"
+        print(f"项目ID: {project_id}")
+        print(f"地址: {address}")
+        print(f"站点数量: {len(stations)}")
+        print(f"结论: {conclusion}")
         
-        for i, station in enumerate(stations):
-            stations_table += f"<tr><td>{i+1}</td><td>{station.get('name', '')}</td><td>{station.get('type', '')}</td><td>{station.get('distance', '')}</td><td>{station.get('detail', '')}</td></tr>"
+        # 输出项目信息
+        print("\n项目信息内容:")
+        print(json.dumps(project_info, ensure_ascii=False, indent=2))
         
-        stations_table += "</table>"
+        # 准备数据
+        final_data = []
         
-        # 准备模板数据
-        template_data = [
-            # 项目基本信息
-            {
-                "项目名称": project_info.get('项目名称', ''),
-                "项目地点": project_info.get('项目地点', address),
-                "项目编号": project_info.get('项目编号', ''),
-                "建设单位": project_info.get('建设单位', ''),
-                "设计单位": project_info.get('设计单位', ''),
-                "总用地面积": project_info.get('总用地面积', ''),
-                "总建筑面积": project_info.get('总建筑面积', ''),
-                "建筑密度": project_info.get('建筑密度', ''),
-                "绿地率": project_info.get('绿地率', ''),
-                "容积率": project_info.get('容积率', ''),
-                "项目地址": address,
-                "设计日期": datetime.now().strftime("%Y年%m月%d日"),
-                "地图截图": map_image,  # 这需要在模板处理函数中特殊处理
-                "公交站点列表": stations_table,  # 这需要在模板处理函数中特殊处理
-                "结论": conclusion.get('result6_1_2', '') + '\n\n' + conclusion.get('result6_2_1', '') + '\n\n总得分：' + str(conclusion.get('totalScore', 0)) + '分'
-            }
-        ]
+        # 创建完整的项目信息字典
+        project_data = {}
         
-        # 添加条文得分数据
-        template_data.append({
-            "条文号": "6.1.2",
-            "得分": "符合" if conclusion.get('result6_1_2', '').startswith('符合') else "不符合",
-            "技术措施": conclusion.get('result6_1_2', '')
-        })
+        # 首先添加所有原始项目信息字段
+        for key, value in project_info.items():
+            project_data[key] = value
         
-        template_data.append({
-            "条文号": "6.2.1",
-            "得分": str(conclusion.get('totalScore', 0)),
-            "技术措施": conclusion.get('result6_2_1', '')
-        })
+        # 添加地址相关字段，确保各种格式的占位符都能被替换
+        address_fields = ['详细地址', '地址', '项目地址', '公共交通地址', 'address']
+        for field in address_fields:
+            project_data[field] = address
         
-        # 使用word_template模块生成报告
-        print("调用replace_placeholders生成报告...")
-        output_path = replace_placeholders(template_path, template_data)
+        # 添加结论字段，确保各种格式的占位符都能被替换
+        conclusion_text = ""
+        if isinstance(conclusion, dict):
+            result6_1_2 = conclusion.get('result6_1_2', '')
+            result6_2_1 = conclusion.get('result6_2_1', '')
+            total_score = conclusion.get('totalScore', 0)
+            conclusion_text = f"{result6_1_2}\n\n{result6_2_1}\n\n总得分：{total_score}分"
+        elif isinstance(conclusion, str):
+            conclusion_text = conclusion
         
-        # 返回生成的文档路径
+        conclusion_fields = ['结论', '交通分析结论', '分析结论', '评价结论']
+        for field in conclusion_fields:
+            project_data[field] = conclusion_text
+        
+        # 添加当前日期
+        current_date = datetime.now().strftime("%Y年%m月%d日")
+        project_data['设计日期'] = current_date
+        project_data['日期'] = current_date
+        
+        # 将项目信息添加到final_data
+        final_data.append(project_data)
+        
+        # 输出最终数据结构（部分）
+        print("\n最终处理的数据结构(部分):")
+        print(f"详细地址: {project_data.get('详细地址', '未设置')}")
+        print(f"项目名称: {project_data.get('projectName', '未设置')}")
+        print(f"结论: {project_data.get('结论', '未设置')[:100]}...")
+        
+        # 调用Word模板处理函数
+        output_path = replace_placeholders(template_path, final_data)
+        
+        print(f"\n报告生成完成: {output_path}")
+        
         return output_path
-        
     except Exception as e:
-        print(f"生成公共交通站点分析报告失败: {str(e)}")
+        print(f"生成报告失败: {str(e)}")
         import traceback
         print(traceback.format_exc())
-        raise Exception(f"生成公共交通站点分析报告失败: {str(e)}")
-
-if __name__ == "__main__":
-    # 测试数据
-    test_data = {
-        "address": "成都市武侯区天府大道北段1700号",
-        "stations": [
-            {"name": "天府五街站", "type": "公交站", "distance": "120", "detail": "1路、2路、3路"},
-            {"name": "天府三街站", "type": "公交站", "distance": "350", "detail": "4路、5路"},
-            {"name": "天府二街站", "type": "地铁站", "distance": "480", "detail": "1号线、7号线"}
-        ],
-        "map_image": "", # 实际使用时需要提供base64编码的图片
-        "conclusion": {
-            "result6_1_2": "符合规范6.1.2要求。最近公交站距离为120m，最近地铁站距离为480m。",
-            "result6_2_1": "按照规范6.2.1评分，总得分为8分，其中：\n- 最近公交站距离为120m，最近地铁站距离为480m，得4分；\n- 周边800m内有3个公交站（包括天府五街站、天府三街站等），有1个地铁站（包括天府二街站），总计5条线路，得4分。",
-            "totalScore": 8
-        },
-        "project_info": {
-            "项目名称": "测试项目",
-            "项目地点": "成都市武侯区天府大道北段1700号",
-            "项目编号": "TEST-2024-001",
-            "建设单位": "测试建设公司",
-            "设计单位": "测试设计院",
-            "总用地面积": "5000",
-            "总建筑面积": "20000",
-            "建筑密度": "35",
-            "绿地率": "30",
-            "容积率": "4.0"
-        }
-    }
-    
-    output_path = generate_transport_report(test_data)
-    print(f"报告已生成: {output_path}") 
+        raise Exception(f"生成报告失败: {str(e)}")

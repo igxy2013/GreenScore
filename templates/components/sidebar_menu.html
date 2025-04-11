@@ -1,0 +1,155 @@
+<!-- 侧边导航栏 -->
+<aside class="w-72 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
+    <div class="p-6 border-b">
+        <h1 class="text-2xl font-bold text-primary flex items-center">                
+            <picture>
+                <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-8 w-8 mr-2">
+            </picture>
+            <span>智能绿建评价系统</span>
+        </h1>
+    </div>
+    <nav class="p-4">
+        <div class="space-y-3">
+            <a href="{{ url_for('project_detail', project_id=project.id) }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
+                <i class="ri-file-list-line mr-3"></i>
+                <span>项目信息</span>
+            </a>
+            <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="basicMenuToggle">
+                <i class="ri-checkbox-line mr-3"></i>
+                <span>基本级</span>
+                <i class="ri-arrow-down-s-line ml-auto"></i>
+            </div>
+            <div id="basicMenuContent" class="menu-content">
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '建筑' %}active{% endif %}">
+                        <i class="ri-building-line mr-3"></i>
+                    <span>建筑</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '结构' %}active{% endif %}">
+                    <i class="ri-layout-2-line mr-3"></i>
+                    <span>结构</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '给排水' %}active{% endif %}">
+                    <i class="ri-drop-line mr-3"></i>
+                    <span>给排水</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '电气' %}active{% endif %}">
+                    <i class="ri-flashlight-line mr-3"></i>
+                    <span>电气</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '暖通' %}active{% endif %}">
+                    <i class="ri-temp-hot-line mr-3"></i>
+                    <span>暖通</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '景观' %}active{% endif %}">
+                    <i class="ri-plant-line mr-3"></i>
+                    <span>景观</span>
+                </a>
+                {% if project and project.standard == '四川省标' %}
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '环境健康与节能' %}active{% endif %}">
+                        <i class="ri-leaf-line mr-3"></i>
+                        <span>环境健康与节能</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+            {% if not project or project.star_rating_target != '基本级' %}
+            <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
+                <i class="ri-checkbox-multiple-line mr-3"></i>
+                <span>提高级</span>
+                <i class="ri-arrow-down-s-line ml-auto"></i>
+            </div>
+            <div id="advancedMenuContent" class="menu-content">
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '建筑' %}active{% endif %}">
+                    <i class="ri-building-line mr-3"></i>
+                    <span>建筑</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='结构', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '结构' %}active{% endif %}">
+                    <i class="ri-layout-2-line mr-3"></i>
+                    <span>结构</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='给排水', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '给排水' %}active{% endif %}">
+                        <i class="ri-drop-line mr-3"></i>
+                    <span>给排水</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
+                    <i class="ri-flashlight-line mr-3"></i>
+                    <span>电气</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '暖通' %}active{% endif %}">
+                    <i class="ri-temp-hot-line mr-3"></i>
+                    <span>暖通</span>
+                </a>
+                {% if project and project.standard == '成都市标' or project and project.standard == '四川省标' %}
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
+                        <i class="ri-plant-line mr-3"></i>
+                    <span>景观</span>
+                </a>
+                {% endif %}
+                {% if project and project.standard == '四川省标' %}
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='环境健康与节能', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '环境健康与节能' %}active{% endif %}">
+                    <i class="ri-leaf-line mr-3"></i>
+                        <span>环境健康与节能</span>
+                    </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            {% if not project or project.star_rating_target != '基本级' %}
+            <a href="{{ url_for('project_detail', project_id=project.id, page='score_summary') }}" 
+            class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'score_summary' %}active{% endif %}"
+            id="scoreSummaryMenuItem">
+                <i class="ri-bar-chart-line mr-3"></i>
+                <span>评分汇总</span>
+            </a>
+            {% endif %}
+            
+            <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="reportMenuToggle">
+                <i class="ri-file-download-line mr-3"></i>
+                <span>报告导出</span>
+                <i class="ri-arrow-down-s-line ml-auto"></i>
+            </div>
+            <div id="reportMenuContent" class="menu-content">
+                <div class="submenu-group" id="reportSubmenu">
+                    <a href="javascript:void(0)" onclick="generateWord()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
+                        <i class="ri-file-list-3-line mr-3"></i>
+                        <span>报审表</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="generateDWG()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'dwg_export' %}active{% endif %}">
+                        <i class="ri-leaf-line mr-3"></i>
+                        <span>绿色建筑设计专篇</span>
+                    </a>
+                    {% if project and project.standard == '国标' %}
+                    <a href="javascript:void(0)" onclick="generateSelfAssessmentReport(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                        <i class="ri-book-line mr-3"></i>
+                        <span>绿建自评估报告</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="specialCalcMenuToggle">
+                <i class="ri-calculator-line mr-3"></i>
+                <span>专项计算</span>
+                <i class="ri-arrow-down-s-line ml-auto"></i>
+            </div>
+            <div id="specialCalcMenuContent" class="menu-content">
+                <div class="submenu-group" id="specialCalcSubmenu">
+                    <a href="{{ url_for('project_detail', project_id=project.id, page='solar_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'solar_calculator' %}active{% endif %}">
+                        <i class="ri-flashlight-line mr-3"></i>
+                        <span>太阳能计算</span>
+                    </a>
+                    <a href="{{ url_for('project_detail', project_id=project.id, page='green_materials') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'green_materials' %}active{% endif %}">
+                        <i class="ri-calculator-line mr-3"></i>
+                        <span>绿色建材应用比例</span>
+                    </a>
+                    <a href="{{ url_for('project_detail', project_id=project.id, page='public_transport_analysis') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'public_transport_analysis' %}active{% endif %}">
+                        <i class="ri-bus-line mr-3"></i>
+                        <span>公共交通分析</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+</aside> 

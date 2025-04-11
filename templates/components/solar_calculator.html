@@ -1,0 +1,30 @@
+<!-- 太阳能计算器内容 -->
+<div class="solar-calculator-container">
+    <!-- 使用iframe嵌入太阳能计算器，并使用iframe-resizer.js管理高度 -->
+    <iframe id="solarIframe" src="{{ url_for('solar_calculator', project_id=project.id if project else '') }}" 
+        style="width:100%; border:none;" scrolling="no"
+        title="太阳能计算" loading="eager"></iframe>
+</div>
+<!-- 移除旧的iframe调整脚本，使用iframe-resizer.js替代 -->
+<script>
+    // 初始化太阳能计算器iframe自适应高度
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof iFrameResize === 'function') {
+            iFrameResize({
+                log: false,
+                heightCalculationMethod: 'bodyOffset',
+                autoResize: true,
+                maxHeight: 50000,
+                scrolling: false,
+                checkOrigin: false,
+                resizeFrom: 'child',
+                inPageLinks: true,
+                sizeHeight: true,
+                sizeWidth: false
+            }, '#solarIframe');
+            console.log('太阳能计算器iframe高度自适应已初始化');
+        } else {
+            console.error('太阳能计算器iframe: iframe-resizer.js 未正确加载');
+        }
+    });
+</script> 

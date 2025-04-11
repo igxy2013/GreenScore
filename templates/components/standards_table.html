@@ -1,0 +1,328 @@
+<!-- 标准列表内容 -->
+<!-- 添加隐藏的项目ID字段 -->
+<input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
+
+<div class="overflow-x-auto">
+    {% if standards %}
+    
+    {% if current_level == '提高级' %}
+    <!-- 提高级分类过滤器 -->
+    <div class="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
+        <div class="flex flex-wrap items-center">
+            <span class="mr-2 font-medium">分类过滤:</span>
+            <div class="flex flex-wrap gap-2">
+                <button id="filter-all" class="px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium category-filter active">全部</button>
+                <button id="filter-安全耐久" data-category="安全耐久" class="px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm font-medium category-filter">安全耐久</button>
+                <button id="filter-健康舒适" data-category="健康舒适" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">健康舒适</button>
+                <button id="filter-生活便利" data-category="生活便利" class="px-3 py-1 rounded-full bg-yellow-100 hover:bg-yellow-200 text-yellow-800 text-sm font-medium category-filter">生活便利</button>
+                <button id="filter-资源节约" data-category="资源节约" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">资源节约</button>
+                <button id="filter-环境宜居" data-category="环境宜居" class="px-3 py-1 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-sm font-medium category-filter">环境宜居</button>
+                <button id="filter-提高与创新" data-category="提高与创新" class="px-3 py-1 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium category-filter">提高与创新</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <table class="min-w-full divide-y divide-gray-200 table-fixed">
+        <thead class="bg-primary">
+            <tr>
+                {% if current_level == '基本级' %}
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">条文号</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-30">条文内容</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分值</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">是否达标</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap technical-measures-cell">技术措施</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">审查材料</th>
+                {% elif current_level == '提高级' %}
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">条文号</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分类</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-30">条文内容</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-5">分值</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">得分</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap technical-measures-cell">技术措施</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap w-10">审查材料</th>
+                {% else %}
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">条文号</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">分类</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">条文内容</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">分值</th>
+                <th scope="col" class="px-6 py-3 text-left text-xl font-medium text-white tracking-wider whitespace-nowrap">审查材料</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for standard in standards %}
+            <tr class="table-row-hover">
+                <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.条文号 }}</td>
+                {% if current_level == '提高级' %}
+                <td class="px-6 py-4 whitespace-normal h-16 text-base text-gray-700">
+                    <span class="category-tag category-{{ standard.分类 }}">{{ standard.分类 }}</span>
+                </td>
+                {% endif %}
+                <td class="px-6 py-4 text-base text-gray-700">{{ standard.条文内容 }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.分值 }}</td>
+                
+                {% if current_level == '基本级' %}
+                <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
+                    <select name="is_achieved" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary is-achieved-select" title="符合性判断">
+                        <option value="是">是</option>
+                        <option value="否">否</option>
+                        <option value="不参评">不参评</option>
+                    </select>
+                </td>
+                <td class="px-6 py-4 text-base text-gray-700">
+                    <textarea name="technical_measures" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary technical-measures" placeholder="请输入技术措施"></textarea>
+                </td>
+                <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
+                {% elif current_level == '提高级' %}
+                <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
+                    {% if standard.分值 == '—' %}
+                    <span class="text-gray-500">—</span>
+                    {% else %}
+                    <input type="text" name="score" data-clause="{{ standard.条文号 }}" data-maxscore="{{ standard.分值 }}" class="w-full rounded focus:border-primary" placeholder="得分">
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-base text-gray-700 technical-measures-cell">
+                    <textarea name="technical_measures" data-clause="{{ standard.条文号 }}" class="w-full rounded focus:border-primary technical-measures" placeholder="请输入技术措施"></textarea>
+                </td>
+                <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
+                {% else %}
+                <td class="px-6 py-4 text-base text-gray-700">{{ standard.审查材料 }}</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 添加保存按钮 -->
+    <div class="mt-8 flex justify-center">
+        <button type="button" id="saveScoreBtn" class="px-6 py-3 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            保存评分信息
+        </button>
+    </div>
+
+    <!-- 评分统计表格 -->
+    {% if current_level == '提高级' %}
+    <!-- 这里可以添加提高级评分统计表格的内容 -->
+    {% endif %}
+    {% else %}
+    <div class="text-center py-10">
+        <p class="text-gray-500 text-xl">没有找到符合条件的记录</p>
+        <p class="text-gray-400 text-lg mt-2">请尝试其他筛选条件</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 添加标准表格相关的JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取保存按钮
+        const saveButton = document.getElementById('saveScoreBtn');
+        if (saveButton) {
+            // 绑定保存按钮点击事件
+            saveButton.addEventListener('click', function() {
+                saveScores();
+            });
+        }
+        
+        // 提高级分类过滤器
+        const categoryFilters = document.querySelectorAll('.category-filter');
+        categoryFilters.forEach(button => {
+            button.addEventListener('click', function() {
+                // 移除所有按钮的active类
+                categoryFilters.forEach(btn => btn.classList.remove('active'));
+                // 为当前按钮添加active类
+                this.classList.add('active');
+                
+                // 获取分类
+                const category = this.dataset.category;
+                
+                // 过滤表格行
+                const rows = document.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    // 如果是"全部"按钮，显示所有行
+                    if (this.id === 'filter-all') {
+                        row.style.display = '';
+                        return;
+                    }
+                    
+                    // 获取分类单元格
+                    const categoryCell = row.querySelector('td:nth-child(2)');
+                    if (categoryCell) {
+                        const categoryTag = categoryCell.querySelector('.category-tag');
+                        if (categoryTag && categoryTag.textContent === category) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        });
+        
+        // 加载页面时获取保存的评分信息
+        loadScores();
+    });
+    
+    // 保存评分信息
+    function saveScores() {
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+        
+        // 创建评分数据对象
+        const scoreData = {
+            project_id: document.getElementById('project_id').value,
+            level: '{{ current_level }}',
+            specialty: '{{ current_specialty }}',
+            scores: []
+        };
+        
+        // 根据评价等级获取不同的评分数据
+        if ('{{ current_level }}' === '基本级') {
+            // 获取所有基本级的数据
+            const selects = document.querySelectorAll('.is-achieved-select');
+            selects.forEach(select => {
+                const clause = select.dataset.clause;
+                const isAchieved = select.value;
+                const technicalMeasures = document.querySelector(`textarea[data-clause="${clause}"]`).value;
+                
+                scoreData.scores.push({
+                    clause: clause,
+                    is_achieved: isAchieved,
+                    technical_measures: technicalMeasures
+                });
+            });
+        } else if ('{{ current_level }}' === '提高级') {
+            // 获取所有提高级的数据
+            const scoreInputs = document.querySelectorAll('input[name="score"]');
+            scoreInputs.forEach(input => {
+                const clause = input.dataset.clause;
+                const maxScore = input.dataset.maxscore;
+                let score = input.value.trim();
+                
+                // 如果没有填写得分，默认为0
+                if (score === '') score = '0';
+                
+                // 验证得分是否超过最大值
+                if (parseFloat(score) > parseFloat(maxScore)) {
+                    alert(`条文${clause}的得分不能超过最大分值${maxScore}`);
+                    input.focus();
+                    return;
+                }
+                
+                const technicalMeasures = document.querySelector(`textarea[data-clause="${clause}"]`).value;
+                
+                scoreData.scores.push({
+                    clause: clause,
+                    score: score,
+                    max_score: maxScore,
+                    technical_measures: technicalMeasures
+                });
+            });
+        }
+        
+        // 发送数据到服务器
+        fetch('/api/save_scores', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(scoreData)
+        })
+        .then(response => {
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+            
+            if (!response.ok) {
+                throw new Error('保存失败');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('保存成功');
+                // 刷新评分汇总
+                if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
+                    scoreUtils.fetchScoreSummary();
+                }
+            } else {
+                alert(data.message || '保存失败');
+            }
+        })
+        .catch(error => {
+            console.error('保存失败:', error);
+            alert('保存失败，请重试');
+            
+            // 隐藏加载指示器
+            if (pageLoader) {
+                pageLoader.style.display = 'none';
+            }
+        });
+    }
+    
+    // 加载保存的评分信息
+    function loadScores() {
+        const projectId = document.getElementById('project_id').value;
+        if (!projectId) return;
+        
+        // 显示加载指示器
+        const pageLoader = document.getElementById('page-loader');
+        if (pageLoader) {
+            pageLoader.style.display = 'flex';
+        }
+        
+        fetch(`/api/get_scores?project_id=${projectId}&level={{ current_level }}&specialty={{ current_specialty }}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取数据失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 填充表格
+                    data.scores.forEach(item => {
+                        if ('{{ current_level }}' === '基本级') {
+                            // 填充基本级数据
+                            const select = document.querySelector(`.is-achieved-select[data-clause="${item.clause}"]`);
+                            if (select) {
+                                select.value = item.is_achieved;
+                            }
+                            
+                            const textarea = document.querySelector(`textarea[data-clause="${item.clause}"]`);
+                            if (textarea) {
+                                textarea.value = item.technical_measures || '';
+                            }
+                        } else if ('{{ current_level }}' === '提高级') {
+                            // 填充提高级数据
+                            const input = document.querySelector(`input[data-clause="${item.clause}"]`);
+                            if (input) {
+                                input.value = item.score || '';
+                            }
+                            
+                            const textarea = document.querySelector(`textarea[data-clause="${item.clause}"]`);
+                            if (textarea) {
+                                textarea.value = item.technical_measures || '';
+                            }
+                        }
+                    });
+                } else {
+                    console.warn(data.message || '没有找到保存的评分数据');
+                }
+            })
+            .catch(error => {
+                console.error('加载评分数据失败:', error);
+            })
+            .finally(() => {
+                // 隐藏加载指示器
+                if (pageLoader) {
+                    pageLoader.style.display = 'none';
+                }
+            });
+    }
+</script> 

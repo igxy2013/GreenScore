@@ -26,7 +26,7 @@ async function getProjectLocation(projectId) {
         
         // 返回项目地点
         console.log('获取到项目地点信息:', data);
-        return data.projectLocation || null;
+        return data.项目地点 || null;
     } catch (error) {
         console.error('获取项目地点信息失败:', error);
         return null;

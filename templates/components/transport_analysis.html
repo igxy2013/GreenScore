@@ -1,9 +1,8 @@
-{% extends "dashboard.html" %}
-
-{% block content %}
+<!-- 公共交通站点分析组件 -->
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold text-primary mb-6 text-center">公共交通站点分析</h1>
-
+    <!-- 添加隐藏的项目ID字段 -->
+    <input type="hidden" id="transport-project-id" value="{{ project.id if project else '' }}">
+    
     <!-- 地图切换标签 -->
     <div class="flex justify-center mb-4 border-b border-gray-200">
         <button id="baidu-tab" class="map-tab active px-6 py-2 text-lg font-medium text-primary border-b-2 border-primary focus:outline-none" onclick="switchMapProvider('baidu')">百度地图</button>
@@ -16,8 +15,8 @@
     </div>
 
     <!-- 地图容器 -->
-    <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 400px; width: 100%; position: relative;"></div>
-    <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 400px; width: 100%; position: relative; display: none;"></div>
+    <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 600px; width: 100%; position: relative;"></div>
+    <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 600px; width: 100%; position: relative; display: none;"></div>
 
     <div class="loading" id="loading" style="display: none;">
         <p class="text-center text-gray-600 my-4">数据加载中，请稍候...</p>
@@ -30,11 +29,11 @@
             <table id="result-table" class="min-w-full divide-y divide-gray-200 border border-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">序号</th>
-                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">站点名称</th>
-                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">类型</th>
-                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">距离（米）</th>
-                        <th class="px-4 py-2 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">详细信息</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">序号</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">站点名称</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">类型</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">距离（米）</th>
+                        <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">详细信息</th>
                     </tr>
                 </thead> 
                 <tbody id="result-body" class="bg-white divide-y divide-gray-200">
@@ -67,22 +66,8 @@
         </div>
     </div>
 
+    <!-- 导出按钮 -->
     <div class="text-center">
         <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
     </div>
-</div>
-
-<!-- 在其他脚本之前添加JSZip库 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<!-- 添加我们的模板处理器 -->
-<script src="{{ url_for('static', filename='js/word_template_handler.js') }}"></script>
-<!-- 添加模板测试脚本 -->
-<script src="{{ url_for('static', filename='js/test_template.js') }}"></script>
-<!-- 其他现有的脚本 -->
-<script src="{{ url_for('static', filename='js/public_transport_analytics.js') }}"></script>
-
-<!-- 添加隐藏的测试按钮 -->
-<div class="hidden">
-    <button id="test-template-btn" onclick="window.checkTemplateFormat()" class="bg-blue-500 text-white px-3 py-1 rounded shadow">测试模板</button>
-</div>
-{% endblock %} 
+</div> 

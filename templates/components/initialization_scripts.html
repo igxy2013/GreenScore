@@ -1,0 +1,20 @@
+<!-- 初始化脚本 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 确保报告导出菜单子项保持可见并且样式一致
+        const reportMenuContent = document.getElementById('reportMenuContent');
+        if (reportMenuContent) {
+            const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
+            subMenuItems.forEach(item => {
+                // 保持原有的布局和样式
+                item.style.display = 'flex';
+                item.style.alignItems = 'center';
+                item.style.paddingLeft = '1rem';
+                item.style.paddingRight = '1rem';
+                item.style.paddingTop = '0.75rem';
+                item.style.paddingBottom = '0.75rem';
+                console.log("初始化: 保持报告子菜单项样式一致", item.textContent.trim());
+            });
+        }
+    });
+</script> 

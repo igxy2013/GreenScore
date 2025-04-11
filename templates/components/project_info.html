@@ -1,0 +1,7 @@
+<!-- 项目信息表单 -->
+<div class="project-info-container">
+    <!-- 使用iframe嵌入项目信息页面，并使用iframe-resizer.js管理高度 -->
+    <iframe id="projectInfoIframe" src="{{ url_for('project_info_page', project_id=project.id if project else '') }}" 
+        style="width:100%; border:none;" scrolling="no"
+        title="项目信息" loading="eager"></iframe>
+</div> 

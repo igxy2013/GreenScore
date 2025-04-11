@@ -1,0 +1,26 @@
+<!-- 绿色建材计算器内容 -->
+<div class="green-materials-container">
+    <!-- 使用iframe嵌入绿色建材计算器，并使用iframe-resizer.js管理高度 -->
+    <iframe id="myIframe" src="{{ url_for('calculator') }}" 
+        style="width:100%; border:none; min-height:800px;" scrolling="auto"
+        title="绿色建材比例计算" loading="eager"></iframe>
+</div>
+<script>
+// 初始化iframe自适应高度
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof iFrameResize === 'function') {
+        iFrameResize({
+            log: false,
+            heightCalculationMethod: 'max',
+            checkOrigin: false,
+            scrolling: true,
+            resizeFrom: 'child',
+            autoResize: true,
+            minHeight: 800
+        }, '#myIframe');
+        console.log('绿色建材iframe高度自适应已初始化');
+    } else {
+        console.error('iframe-resizer.js 未正确加载');
+    }
+});
+</script> 

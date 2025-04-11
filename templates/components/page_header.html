@@ -1,0 +1,48 @@
+<!-- 页面标题和操作区域 -->
+<div class="flex justify-between items-center mb-6">
+    <div class="flex items-center gap-4">
+        {% if current_page == 'score_summary' %}
+        <h2 class="text-2xl font-bold text-primary">评分汇总</h2>
+        {% elif current_page == 'project_info' %}
+        <h2 class="text-2xl font-bold text-primary">项目信息</h2>
+        {% elif current_page == 'report_table' %}
+        <h2 class="text-2xl font-bold text-primary">报审表</h2>
+        {% elif current_level %}
+        <div class="flex flex-col gap-2">
+            <h2 class="text-2xl font-bold text-primary">{{ current_specialty }}专业</h2>
+            <div class="text-sm text-gray-600">
+                当前评价标准: {% if project and project.standard == '国标' %}
+                    绿色建筑评价标准 GB/T 50378-2019（2024版）
+                {% elif project and project.standard == '四川省标' %}
+                    四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）
+                {% elif project and project.standard == '成都市标' %}
+                    成都市绿色建筑施工图设计与审查技术要点（2024版）
+                {% else %}
+                    成都市绿色建筑施工图设计与审查技术要点（2024版）
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+
+        {% endif %}
+    </div>
+    <div class="flex items-center gap-4">
+        {% if current_level in ['基本级', '提高级'] %}
+        <div class="relative" >
+            <input type="text" id="clause-filter" placeholder="输入条文号过滤..." class="px-4 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50" oninput="filterTableByClause(this.value)">
+            <!-- <i class="ri-search-line text-gray-400 "></i> -->
+        </div>
+        {% endif %}
+        {% if current_page == 'project_info' %}
+        <a href="{{ url_for('project_management') }}" class="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+            <i class="ri-arrow-left-line mr-2"></i>
+            <span>返回项目管理</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 添加隐藏的项目名称字段，在所有页面都可用 -->
+<input type="hidden" id="current_project_name" value="{{ project.name if project else '' }}">
+<!-- 添加隐藏的项目ID字段，在所有页面都可用 -->
+<input type="hidden" id="project_id" value="{{ project.id if project else '21' }}" 
