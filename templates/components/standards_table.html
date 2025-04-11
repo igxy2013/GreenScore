@@ -134,15 +134,7 @@
 <!-- 添加标准表格相关的JavaScript -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 获取保存按钮
-        const saveButton = document.getElementById('saveScoreBtn');
-        if (saveButton) {
-            // 绑定保存按钮点击事件
-            saveButton.addEventListener('click', function() {
-                saveScores();
-            });
-        }
-        
+        console.log('=== 初始化提高级页面 ===');
         // 检查是否为给排水专业
         const isWaterSpecialty = '{{ current_specialty }}' === '给排水' || 
                                  '{{ current_specialty }}'.includes('给') || 
@@ -159,6 +151,14 @@
                 sampleRows.push(clauseCell.textContent.trim());
             }
             console.log("页面中的前几个条文号样本:", sampleRows);
+        }
+        
+        // 获取保存按钮并绑定事件
+        const saveButton = document.getElementById('saveScoreBtn');
+        if (saveButton) {
+            saveButton.addEventListener('click', function() {
+                saveScores();
+            });
         }
         
         // 绑定悬浮保存按钮点击事件
@@ -208,8 +208,22 @@
             });
         });
         
-        // 加载页面时获取保存的评分信息
-        loadScores();
+        // 检查是否需要强制刷新数据
+        const projectId = document.getElementById('project_id').value;
+        const lastSavedProject = sessionStorage.getItem('last_saved_project');
+        const scoresSavedSuccessfully = sessionStorage.getItem('scores_saved_successfully') === 'true';
+        
+        if (scoresSavedSuccessfully && lastSavedProject === projectId) {
+            console.log('检测到上次保存成功，强制刷新数据');
+            // 清除会话存储的标记
+            sessionStorage.removeItem('scores_saved_successfully');
+            sessionStorage.removeItem('last_saved_project');
+            // 强制刷新数据
+            loadScores(true);
+        } else {
+            // 正常加载数据
+            loadScores(false);
+        }
         
         // 如果是提高级，初始化徽章过滤器和更新徽章状态
         if ('{{ current_level }}' === '提高级') {
@@ -222,15 +236,22 @@
         }
         
         // 添加得分输入验证函数
-        function validateScore(input) {
+        window.validateScore = function(input) {
             const maxScore = parseFloat(input.dataset.maxscore);
             const currentScore = parseFloat(input.value);
             
+            if (isNaN(currentScore)) {
+                input.value = '0';
+                return;
+            }
+            
             if (currentScore > maxScore) {
                 input.value = maxScore;
-                toast(`得分不能超过最大分值${maxScore}`, 'warning');
+                if (typeof toast === 'function') {
+                    toast(`得分不能超过最大分值${maxScore}`, 'warning');
+                }
             }
-        }
+        };
         
         // 为所有得分输入框添加验证
         const scoreInputs = document.querySelectorAll('.score-input');
@@ -241,8 +262,12 @@
         });
     });
     
-    // 保存评分信息
+    /**
+     * 保存评分信息
+     */
     function saveScores() {
+        console.log('开始保存评分信息');
+        
         // 显示加载指示器
         const pageLoader = document.getElementById('page-loader');
         if (pageLoader) {
@@ -250,8 +275,9 @@
         }
         
         // 创建评分数据对象
+        const projectId = document.getElementById('project_id').value;
         const scoreData = {
-            project_id: document.getElementById('project_id').value,
+            project_id: projectId,
             level: '{{ current_level }}',
             specialty: '{{ current_specialty }}',
             scores: []
@@ -271,7 +297,7 @@
                 const technicalMeasures = document.querySelector(`textarea[data-clause="${clause}"]`).value;
                 
                 scoreData.scores.push({
-                    clause: clause,
+                    clause_number: clause,
                     is_achieved: isAchieved,
                     technical_measures: technicalMeasures
                 });
@@ -291,7 +317,11 @@
                 
                 // 验证得分是否超过最大值
                 if (parseFloat(score) > parseFloat(maxScore)) {
-                    alert(`条文${clause}的得分不能超过最大分值${maxScore}`);
+                    if (typeof toast === 'function') {
+                        toast(`条文${clause}的得分不能超过最大分值${maxScore}`, 'warning');
+                    } else {
+                        alert(`条文${clause}的得分不能超过最大分值${maxScore}`);
+                    }
                     input.focus();
                     return;
                 }
@@ -306,7 +336,7 @@
                 }
                 
                 scoreData.scores.push({
-                    clause: clause,
+                    clause_number: clause,
                     score: score,
                     max_score: maxScore,
                     technical_measures: technicalMeasures
@@ -316,7 +346,7 @@
             });
         }
         
-        console.log('即将发送的评分数据:', JSON.stringify(scoreData));
+        console.log(`即将发送的评分数据: ${scoreData.scores.length}条记录`);
         
         // 发送数据到服务器
         fetch('/api/save_score', {
@@ -343,31 +373,55 @@
             console.log('服务器响应数据:', data);
             
             if (data.success) {
-                alert('评分信息保存成功!');
+                // 提示保存成功，但不使用阻塞性的alert，改用非阻塞通知
+                if (typeof toast === 'function') {
+                    toast('评分信息保存成功!', 'success');
+                } else {
+                    // 使用非阻塞通知
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+                    notification.textContent = '评分信息保存成功!';
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 3000);
+                }
+                
                 // 刷新评分汇总
                 if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
                     console.log('刷新评分汇总');
                     scoreUtils.fetchScoreSummary();
                 }
+                
                 // 更新分类达标徽章状态
                 if ('{{ current_level }}' === '提高级' && typeof updateCategoryBadges === 'function') {
                     console.log('更新分类达标徽章');
                     setTimeout(updateCategoryBadges, 1000);
                 }
                 
-                // 重新加载评分数据，确保显示最新的数据
-                setTimeout(() => {
-                    console.log('重新加载评分数据');
-                    loadScores();
-                }, 1000);
+                // 不再重新加载评分数据，保留用户当前输入的内容
+                console.log('保留用户当前输入的内容，不重新加载');
+                
+                // 如果用户刷新页面，确保能正确加载数据
+                // 添加记忆保存成功的标记
+                sessionStorage.setItem('scores_saved_successfully', 'true');
+                sessionStorage.setItem('last_saved_project', projectId);
             } else {
-                alert(data.message || '保存失败');
-                console.error('保存失败:', data.message);
+                // 保存失败时提示
+                const errorMsg = data.message || '保存失败';
+                console.error('保存失败:', errorMsg);
+                if (typeof toast === 'function') {
+                    toast(errorMsg, 'error');
+                } else {
+                    alert(errorMsg);
+                }
             }
         })
         .catch(error => {
             console.error('保存失败:', error);
-            alert('保存失败，请重试: ' + error.message);
+            if (typeof toast === 'function') {
+                toast('保存失败，请重试: ' + error.message, 'error');
+            } else {
+                alert('保存失败，请重试: ' + error.message);
+            }
             
             // 隐藏加载指示器
             if (pageLoader) {
@@ -376,15 +430,18 @@
         });
     }
     
-    // 加载保存的评分信息
-    function loadScores() {
+    /**
+     * 加载保存的评分信息
+     * @param {boolean} forceRefresh - 是否强制刷新数据
+     */
+    function loadScores(forceRefresh = false) {
         const projectId = document.getElementById('project_id').value;
         if (!projectId) {
             console.warn('项目ID为空，无法加载评分数据');
             return;
         }
         
-        console.log('开始加载评分数据，项目ID:', projectId);
+        console.log('开始加载评分数据，项目ID:', projectId, '强制刷新:', forceRefresh);
         
         // 显示加载指示器
         const pageLoader = document.getElementById('page-loader');
@@ -395,7 +452,7 @@
         try {
             console.log('使用/api/load_scores端点');
             
-            const url = `/api/load_scores?project_id=${projectId}&level={{ current_level }}&specialty={{ current_specialty }}`;
+            const url = `/api/load_scores?project_id=${projectId}&level={{ current_level }}&specialty={{ current_specialty }}&force_refresh=${forceRefresh}`;
             
             console.log('请求URL:', url);
             
@@ -420,67 +477,37 @@
                         let successCount = 0;
                         let failCount = 0;
                         
-                        // 构建条文号映射表
-                        const clauseMap = {};
+                        // 构建条文号映射表 - 更高效的查找
+                        const formInputsByClause = {};
+                        const formTextareasByClause = {};
+                        
                         allInputs.forEach(input => {
                             if (input.dataset.clause) {
-                                clauseMap[input.dataset.clause] = input.dataset.clause;
+                                formInputsByClause[input.dataset.clause] = input;
+                                // 也为规范化后的条文号建立映射
+                                const normalizedClause = input.dataset.clause.replace(/[^\d\.]/g, '');
+                                if (normalizedClause) {
+                                    formInputsByClause[normalizedClause] = input;
+                                }
                             }
                         });
                         
-                        // 添加处理特殊条文号的函数
-                        function extractClauseNumber(item) {
-                            try {
-                                // 检查是否为给排水专业
-                                const isWaterSpecialty = '{{ current_specialty }}' === '给排水' || 
-                                                        '{{ current_specialty }}'.includes('给') || 
-                                                        '{{ current_specialty }}'.includes('排') || 
-                                                        '{{ current_specialty }}'.includes('水');
-                                
-                                // 如果是标准JSON对象格式
-                                if (item.clause_number) {
-                                    return item.clause_number;
+                        allTextareas.forEach(textarea => {
+                            if (textarea.dataset.clause) {
+                                formTextareasByClause[textarea.dataset.clause] = textarea;
+                                // 也为规范化后的条文号建立映射
+                                const normalizedClause = textarea.dataset.clause.replace(/[^\d\.]/g, '');
+                                if (normalizedClause) {
+                                    formTextareasByClause[normalizedClause] = textarea;
                                 }
-                                
-                                // 如果是字符串格式
-                                if (item.clause) {
-                                    return item.clause;
-                                }
-                                
-                                // 简单的直接数字检测 - 任何包含数字和点的属性都可能是条文号
-                                if (typeof item === 'object') {
-                                    for (const key in item) {
-                                        if (key === 'clause_number' || key === 'clause' || key === '条文号') {
-                                            return item[key];
-                                        }
-                                        
-                                        const value = item[key];
-                                        if (typeof value === 'string' && /\d+(\.\d+)*/.test(value)) {
-                                            // 如果字符串看起来像条文号（包含数字和点），返回它
-                                            if (isWaterSpecialty) {
-                                                console.log(`从属性 ${key} 提取到可能的条文号: ${value}`);
-                                            }
-                                            return value;
-                                        }
-                                    }
-                                }
-                                
-                                // 如果都没找到，返回空字符串
-                                return '';
-                            } catch (error) {
-                                console.error('提取条文号时出错:', error);
-                                return '';
                             }
-                        }
+                        });
                         
                         // 填充表格
                         data.scores.forEach(item => {
                             try {
-                                // 处理可能的条文号格式
-                                const clause = extractClauseNumber(item);
-                                
-                                console.log(`处理评分数据项:`, item);
-                                console.log(`提取的条文号: ${clause}, 得分: ${item.score}, 技术措施: ${item.technical_measures}`);
+                                // 获取条文号
+                                const clause = item.clause_number;
                                 
                                 if (!clause) {
                                     console.warn('无法提取条文号:', item);
@@ -488,102 +515,40 @@
                                     return; // 跳过无条文号的数据
                                 }
                                 
-                                // 检查是否为给排水专业
-                                const isWaterSpecialty = '{{ current_specialty }}' === '给排水' || 
-                                                         '{{ current_specialty }}'.includes('给') || 
-                                                         '{{ current_specialty }}'.includes('排') || 
-                                                         '{{ current_specialty }}'.includes('水');
+                                // 规范化条文号
+                                const normalizedClause = clause.replace(/[^\d\.]/g, '');
                                 
-                                if (isWaterSpecialty) {
-                                    console.log("检测到给排水专业，条文号:" + clause);
+                                // 尝试查找对应的表单元素
+                                let scoreInput = formInputsByClause[clause] || 
+                                                formInputsByClause[normalizedClause];
+                                                
+                                let techTextarea = formTextareasByClause[clause] || 
+                                                   formTextareasByClause[normalizedClause];
+                                
+                                // 如果没找到，尝试在页面中查找
+                                if (!scoreInput) {
+                                    scoreInput = document.querySelector(`input[name="score"][data-clause="${clause}"]`);
                                 }
                                 
-                                // 获取页面上的元素们
-                                let scoreInput = null;
-                                let techTextarea = null;
-                                
-                                try {
-                                    // 1. 精确匹配
-                                    scoreInput = document.querySelector(`input[name="score"][data-clause="${clause}"]`);
+                                if (!techTextarea) {
                                     techTextarea = document.querySelector(`textarea[data-clause="${clause}"]`);
-                                    
-                                    // 2. 如果没找到，尝试在所有输入框中找最接近的匹配
-                                    if (!scoreInput || !techTextarea) {
-                                        console.log(`未找到条文 ${clause} 的精确匹配元素，尝试近似匹配`);
-                                        
-                                        // 获取页面上所有的条文号
-                                        const pageClauseNumbers = Array.from(allInputs).map(inp => inp.dataset.clause);
-                                        
-                                        // 打印所有条文号用于调试
-                                        if (isWaterSpecialty) {
-                                            console.log("页面上所有条文号:", pageClauseNumbers);
-                                        }
-                                        
-                                        // 寻找最佳匹配
-                                        let bestMatch = null;
-                                        let maxSimilarity = 0;
-                                        
-                                        pageClauseNumbers.forEach(pageClause => {
-                                            if (!pageClause) return;
-                                            
-                                            // 规格化条文号，去除非数字和点以外的字符
-                                            const normalizedClause = clause.replace(/[^\d\.]/g, '');
-                                            const normalizedPageClause = pageClause.replace(/[^\d\.]/g, '');
-                                            
-                                            // 完全匹配数字部分
-                                            if (normalizedClause === normalizedPageClause) {
-                                                if (maxSimilarity < 1) {
-                                                    maxSimilarity = 1;
-                                                    bestMatch = pageClause;
-                                                    console.log(`完全匹配: ${pageClause}`);
-                                                }
-                                            }
-                                            // 一个是另一个的一部分或前缀
-                                            else if (normalizedClause.includes(normalizedPageClause) || 
-                                                    normalizedPageClause.includes(normalizedClause) ||
-                                                    normalizedClause.startsWith(normalizedPageClause) || 
-                                                    normalizedPageClause.startsWith(normalizedClause)) {
-                                                const similarity = Math.min(normalizedClause.length, normalizedPageClause.length) / 
-                                                                Math.max(normalizedClause.length, normalizedPageClause.length);
-                                                
-                                                if (similarity > 0.5 && similarity > maxSimilarity) {
-                                                    maxSimilarity = similarity;
-                                                    bestMatch = pageClause;
-                                                    console.log(`部分匹配: ${pageClause}, 相似度: ${similarity.toFixed(2)}`);
-                                                }
-                                            }
-                                        });
-                                        
-                                        // 应用最佳匹配的结果
-                                        if (bestMatch && maxSimilarity > 0.2) {
-                                            console.log(`找到最佳匹配条文号: ${bestMatch} (相似度: ${maxSimilarity.toFixed(2)})`);
-                                            
-                                            scoreInput = document.querySelector(`input[name="score"][data-clause="${bestMatch}"]`);
-                                            techTextarea = document.querySelector(`textarea[data-clause="${bestMatch}"]`);
-                                        }
-                                    }
-                                    
-                                    // 填充得分
-                                    if (scoreInput) {
-                                        const score = item.score !== undefined && item.score !== null ? item.score : '0';
-                                        scoreInput.value = score;
-                                        console.log(`成功填充条文 ${scoreInput.dataset.clause} 的得分: ${score}`);
-                                        successCount++;
-                                    } else {
-                                        console.warn(`未能找到条文 ${clause} 对应的得分输入框`);
-                                        failCount++;
-                                    }
-                                    
-                                    // 填充技术措施
-                                    if (techTextarea) {
-                                        techTextarea.value = item.technical_measures || '';
-                                        console.log(`成功填充条文 ${techTextarea.dataset.clause} 的技术措施`);
-                                    } else {
-                                        console.warn(`未能找到条文 ${clause} 对应的技术措施输入框`);
-                                    }
-                                } catch (error) {
-                                    console.error(`处理条文 ${clause} 时发生错误:`, error);
+                                }
+                                
+                                // 填充得分
+                                if (scoreInput) {
+                                    const score = item.score !== undefined && item.score !== null ? item.score : '0';
+                                    scoreInput.value = score;
+                                    successCount++;
+                                } else {
+                                    console.warn(`未能找到条文 ${clause} 对应的得分输入框`);
                                     failCount++;
+                                }
+                                
+                                // 填充技术措施
+                                if (techTextarea) {
+                                    techTextarea.value = item.technical_measures || '';
+                                } else {
+                                    console.warn(`未能找到条文 ${clause} 对应的技术措施输入框`);
                                 }
                             } catch (error) {
                                 console.error(`处理条文数据项时发生错误:`, error, item);
@@ -598,7 +563,9 @@
                 })
                 .catch(error => {
                     console.error('加载评分数据失败:', error);
-                    alert('加载评分数据失败: ' + error.message);
+                    if (typeof toast === 'function') {
+                        toast('加载评分数据失败: ' + error.message, 'error');
+                    }
                 })
                 .finally(() => {
                     // 隐藏加载指示器
@@ -608,7 +575,9 @@
                 });
         } catch (error) {
             console.error('加载过程发生异常:', error);
-            alert('加载过程发生异常:' + error.message);
+            if (typeof toast === 'function') {
+                toast('加载过程发生异常:' + error.message, 'error');
+            }
             if (pageLoader) {
                 pageLoader.style.display = 'none';
             }

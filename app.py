@@ -2356,69 +2356,227 @@ def load_scores():
             return jsonify({'error': '缺少必要参数: level, specialty'}), 400
         
         # 记录请求信息
-        app.logger.info(f"加载评分数据: 级别={level}, 专业={specialty}, 项目ID={project_id}, 评价标准={standard}, 强制刷新={force_refresh}")
-        
-        # 特殊处理给排水专业
-        if specialty == '给排水':
-            app.logger.info("检测到给排水专业请求，添加额外日志")
-            
-            # 检查缓存键
-            special_key = f"debug_load_scores_{level}_{specialty}_{project_id}_{standard}"
-            app.logger.info(f"给排水专业缓存键: {special_key}")
-            
-            # 如果是给排水专业，添加更详细的日志
-            try:
-                # 直接执行简单查询检查给排水专业数据是否存在
-                check_query = """
-                SELECT COUNT(*) FROM `得分表` 
-                WHERE `专业` = :specialty AND `项目ID` = :project_id AND `评价等级` = :level
-                """
-                result = db.session.execute(text(check_query), {
-                    "specialty": specialty,
-                    "project_id": project_id,
-                    "level": level
-                })
-                count = result.scalar()
-                app.logger.info(f"给排水专业数据库记录数: {count}")
-                
-                # 如果是给排水专业，额外查询一些样本记录进行分析
-                if count > 0 and specialty == '给排水':
-                    app.logger.info("获取给排水专业样本数据用于分析")
-                    sample_query = """
-                    SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施` 
-                    FROM `得分表` 
-                    WHERE `专业` = :specialty AND `项目ID` = :project_id AND `评价等级` = :level
-                    ORDER BY RAND() LIMIT 5
-                    """
-                    sample_result = db.session.execute(text(sample_query), {
-                        "specialty": specialty,
-                        "project_id": project_id,
-                        "level": level
-                    })
-                    sample_rows = sample_result.fetchall()
-                    
-                    for i, row in enumerate(sample_rows):
-                        app.logger.info(f"给排水样本记录 {i+1}: 条文号={row[0]}, 分类={row[1]}, 得分={row[3]}, 技术措施长度={len(str(row[4]) or '')}")
-            except Exception as e:
-                app.logger.error(f"给排水专业数据检查失败: {str(e)}")
+        app.logger.info(f"加载评分数据: 级别={level}, 专业={specialty}(原始:{original_specialty}), 项目ID={project_id}, 评价标准={standard}, 强制刷新={force_refresh}")
         
         # 如果提供了项目ID，获取项目信息
-            # 回滚事务
-            db.session.rollback()
-            app.logger.error(f"数据库操作失败: {str(e)}")
+        project_name = None
+        if project_id:
+            try:
+                project = get_project(project_id)
+                if project:
+                    project_name = project.name
+                    # 如果项目有评价标准，使用项目的评价标准
+                    if project.standard:
+                        standard = project.standard
+                        app.logger.info(f"使用项目的评价标准: {standard}")
+            except Exception as e:
+                app.logger.error(f"获取项目信息失败: {str(e)}")
+        
+        # 构建缓存键
+        cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+        
+        # 如果不是强制刷新，尝试从缓存获取数据
+        if not force_refresh:
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                app.logger.info(f"从缓存获取评分数据: {cache_key}")
+                # 记录一些关键信息用于调试
+                if specialty == '给排水':
+                    app.logger.info(f"给排水专业缓存数据: {len(cached_data.get('scores', []))}条记录")
+                    # 记录前几条数据的条文号
+                    sample_clauses = [item.get('clause_number') for item in cached_data.get('scores', [])[:5]]
+                    app.logger.info(f"缓存数据样本: {sample_clauses}")
+                
+                return jsonify(cached_data)
+        else:
+            # 如果是强制刷新，清除相关缓存
+            if cache.has(cache_key):
+                cache.delete(cache_key)
+                app.logger.info(f"强制刷新: 清除缓存 {cache_key}")
+        
+        # 专业名称需要确定，可能会有多种写法，如"给排水"、"给水"、"排水"等，都应该认为是同一个专业
+        specialty_variations = [specialty]
+        
+        # 给排水专业的特殊处理
+        if specialty == '给排水':
+            specialty_variations.extend(['给水', '排水', '水'])
+            app.logger.info(f"给排水专业查询将使用多种变体: {specialty_variations}")
+        
+        # 构建查询条件
+        query_conditions = []
+        query_params = {}
+        
+        # 添加必要条件
+        query_conditions.append("`评价等级` = :level")
+        query_params["level"] = level
+        
+        # 构建专业条件（支持多个变体）
+        specialty_condition = []
+        for i, spec in enumerate(specialty_variations):
+            param_name = f"specialty_{i}"
+            specialty_condition.append(f"`专业` = :{param_name}")
+            query_params[param_name] = spec
+        
+        # 如果有多个专业变体，用OR连接
+        if len(specialty_condition) > 1:
+            query_conditions.append(f"({' OR '.join(specialty_condition)})")
+        else:
+            query_conditions.append(specialty_condition[0])
+        
+        # 如果指定了项目ID，添加到查询条件
+        if project_id:
+            query_conditions.append("`项目ID` = :project_id")
+            query_params["project_id"] = project_id
+            
+            # 如果项目有评价标准，添加到查询条件
+            if standard:
+                query_conditions.append("`评价标准` = :standard")
+                query_params["standard"] = standard
+        # 如果指定了项目名称，添加到查询条件
+        elif project_name:
+            query_conditions.append("`项目名称` = :project_name")
+            query_params["project_name"] = project_name
+            
+            # 如果项目有评价标准，添加到查询条件
+            if standard:
+                query_conditions.append("`评价标准` = :standard")
+                query_params["standard"] = standard
+        # 如果没有指定项目ID和项目名称，但指定了评价标准，添加到查询条件
+        elif standard:
+            query_conditions.append("`评价标准` = :standard")
+            query_params["standard"] = standard
+        
+        # 构建查询语句
+        query = f"""
+        SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+        FROM `得分表`
+        WHERE {' AND '.join(query_conditions)}
+        ORDER BY `条文号`
+        """
+        
+        # 打印查询语句和参数，用于调试
+        app.logger.info(f"执行查询1 (所有条件): {query}")
+        app.logger.info(f"查询参数: {query_params}")
+        
+        try:
+            # 执行查询
+            result = db.session.execute(text(query), query_params)
+            rows = result.fetchall()
+            
+            # 打印查询结果的行数，用于调试
+            app.logger.info(f"查询结果1: {len(rows)} 行")
+            
+            # 给排水专业特殊日志
+            if specialty == '给排水':
+                app.logger.info(f"给排水专业查询结果: {len(rows)} 行")
+                # 记录前几行的内容
+                for i, row in enumerate(rows[:5]):
+                    app.logger.info(f"第{i+1}行: 条文号={row[0]}, 分类={row[1]}, 得分={row[3]}, 技术措施长度={len(str(row[4]) or '')}")
+            
+            # 如果没有结果，尝试只按项目ID查询
+            if len(rows) == 0 and project_id:
+                query_conditions = ["`项目ID` = :project_id"]
+                query_params = {"project_id": project_id}
+                
+                # 构建专业条件（支持多个变体）
+                specialty_condition = []
+                for i, spec in enumerate(specialty_variations):
+                    param_name = f"specialty_{i}"
+                    specialty_condition.append(f"`专业` = :{param_name}")
+                    query_params[param_name] = spec
+                
+                # 如果有多个专业变体，用OR连接
+                if len(specialty_condition) > 1:
+                    query_conditions.append(f"({' OR '.join(specialty_condition)})")
+                else:
+                    query_conditions.append(specialty_condition[0])
+                
+                query = f"""
+                SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                WHERE {' AND '.join(query_conditions)}
+                ORDER BY `条文号`
+                """
+                
+                app.logger.info(f"执行查询2 (放宽条件): {query}")
+                app.logger.info(f"查询参数: {query_params}")
+                
+                result = db.session.execute(text(query), query_params)
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果2: {len(rows)} 行")
+            
+            # 如果仍然没有结果，而且是给排水专业，尝试不指定专业查询
+            if len(rows) == 0 and specialty == '给排水' and project_id:
+                query = f"""
+                SELECT `条文号`, `分类`, `是否达标`, `得分`, `技术措施`
+                FROM `得分表`
+                WHERE `项目ID` = :project_id AND `评价等级` = :level
+                ORDER BY `条文号`
+                LIMIT 20
+                """
+                
+                app.logger.info(f"执行查询3 (给排水特殊查询): {query}")
+                
+                result = db.session.execute(text(query), {"project_id": project_id, "level": level})
+                rows = result.fetchall()
+                
+                app.logger.info(f"查询结果3: {len(rows)} 行")
+                
+                # 记录前几行结果的专业字段
+                if len(rows) > 0:
+                    specialty_query = f"""
+                    SELECT `专业` FROM `得分表` 
+                    WHERE `项目ID` = :project_id AND `评价等级` = :level
+                    GROUP BY `专业`
+                    """
+                    result = db.session.execute(text(specialty_query), {"project_id": project_id, "level": level})
+                    specialties = [row[0] for row in result.fetchall()]
+                    app.logger.info(f"项目中存在的专业: {specialties}")
+                
+            # 处理查询结果
+            scores = []
+            for row in rows:
+                scores.append({
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'is_achieved': row[2],
+                    'score': row[3],
+                    'technical_measures': row[4]
+                })
+            
+            # 构建响应数据
+            response_data = {
+                'success': True,
+                'scores': scores,
+                'count': len(scores),
+                'level': level,
+                'specialty': specialty,
+                'project_id': project_id,
+                'standard': standard
+            }
+            
+            # 缓存响应数据
+            cache.set(cache_key, response_data)
+            app.logger.info(f"缓存评分数据: {cache_key}, 记录数: {len(scores)}")
+            
+            # 对于给排水专业，缓存原始专业名称的数据
+            if specialty == '给排水' and original_specialty != specialty:
+                original_cache_key = get_scores_cache_key(level, original_specialty, project_id, standard)
+                cache.set(original_cache_key, response_data)
+                app.logger.info(f"同时缓存到原始专业名称: {original_cache_key}")
+            
+            return jsonify(response_data)
+        
+        except Exception as db_error:
+            app.logger.error(f"数据库查询失败: {str(db_error)}")
             app.logger.error(traceback.format_exc())
-            return jsonify({
-                'success': False,
-                'message': f'数据库操作失败: {str(e)}'
-            }), 500
-
+            return jsonify({'error': f'数据库查询失败: {str(db_error)}'}), 500
+        
     except Exception as e:
-        app.logger.error(f"处理请求失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'message': f'处理请求失败: {str(e)}'
-        }), 500
+        app.logger.error(f"加载评分数据失败: {str(e)}")
+        traceback.print_exc()
+        return jsonify({'error': f'加载评分数据失败: {str(e)}'}), 500
 def update_project_scores_efficient(project_id, scores):
     """高效更新项目表中的评分数据，不使用with_for_update以避免锁定延迟"""
     try:
@@ -2813,6 +2971,230 @@ def validate_invite_code():
             'valid': False,
             'message': '验证失败，请稍后重试'
         }), 500
+@app.route('/api/save_score', methods=['POST'])
+def save_score():
+    """保存评分数据的API端点"""
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        
+        # 验证数据
+        if not data:
+            return jsonify({'error': '请求数据为空'}), 400
+        
+        # 获取评价等级和专业
+        level = data.get('level')
+        specialty = data.get('specialty')
+        project_id = data.get('project_id')
+        scores = data.get('scores', [])
+        standard = data.get('standard', '成都市标')  # 获取评价标准，默认为成都市标
+        
+        # 规范化专业名称
+        # 给排水专业特殊处理，确保统一数据格式
+        original_specialty = specialty
+        if specialty and ('给' in specialty or '排' in specialty or '水' in specialty):
+            app.logger.info(f"规范化给排水专业名称: 原名称={specialty} -> 规范名称=给排水")
+            specialty = '给排水'
+        
+        # 验证必要字段
+        if not level or not specialty:
+            return jsonify({'error': '缺少必要字段: level, specialty'}), 400
+        
+        # 如果没有提供项目ID，尝试从第一个评分记录中获取项目名称
+        project_name = None
+        if not project_id and scores and len(scores) > 0:
+            project_name = scores[0].get('project_name')
+        
+        # 记录请求信息
+        app.logger.info(f"保存评分数据: 级别={level}, 专业={specialty}(原始:{original_specialty}), 项目ID={project_id}, 项目名称={project_name}, 评价标准={standard}, 评分数量={len(scores)}")
+        
+        # 如果提供了项目ID，获取项目信息
+        if project_id:
+            try:
+                project = get_project(project_id)
+                if project:
+                    project_name = project.name
+                    # 如果项目有评价标准，使用项目的评价标准
+                    if project.standard:
+                        standard = project.standard
+                        app.logger.info(f"使用项目的评价标准: {standard}")
+            except Exception as e:
+                app.logger.error(f"获取项目信息失败: {str(e)}")
+        
+        try:
+            # 开始数据库事务
+            # 如果提供了项目ID，先删除该项目该专业该级别的所有评分记录
+            if project_id:
+                delete_query = """
+                DELETE FROM `得分表`
+                WHERE `项目ID` = :project_id AND `专业` = :specialty AND `评价等级` = :level
+                """
+                result = db.session.execute(
+                    text(delete_query), 
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
+                
+                # 同时删除project_scores表中的记录
+                delete_ps_query = """
+                DELETE FROM project_scores
+                WHERE project_id = :project_id AND specialty = :specialty AND level = :level
+                """
+                result = db.session.execute(
+                    text(delete_ps_query), 
+                    {"project_id": project_id, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
+            
+            # 如果提供了项目名称但没有项目ID，先删除该项目名称该专业该级别的所有评分记录
+            elif project_name:
+                delete_query = """
+                DELETE FROM `得分表`
+                WHERE `项目名称` = :project_name AND `专业` = :specialty AND `评价等级` = :level
+                """
+                result = db.session.execute(
+                    text(delete_query), 
+                    {"project_name": project_name, "specialty": specialty, "level": level}
+                )
+                app.logger.info(f"删除项目 '{project_name}' 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
+            
+            # 插入新的评分记录
+            insert_count = 0
+            
+            # 跟踪保存的所有条文号（调试用）
+            saved_clauses = []
+            
+            for score_data in scores:
+                # 获取评分数据
+                clause_number = score_data.get('clause_number') or score_data.get('clause')
+                category = score_data.get('category')
+                is_achieved = score_data.get('is_achieved')
+                score = score_data.get('score', '0')
+                technical_measures = score_data.get('technical_measures', '')
+                
+                # 如果没有条文号，跳过
+                if not clause_number:
+                    continue
+                
+                # 记录所有保存的条文号（调试用）
+                saved_clauses.append(clause_number)
+                
+                # 插入评分记录到得分表
+                insert_query = """
+                INSERT INTO `得分表` (
+                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category, 
+                         :is_achieved, :score, :technical_measures, :standard)
+                """
+                
+                try:
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "project_id": project_id,
+                            "project_name": project_name,
+                            "specialty": specialty,
+                            "level": level,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "standard": standard
+                        }
+                    )
+                    
+                    # 同时插入到project_scores表
+                    if project_id:
+                        # 尝试将得分转换为浮点数
+                        try:
+                            if score and score.strip():
+                                score_float = float(score)
+                            else:
+                                score_float = 0
+                        except (ValueError, TypeError):
+                            score_float = 0
+                        
+                        insert_ps_query = """
+                        INSERT INTO project_scores (
+                            project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
+                        ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
+                        """
+                        
+                        db.session.execute(
+                            text(insert_ps_query),
+                            {
+                                "project_id": project_id,
+                                "level": level,
+                                "specialty": specialty,
+                                "clause_number": clause_number,
+                                "category": category,
+                                "is_achieved": is_achieved,
+                                "score_float": score_float,
+                                "technical_measures": technical_measures
+                            }
+                        )
+                    
+                    insert_count += 1
+                except Exception as insert_error:
+                    app.logger.error(f"插入评分记录失败: {str(insert_error)}, 条文号: {clause_number}")
+                    continue
+            
+            # 提交事务
+            db.session.commit()
+            app.logger.info(f"成功插入 {insert_count} 条评分记录, 条文号: {', '.join(saved_clauses[:10])}...(共{len(saved_clauses)}条)")
+            
+            # 缓存键
+            cache_key = get_scores_cache_key(level, specialty, project_id, standard)
+            
+            # 清除缓存
+            if cache.has(cache_key):
+                cache.delete(cache_key)
+                app.logger.info(f"清除缓存: {cache_key}")
+            
+            # 清除所有相关缓存，确保评分信息完全刷新
+            cache_keys_to_clear = []
+            
+            # 1. 清除原始专业名称的缓存
+            if original_specialty != specialty:
+                original_cache_key = get_scores_cache_key(level, original_specialty, project_id, standard)
+                cache_keys_to_clear.append(original_cache_key)
+            
+            # 2. 清除评分汇总缓存
+            summary_cache_key = f"score_summary_{project_id}"
+            cache_keys_to_clear.append(summary_cache_key)
+            
+            # 3. 清除所有专业的缓存
+            all_specialties = ['建筑', '结构', '给排水', '暖通', '电气', '智能化', '景观']
+            for other_specialty in all_specialties:
+                other_cache_key = get_scores_cache_key(level, other_specialty, project_id, standard)
+                cache_keys_to_clear.append(other_cache_key)
+                
+            # 批量清除所有相关缓存
+            for key in cache_keys_to_clear:
+                if cache.has(key):
+                    cache.delete(key)
+                    app.logger.info(f"清除相关缓存: {key}")
+            
+            # 返回成功响应
+            return jsonify({
+                'success': True,
+                'message': f'成功保存 {insert_count} 条评分记录',
+                'saved_count': insert_count
+            }), 200
+        
+        except Exception as e:
+            # 回滚事务
+            db.session.rollback()
+            app.logger.error(f"保存评分数据失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            
+            return jsonify({'error': f'保存评分数据失败: {str(e)}'}), 500
+    
+    except Exception as e:
+        app.logger.error(f"处理保存评分请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'处理请求失败: {str(e)}'}), 500
 
 # 注册蓝图
 app.register_blueprint(admin_app, url_prefix='/admin')  # 使用admin_app，添加/admin前缀
