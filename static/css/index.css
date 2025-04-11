@@ -515,3 +515,39 @@ input[name="score"]:focus {
     height: 3rem !important;
     box-sizing: border-box !important;
 }
+
+/* 悬浮保存按钮样式 */
+#floatingSaveBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+#floatingSaveBtn:hover {
+    transform: scale(1.1);
+}
+
+#floatingSaveBtn button {
+    width: 70px;
+    height: 70px;
+    background-color: #3b82f6; /* Primary color */
+    color: white;
+    border-radius: 50%;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+#floatingSaveBtn button:hover {
+    background-color: #2563eb; /* Darker shade on hover */
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3);
+}
+
+#floatingSaveBtn button:active {
+    transform: scale(0.95);
+}

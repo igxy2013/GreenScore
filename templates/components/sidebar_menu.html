@@ -1,7 +1,7 @@
 <!-- 侧边导航栏 -->
-<aside class="w-72 bg-white shadow-lg fixed h-screen overflow-y-auto z-10">
-    <div class="p-6 border-b">
-        <h1 class="text-2xl font-bold text-primary flex items-center">                
+<aside class="w-72 bg-white shadow-sm fixed h-screen overflow-y-auto z-10 left-0 top-0">
+    <div class="border-b mt-4">
+        <h1 class="text-2xl font-bold text-primary flex items-center p-4 py-5">                
             <picture>
                 <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
                 <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
@@ -10,8 +10,8 @@
             <span>智能绿建评价系统</span>
         </h1>
     </div>
-    <nav class="p-4">
-        <div class="space-y-3">
+    <nav class="p-2">
+        <div class="space-y-2">
             <a href="{{ url_for('project_detail', project_id=project.id) }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
                 <i class="ri-file-list-line mr-3"></i>
                 <span>项目信息</span>

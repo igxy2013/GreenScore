@@ -115,11 +115,28 @@ function initializeBadgeFilters() {
                 
                 // 过滤表格行
                 tableRows.forEach(row => {
-                    const rowCategory = row.querySelector('td:nth-child(2) span')?.textContent.trim();
-                    if (rowCategory === category) {
+                    // 获取分类单元格并尝试多种方式提取分类信息
+                    const categoryCell = row.querySelector('td:nth-child(2)');
+                    if (!categoryCell) {
+                        row.style.display = 'none';
+                        return;
+                    }
+                    
+                    // 尝试从标签获取分类
+                    const categoryTag = categoryCell.querySelector('.category-tag');
+                    // 或者从文本获取分类
+                    const cellText = categoryCell.textContent.trim();
+                    const rowCategory = categoryTag ? categoryTag.textContent.trim() : cellText;
+                    
+                    if (category === null || category === undefined || activeCategory === null) {
+                        // 显示所有行
+                        row.style.display = '';
+                    } else if (rowCategory === category) {
+                        // 显示匹配的行
                         row.style.display = '';
                         row.style.animation = 'fadeIn 0.3s ease-in';
                     } else {
+                        // 隐藏不匹配的行
                         row.style.display = 'none';
                     }
                 });

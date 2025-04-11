@@ -246,7 +246,6 @@
                     <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary" title="项目状态过滤器">
                         <option value="进行中">进行中</option>
                         <option value="all">全部</option>
-                        <option value="规划中">规划中</option>
                         <option value="已完成">已完成</option>
                         <option value="已暂停">已暂停</option>
                         <option value="已取消">已取消</option>
@@ -360,7 +359,6 @@
                                 <label for="project_status" class="block text-base font-medium text-gray-700 mb-1">项目状态</label>
                                 <div class="relative">
                                     <select id="project_status" name="project_status" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" title="项目状态">
-                                        <option value="规划中">规划中</option>
                                         <option value="进行中">进行中</option>
                                         <option value="已完成">已完成</option>
                                         <option value="已暂停">已暂停</option>
@@ -397,7 +395,6 @@
                         <label for="projectStatusSelect" class="block text-base font-medium text-gray-700 mb-1">项目状态 <span class="text-red-500">*</span></label>
                         <div class="relative">
                             <select id="projectStatusSelect" name="projectStatusSelect" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="项目状态">
-                                <option value="规划中">规划中</option>
                                 <option value="进行中">进行中</option>
                                 <option value="已完成">已完成</option>
                                 <option value="已暂停">已暂停</option>
@@ -575,6 +572,10 @@
                         // 检查每个项目的状态字段
                         data.projects.forEach(project => {
                             console.log(`项目 ${project.name} 的状态:`, project.status);
+                            // 如果是旧的"规划中"状态，自动更新为"进行中"
+                            if (project.status === '规划中') {
+                                project.status = '进行中';
+                            }
                         });
                         
                         // 保存所有项目数据
@@ -764,14 +765,17 @@
                         buildingType = project.building_type;
                     }
                     
+                    // 如果项目状态是旧的"规划中"，自动转换为"进行中"显示
+                    let statusText = project.status || '进行中';
+                    if (statusText === '规划中') {
+                        statusText = '进行中';
+                    }
+                    
                     // 根据项目状态设置不同的样式
                     let statusClass = 'bg-gray-100 text-gray-600';
-                    let statusText = project.status || '规划中';
                     
                     // 根据状态设置不同的颜色
-                    if (statusText === '规划中') {
-                        statusClass = 'bg-blue-100 text-blue-600';
-                    } else if (statusText === '进行中') {
+                    if (statusText === '进行中') {
                         statusClass = 'bg-green-100 text-green-600';
                     } else if (statusText === '已完成') {
                         statusClass = 'bg-purple-100 text-purple-600';
@@ -926,9 +930,14 @@
             // 查找当前项目的状态并设置为默认选中
             const currentProject = allProjects.find(p => p.id == projectId);
             if (currentProject && currentProject.status) {
-                document.getElementById('projectStatusSelect').value = currentProject.status;
+                // 如果是旧的"规划中"状态，自动转为"进行中"
+                let statusToSet = currentProject.status;
+                if (statusToSet === '规划中') {
+                    statusToSet = '进行中';
+                }
+                document.getElementById('projectStatusSelect').value = statusToSet;
             } else {
-                document.getElementById('projectStatusSelect').value = '规划中';
+                document.getElementById('projectStatusSelect').value = '进行中';
             }
             
             // 显示模态框
