@@ -1372,6 +1372,19 @@
                         if (data.project_id) {
                             document.getElementById('project_id').value = data.project_id;
                         }
+                        
+                        // 使用直接跳转方式强制从服务器重新加载整个页面
+                        setTimeout(() => {
+                            // 检测是否在iframe中
+                            const projectId = document.getElementById('project_id').value || data.project_id;
+                            if (window.self !== window.top) {
+                                // 在iframe中，需要操作父窗口
+                                window.parent.location.href = `/project/${projectId}`;
+                            } else {
+                                // 不在iframe中，直接跳转当前窗口
+                                window.location.href = `/project/${projectId}`;
+                            }
+                        }, 1000); // 延迟1秒后跳转，让用户看到成功提示
                     } else {
                         toast('保存失败: ' + (data.message || '未知错误'), 'error');
                     }
