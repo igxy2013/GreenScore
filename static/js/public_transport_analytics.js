@@ -1256,18 +1256,103 @@
         // 生成结论
         const conclusion = generateConclusion();
         
-        // 检查是否使用高德地图，如果是，使用静态图API
-        if (currentMapProvider === 'gaode' && gaodeMapInstance) {
-            // 使用高德地图静态图API
-            createGaodeStaticMap().then(staticMapImageData => {
-                performScreenshotCapture(conclusion, staticMapImageData);
-            }).catch(error => {
-                console.error("创建高德静态地图失败，回退到普通截图:", error);
+        // 尝试从剪贴板获取图片
+        tryGetImageFromClipboard().then(clipboardImage => {
+            if (clipboardImage) {
+                console.log("成功从剪贴板获取图片，直接使用");
+                performScreenshotCapture(conclusion, clipboardImage);
+            } else {
+                console.log("剪贴板中没有图片，使用正常截图流程");
+                // 检查是否使用高德地图，如果是，使用静态图API
+                if (currentMapProvider === 'gaode' && gaodeMapInstance) {
+                    // 使用高德地图静态图API
+                    createGaodeStaticMap().then(staticMapImageData => {
+                        performScreenshotCapture(conclusion, staticMapImageData);
+                    }).catch(error => {
+                        console.error("创建高德静态地图失败，回退到普通截图:", error);
+                        checkMapTilesAndCapture(conclusion);
+                    });
+                } else {
+                    // 百度地图或其他情况使用普通截图
+                    checkMapTilesAndCapture(conclusion);
+                }
+            }
+        }).catch(error => {
+            console.error("获取剪贴板图片失败:", error);
+            // 回退到正常截图流程
+            if (currentMapProvider === 'gaode' && gaodeMapInstance) {
+                createGaodeStaticMap().then(staticMapImageData => {
+                    performScreenshotCapture(conclusion, staticMapImageData);
+                }).catch(error => {
+                    console.error("创建高德静态地图失败，回退到普通截图:", error);
+                    checkMapTilesAndCapture(conclusion);
+                });
+            } else {
                 checkMapTilesAndCapture(conclusion);
-            });
-        } else {
-            // 百度地图或其他情况使用普通截图
-            checkMapTilesAndCapture(conclusion);
+            }
+        });
+    }
+    
+    // 从剪贴板获取图片
+    async function tryGetImageFromClipboard() {
+        try {
+            // 首先检查是否已通过粘贴事件保存了剪贴板图片
+            if (window.clipboardImageData) {
+                console.log("使用之前通过粘贴事件保存的剪贴板图片");
+                return window.clipboardImageData;
+            }
+            
+            // 检查剪贴板API是否可用
+            if (!navigator.clipboard || !navigator.clipboard.read) {
+                console.warn("浏览器不支持Clipboard API读取功能");
+                return null;
+            }
+            
+            // 读取剪贴板内容
+            const clipboardItems = await navigator.clipboard.read();
+            console.log("读取到剪贴板项目:", clipboardItems.length);
+            
+            // 查找图片类型
+            for (const clipboardItem of clipboardItems) {
+                // 检查是否有图片类型
+                const imageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+                
+                // 找到支持的图片类型
+                let foundImageType = null;
+                for (const imageType of imageTypes) {
+                    if (clipboardItem.types.includes(imageType)) {
+                        foundImageType = imageType;
+                        break;
+                    }
+                }
+                
+                if (foundImageType) {
+                    console.log("在剪贴板中找到图片类型:", foundImageType);
+                    // 获取图片数据
+                    const blob = await clipboardItem.getType(foundImageType);
+                    console.log("获取到剪贴板图片数据块:", blob.size, "字节");
+                    
+                    // 转换为Data URL
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
+                }
+            }
+            
+            console.log("剪贴板中没有找到图片");
+            return null;
+        } catch (error) {
+            console.error("读取剪贴板时出错:", error);
+            
+            // 如果出错且有权限错误，提示用户
+            if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+                alert("需要剪贴板读取权限。请在浏览器设置中允许本网站访问剪贴板，然后重试。或者您可以手动复制地图截图并在页面上按Ctrl+V粘贴。");
+            }
+            
+            return null;
         }
     }
     
@@ -1652,7 +1737,132 @@
                 }, 3000);
             }
         });
+        
+        // 添加剪贴板粘贴支持
+        setupClipboardPasteSupport();
     });
+    
+    // 设置剪贴板粘贴支持
+    function setupClipboardPasteSupport() {
+        // 1. 创建一个隐藏的粘贴区域
+        let pasteArea = document.getElementById('clipboard-paste-area');
+        if (!pasteArea) {
+            pasteArea = document.createElement('div');
+            pasteArea.id = 'clipboard-paste-area';
+            pasteArea.contentEditable = true;
+            pasteArea.style.cssText = 'position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0.01; overflow:hidden;';
+            document.body.appendChild(pasteArea);
+        }
+        
+        // 2. 创建一个隐藏的存储粘贴图片的容器
+        let clipboardImageContainer = document.getElementById('clipboard-image-container');
+        if (!clipboardImageContainer) {
+            clipboardImageContainer = document.createElement('div');
+            clipboardImageContainer.id = 'clipboard-image-container';
+            clipboardImageContainer.style.cssText = 'display:none;';
+            document.body.appendChild(clipboardImageContainer);
+        }
+        
+        // 存储剪贴板图片的全局变量
+        window.clipboardImageData = null;
+        
+        // 3. 添加全局粘贴事件监听
+        document.addEventListener('paste', function(e) {
+            console.log("检测到粘贴操作");
+            
+            // 如果用户在输入框中粘贴，不拦截
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // 检查是否有图片
+            const items = e.clipboardData.items;
+            let imageItem = null;
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    imageItem = items[i];
+                    break;
+                }
+            }
+            
+            // 如果有图片，处理它
+            if (imageItem) {
+                e.preventDefault(); // 阻止默认粘贴行为
+                
+                const blob = imageItem.getAsFile();
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // 保存图片数据
+                    window.clipboardImageData = event.target.result;
+                    
+                    // 清空之前的图片
+                    clipboardImageContainer.innerHTML = '';
+                    
+                    // 显示预览
+                    const previewImg = document.createElement('img');
+                    previewImg.src = window.clipboardImageData;
+                    previewImg.style.cssText = 'max-width: 200px; max-height: 120px; border: 1px solid #ccc; margin: 10px; border-radius: 4px;';
+                    
+                    // 创建提示文本
+                    const infoText = document.createElement('div');
+                    infoText.textContent = '已从剪贴板获取地图图片，导出时将优先使用';
+                    infoText.style.cssText = 'color: green; font-size: 12px; margin-bottom: 2px;';
+                    
+                    // 创建清除按钮
+                    const clearBtn = document.createElement('button');
+                    clearBtn.textContent = '清除图片';
+                    clearBtn.className = 'text-sm px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-100';
+                    clearBtn.onclick = function() {
+                        window.clipboardImageData = null;
+                        clipboardImageContainer.innerHTML = '';
+                        clipboardImageContainer.style.display = 'none';
+                    };
+                    
+                    // 创建预览容器
+                    const previewContainer = document.createElement('div');
+                    previewContainer.style.cssText = 'display: flex; flex-direction: column; align-items: center; margin: 10px 0;';
+                    previewContainer.appendChild(infoText);
+                    previewContainer.appendChild(previewImg);
+                    previewContainer.appendChild(clearBtn);
+                    
+                    // 添加到容器
+                    clipboardImageContainer.appendChild(previewContainer);
+                    clipboardImageContainer.style.display = 'block';
+                    
+                    // 找到适当的位置显示预览
+                    const resultsContainer = document.querySelector('.results-container') || document.getElementById('result-body');
+                    if (resultsContainer) {
+                        resultsContainer.parentNode.insertBefore(clipboardImageContainer, resultsContainer);
+                    } else {
+                        // 如果找不到结果容器，就添加到导出按钮旁边
+                        const exportBtn = document.getElementById('export-btn');
+                        if (exportBtn && exportBtn.parentNode) {
+                            exportBtn.parentNode.insertBefore(clipboardImageContainer, exportBtn.nextSibling);
+                        } else {
+                            // 最后尝试添加到页面底部
+                            document.body.appendChild(clipboardImageContainer);
+                        }
+                    }
+                    
+                    alert('已获取剪贴板图片，导出时将优先使用此图片作为地图截图');
+                };
+                reader.readAsDataURL(blob);
+            }
+        });
+        
+        // 4. 添加提示
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+            const tipText = document.createElement('div');
+            tipText.textContent = '自定义图片提示: 可以先进行地图截图（或复制图片），然后直接在页面上按Ctrl+V粘贴';
+            tipText.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px; text-align: center;';
+            
+            if (exportBtn.parentNode) {
+                exportBtn.parentNode.appendChild(tipText);
+            }
+        }
+    }
 
     // 全局函数，供高德地图API回调
     window.initGaodeMap = initGaodeMap;
