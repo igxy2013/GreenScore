@@ -256,30 +256,104 @@
             })
         })
         .then(response => {
+            // 检查响应内容类型
+            const contentType = response.headers.get('Content-Type');
+            console.log("响应内容类型:", contentType);
+            
             if (!response.ok) {
+                // 如果返回错误状态码，尝试解析JSON错误信息
                 return response.json().then(data => {
                     throw new Error(data.error || '生成绿色建筑设计专篇失败');
                 });
             }
-            return response.blob();
-        })
-        .then(blob => {
-            // 创建下载链接
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            if (currentProjectStandard=='四川省标') {
-                a.download = '绿色建筑设计专篇（四川省标）.dwg';
-            } else if (currentProjectStandard=='成都市标') {
-                a.download = '绿色建筑设计专篇（成都市标）.dwg';
+            
+            // 检查是否是直接文件下载
+            if (contentType && (contentType.includes('application/acad') || contentType.includes('application/octet-stream'))) {
+                // 获取项目名称
+                const projectName = document.getElementById('current_project_name')?.value || '';
+                // 默认文件名使用项目名
+                let filename = projectName ? 
+                    `${projectName}_绿色建筑设计专篇.dwg` : 
+                    "绿色建筑设计专篇.dwg";
+                    
+                const contentDisposition = response.headers.get('Content-Disposition');
+                console.log("Content-Disposition头部:", contentDisposition);
+                
+                if (contentDisposition) {
+                    // 处理标准格式: attachment; filename="filename.dwg"
+                    let filenameMatch = contentDisposition.match(/filename="?([^"]*)"?/i);
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1];
+                    }
+                    
+                    // 处理UTF-8编码格式: attachment; filename*=UTF-8''encoded-filename
+                    filenameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]*)/i);
+                    if (filenameMatch && filenameMatch[1]) {
+                        try {
+                            // 解码URL编码的文件名
+                            filename = decodeURIComponent(filenameMatch[1]);
+                            console.log("解码后的文件名:", filename);
+                        } catch (e) {
+                            console.error("解码文件名失败:", e);
+                        }
+                    }
+                }
+                
+                // 确保文件名以.dwg结尾
+                if (!filename.toLowerCase().endsWith('.dwg')) {
+                    filename += '.dwg';
+                }
+                
+                return response.blob().then(blob => {
+                    // 返回包含Blob和文件名的对象
+                    return { blob, filename };
+                });
+            } else if (contentType && contentType.includes('application/json')) {
+                // 对于JSON响应，解析后返回
+                return response.json().then(data => {
+                    if (data.success && data.file_url) {
+                        return { url: data.file_url };
+                    } else {
+                        throw new Error(data.error || '生成绿色建筑设计专篇失败');
+                    }
+                });
             } else {
-                a.download = '绿色建筑设计专篇.dwg';
+                // 未知响应类型，尝试作为Blob处理
+                return response.blob().then(blob => {
+                    // 获取项目名称
+                    const projectName = document.getElementById('current_project_name')?.value || '';
+                    // 使用简化的文件名格式
+                    const filename = projectName ? 
+                        `${projectName}_绿色建筑设计专篇.dwg` : 
+                        '绿色建筑设计专篇.dwg';
+                    return { blob, filename };
+                });
             }
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
+        })
+        .then(result => {
+            if (result.blob) {
+                // 处理直接文件下载
+                const url = window.URL.createObjectURL(result.blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else if (result.url) {
+                // 处理URL下载
+                const a = document.createElement('a');
+                a.href = result.url;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            } else {
+                throw new Error('无法处理下载响应');
+            }
+            
             // 隐藏加载指示器
             if (pageLoader) {
                 pageLoader.style.display = 'none';

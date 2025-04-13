@@ -2289,21 +2289,79 @@
                     body: JSON.stringify(data)
                 });
                 
-                // 检查响应
+                // 检查响应内容类型
+                const contentType = response.headers.get('Content-Type');
+                console.log("响应内容类型:", contentType);
+                
                 if (response.ok) {
-                    const result = await response.json();
-                    console.log("后端响应:", result);
-                    
-                    if (result.success) {
-                        // 下载报告 - 在新标签页中打开
+                    // 检查是否是直接文件下载（DOCX文件类型）
+                    if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+                        console.log("接收到直接文件下载响应");
+                        // 获取文件名
+                        let filename = "公共交通站点分析报告.docx";
+                        const contentDisposition = response.headers.get('Content-Disposition');
+                        console.log("Content-Disposition头部:", contentDisposition);
+                        
+                        if (contentDisposition) {
+                            // 处理标准格式: attachment; filename="filename.docx"
+                            let filenameMatch = contentDisposition.match(/filename="?([^"]*)"?/i);
+                            if (filenameMatch && filenameMatch[1]) {
+                                filename = filenameMatch[1];
+                            }
+                            
+                            // 处理UTF-8编码格式: attachment; filename*=UTF-8''encoded-filename
+                            filenameMatch = contentDisposition.match(/filename\*=UTF-8''([^;]*)/i);
+                            if (filenameMatch && filenameMatch[1]) {
+                                try {
+                                    // 解码URL编码的文件名
+                                    filename = decodeURIComponent(filenameMatch[1]);
+                                    console.log("解码后的文件名:", filename);
+                                } catch (e) {
+                                    console.error("解码文件名失败:", e);
+                                }
+                            }
+                        }
+                        
+                        // 确保文件名以.docx结尾
+                        if (!filename.toLowerCase().endsWith('.docx')) {
+                            filename += '.docx';
+                        }
+                        
+                        // 获取文件内容的blob
+                        const blob = await response.blob();
+                        
+                        // 创建下载链接
+                        const downloadUrl = window.URL.createObjectURL(blob);
                         const downloadLink = document.createElement('a');
-                        downloadLink.href = result.file_url;
-                        downloadLink.target = '_blank';  // 在新标签页打开
-                        downloadLink.rel = 'noopener noreferrer';  // 安全性设置
-                        downloadLink.click();  // 触发点击
-                        console.log("报告生成成功，正在下载...", result.file_url);
+                        downloadLink.href = downloadUrl;
+                        downloadLink.download = filename;
+                        downloadLink.style.display = 'none';
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        
+                        // 清理
+                        setTimeout(() => {
+                            document.body.removeChild(downloadLink);
+                            window.URL.revokeObjectURL(downloadUrl);
+                        }, 100);
+                        
+                        console.log("报告生成成功，正在下载", filename);
                     } else {
-                        alert("生成报告失败: " + (result.error || "未知错误"));
+                        // 处理JSON响应（兼容旧方式）
+                        const result = await response.json();
+                        console.log("后端响应:", result);
+                        
+                        if (result.success && result.file_url) {
+                            // 下载报告 - 在新标签页中打开
+                            const downloadLink = document.createElement('a');
+                            downloadLink.href = result.file_url;
+                            downloadLink.target = '_blank';  // 在新标签页打开
+                            downloadLink.rel = 'noopener noreferrer';  // 安全性设置
+                            downloadLink.click();  // 触发点击
+                            console.log("报告生成成功，正在下载...", result.file_url);
+                        } else {
+                            alert("生成报告失败: " + (result.error || "未知错误"));
+                        }
                     }
                 } else {
                     console.error("请求失败:", response.status, response.statusText);

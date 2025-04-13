@@ -1159,11 +1159,14 @@ def generate_dwg(request_data):
         }.get(standard, '市标')
         
         project_name = data[0]['项目名称'] if data and len(data) > 0 and '项目名称' in data[0] else 'unknown'
-        download_name = f"{project_name}_{standard_short}_{star_rating_target}_绿色建筑设计专篇.dwg"
+        download_name = f"{project_name}_绿色建筑设计专篇.dwg"
         if not download_name:
             download_name = "green_building.dwg"
         
-        output_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
+        # 临时文件路径
+        temp_dir = 'temp'
+        os.makedirs(temp_dir, exist_ok=True)
+        output_path = os.path.join(temp_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
         
         # 根据环境选择处理方式
         if IS_WINDOWS and update_attribute_text:
@@ -1181,12 +1184,34 @@ def generate_dwg(request_data):
                     print(f"文件已成功生成: {output_path}, 大小: {file_size} 字节")
                     
                     print(f"准备下载CAD文件: {download_name}")
-                    return send_file(
-                        output_path,
-                        as_attachment=True,
-                        download_name=download_name,
-                        mimetype='application/acad'
-                    )
+                    try:
+                        # 直接发送文件给用户下载
+                        return send_file(
+                            output_path,
+                            as_attachment=True,
+                            download_name=download_name,
+                            mimetype='application/acad'
+                        )
+                    except Exception as send_error:
+                        print(f"直接发送文件失败: {str(send_error)}")
+                        print(traceback.format_exc())
+                        
+                        # 发送失败时回退到旧方式 - 通过保存到static/exports目录
+                        target_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
+                        import shutil
+                        shutil.copy2(output_path, target_path)
+                        
+                        # 构建文件URL
+                        file_url = f'/static/exports/绿建设计专篇_{project_name}_{timestamp}.dwg'
+                        
+                        print(f"使用备用方式发送文件，URL: {file_url}")
+                        
+                        # 返回文件URL以兼容旧的前端逻辑
+                        return jsonify({
+                            'success': True,
+                            'file_url': file_url,
+                            'message': '绿色建筑设计专篇生成成功(使用URL方式)'
+                        })
                 else:
                     print(f"文件生成失败: {output_path}")
                     return jsonify({"error": "文件生成失败"}), 500
@@ -1225,7 +1250,7 @@ def generate_dwg(request_data):
                     print(f"收到DWG服务返回的文件数据，大小: {len(file_data)} 字节")
                     
                     try:
-                        # 保存文件
+                        # 保存到临时文件
                         with open(output_path, 'wb') as f:
                             f.write(file_data)
                         
@@ -1233,12 +1258,34 @@ def generate_dwg(request_data):
                         print(f"文件已成功保存到: {output_path}, 大小: {file_size} 字节")
                         
                         print(f"准备下载CAD文件: {download_name}")
-                        return send_file(
-                            output_path,
-                            as_attachment=True,
-                            download_name=download_name,
-                            mimetype='application/acad'
-                        )
+                        try:
+                            # 直接发送文件给用户下载
+                            return send_file(
+                                output_path,
+                                as_attachment=True,
+                                download_name=download_name,
+                                mimetype='application/acad'
+                            )
+                        except Exception as send_error:
+                            print(f"直接发送文件失败: {str(send_error)}")
+                            print(traceback.format_exc())
+                            
+                            # 发送失败时回退到旧方式 - 通过保存到static/exports目录
+                            target_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
+                            import shutil
+                            shutil.copy2(output_path, target_path)
+                            
+                            # 构建文件URL
+                            file_url = f'/static/exports/绿建设计专篇_{project_name}_{timestamp}.dwg'
+                            
+                            print(f"使用备用方式发送文件，URL: {file_url}")
+                            
+                            # 返回文件URL以兼容旧的前端逻辑
+                            return jsonify({
+                                'success': True,
+                                'file_url': file_url,
+                                'message': '绿色建筑设计专篇生成成功(使用URL方式)'
+                            })
                     except Exception as file_write_error:
                         print(f"写入文件时出错: {str(file_write_error)}")
                         print(traceback.format_exc())

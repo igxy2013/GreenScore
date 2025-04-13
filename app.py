@@ -3138,37 +3138,66 @@ def handle_transport_report():
         if not os.path.exists(output_path):
             return jsonify({'success': False, 'error': '报告生成失败，文件未创建'}), 500
         
-        # 获取文件名
+        # 获取文件名为项目名称加报告类型
         file_name = os.path.basename(output_path)
         
-        # 判断文件是否在temp目录下
-        if 'temp' in output_path:
-            # 如果在temp目录下，需要将文件复制到static/exports目录
+        try:
+            # 尝试获取项目名称来为文件命名
+            project_info = data.get('project_info', {})
+            project_name = ""
+            if isinstance(project_info, dict):
+                project_name = project_info.get('项目名称') or project_info.get('projectName') or ""
+            
+            # 如果有项目名称则使用项目名称作为文件名
+            if project_name:
+                file_name = f"{project_name}_公共交通站点分析报告.docx"
+            else:
+                file_name = "公共交通站点分析报告.docx"
+                
+            app.logger.info(f"准备发送文件：{file_name}")
+            
+            # 直接发送文件给用户下载
+            try:
+                # 确保文件名是纯ASCII或正确编码的
+                # Flask 2.2.3版本的send_file能够自动处理下载文件名的编码
+                return send_file(
+                    output_path,
+                    as_attachment=True,
+                    download_name=file_name,
+                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                )
+            except Exception as dlerr:
+                app.logger.error(f"直接发送文件失败: {str(dlerr)}")
+                # 尝试更简单的方式，让Flask自动处理文件名编码
+                return send_file(
+                    output_path,
+                    as_attachment=True
+                )
+            
+        except Exception as file_error:
+            app.logger.error(f"发送文件失败: {str(file_error)}")
+            app.logger.error(traceback.format_exc())
+            
+            # 发送失败时回退到旧方式 - 通过URL方式
+            # 复制到static/exports目录
             if not os.path.exists('static/exports'):
                 os.makedirs('static/exports', exist_ok=True)
                 
             target_path = os.path.join('static/exports', file_name)
-            # 复制文件
             import shutil
             shutil.copy2(output_path, target_path)
-            app.logger.info(f"已将报告从 {output_path} 复制到 {target_path}")
-        
-        # 构建文件URL
-        file_url = '/static/exports/' + file_name
-        
-        # 检查目标文件是否存在
-        target_file = os.path.join('static/exports', file_name)
-        if not os.path.exists(target_file):
-            return jsonify({'success': False, 'error': f'文件不在预期位置: {target_file}'}), 500
-        
-        app.logger.info(f"报告生成成功，URL: {file_url}")
-        
-        # 返回文件URL
-        return jsonify({
-            'success': True,
-            'file_url': file_url,
-            'message': '公共交通分析报告生成成功'
-        })
+            
+            # 构建文件URL
+            file_url = '/static/exports/' + file_name
+            
+            app.logger.info(f"使用备用方式发送文件，URL: {file_url}")
+            
+            # 返回文件URL
+            return jsonify({
+                'success': True,
+                'file_url': file_url,
+                'message': '公共交通分析报告生成成功(使用URL方式)'
+            })
     
     except Exception as e:
         app.logger.error(f"生成公共交通分析报告失败: {str(e)}")
