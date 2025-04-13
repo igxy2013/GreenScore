@@ -48,18 +48,6 @@ from utils.extract_word_info import extract_project_info
 from map_helper import init_routes
 # 导入公共交通分析报告生成函数
 from generate_transport_report import generate_transport_report
-# 导入公共交通分析模块
-try:
-    import public_transport_analytics
-except ImportError:
-    # 如果无法导入，定义一个空模块
-    class EmptyModule:
-        @staticmethod
-        def init_routes(app):
-            print("未找到public_transport_analytics模块，跳过路由初始化")
-            pass
-    public_transport_analytics = EmptyModule()
-
 # 导入初始化数据库的函数
 try:
     from init_db import init_db
@@ -3331,10 +3319,6 @@ def extract_project_info_api():
 if __name__ == '__main__':
     # 初始化数据库
     init_db()
-
-    # 初始化公共交通分析模块
-    public_transport_analytics.init_routes(app)
-    
     # 根据环境变量决定是否开启调试模式
     debug_mode = not is_production
     app.logger.info(f"应用启动: 调试模式={debug_mode}")
