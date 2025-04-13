@@ -279,16 +279,8 @@ def init_routes(app):
             logger.error(traceback.format_exc())
             return jsonify({'error': f'Server error during map proxy: {str(e)}'}), 500
             
-    # 注册路由
-    app.add_url_rule('/api/elevation', view_func=get_elevation, methods=['GET'])
-    app.add_url_rule('/api/google_elevation', view_func=get_google_elevation, methods=['GET'])
-    app.add_url_rule('/api/map_api_key', view_func=get_map_api_key, methods=['GET'])
-    app.add_url_rule('/api/gaode_map_api_key', view_func=get_gaode_map_api_key, methods=['GET'])
-    app.add_url_rule('/api/map_proxy', view_func=map_api_proxy, methods=['GET', 'POST'])
-    app.add_url_rule('/api/map_js_api', view_func=map_js_api_proxy, methods=['GET'])
-    app.add_url_rule('/api/get_static_map', view_func=get_static_map_proxy, methods=['POST'])
-    
-    # 返回注册的路由函数，以便在需要时可以单独访问
+    # 不再自动注册路由，而是返回路由函数
+    # 返回注册的路由函数，以便在app.py中单独注册
     return {
         'get_elevation': get_elevation,
         'get_google_elevation': get_google_elevation,

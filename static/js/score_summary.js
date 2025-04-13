@@ -680,7 +680,7 @@ function loadSavedScores() {
     }
     
     // 构建API URL
-    let apiUrl = `/api/load_scores?level=${encodeURIComponent(level)}&specialty=${encodeURIComponent(specialty)}&standard=${encodeURIComponent(standard)}`;
+    let apiUrl = `/api/project_scores?level=${encodeURIComponent(level)}&specialty=${encodeURIComponent(specialty)}&standard=${encodeURIComponent(standard)}`;
     if (projectId) {
         apiUrl += `&project_id=${encodeURIComponent(projectId)}`;
     }
@@ -696,10 +696,10 @@ function loadSavedScores() {
         return response.json();
     })
     .then(data => {
-        if (data.success && data.scores && data.scores.length > 0) {
+        if (data.success && data.sample_scores && data.sample_scores.length > 0) {
             // 填充表格数据
-            fillScoreTable(data.scores);
-            console.log('成功加载评分数据，共', data.scores.length, '条记录');
+            fillScoreTable(data.sample_scores);
+            console.log('成功加载评分数据，共', data.sample_scores.length, '条记录');
             
             // 如果需要，可以更新统计数据
             if (level === '提高级') {

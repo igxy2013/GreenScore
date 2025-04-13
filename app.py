@@ -45,6 +45,27 @@ from models import (
 )
 from admin import admin_app
 from utils.extract_word_info import extract_project_info
+from map_helper import init_routes
+# 导入公共交通分析模块
+try:
+    import public_transport_analytics
+except ImportError:
+    # 如果无法导入，定义一个空模块
+    class EmptyModule:
+        @staticmethod
+        def init_routes(app):
+            print("未找到public_transport_analytics模块，跳过路由初始化")
+            pass
+    public_transport_analytics = EmptyModule()
+
+# 导入初始化数据库的函数
+try:
+    from init_db import init_db
+except ImportError:
+    # 如果无法导入，定义一个空函数
+    def init_db():
+        print("未找到init_db模块，跳过数据库初始化")
+        pass
 
 # 导入日志模块
 import logging
@@ -64,6 +85,12 @@ load_dotenv()
 
 # 创建应用
 app = Flask(__name__, static_folder='static', static_url_path='/static')
+
+# 从map_helper获取路由函数但不自动注册
+map_routes = init_routes(app)
+# 手动注册elevation路由，这是我们缺少的路由
+app.add_url_rule('/api/elevation', view_func=map_routes['get_elevation'], methods=['GET'])
+app.add_url_rule('/api/google_elevation', view_func=map_routes['get_google_elevation'], methods=['GET'])
 
 # 设置配置
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -2561,6 +2588,34 @@ def handle_generate_word():
         return generate_word(request_data)
     except Exception as e:
         app.logger.error(f"处理生成Word请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+
+@app.route('/api/generate_dwg', methods=['POST'])
+def handle_generate_dwg():
+    """
+    处理生成DWG文件的请求
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 提取必要参数
+        project_id = data.get('project_id')
+        if not project_id:
+            return jsonify({"error": "缺少项目ID参数"}), 400
+            
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        request_data = {
+            'project_id': project_id,
+            'use_cache': False
+        }
+        
+        # 调用generate_dwg函数
+        return generate_dwg(request_data)
+    except Exception as e:
+        app.logger.error(f"处理生成DWG请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
 
 @app.route('/api/projects/<int:project_id>/update_status', methods=['PUT'])
