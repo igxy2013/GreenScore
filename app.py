@@ -46,6 +46,8 @@ from models import (
 from admin import admin_app
 from utils.extract_word_info import extract_project_info
 from map_helper import init_routes
+# 导入公共交通分析报告生成函数
+from generate_transport_report import generate_transport_report
 # 导入公共交通分析模块
 try:
     import public_transport_analytics
@@ -3092,6 +3094,86 @@ def get_project_scores():
         app.logger.error(f"获取项目评分数据失败: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': f'获取项目评分数据失败: {str(e)}'}), 500
+@app.route('/api/self-assessment-report', methods=['POST'])
+def handle_self_assessment_report():
+    """
+    处理生成绿建自评估报告的请求
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 提取必要参数
+        project_id = data.get('project_id')
+        if not project_id:
+            return jsonify({"error": "缺少项目ID参数"}), 400
+        
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        request_data = {
+            'project_id': project_id,
+            'use_cache': False
+        }
+        
+        # 调用generate_self_assessment_report函数
+        return generate_self_assessment_report(request_data)
+    except Exception as e:
+        app.logger.error(f"处理生成绿建自评估报告请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+
+# 添加路由处理公共交通报告生成请求
+@app.route('/generate_transport_report', methods=['POST'])
+def handle_transport_report():
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '请求数据为空'}), 400
+        
+        # 调用报告生成函数
+        output_path = generate_transport_report(data)
+        
+        # 检查生成的文件是否存在
+        if not os.path.exists(output_path):
+            return jsonify({'success': False, 'error': '报告生成失败，文件未创建'}), 500
+        
+        # 获取文件名
+        file_name = os.path.basename(output_path)
+        
+        # 判断文件是否在temp目录下
+        if 'temp' in output_path:
+            # 如果在temp目录下，需要将文件复制到static/exports目录
+            if not os.path.exists('static/exports'):
+                os.makedirs('static/exports', exist_ok=True)
+                
+            target_path = os.path.join('static/exports', file_name)
+            # 复制文件
+            import shutil
+            shutil.copy2(output_path, target_path)
+            app.logger.info(f"已将报告从 {output_path} 复制到 {target_path}")
+        
+        # 构建文件URL
+        file_url = '/static/exports/' + file_name
+        
+        # 检查目标文件是否存在
+        target_file = os.path.join('static/exports', file_name)
+        if not os.path.exists(target_file):
+            return jsonify({'success': False, 'error': f'文件不在预期位置: {target_file}'}), 500
+        
+        app.logger.info(f"报告生成成功，URL: {file_url}")
+        
+        # 返回文件URL
+        return jsonify({
+            'success': True,
+            'file_url': file_url,
+            'message': '公共交通分析报告生成成功'
+        })
+    
+    except Exception as e:
+        app.logger.error(f"生成公共交通分析报告失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     # 初始化数据库

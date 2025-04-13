@@ -2295,9 +2295,13 @@
                     console.log("后端响应:", result);
                     
                     if (result.success) {
-                        // 下载报告
-                        window.location.href = result.file_url;
-                        console.log("报告生成成功，正在下载...");
+                        // 下载报告 - 在新标签页中打开
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = result.file_url;
+                        downloadLink.target = '_blank';  // 在新标签页打开
+                        downloadLink.rel = 'noopener noreferrer';  // 安全性设置
+                        downloadLink.click();  // 触发点击
+                        console.log("报告生成成功，正在下载...", result.file_url);
                     } else {
                         alert("生成报告失败: " + (result.error || "未知错误"));
                     }
