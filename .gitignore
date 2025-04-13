@@ -92,3 +92,6 @@ logs/
 uploads/
 __pycache__/
 static/reports/
+/static/temp/
+
+

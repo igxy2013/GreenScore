@@ -3174,6 +3174,130 @@ def handle_transport_report():
         app.logger.error(f"生成公共交通分析报告失败: {str(e)}")
         app.logger.error(traceback.format_exc())
         return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/api/extract_project_info', methods=['POST'])
+def extract_project_info_api():
+    """提取Word文档中的项目信息并返回"""
+    try:
+        app.logger.info("收到提取项目信息请求")
+        app.logger.info(f"请求表单数据: {request.form.keys()}")
+        app.logger.info(f"请求文件: {request.files.keys()}")
+        
+        # 检查是否有文件上传
+        if 'word_file' not in request.files and 'image_file' not in request.files and 'file' not in request.files:
+            app.logger.error("未找到上传的文件")
+            return jsonify({'success': False, 'message': '未找到上传的文件'}), 400
+        
+        if 'word_file' in request.files:
+            # Word文件处理逻辑保持不变...
+            file = request.files['word_file']
+            if file.filename == '':
+                app.logger.error("未选择Word文件")
+                return jsonify({'success': False, 'message': '未选择文件'}), 400
+                
+            # 检查文件扩展名
+            if not file.filename.endswith(('.doc', '.docx')):
+                app.logger.error(f"不支持的文件格式: {file.filename}")
+                return jsonify({'success': False, 'message': '仅支持.doc和.docx格式的Word文档'}), 400
+                
+            # 创建临时目录（如果不存在）
+            temp_dir = os.path.join('static', 'temp')
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            # 保存上传的文件
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            file_path = os.path.join(temp_dir, f"{timestamp}_{werkzeug.utils.secure_filename(file.filename)}")
+            file.save(file_path)
+            
+            app.logger.info(f"已保存Word文件: {file_path}")
+            
+            # 调用extract_doc_info函数提取信息
+            from utils.word_extractor import extract_doc_info
+            project_info = extract_doc_info(file_path)
+            
+            # 文件使用完毕后删除
+            try:
+                os.remove(file_path)
+                app.logger.info(f"已删除临时文件: {file_path}")
+            except Exception as e:
+                app.logger.warning(f"删除临时文件失败: {str(e)}")
+        
+        elif 'image_file' in request.files or 'file' in request.files:
+            # 支持 'image_file' 或 'file' 参数名
+            file = request.files.get('image_file') or request.files.get('file')
+            app.logger.info(f"处理图片文件: {file.filename if file else 'None'}")
+            
+            if file.filename == '':
+                app.logger.error("未选择图片文件")
+                return jsonify({'success': False, 'message': '未选择文件'}), 400
+                
+            # 检查文件扩展名
+            if not file.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tiff')):
+                app.logger.error(f"不支持的图片格式: {file.filename}")
+                return jsonify({'success': False, 'message': '仅支持JPG、PNG、BMP和TIFF格式的图片'}), 400
+            
+            # 使用图像提取函数处理图片
+            try:
+                from utils.image_extractor import extract_image_info_with_raw_text
+                app.logger.info("调用图像提取函数...")
+                result = extract_image_info_with_raw_text(file)
+                app.logger.info(f"图像提取函数返回结果: {result.keys() if result else 'None'}")
+                
+                # 解析结果
+                if result and 'raw_text' in result:
+                    raw_text = result['raw_text']
+                    project_info = result['project_info']
+                    app.logger.info(f"成功提取到文本，长度: {len(raw_text)}")
+                    app.logger.info(f"提取到项目信息: {len(project_info)} 项")
+                else:
+                    app.logger.warning("图像提取函数返回无效结果，没有raw_text字段")
+                    raw_text = ""
+                    project_info = {}
+                
+                # 无论是否成功提取项目信息，都记录原始文本
+                if raw_text:
+                    app.logger.info("OCR提取的原始文本长度: " + str(len(raw_text)))
+                    app.logger.info("OCR文本前200字符: " + raw_text[:200].replace('\n', ' '))
+                    # 将完整文本记录到文件中以便分析
+                    try:
+                        log_dir = 'logs'
+                        os.makedirs(log_dir, exist_ok=True)
+                        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                        log_file = os.path.join(log_dir, f"ocr_text_{timestamp}.txt")
+                        with open(log_file, 'w', encoding='utf-8') as f:
+                            f.write(raw_text)
+                        app.logger.info(f"OCR完整文本已保存到: {log_file}")
+                    except Exception as e:
+                        app.logger.warning(f"保存OCR文本到文件失败: {str(e)}")
+                else:
+                    app.logger.warning("未能提取到任何文本")
+                    
+                if not project_info:
+                    app.logger.warning(f"未能从图片中提取到有效信息")
+                    return jsonify({
+                        'success': False, 
+                        'message': '未能从图片中识别到项目信息，请尝试使用更清晰的图片或确保图片中包含项目相关文字'
+                    }), 400
+                    
+                # 记录成功提取的信息
+                app.logger.info(f"成功从图片提取到信息: {len(project_info)} 项")
+                app.logger.debug(f"提取的信息内容: {project_info}")
+                
+            except Exception as e:
+                error_msg = str(e)
+                app.logger.error(f"图片处理出现错误: {error_msg}")
+                app.logger.error(traceback.format_exc())
+                return jsonify({'success': False, 'message': f'处理图片时出错: {error_msg}'}), 500
+        
+        if project_info:
+            app.logger.info(f"成功提取项目信息: {project_info}")
+            return jsonify({'success': True, 'info': project_info})
+        else:
+            app.logger.error("提取项目信息失败")
+            return jsonify({'success': False, 'message': '无法从文件中提取项目信息'}), 400
+            
+    except Exception as e:
+        app.logger.error(f"处理文件时出错: {str(e)}")
+        return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # 初始化数据库
