@@ -2504,19 +2504,8 @@
                 }
             }
             
-            // 如果脚本功能失效，回退到API方式
-            fetch(`/api/climate_zone?location=${encodeURIComponent(location)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.climate_zone) {
-                        const climateZoneSelect = document.getElementById('climate_zone');
-                        climateZoneSelect.value = data.climate_zone;
-                        console.log('已通过API自动判断气候区划:', data.climate_zone);
-                    }
-                })
-                .catch(error => {
-                    console.error('获取气候区划出错:', error);
-                });
+            // 如果脚本功能不可用，提示用户手动选择
+            console.log('请手动选择气候区划');
         }
         
         // 添加调试脚本检查提取按钮

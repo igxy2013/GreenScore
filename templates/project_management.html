@@ -1116,22 +1116,16 @@
                     
                     const data = await response.json();
                     
-                    // 即使有错误信息，只要有ID就表示项目创建成功
+                    // 项目创建成功
                     if (data.id) {
                         // 关闭模态窗口
                         modal.classList.add('hidden');
                         document.body.style.overflow = '';
                         
-                        // 显示消息（可能包含警告）
-                        if (data.error) {
-                            // 项目创建成功但有警告
-                            showNotification(`项目创建成功，但${data.error}`, 'warning');
-                        } else {
-                            // 完全成功
-                            showNotification('项目创建成功！正在进入项目...', 'success');
-                        }
+                        // 显示成功消息
+                        showNotification('项目创建成功！正在进入项目...', 'success');
                         
-                        // 无论如何，都跳转到项目页面
+                        // 跳转到项目页面
                         setTimeout(() => {
                             window.location.href = `/project/${data.id}`;
                         }, 1500);

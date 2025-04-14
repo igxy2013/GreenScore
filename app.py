@@ -870,31 +870,13 @@ def create_project():
             project_id = project.id
             app.logger.info(f"项目创建成功: ID={project_id}, 名称={project_name}")
             
-            # 创建成功后尝试创建默认评分数据
-            try:
-                # 直接创建默认评分数据
-                app.logger.info(f"创建项目默认评分数据: 项目ID={project_id}, 名称={project_name}, 标准={standard}")
-                create_default_scores(project_id, project_name, standard)
-                
-                # 提交事务
-                db.session.commit()
-                return jsonify({
-                    'id': project_id,
-                    'name': project.name,
-                    'message': '项目创建成功'
-                })
-            except Exception as e:
-                db.session.rollback()
-                app.logger.error(f"创建默认评分数据失败: {str(e)}")
-                app.logger.error(traceback.format_exc())
-                
-                # 虽然评分数据创建失败，但项目创建已成功，返回项目ID
-                return jsonify({
-                    'id': project_id,
-                    'name': project_name,
-                    'error': '创建默认评分数据失败，但项目已创建'
-                })
-                
+            # 提交事务
+            db.session.commit()
+            return jsonify({
+                'id': project_id,
+                'name': project.name,
+                'message': '项目创建成功'
+            })
         except Exception as db_error:
             db.session.rollback()
             app.logger.error(f"数据库操作失败: {str(db_error)}")
@@ -2410,141 +2392,6 @@ def update_project_scores_efficient(project_id, scores):
         db.session.rollback()
         if app.debug:
             app.logger.error(f"更新项目评分失败: {str(e)}")
-        return False
-def create_default_scores(project_id, project_name, standard_selection):
-    """
-    为项目创建默认评分记录
-    
-    参数:
-    - project_id: 项目ID
-    - project_name: 项目名称
-    - standard_selection: 评价标准
-    """
-    try:
-        print("开始创建默认评分记录...")
-        
-        # 获取标准数据
-        print(f"获取标准数据: {standard_selection}")
-        standards_data = get_standards_by_name(standard_selection)
-        if standards_data:
-            print(f"获取到 {len(standards_data)} 条 {standard_selection} 标准数据")
-            # 打印前5条标准数据的示例
-            if len(standards_data) > 0:
-                print("标准数据示例:")
-                for i, std in enumerate(standards_data[:5]):
-                    try:
-                        print(f"  {i+1}. 条文号: {std.条文号}, 专业: {std.专业}, 属性: {std.属性}, 分类: {std.分类}")
-                    except Exception as attr_error:
-                        print(f"  {i+1}. 无法显示标准数据: {str(attr_error)}")
-        else:
-            print(f"未获取到 {standard_selection} 标准数据")
-            # 尝试获取默认标准数据
-            print("尝试获取默认标准数据")
-            standards_data = get_standards_by_name('成都市标')
-            if standards_data:
-                print(f"获取到 {len(standards_data)} 条默认标准数据")
-            else:
-                print("未获取到任何标准数据")
-                raise Exception("未获取到任何标准数据")
-        
-        # 定义要处理的专业和级别
-        specialties = ['建筑专业', '结构专业', '给排水专业', '暖通专业', '电气专业']
-        levels = ['基本级', '提高级']
-        
-        # 为每个专业和级别生成评分数据
-        total_inserted = 0
-        for specialty in specialties:
-            for level in levels:
-                # 过滤出该专业该级别的条文
-                filtered_standards = []
-                for std in standards_data:
-                    try:
-                        if std.专业 == specialty:
-                            if (level == '基本级' and std.属性 == '控制项') or \
-                               (level == '提高级' and std.属性 == '评分项'):
-                                filtered_standards.append(std)
-                    except Exception as attr_error:
-                        print(f"处理标准数据时出错: {str(attr_error)}, 标准数据: {std}")
-                        continue
-                
-                print(f"找到 {len(filtered_standards)} 条 {standard_selection} 的 {specialty} 专业 {level} 级别条文")
-                
-                # 如果找到了条文，则插入评分数据
-                if filtered_standards:
-                    # 先删除该项目该专业该级别的所有评分记录
-                    try:
-                        result = db.session.execute(
-                            text("DELETE FROM `得分表` WHERE `项目ID` = :project_id AND `专业` = :specialty AND `评价等级` = :level"),
-                            {"project_id": project_id, "specialty": specialty, "level": level}
-                        )
-                        print(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
-                    except Exception as delete_error:
-                        print(f"删除评分记录失败: {str(delete_error)}")
-                        traceback.print_exc()
-                    
-                    # 插入新的评分记录
-                    insert_count = 0
-                    insert_errors = 0
-                    for std in filtered_standards:
-                        # 基本级默认达标，提高级默认不达标
-                        is_achieved = '是' if level == '基本级' else '否'
-                        
-                        # 插入评分记录
-                        try:
-                            db.session.execute(
-                                text("""
-                                INSERT INTO `得分表` (
-                                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, 
-                                    `是否达标`, `得分`, `技术措施`, `评价标准`
-                                ) VALUES (
-                                    :project_id, :project_name, :specialty, :level, :clause_number, 
-                                    :category, :is_achieved, :score, :technical_measures, :standard
-                                )
-                                """),
-                                {
-                                    "project_id": project_id,
-                                    "project_name": project_name,
-                                    "specialty": specialty,
-                                    "level": level,
-                                    "clause_number": std.条文号,
-                                    "category": std.分类,
-                                    "is_achieved": is_achieved,
-                                    "score": '0',
-                                    "technical_measures": '',
-                                    "standard": standard_selection
-                                }
-                            )
-                            insert_count += 1
-                            
-                            # 每插入10条记录提交一次事务，避免事务过大
-                            if insert_count % 10 == 0:
-                                db.session.commit()
-                                print(f"已提交 {insert_count} 条记录")
-                        except Exception as insert_error:
-                            insert_errors += 1
-                            print(f"插入评分记录失败: {str(insert_error)}, 条文号: {std.条文号}")
-                            if insert_errors <= 3:  # 只打印前3个错误的详细信息
-                                traceback.print_exc()
-                            continue
-                    
-                    print(f"为项目 {project_id} 的 {specialty} 专业 {level} 级别插入了 {insert_count} 条评分记录，失败 {insert_errors} 条")
-                    total_inserted += insert_count
-        
-        # 提交最后的事务
-        try:
-            db.session.commit()
-            print("最终提交事务成功")
-        except Exception as commit_error:
-            print(f"提交事务失败: {str(commit_error)}")
-            db.session.rollback()
-            traceback.print_exc()
-        
-        print(f"为项目 {project_id} 总共插入了 {total_inserted} 条评分记录")
-        return True
-    
-    except Exception as e:
-        print(f"生成项目评分数据失败: {str(e)}")
-        traceback.print_exc()
         return False
 
 # 注册export.py中的generate_word函数为app的路由
