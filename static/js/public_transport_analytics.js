@@ -9,6 +9,78 @@
             let gaodeApiKey = null; // 需要从后端获取
             window.securityJsCode = null; // 添加安全码全局变量
 
+    // 确保DOM完全加载后再执行
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded: 页面DOM加载完成');
+        
+        // 使用setTimeout给浏览器一些时间完全渲染DOM
+        setTimeout(function() {
+            // 检查当前页面是否需要地图功能
+            const baiduMapContainer = document.getElementById('baidu-map-container');
+            const gaodeMapContainer = document.getElementById('gaode-map-container');
+            
+            // 查找公共交通分析标题
+            let transportAnalysisTitle = false;
+            const h1Elements = document.querySelectorAll('h1.text-center');
+            for (let i = 0; i < h1Elements.length; i++) {
+                if (h1Elements[i].textContent.includes('公共交通站点分析')) {
+                    transportAnalysisTitle = true;
+                    break;
+                }
+            }
+            
+            // 检查是否是公共交通分析页面
+            const isTransportPage = Boolean(
+                baiduMapContainer || 
+                gaodeMapContainer || 
+                transportAnalysisTitle ||
+                window.location.href.includes('public_transport_analysis') ||
+                document.querySelector('[id="transport-project-id"]')
+            );
+            
+            console.log('页面检测: 是否为公共交通分析页面:', isTransportPage);
+            console.log('检查地图容器状态:');
+            console.log('百度地图容器:', baiduMapContainer ? '已找到' : '未找到');
+            console.log('高德地图容器:', gaodeMapContainer ? '已找到' : '未找到');
+            
+            // 如果不是公共交通分析页面，则不需要初始化地图
+            if (!isTransportPage) {
+                console.log('当前页面不是公共交通分析页面，跳过地图初始化');
+                return;
+            }
+            
+            // 如果页面上没有地图容器，也不需要初始化地图功能
+            if (!baiduMapContainer && !gaodeMapContainer) {
+                console.log('当前页面不需要地图功能，跳过初始化');
+                return;
+            }
+            
+            console.log('检测到地图容器，初始化地图功能');
+            
+            // 确保容器可见
+            if (baiduMapContainer) {
+                baiduMapContainer.style.display = 'block';
+                console.log('百度地图容器设为可见');
+            }
+            
+            // 初始化首选地图提供商
+            const preferredProvider = localStorage.getItem('preferred_map_provider') || 'baidu';
+            console.log('首选地图提供商:', preferredProvider);
+            switchMapProvider(preferredProvider);
+        }, 500); // 延迟500毫秒，确保DOM完全渲染
+    });
+    
+    // 处理页面加载完成后的初始化
+    window.addEventListener('load', function() {
+        console.log('页面完全加载完成，包括所有图片和资源');
+        // 检查百度地图容器
+        const baiduMapContainer = document.getElementById('baidu-map-container');
+        if (baiduMapContainer && currentMapProvider === 'baidu' && !baiduMapInstance) {
+            console.log('页面加载完成后再次尝试初始化百度地图');
+            loadBaiduMapScript();
+        }
+    });
+
     // --- 切换地图提供商 ---
     function switchMapProvider(provider) {
         if (provider === currentMapProvider) return;
@@ -80,7 +152,25 @@
 
     // --- 加载百度地图API (已有) ---
     function loadBaiduMapScript() {
+        // 在任何操作前检查是否处于含有地图的页面
+        if (!document.getElementById('baidu-map-container')) {
+            // 如果容器不存在，静默返回，不记录错误
+            console.log("当前页面不包含百度地图容器，不需要加载地图API");
+            return;
+        }
+        
         console.log("开始加载百度地图API");
+        
+        // 先检查地图容器是否存在，不存在则不需要加载地图API
+        const mapContainer = document.getElementById('baidu-map-container');
+        if (!mapContainer) {
+            console.log("百度地图容器不存在，可能当前页面不需要地图功能");
+            return; // 安静地退出，不产生错误
+        } else {
+            console.log("找到百度地图容器元素:", mapContainer);
+            // 确保地图容器可见
+            mapContainer.style.display = "block";
+        }
         
         // 检查BMap对象是否已存在
         if (typeof BMap !== 'undefined') {
@@ -90,70 +180,136 @@
                     initBaiduMap();
                 } catch (e) {
                     console.error("延迟初始化百度地图失败:", e);
+                    // 显示错误信息
+                    if (mapContainer) {
+                        mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图初始化失败: ${e.message}</div>`;
+                    }
                 }
             }, 500); // 添加延迟，确保BMap完全加载
             return;
         }
 
-        // 添加全局错误处理，捕获"Cannot read properties of undefined (reading 'hc')"错误
+        // 添加全局错误处理，捕获"Cannot read properties of undefined"错误
         window.onerror = function(message, source, lineno, colno, error) {
             console.error("全局错误:", message, "来源:", source, "行号:", lineno);
-            if (message.includes("Cannot read properties of undefined") && message.includes("hc")) {
+            if (message.includes("Cannot read properties of undefined") || message.includes("地图容器不存在")) {
                 console.error("捕获到百度地图初始化错误，尝试重新加载");
                 setTimeout(() => {
-                    loadBaiduMapScript();
+                    // 清空容器并重试
+                    if (mapContainer) {
+                        mapContainer.innerHTML = '';
+                    }
+                    loadBaiduMapScriptWithHardcodedKey();
                 }, 1000);
                 return true; // 阻止默认错误处理
             }
             return false; // 允许其他错误正常处理
         };
 
-        // 获取API密钥
+        // 尝试先使用后端API获取密钥
         fetch('/api/map_api_key')
             .then(response => {
-    if (!response.ok) {
-            // 如果后端代理返回错误，尝试读取错误信息
-        return response.json().then(err => {
-            throw new Error(err.error || `后端代理错误: ${response.status}`)
-        }).catch(() => {
-            // 如果无法解析 JSON 错误信息，抛出通用错误
-            throw new Error(`后端代理请求失败: ${response.status}`)
-        });
-    }
-    return response.json(); // 假设API返回JSON而不是Blob
-})
-.then(data => {
-    if (!data || !data.api_key) {
-        throw new Error("API返回中没有百度地图密钥");
+                if (!response.ok) {
+                    throw new Error(`后端代理请求失败: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data || !data.api_key) {
+                    throw new Error("API返回中没有百度地图密钥");
+                }
+                
+                console.log("成功从API获取百度地图密钥");
+                
+                // 再次检查容器是否存在（可能在API请求期间页面结构发生变化）
+                if (!document.getElementById('baidu-map-container')) {
+                    console.log("API请求返回后，百度地图容器已不存在，不继续加载");
+                    return;
+                }
+                
+                // 获取到API密钥后，加载百度地图脚本
+                baiduApiKey = data.api_key;
+                loadScriptWithKey(baiduApiKey);
+            })
+            .catch(error => {
+                console.error('获取API密钥失败，尝试使用硬编码密钥:', error);
+                
+                // 再次检查容器是否存在
+                if (!document.getElementById('baidu-map-container')) {
+                    console.log("API请求失败后，百度地图容器已不存在，不继续加载");
+                    return;
+                }
+                
+                loadBaiduMapScriptWithHardcodedKey();
+            });
     }
     
-    // 获取到API密钥后，加载百度地图脚本
-    baiduApiKey = data.api_key;
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = `https://api.map.baidu.com/api?v=3.0&ak=${baiduApiKey}&callback=initBaiduMap`;
-    script.onerror = function() {
-        console.error("直接加载百度地图API失败，尝试使用代理");
-        // 使用后端代理
-        const proxyScript = document.createElement('script');
-        proxyScript.type = 'text/javascript';
-        proxyScript.src = `/api/map_js_api?v=3.0&callback=initBaiduMap`;
-        document.body.appendChild(proxyScript);
-    };
-    document.body.appendChild(script);
-})
-.catch(error => {
-    console.error('获取API密钥或加载地图脚本失败:', error);
-    const mapContainer = document.getElementById('baidu-map-container');
-    if (mapContainer) {
-        mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图加载失败: ${error.message}</div>`;
+    // 使用硬编码密钥加载百度地图（作为备选方案）
+    function loadBaiduMapScriptWithHardcodedKey() {
+        console.log("使用硬编码密钥加载百度地图");
+        // 使用.env中配置的密钥作为备选
+        const hardcodedKey = "J6UW18n9sxCMtrxTkjpLE3JkU8pfw3bL";
+        baiduApiKey = hardcodedKey;
+        loadScriptWithKey(hardcodedKey);
     }
-});
+    
+    // 使用给定的密钥加载百度地图脚本
+    function loadScriptWithKey(apiKey) {
+        console.log("使用密钥加载百度地图脚本:", apiKey);
+        
+        // 检查容器是否存在 - 如果不存在，可能是当前页面不需要地图
+        const mapContainer = document.getElementById('baidu-map-container');
+        if (!mapContainer) {
+            console.log("百度地图容器不存在，可能当前页面不需要地图功能");
+            return; // 安静地退出，不产生错误
+        }
+        
+        // 创建脚本元素
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = `https://api.map.baidu.com/api?v=3.0&ak=${apiKey}&callback=initBaiduMap`;
+        script.onerror = function() {
+            console.error("直接加载百度地图API失败，尝试使用代理");
+            // 使用后端代理
+            const proxyScript = document.createElement('script');
+            proxyScript.type = 'text/javascript';
+            proxyScript.src = `/api/map_js_api?v=3.0&callback=initBaiduMap`;
+            // 确保document.body存在
+            if (document.body) {
+                document.body.appendChild(proxyScript);
+                console.log("通过代理添加百度地图脚本");
+            } else {
+                console.error("document.body不存在，无法添加脚本");
+                // 显示错误信息
+                if (mapContainer) {
+                    mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图加载失败: document.body不存在</div>`;
+                }
+            }
+        };
+        
+        // 确保document.body存在
+        if (document.body) {
+            document.body.appendChild(script);
+            console.log("已添加百度地图脚本到document.body");
+        } else {
+            console.error("document.body不存在，无法添加脚本");
+            // 显示错误信息
+            if (mapContainer) {
+                mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图加载失败: document.body不存在</div>`;
+            }
+        }
     }
     
     // --- 加载高德地图API ---
     function loadGaodeMapScript() {
         console.log("开始加载高德地图API");
+        
+        // 先检查地图容器是否存在，不存在则不需要加载地图API
+        const mapContainer = document.getElementById('gaode-map-container');
+        if (!mapContainer) {
+            console.log("高德地图容器不存在，不加载地图API");
+            return;
+        }
         
         // 检查AMap对象是否已存在
         if (typeof AMap !== 'undefined') {
@@ -163,6 +319,10 @@
                     initGaodeMap();
                 } catch (e) {
                     console.error("延迟初始化高德地图失败:", e);
+                    // 显示错误信息
+                    if (mapContainer) {
+                        mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">高德地图初始化失败: ${e.message}</div>`;
+                    }
                 }
             }, 500); // 添加延迟，确保AMap完全加载
             return;
@@ -253,109 +413,165 @@
         };
         
         // 添加到文档中加载脚本
-        document.body.appendChild(script);
-        console.log("高德地图脚本标签已添加到文档");
+        // 确保document.body存在
+        if (document.body) {
+            document.body.appendChild(script);
+            console.log("高德地图脚本标签已添加到文档");
+        } else {
+            console.error("document.body不存在，无法添加高德地图脚本");
+        }
     }
     
     // --- 初始化百度地图函数
     function initBaiduMap() {
         try {
             console.log("正在初始化百度地图...");
-            // 确保地图容器存在
+            
+            // 确保地图容器存在并可见
             const mapContainer = document.getElementById('baidu-map-container');
             if (!mapContainer) {
+                console.error("初始化失败：百度地图容器元素不存在！");
                 throw new Error("地图容器不存在");
             }
             
-            // 创建地图实例
-            const map = new BMap.Map('baidu-map-container');
-            // 保存到全局变量
-            baiduMapInstance = map;
-            window.map = map; // 为了兼容现有代码
-            
-            // 初始中心点 (成都)
-            const point = new BMap.Point(104.065735, 30.659462);
-            map.centerAndZoom(point, 15);
-            
-            // 创建标记并添加到地图中
-            const marker = new BMap.Marker(point);
-            baiduMapInstance.addOverlay(marker);
-            
-            // 禁用滚轮缩放
-            map.disableScrollWheelZoom();
-            
-            // 添加地图控件
-            map.addControl(new BMap.NavigationControl());
-            map.addControl(new BMap.ScaleControl());
-            
-            // 为搜索按钮添加事件监听器
-            const searchBtn = document.getElementById('search-btn');
-            if (searchBtn) {
-                searchBtn.addEventListener('click', searchAddress);
-            }
-            
-            // 监听地址输入框回车事件
-            const addressInput = document.getElementById('address');
-            if (addressInput) {
-                addressInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        searchAddress();
-                    }
-                });
-            }
-            
-            // 添加地图点击事件
-            map.addEventListener('click', function(e) {
-                // 显示加载中
-                document.getElementById('loading').style.display = 'block';
-                
-                // 清除原有覆盖物
-                map.clearOverlays();
-                
-                // 添加新的标记
-                const newPoint = new BMap.Point(e.point.lng, e.point.lat);
-                const newMarker = new BMap.Marker(newPoint);
-                map.addOverlay(newMarker);
-                
-                // 反向地理编码获取地址
-                const geoCoder = new BMap.Geocoder();
-                geoCoder.getLocation(newPoint, function(result) {
-                    if (result && result.address) {
-                        // 更新地址输入框
-                        const addressInput = document.getElementById('address');
-                        if (addressInput) {
-                            addressInput.value = result.address;
-                        }
-                        
-                        // 保存地址信息
-                        window.address = result.address;
-                        
-                        // 保存中心点
-                        window.center = {
-                            lng: newPoint.lng,
-                            lat: newPoint.lat
-                        };
-                        
-                        // 搜索周边公交站
-                        searchNearbyTransit(newPoint);
-                    } else {
-                        document.getElementById('loading').style.display = 'none';
-                        alert("无法获取该位置的地址信息");
-                    }
-                });
+            console.log("地图容器状态：", {
+                id: mapContainer.id,
+                display: mapContainer.style.display,
+                height: mapContainer.style.height || mapContainer.offsetHeight + 'px',
+                width: mapContainer.style.width || mapContainer.offsetWidth + 'px'
             });
             
-            console.log("百度地图初始化成功");
-            
-            // 确保地图容器可见
+            // 确保容器可见
             mapContainer.style.display = "block";
+            
+            // 检查BMap对象是否存在
+            if (typeof BMap === 'undefined') {
+                console.error("初始化失败：BMap对象未定义！");
+                throw new Error("百度地图API未加载");
+            }
+            
+            console.log("BMap对象已存在，开始创建地图实例");
+            
+            try {
+                // 创建地图实例
+                console.log("创建BMap.Map实例...");
+                const map = new BMap.Map('baidu-map-container');
+                console.log("地图实例创建成功");
+                
+                // 保存到全局变量
+                baiduMapInstance = map;
+                window.map = map; // 为了兼容现有代码
+                
+                // 初始中心点 (成都)
+                const point = new BMap.Point(104.065735, 30.659462);
+                map.centerAndZoom(point, 15);
+                
+                // 创建标记并添加到地图中
+                const marker = new BMap.Marker(point);
+                baiduMapInstance.addOverlay(marker);
+                
+                // 禁用滚轮缩放
+                map.disableScrollWheelZoom();
+                
+                // 添加地图控件
+                map.addControl(new BMap.NavigationControl());
+                map.addControl(new BMap.ScaleControl());
+                
+                // 为搜索按钮添加事件监听器
+                const searchBtn = document.getElementById('search-btn');
+                if (searchBtn) {
+                    searchBtn.addEventListener('click', searchAddress);
+                }
+                
+                // 监听地址输入框回车事件
+                const addressInput = document.getElementById('address');
+                if (addressInput) {
+                    addressInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            searchAddress();
+                        }
+                    });
+                }
+                
+                // 添加地图点击事件
+                map.addEventListener('click', function(e) {
+                    // 显示加载中
+                    const loadingElement = document.getElementById('loading');
+                    if (loadingElement) {
+                        loadingElement.style.display = 'block';
+                    }
+                    
+                    // 清除原有覆盖物
+                    map.clearOverlays();
+                    
+                    // 添加新的标记
+                    const newPoint = new BMap.Point(e.point.lng, e.point.lat);
+                    const newMarker = new BMap.Marker(newPoint);
+                    map.addOverlay(newMarker);
+                    
+                    // 反向地理编码获取地址
+                    const geoCoder = new BMap.Geocoder();
+                    geoCoder.getLocation(newPoint, function(result) {
+                        if (result && result.address) {
+                            // 更新地址输入框
+                            const addressInput = document.getElementById('address');
+                            if (addressInput) {
+                                addressInput.value = result.address;
+                            }
+                            
+                            // 保存地址信息
+                            window.address = result.address;
+                            
+                            // 保存中心点
+                            window.center = {
+                                lng: newPoint.lng,
+                                lat: newPoint.lat
+                            };
+                            
+                            // 搜索周边公交站
+                            searchNearbyTransit(newPoint);
+                        } else {
+                            const loadingElement = document.getElementById('loading');
+                            if (loadingElement) {
+                                loadingElement.style.display = 'none';
+                            }
+                            alert("无法获取该位置的地址信息");
+                        }
+                    });
+                });
+                
+                console.log("百度地图初始化成功");
+                
+            } catch (innerError) {
+                console.error("创建地图实例时发生错误:", innerError);
+                throw innerError;
+            }
+            
         } catch (error) {
             console.error("初始化百度地图失败:", error);
             const mapContainer = document.getElementById('baidu-map-container');
             if (mapContainer) {
-                mapContainer.innerHTML = `<div class="flex items-center justify-center h-full bg-gray-100 text-red-500 font-bold">地图初始化失败: ${error.message}</div>`;
+                // 显示错误信息给用户
+                mapContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full bg-gray-100 p-5">
+                        <div class="text-red-500 font-bold mb-2">地图初始化失败</div>
+                        <div class="text-gray-700 text-sm mb-4">原因: ${error.message}</div>
+                        <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark" 
+                                onclick="retryLoadBaiduMap()">
+                            重试加载地图
+                        </button>
+                    </div>`;
                 mapContainer.style.display = "block"; // 确保错误信息可见
             }
+            // 设置一个全局重试函数
+            window.retryLoadBaiduMap = function() {
+                const container = document.getElementById('baidu-map-container');
+                if (container) {
+                    container.innerHTML = '';
+                    container.style.display = 'block';
+                }
+                loadBaiduMapScriptWithHardcodedKey();
+            };
         }
     }
     
@@ -435,10 +651,7 @@
                             };
                             
                             // 搜索周边公交站
-                            searchGaodeNearbyTransit({
-                                lng: e.lnglat.getLng(),
-                                lat: e.lnglat.getLat()
-                            });
+                            searchGaodeNearbyTransit(location);
                         } else {
                             document.getElementById('loading').style.display = 'none';
                             console.error("高德地图逆地理编码失败:", result);
@@ -799,6 +1012,7 @@
             displayStations.forEach((station, index) => {
                 // 创建表格行
                 const row = document.createElement('tr');
+                
                 
                 // 添加单元格
                 row.innerHTML = `

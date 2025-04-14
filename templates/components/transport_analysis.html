@@ -15,9 +15,9 @@
         <button id="search-btn" class="px-6 py-2 bg-primary text-white rounded-r-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium">查询</button>
     </div>
 
-    <!-- 地图容器 -->
-    <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 600px; width: 100%; position: relative;"></div>
-    <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="min-height: 600px; width: 100%; position: relative; display: none;"></div>
+    <!-- 地图容器 - 确保ID和样式正确 -->
+    <div id="baidu-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="height: 600px; width: 100%; position: relative; display: block;"></div>
+    <div id="gaode-map-container" class="map-container h-96 mb-6 border border-gray-300 rounded-lg" style="height: 600px; width: 100%; position: relative; display: none;"></div>
 
     <div class="loading" id="loading" style="display: none;">
         <p class="text-center text-gray-600 my-4">数据加载中，请稍候...</p>
@@ -28,7 +28,7 @@
         <div id="result-count" class="mb-4 text-gray-700"></div>
         <div class="overflow-x-auto">
             <table id="result-table" class="min-w-full divide-y divide-gray-200 border border-gray-200">
-                <thead class="bg-gray-50">
+                <thead class="bg-primary">
                     <tr>
                         <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">序号</th>
                         <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">站点名称</th>
@@ -71,4 +71,57 @@
     <div class="text-center">
         <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
     </div>
-</div> 
+</div>
+
+<!-- 添加页面特定的初始化脚本 -->
+<script>
+    // 页面完全加载后执行
+    window.addEventListener('load', function() {
+        console.log('公共交通分析页面加载完成');
+        
+        // 检查地图容器
+        const baiduContainer = document.getElementById('baidu-map-container');
+        if (!baiduContainer) {
+            console.error('百度地图容器元素未找到！');
+        } else {
+            console.log('百度地图容器已找到，尺寸:', {
+                width: baiduContainer.offsetWidth,
+                height: baiduContainer.offsetHeight,
+                display: window.getComputedStyle(baiduContainer).display
+            });
+            
+            // 确保容器可见
+            baiduContainer.style.display = 'block';
+            baiduContainer.style.height = '600px';
+        }
+        
+        // 如果2秒后仍未初始化地图，尝试手动加载
+        setTimeout(function() {
+            // 检查全局变量
+            if (typeof loadBaiduMapScriptWithHardcodedKey === 'function' && !window.baiduMapInstance) {
+                console.log('地图未初始化，尝试手动加载');
+                loadBaiduMapScriptWithHardcodedKey();
+            }
+        }, 2000);
+    });
+    
+    // 添加调试按钮（开发环境使用）
+    function addDebugTools() {
+        const debugDiv = document.createElement('div');
+        debugDiv.className = 'fixed bottom-4 right-4 bg-white p-3 rounded-lg shadow-lg z-50 text-sm';
+        debugDiv.innerHTML = `
+            <div class="font-bold mb-2">地图调试工具</div>
+            <button class="bg-blue-500 text-white px-3 py-1 rounded mr-2 mb-2" onclick="loadBaiduMapScriptWithHardcodedKey()">重载百度地图</button>
+            <button class="bg-green-500 text-white px-3 py-1 rounded mb-2" onclick="switchMapProvider('gaode')">切换高德地图</button>
+            <div class="mt-2">
+                <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="this.parentNode.parentNode.remove()">关闭</button>
+            </div>
+        `;
+        document.body.appendChild(debugDiv);
+    }
+    
+    // 在开发环境添加调试工具
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        window.addEventListener('load', addDebugTools);
+    }
+</script> 
