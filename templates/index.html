@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能绿建评价系统 - 国内首个完全基于AI自主开发的智能评价系统</title>
+    <meta name="description" content="智能绿建评价系统，基于AI技术提供高效、准确的绿色建筑评估服务，助力绿色建筑发展。">
+    <meta property="og:title" content="智能绿建评价系统">
+    <meta property="og:description" content="基于AI技术的智能绿建评价系统，提供高效、准确的绿色建筑评估服务。">
+    <meta property="og:image" content="https://public.readdy.ai/ai/img_res/0784f6240f0142233aaf8b9ccf3ddd51.jpg">
+    <meta property="og:url" content="https://yourwebsite.com">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="智能绿建评价系统">
+    <meta name="twitter:description" content="基于AI技术的智能绿建评价系统，提供高效、准确的绿色建筑评估服务。">
+    <meta name="twitter:image" content="https://public.readdy.ai/ai/img_res/0784f6240f0142233aaf8b9ccf3ddd51.jpg">
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <script>tailwind.config={theme:{extend:{colors:{primary:'#3176FF',secondary:''},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,7 +119,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div class="rounded-xl overflow-hidden shadow-lg animate-fade-in">
-                    <img src="{{ url_for('static', filename='image/评分汇总界面.png') }}" alt="系统界面展示" class="w-full h-auto object-cover">
+                    <img src="{{ url_for('static', filename='image/评分汇总界面.png') }}" alt="评分汇总界面" class="w-full h-auto object-cover">
                     <div class="p-6">
                         <h3 class="text-xl font-semibold text-gray-800 mb-3">评分汇总分析</h3>
                         <p class="text-gray-600">智能化评分汇总系统，实时展示各项指标得分情况，直观呈现项目评估结果，帮助快速识别优化方向</p>
@@ -118,7 +127,7 @@
                 </div>
                 
                 <div class="rounded-xl overflow-hidden shadow-lg animate-fade-in" style="animation-delay: 0.2s;">
-                    <img src="{{ url_for('static', filename='image/太阳能计算界面.png') }}" alt="3D建筑模型分析" class="w-full h-auto object-cover">
+                    <img src="{{ url_for('static', filename='image/太阳能计算界面.png') }}" alt="太阳能计算界面" class="w-full h-auto object-cover">
                     <div class="p-6">
                         <h3 class="text-xl font-semibold text-gray-800 mb-3">太阳能计算分析</h3>
                         <p class="text-gray-600">专业的太阳能利用计算工具，自动分析建筑太阳能利用潜力，优化可再生能源应用方案</p>
@@ -126,7 +135,7 @@
                 </div>
                 
                 <div class="rounded-xl overflow-hidden shadow-lg animate-fade-in" style="animation-delay: 0.4s;">
-                    <img src="{{ url_for('static', filename='image/项目管理界面.png') }}" alt="认证流程管理" class="w-full h-auto object-cover">
+                    <img src="{{ url_for('static', filename='image/项目管理界面.png') }}" alt="项目管理界面" class="w-full h-auto object-cover">
                     <div class="p-6">
                         <h3 class="text-xl font-semibold text-gray-800 mb-3">项目管理平台</h3>
                         <p class="text-gray-600">一站式项目管理平台，支持多项目并行管理，实时跟踪项目进度，高效协同各方参与者</p>
@@ -134,7 +143,7 @@
                 </div>
                 
                 <div class="rounded-xl overflow-hidden shadow-lg animate-fade-in" style="animation-delay: 0.6s;">
-                    <img src="{{ url_for('static', filename='image/登录界面.png') }}" alt="协作平台" class="w-full h-auto object-cover">
+                    <img src="{{ url_for('static', filename='image/登录界面.png') }}" alt="登录界面" class="w-full h-auto object-cover">
                     <div class="p-6">
                         <h3 class="text-xl font-semibold text-gray-800 mb-3">用户权限管理</h3>
                         <p class="text-gray-600">完善的用户权限管理系统，支持多角色分配，确保数据安全，提供个性化的用户使用体验</p>
@@ -294,10 +303,6 @@
                         <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition-colors" title="在领英上关注我们">
                             <i class="ri-linkedin-line ri-xl"></i>
                         </a>
-                    </div>
-                    <div class="flex space-x-4 text-sm">
-                        <a href="/privacy_policy" class="text-gray-400 hover:text-white transition-colors text-sm">隐私政策</a>
-                        <a href="/terms_of_service" class="text-gray-400 hover:text-white transition-colors text-sm">使用条款</a>
                     </div>
                 </div>
                 
