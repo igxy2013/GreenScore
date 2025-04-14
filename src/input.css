@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 自定义样式 */
+@layer components {
+    .btn-primary {
+        @apply bg-primary text-white rounded-button px-4 py-2 font-medium transition-colors hover:bg-opacity-90;
+    }
+
+    .feature-card {
+        @apply transition-transform duration-300;
+    }
+
+    .animate-fade-in {
+        @apply opacity-0 transform translate-y-5;
+    }
+}
