@@ -996,7 +996,7 @@ def register_page():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('login.html')
 
 @app.route('/', methods=['POST'])
 def handle_form():
@@ -1379,13 +1379,12 @@ def register():
             
         email = data.get('email')
         password = data.get('password')
-        invitation_code = data.get('invitation_code')
         
         app.logger.info(f"收到注册请求: email={email}")
         
         # 基本验证
-        if not email or not password or not invitation_code:
-            return jsonify({'message': '请输入邮箱、密码和邀请码'}), 400
+        if not email or not password:
+            return jsonify({'message': '请输入邮箱和密码'}), 400
             
         # 邮箱格式验证
         if not '@' in email or not '.' in email:
@@ -1399,14 +1398,6 @@ def register():
         if User.query.filter_by(email=email).first():
             return jsonify({'message': '该邮箱已被注册'}), 400
 
-        # 验证邀请码
-        invite = InvitationCode.query.filter_by(code=invitation_code).first()
-        if not invite:
-            return jsonify({'message': '无效的邀请码'}), 400
-            
-        if invite.usage_count >= invite.max_usage:
-            return jsonify({'message': '邀请码已达到使用上限'}), 400
-
         try:
             # 创建新用户
             new_user = User(
@@ -1415,13 +1406,6 @@ def register():
             )
             new_user.set_password(password)
             db.session.add(new_user)
-            db.session.flush()  # 获取新用户的ID
-            
-            # 更新邀请码使用情况
-            invite.usage_count += 1
-            invite.used_at = datetime.utcnow()
-            invite.used_by = new_user.id
-            
             db.session.commit()
             app.logger.info(f"用户注册成功: {email}")
             return jsonify({'success': True, 'message': '注册成功'}), 201
