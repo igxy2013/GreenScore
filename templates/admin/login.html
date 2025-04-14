@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理后台登录</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind-full-3.4.16.css') }}">
     <link href="{{ url_for('static', filename='css/tailwind.min.css') }}" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
@@ -34,30 +34,6 @@
         font-weight: 600;
     }
     </style>
-    <script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                colors: {
-                    primary: '#3176FF',
-                    secondary: '#6B7280'
-                },
-                borderRadius: {
-                    'none': '0px',
-                    'sm': '4px',
-                    DEFAULT: '8px',
-                    'md': '12px',
-                    'lg': '16px',
-                    'xl': '20px',
-                    '2xl': '24px',
-                    '3xl': '32px',
-                    'full': '9999px',
-                    'button': '8px'
-                }
-            }
-        }
-    }
-    </script>
 </head>
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-4xl">
@@ -91,7 +67,7 @@
                     <picture class="inline-block flex-shrink-0">
                         <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
                         <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
-                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-10 w-10 mr-2">
+                        <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-10 mr-2">
                     </picture>
                     <span class="text-3xl sm:text-4xl truncate">智能绿建管理后台</span>
                 </h1>
