@@ -1,0 +1,23 @@
+{
+  "name": "greenscore",
+  "version": "1.0.0",
+  "description": "本项目可以在WSL环境中运行，同时支持Windows环境中的DWG文件生成功能。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/igxy2013/GreenScore.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/igxy2013/GreenScore/issues"
+  },
+  "homepage": "https://github.com/igxy2013/GreenScore#readme",
+  "dependencies": {
+    "tailwindcss": "^3.4.16"
+  }
+}
