@@ -62,7 +62,6 @@ def generate_transport_report(data):
             for key, value in project_info.items():
                 project_data[key] = value
         
-        # 用户提到的实际存在于模板中的占位符
         # 1. 项目名称等基础信息 - 已从project_info中添加
         # 2. 地址相关
         project_data['详细地址'] = address

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能绿建评价系统-装饰性构件造价比例计算</title>
+
+    <!-- 立即加载CSS文件，避免闪烁 -->
+    <link href="/static/css/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+    <script src="/static/js/exportWord.js" defer></script>
+    <script src="{{ url_for('static', filename='js/iframe-resizer.contentWindow.js') }}"></script>
+    <style>
+        html, body {
+            overflow: hidden;
+            height: auto;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .container-wrapper {
+            padding: 12px;
+            overflow: visible;
+            min-height: 500px;
+        }
+        
+        #export-content {
+            max-height: none;
+            overflow: visible;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        .row-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: none;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+            outline: none;
+        }
+        
+        .btn:focus, .btn:active {
+            outline: none;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .btn-primary:active {
+            background-color: #1d4ed8;
+        }
+        
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        
+        .btn-danger:active {
+            background-color: #b91c1c;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        .building-type-select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+        }
+        
+        .calculated-field {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-0 px-0">
+    <div class="container-wrapper max-w-7xl mx-auto">
+        <div class="flex flex-col items-center justify-center mb-10 text-center">
+            <h1 class="text-3xl font-bold text-primary mb-2">装饰性构件造价比例计算</h1>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+            <div id="projectName" style="display:none;"></div>
+            
+            <div id="decorative-cost-calculator" class="space-y-6">
+                <div class="table-container">
+                    <table id="decorative-cost-table">
+                        <thead>
+                            <tr>
+                                <th>子项名称</th>
+                                <th>建筑类型</th>
+                                <th>综合单价(元/m²)</th>
+                                <th>建筑面积(m²)</th>
+                                <th>单体总造价(万元)</th>
+                                <th>装饰性构件设计比例(%)</th>
+                                <th>装饰性构件造价(万元)</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <input type="text" class="input-field" placeholder="请输入子项名称">
+                                </td>
+                                <td>
+                                    <select class="building-type-select">
+                                        <option value="">请选择建筑类型</option>
+                                        <option value="住宅" data-price="3200">住宅</option>
+                                        <option value="商业" data-price="3500">商业</option>
+                                        <option value="办公" data-price="3800">办公</option>
+                                        <option value="工业" data-price="2800">工业</option>
+                                        <option value="医疗" data-price="4500">医疗</option>
+                                        <option value="教育" data-price="3600">教育</option>
+                                        <option value="文化" data-price="4200">文化</option>
+                                        <option value="体育" data-price="5000">体育</option>
+                                        <option value="其他" data-price="3000">其他</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="input-field unit-price" placeholder="综合单价" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="input-field building-area" placeholder="建筑面积">
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="calculated-field total-cost" placeholder="单体总造价" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" max="100" class="input-field design-ratio" placeholder="设计比例">
+                                </td>
+                                <td>
+                                    <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button class="btn btn-danger btn-sm delete-row">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <input type="text" class="input-field" placeholder="请输入子项名称">
+                                </td>
+                                <td>
+                                    <select class="building-type-select">
+                                        <option value="">请选择建筑类型</option>
+                                        <option value="住宅" data-price="3200">住宅</option>
+                                        <option value="商业" data-price="3500">商业</option>
+                                        <option value="办公" data-price="3800">办公</option>
+                                        <option value="工业" data-price="2800">工业</option>
+                                        <option value="医疗" data-price="4500">医疗</option>
+                                        <option value="教育" data-price="3600">教育</option>
+                                        <option value="文化" data-price="4200">文化</option>
+                                        <option value="体育" data-price="5000">体育</option>
+                                        <option value="其他" data-price="3000">其他</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="input-field unit-price" placeholder="综合单价" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="input-field building-area" placeholder="建筑面积">
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="calculated-field total-cost" placeholder="单体总造价" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" max="100" class="input-field design-ratio" placeholder="设计比例">
+                                </td>
+                                <td>
+                                    <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button class="btn btn-danger btn-sm delete-row">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <input type="text" class="input-field" placeholder="请输入子项名称">
+                                </td>
+                                <td>
+                                    <select class="building-type-select">
+                                        <option value="">请选择建筑类型</option>
+                                        <option value="住宅" data-price="3200">住宅</option>
+                                        <option value="商业" data-price="3500">商业</option>
+                                        <option value="办公" data-price="3800">办公</option>
+                                        <option value="工业" data-price="2800">工业</option>
+                                        <option value="医疗" data-price="4500">医疗</option>
+                                        <option value="教育" data-price="3600">教育</option>
+                                        <option value="文化" data-price="4200">文化</option>
+                                        <option value="体育" data-price="5000">体育</option>
+                                        <option value="其他" data-price="3000">其他</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="input-field unit-price" placeholder="综合单价" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="input-field building-area" placeholder="建筑面积">
+                                </td>
+                                <td>
+                                    <input type="number" min="0" class="calculated-field total-cost" placeholder="单体总造价" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" min="0" max="100" class="input-field design-ratio" placeholder="设计比例">
+                                </td>
+                                <td>
+                                    <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <button class="btn btn-danger btn-sm delete-row">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button id="add-row" class="btn btn-primary">新增行</button>
+                </div>
+                
+                <div class="flex justify-between mt-8">
+                    <div>
+                        <button id="save-btn" class="btn btn-primary">保存数据</button>
+                        <button id="export-btn" class="btn btn-primary ml-4">导出计算书</button>
+                    </div>
+                    <div>
+                        <button id="clear-btn" class="btn btn-danger">清空数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取表格和按钮元素
+            const table = document.getElementById('decorative-cost-table');
+            const tbody = table.querySelector('tbody');
+            const addRowBtn = document.getElementById('add-row');
+            const saveBtn = document.getElementById('save-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            
+            // 建筑类型对应的综合单价指标
+            const unitPriceMap = {
+                '住宅': 2800,
+                '办公': 3200,
+                '商业': 3500,
+                '医院': 4000,
+                '学校': 3800,
+                '工业': 2500,
+                '其他': 3000
+            };
+            
+            // 添加新行
+            addRowBtn.addEventListener('click', function() {
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>
+                        <input type="text" class="input-field" placeholder="请输入子项名称">
+                    </td>
+                    <td>
+                        <select class="building-type-select">
+                            <option value="">请选择建筑类型</option>
+                            <option value="住宅" data-price="3200">住宅</option>
+                            <option value="商业" data-price="3500">商业</option>
+                            <option value="办公" data-price="3800">办公</option>
+                            <option value="工业" data-price="2800">工业</option>
+                            <option value="医疗" data-price="4500">医疗</option>
+                            <option value="教育" data-price="3600">教育</option>
+                            <option value="文化" data-price="4200">文化</option>
+                            <option value="体育" data-price="5000">体育</option>
+                            <option value="其他" data-price="3000">其他</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" min="0" class="input-field unit-price" placeholder="综合单价" readonly>
+                    </td>
+                    <td>
+                        <input type="number" min="0" class="input-field building-area" placeholder="建筑面积">
+                    </td>
+                    <td>
+                        <input type="number" min="0" class="calculated-field total-cost" placeholder="单体总造价" readonly>
+                    </td>
+                    <td>
+                        <input type="number" min="0" max="100" class="input-field design-ratio" placeholder="设计比例">
+                    </td>
+                    <td>
+                        <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                    </td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn btn-danger btn-sm delete-row">删除</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(newRow);
+                
+                // 为新行中的输入字段添加事件监听器
+                addInputEventListeners(newRow);
+                
+                // 为新行中的删除按钮添加事件监听器
+                const deleteBtn = newRow.querySelector('.delete-row');
+                deleteBtn.addEventListener('click', function() {
+                    if (tbody.children.length > 1) {
+                        tbody.removeChild(newRow);
+                    } else {
+                        alert('至少保留一行数据');
+                    }
+                });
+            });
+            
+            // 为所有现有行添加事件监听器
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(row => {
+                addInputEventListeners(row);
+                
+                // 为删除按钮添加事件监听器
+                const deleteBtn = row.querySelector('.delete-row');
+                deleteBtn.addEventListener('click', function() {
+                    if (tbody.children.length > 1) {
+                        tbody.removeChild(row);
+                    } else {
+                        alert('至少保留一行数据');
+                    }
+                });
+            });
+            
+            // 为输入字段添加事件监听器的函数
+            function addInputEventListeners(row) {
+                const buildingTypeSelect = row.querySelector('.building-type-select');
+                const unitPriceInput = row.querySelector('.unit-price');
+                const buildingAreaInput = row.querySelector('.building-area');
+                const totalCostOutput = row.querySelector('.total-cost');
+                const designRatioInput = row.querySelector('.design-ratio');
+                const decorativeCostOutput = row.querySelector('.decorative-cost');
+                
+                // 更新综合单价
+                function updateUnitPrice() {
+                    const selectedOption = buildingTypeSelect.options[buildingTypeSelect.selectedIndex];
+                    const unitPrice = selectedOption ? selectedOption.getAttribute('data-price') : '';
+                    unitPriceInput.value = unitPrice;
+                    
+                    // 触发单体总造价和装饰性构件造价计算
+                    calculateTotalCost();
+                }
+                
+                // 计算单体总造价
+                function calculateTotalCost() {
+                    const unitPrice = parseFloat(unitPriceInput.value) || 0;
+                    const buildingArea = parseFloat(buildingAreaInput.value) || 0;
+                    
+                    if (unitPrice && buildingArea) {
+                        const totalCost = unitPrice * buildingArea/10000;
+                        totalCostOutput.value = totalCost.toFixed(2);
+                    } else {
+                        totalCostOutput.value = '';
+                    }
+                    
+                    // 触发装饰性构件造价计算
+                    calculateDecorativeCost();
+                }
+                
+                // 计算装饰性构件造价
+                function calculateDecorativeCost() {
+                    const totalCost = parseFloat(totalCostOutput.value) || 0;
+                    const designRatio = parseFloat(designRatioInput.value) || 0;
+                    
+                    if (totalCost && designRatio) {
+                        const decorativeCost = totalCost * (designRatio / 100);
+                        decorativeCostOutput.value = decorativeCost.toFixed(2);
+                    } else {
+                        decorativeCostOutput.value = '';
+                    }
+                }
+                
+                // 为输入字段添加事件监听器
+                buildingTypeSelect.addEventListener('change', updateUnitPrice);
+                buildingAreaInput.addEventListener('input', calculateTotalCost);
+                designRatioInput.addEventListener('input', calculateDecorativeCost);
+                
+                // 初始化数据
+                updateUnitPrice();
+            }
+            
+            // 保存数据
+            saveBtn.addEventListener('click', function() {
+                const data = collectData();
+                localStorage.setItem('decorativeCostData', JSON.stringify(data));
+                alert('数据已保存！');
+            });
+            
+            // 导出数据（导出计算书）
+            exportBtn.addEventListener('click', function() {
+                exportReport();
+            });
+            
+            // 导出计算书函数
+            async function exportReport() {
+                const data = collectData();
+                
+                if (data.rows.length === 0) {
+                    alert('请先添加数据再导出计算书！');
+                    return;
+                }
+                
+               // 获取项目信息
+               const urlParams = new URLSearchParams(window.location.search);
+                console.log("URL参数:", window.location.search);
+                console.log("URL路径:", window.location.pathname);
+                
+                // 从URL路径中提取项目ID - 格式通常是 /project/{project_id}
+                let projectIdFromPath = null;
+                const pathMatch = window.location.pathname.match(/\/project\/(\d+)/);
+                if (pathMatch && pathMatch[1]) {
+                    projectIdFromPath = pathMatch[1];
+                }
+                console.log("从URL路径提取的项目ID:", projectIdFromPath);
+                
+                // 从URL参数中获取项目ID
+                const projectIdFromUrl = urlParams.get('project_id');
+                console.log("从URL参数获取的项目ID:", projectIdFromUrl);
+                
+                // 从隐藏字段获取项目ID
+                const projectIdFromElement = document.getElementById('current-project-id')?.value;
+                const transportProjectId = document.getElementById('transport-project-id')?.value;
+                console.log("从页面元素获取的项目ID (current-project-id):", projectIdFromElement);
+                console.log("从页面元素获取的项目ID (transport-project-id):", transportProjectId);
+                
+                // 优先使用路径中的ID，然后是URL参数，然后是transport-project-id，最后是current-project-id
+                // const projectId = projectIdFromPath || projectIdFromUrl || transportProjectId || projectIdFromElement;
+                const projectId = 131;
+                console.log("最终使用的项目ID:", projectId);
+                
+                let projectInfo = {};
+                
+                try {
+                    if (projectId) {
+                        console.log("正在通过API获取项目信息...");
+                        const projectInfoResponse = await fetch(`/api/project_info?project_id=${projectId}`);
+                        
+                        if (projectInfoResponse.ok) {
+                            projectInfo = await projectInfoResponse.json();
+                            console.log("成功获取项目信息:", projectInfo);
+                        } else {
+                            console.error("获取项目信息失败:", projectInfoResponse.status, projectInfoResponse.statusText);
+                            try {
+                                const errorText = await projectInfoResponse.text();
+                                console.error("错误详情:", errorText);
+                            } catch (e) {
+                                console.error("无法获取错误详情:", e);
+                            }
+                        }
+                    } else {
+                        alert("未提供项目ID，无法获取项目信息!");
+                        return;
+                    }
+                } catch (error) {
+                    console.error("获取项目信息时发生错误:", error);
+                }
+
+                // 准备要发送到服务器的数据
+                const exportData = {
+                    projectId: projectId,
+                    projectInfo: projectInfo,
+                    rows: data.rows,
+                    templateFile: '装饰性构件造价比例计算书.docx'
+                };
+                
+                // 显示加载提示
+                const loadingElem = document.createElement('div');
+                loadingElem.id = 'exportLoading';
+                loadingElem.innerHTML = '<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-4 rounded shadow-lg text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto"></div><p class="mt-2">正在生成计算书，请稍候...</p></div></div>';
+                document.body.appendChild(loadingElem);
+                
+                // 发送请求到后端API
+                fetch('/api/generate_decorative_cost_report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(exportData)
+                })
+                .then(response => {
+                    // 移除加载提示
+                    document.body.removeChild(loadingElem);
+                    
+                    if (!response.ok) {
+                        // 如果响应不成功，解析错误消息
+                        return response.json().then(data => {
+                            throw new Error(data.error || '导出失败');
+                        });
+                    }
+                    
+                    // 创建下载链接
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = data.projectName ? 
+                        `${data.projectName}-装饰性构件造价比例计算书.docx` : 
+                        '装饰性构件造价比例计算书.docx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    alert('导出失败: ' + error.message);
+                    console.error('导出错误:', error);
+                });
+            }
+            
+            // 清空数据
+            clearBtn.addEventListener('click', function() {
+                if (confirm('确定要清空所有数据吗？')) {
+                    document.getElementById('projectName').value = '';
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach(row => {
+                        const inputs = row.querySelectorAll('input');
+                        inputs.forEach(input => {
+                            input.value = '';
+                        });
+                        const selects = row.querySelectorAll('select');
+                        selects.forEach(select => {
+                            select.selectedIndex = 0;
+                            // 触发change事件，更新相关计算
+                            const event = new Event('change');
+                            select.dispatchEvent(event);
+                        });
+                    });
+                    localStorage.removeItem('decorativeCostData');
+                }
+            });
+            
+            // 收集表格和项目数据
+            function collectData() {
+                const rows = tbody.querySelectorAll('tr');
+                const rowData = [];
+                
+                rows.forEach(row => {
+                    const subItem = row.querySelector('td:nth-child(1) input').value;
+                    const buildingType = row.querySelector('td:nth-child(2) select').value;
+                    const unitPrice = row.querySelector('td:nth-child(3) input').value;
+                    const buildingArea = row.querySelector('td:nth-child(4) input').value;
+                    const totalCost = row.querySelector('td:nth-child(5) input').value;
+                    const designRatio = row.querySelector('td:nth-child(6) input').value;
+                    const decorativeCost = row.querySelector('td:nth-child(7) input').value;
+                    
+                    if (subItem || buildingType || buildingArea || totalCost || designRatio) {
+                        rowData.push({
+                            subItem,
+                            buildingType,
+                            unitPrice,
+                            buildingArea,
+                            totalCost,
+                            designRatio,
+                            decorativeCost
+                        });
+                    }
+                });
+                
+                return {
+                    rows: rowData
+                };
+            }
+            
+            // 加载保存的数据
+            function loadSavedData() {
+                const savedData = localStorage.getItem('decorativeCostData');
+                
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    
+                    // 如果没有行数据，直接返回
+                    if (!data.rows || data.rows.length === 0) {
+                        return;
+                    }
+                    
+                    // 清空现有行，只保留一行
+                    while (tbody.children.length > 1) {
+                        tbody.removeChild(tbody.lastChild);
+                    }
+                    
+                    // 清空第一行数据
+                    const firstRow = tbody.querySelector('tr');
+                    const firstRowInputs = firstRow.querySelectorAll('input');
+                    firstRowInputs.forEach(input => {
+                        input.value = '';
+                    });
+                    const firstRowSelect = firstRow.querySelector('select');
+                    firstRowSelect.selectedIndex = 0;
+                    
+                    // 填充第一行数据
+                    if (data.rows.length > 0) {
+                        const item = data.rows[0];
+                        firstRow.querySelector('td:nth-child(1) input').value = item.subItem || '';
+                        firstRow.querySelector('td:nth-child(2) select').value = item.buildingType || '';
+                        // 触发buildingType的change事件以更新unitPrice
+                        const event = new Event('change');
+                        firstRow.querySelector('td:nth-child(2) select').dispatchEvent(event);
+                        firstRow.querySelector('td:nth-child(4) input').value = item.buildingArea || '';
+                        firstRow.querySelector('td:nth-child(6) input').value = item.designRatio || '';
+                        // 触发计算
+                        const buildingAreaInput = firstRow.querySelector('td:nth-child(4) input');
+                        const designRatioInput = firstRow.querySelector('td:nth-child(6) input');
+                        buildingAreaInput.dispatchEvent(new Event('input'));
+                        designRatioInput.dispatchEvent(new Event('input'));
+                    }
+                    
+                    // 添加其他行数据
+                    for (let i = 1; i < data.rows.length; i++) {
+                        addRowBtn.click();
+                        const row = tbody.lastChild;
+                        const item = data.rows[i];
+                        
+                        row.querySelector('td:nth-child(1) input').value = item.subItem || '';
+                        row.querySelector('td:nth-child(2) select').value = item.buildingType || '';
+                        // 触发buildingType的change事件以更新unitPrice
+                        const event = new Event('change');
+                        row.querySelector('td:nth-child(2) select').dispatchEvent(event);
+                        row.querySelector('td:nth-child(4) input').value = item.buildingArea || '';
+                        row.querySelector('td:nth-child(6) input').value = item.designRatio || '';
+                        // 触发计算
+                        const buildingAreaInput = row.querySelector('td:nth-child(4) input');
+                        const designRatioInput = row.querySelector('td:nth-child(6) input');
+                        buildingAreaInput.dispatchEvent(new Event('input'));
+                        designRatioInput.dispatchEvent(new Event('input'));
+                    }
+                }
+            }
+            
+            // 加载保存的数据
+            loadSavedData();
+        });
+    </script>
+</body>
+</html> 

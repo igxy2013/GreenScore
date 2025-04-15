@@ -149,6 +149,10 @@
                     <i class="ri-calculator-line mr-3"></i>
                     <span>绿色建材应用比例</span>
                 </a>
+                <a href="{{ url_for('project_detail', project_id=project.id, page='decorative_cost_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'decorative_cost_calculator' %}active{% endif %}">
+                    <i class="ri-money-dollar-circle-line mr-3"></i>
+                    <span>装饰性构件造价比例</span>
+                </a>
                 <a href="{{ url_for('project_detail', project_id=project.id, page='public_transport_analysis') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'public_transport_analysis' %}active{% endif %}">
                     <i class="ri-bus-line mr-3"></i>
                     <span>公共交通分析</span>

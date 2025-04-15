@@ -1149,6 +1149,11 @@ def filter_standards():
 def calculator():
     return render_template('calculator.html')
 
+@app.route('/decorative_cost_calculator')
+@login_required
+def decorative_cost_calculator():
+    return render_template('decorative_cost_calculator.html')
+
 @app.route('/solar_calculator')
 @login_required
 def solar_calculator():
@@ -2397,36 +2402,158 @@ def update_project_scores_efficient(project_id, scores):
 # 注册export.py中的generate_word函数为app的路由
 @app.route('/api/generate_word', methods=['POST'])
 def handle_generate_word():
-    """
-    处理生成Word文档的请求
-    """
+    # 处理Word导出请求
     try:
-        # 获取请求数据
+        # 从请求中获取数据
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "请求数据为空"}), 400
-
-        # 提取必要参数
-        project_id = data.get('project_id')
-        if not project_id:
-            return jsonify({"error": "缺少项目ID参数"}), 400
-            
-        # 获取标准参数，默认为成都市标
-        standard = data.get('standard', '成都市标')
         
-        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
-        request_data = {
-            'project_id': project_id,
-            'standard': standard,
-            'use_cache': False
+        # 调用word_template.py中的函数生成文档
+        from word_template import generate_word_from_form_data
+        
+        # 调用函数生成Word文档
+        output = generate_word_from_form_data(data)
+        
+        if not output:
+            return jsonify({'error': '生成Word文档失败'}), 500
+        
+        # 发送Word文档作为响应
+        return send_file(output, as_attachment=True, download_name='绿建报审表.docx')
+    except Exception as e:
+        app.logger.error(f"生成Word文档失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generate_decorative_cost_report', methods=['POST'])
+def generate_decorative_cost_report():
+    from word_template import replace_placeholders
+    from process_custom_placeholders import process_custom_placeholders
+    try:
+        # 从请求中获取数据
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': '没有收到数据'}), 400
+        
+        template_file = data.get('templateFile', '装饰性构件造价比例计算书.docx')
+        rows = data.get('rows', [])
+        project_info = data.get('projectInfo', {})
+        project_id = data.get('projectId', '')
+        
+        # 导入docx处理模块
+        from docx import Document
+        from docx.shared import Pt, Cm
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        import io
+        import os
+        
+        # 构建模板文件路径
+        template_path = os.path.join('static', 'templates', template_file)
+        
+        if not os.path.exists(template_path):
+            return jsonify({'error': f'模板文件 {template_path} 不存在'}), 404
+        
+        # 准备数据 - 符合word_template.py期望的格式
+        # 创建项目基础信息字典作为列表第一个元素
+        project_data = {}
+        
+        # 添加项目基本信息
+        if isinstance(project_info, dict):
+            for key, value in project_info.items():
+                project_data[key] = value
+        #示意图        
+        project_data['示意图'] = "{示意图}"
+        # 计算表
+        project_data['计算表'] = "{计算表}"
+
+        # 创建最终的数据列表 - 第一个元素包含所有信息
+        final_data = [project_data]
+        
+        # 将计算表添加为单独的数据项（为表格处理准备）
+        for row in rows:
+            final_data.append(row)
+        # 第一步：调用基本的Word模板处理函数处理文本占位符
+        temp_output_path = replace_placeholders(template_path, final_data)
+        # 检查第一步处理的结果文件是否存在
+        if not os.path.exists(temp_output_path):
+            raise Exception(f"文本占位符处理失败，输出文件不存在: {temp_output_path}")
+        
+        print(f"\n基本文本替换完成: {temp_output_path}")
+        
+        # 设置替换后的文本为宋体小四
+        set_replaced_text_font(temp_output_path, project_data)
+        
+        # 准备自定义占位符处理的数据
+        custom_data = {
+            '示意图': image,
+            'rows': rows
         }
         
-        # 调用generate_word函数
-        return generate_word(request_data)
+        # 第二步：处理特殊占位符（图片和表格）
+        final_output_path = process_custom_placeholders(temp_output_path, custom_data)
+        
+        print(f"\n报告生成完成: {final_output_path}")
+        
+        return final_output_path 
     except Exception as e:
-        app.logger.error(f"处理生成Word请求失败: {str(e)}")
-        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+        app.logger.error(f"生成装饰性构件造价比例计算书失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
 
+def set_replaced_text_font(docx_path, project_data):
+    """
+    设置被替换的文本为宋体小四
+    
+    参数:
+        docx_path: Word文档路径
+        project_data: 包含替换值的字典
+    """
+    try:
+        # 加载文档
+        doc = Document(docx_path)
+        
+        # 获取替换值列表，用于识别哪些文本是我们替换的
+        replacement_values = []
+        for key, value in project_data.items():
+            if key not in ['地图截图', '公交站点列表'] and value:
+                replacement_values.append(str(value))
+        
+        # 遍历所有段落
+        for paragraph in doc.paragraphs:
+            # 检查段落文本是否包含我们的替换值
+            for value in replacement_values:
+                if value in paragraph.text:
+                    # 找到了可能包含替换值的段落，设置所有run的字体
+                    for run in paragraph.runs:
+                        if any(val in run.text for val in replacement_values):
+                            # 这个run包含我们替换的值
+                            run.font.name = '宋体'
+                            run.font.size = Pt(12)  # 小四字号为12磅
+                            run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        
+        # 遍历所有表格
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        # 检查段落文本是否包含我们的替换值
+                        for value in replacement_values:
+                            if value in paragraph.text:
+                                # 找到了可能包含替换值的段落，设置所有run的字体
+                                for run in paragraph.runs:
+                                    if any(val in run.text for val in replacement_values):
+                                        # 这个run包含我们替换的值
+                                        run.font.name = '宋体'
+                                        run.font.size = Pt(12)  # 小四字号为12磅
+                                        run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        
+        # 保存修改后的文档
+        doc.save(docx_path)
+        print("设置替换文本字体为宋体小四完成")
+        
+    except Exception as e:
+        print(f"设置替换文本字体时出错: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
 @app.route('/api/generate_dwg', methods=['POST'])
 def handle_generate_dwg():
     """
