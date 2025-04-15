@@ -938,6 +938,22 @@ def update_standard(standard_id):
                 '标准名称': request.form.get('标准名称', standard.标准名称)
             }
             
+            # 检查是否要删除图片
+            delete_image = request.form.get('deleteImage') == 'true'
+            if delete_image and standard.图片路径:
+                # 删除文件系统中的图片文件
+                old_image_path = os.path.join('static', standard.图片路径.split('/static/')[-1])
+                try:
+                    if os.path.exists(old_image_path):
+                        os.remove(old_image_path)
+                        print(f"删除图片文件成功: {old_image_path}")
+                except Exception as e:
+                    print(f"删除图片文件失败: {str(e)}")
+                
+                # 清空图片路径
+                standard.图片路径 = None
+                print(f"清空标准图片路径: ID={standard_id}")
+            
             # 处理图片上传
             if 'image' in request.files and request.files['image'].filename:
                 image_file = request.files['image']
@@ -956,14 +972,15 @@ def update_standard(standard_id):
                 # 保存文件
                 image_file.save(file_path)
                 
-                # 如果有旧图片，尝试删除
+                # 如果有旧图片且不是刚被删除的，尝试删除
                 if standard.图片路径:
                     old_image_path = os.path.join('static', standard.图片路径.split('/static/')[-1])
                     try:
                         if os.path.exists(old_image_path):
                             os.remove(old_image_path)
+                            print(f"上传新图片时删除旧图片成功: {old_image_path}")
                     except Exception as e:
-                        print(f"删除旧图片失败: {str(e)}")
+                        print(f"上传新图片时删除旧图片失败: {str(e)}")
                 
                 # 更新标准数据的图片路径
                 standard.图片路径 = f"/static/uploads/standard_images/{unique_filename}"

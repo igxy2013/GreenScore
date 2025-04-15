@@ -547,6 +547,7 @@
                     </div>
                     <form id="standardForm" class="space-y-4">
                         <input type="hidden" id="standardId" name="standardId">
+                        <input type="hidden" id="deleteImage" name="deleteImage" value="false">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[calc(70vh)] overflow-y-auto p-1">
                             <div>
                                 <label for="standardNum" class="block text-sm font-medium text-gray-700">条文号</label>
@@ -1768,8 +1769,11 @@
                 // 设置模态框标题
                 standardModalTitle.textContent = isEdit ? '编辑标准' : '添加标准';
             
-            // 重置表单
+                // 重置表单
                 standardForm.reset();
+                
+                // 重置删除图片标记
+                document.getElementById('deleteImage').value = 'false';
                 
                 // 如果是编辑，填充表单数据
                 if (isEdit && standardData) {
@@ -2050,6 +2054,7 @@
                 formData.append('审查材料', document.getElementById('standardMaterial').value);
                 formData.append('属性', document.getElementById('standardAttribute').value);
                 formData.append('标准名称', document.getElementById('standardName').value);
+                formData.append('deleteImage', document.getElementById('deleteImage').value);
                 
                 // 添加图片文件（如果有）
                 const imageFile = document.getElementById('standardImage').files[0];
@@ -2256,6 +2261,8 @@
                 standardImage.value = '';
                 imagePreview.src = '';
                 imagePreviewContainer.classList.add('hidden');
+                // 添加删除图片标记
+                document.getElementById('deleteImage').value = 'true';
             });
             
             // 暴露全局函数
