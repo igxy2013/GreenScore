@@ -537,8 +537,8 @@
             </div>
 
             <!-- 标准表单模态框 -->
-            <div id="standardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6">
+            <div id="standardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 overflow-auto py-6">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 my-auto">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-xl font-bold" id="standardModalTitle">添加标准</h3>
                         <button class="text-gray-500 hover:text-gray-700" onclick="closeStandardModal()" title="关闭">
@@ -547,7 +547,7 @@
                     </div>
                     <form id="standardForm" class="space-y-4">
                         <input type="hidden" id="standardId" name="standardId">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[calc(70vh)] overflow-y-auto p-1">
                             <div>
                                 <label for="standardNum" class="block text-sm font-medium text-gray-700">条文号</label>
                                 <input type="text" id="standardNum" name="standardNum" required
@@ -592,12 +592,34 @@
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
                             </div>
                             <div class="md:col-span-2">
+                                <label for="standardImage" class="block text-sm font-medium text-gray-700">上传条文图片</label>
+                                <div class="mt-1 flex items-center space-x-2">
+                                    <input type="file" id="standardImage" name="standardImage" accept="image/*"
+                                        class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary">
+                                    <button type="button" id="pasteImageBtn" class="px-3 py-2 border border-gray-300 rounded-md bg-gray-50 hover:bg-gray-100 text-gray-700 flex items-center">
+                                        <i class="far fa-clipboard mr-1"></i>从剪贴板粘贴
+                                    </button>
+                                </div>
+                                <div class="mt-1 text-sm text-gray-500">
+                                    <span>支持直接粘贴截图（Ctrl+V）</span>
+                                </div>
+                                <!-- 图片预览区域 -->
+                                <div id="imagePreviewContainer" class="mt-2 hidden">
+                                    <div class="flex items-center justify-between">
+                                        <img id="imagePreview" src="" alt="图片预览" class="max-h-24 max-w-xs border rounded-md">
+                                        <button type="button" id="removeImageBtn" class="ml-2 text-red-600 text-sm flex items-center">
+                                            <i class="fas fa-trash-alt mr-1"></i>删除图片
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
                                 <label for="standardMaterial" class="block text-sm font-medium text-gray-700">审查材料</label>
                                 <textarea id="standardMaterial" name="standardMaterial" rows="3"
                                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"></textarea>
                             </div>
                         </div>
-                        <div class="flex justify-end space-x-3 mt-6">
+                        <div class="flex justify-end space-x-3 mt-6 pt-2">
                             <button type="button" onclick="closeStandardModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
                                 取消
                             </button>
@@ -1671,7 +1693,10 @@
                                 row.innerHTML = `
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.序号 || '-'}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.条文号 || '-'}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-900 max-w-xs" title="${standard.条文内容}">${truncateText(standard.条文内容, 20)}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-900 max-w-xs" title="${standard.条文内容}">
+                                        ${truncateText(standard.条文内容, 20)}
+                                        ${standard.图片路径 ? `<div class="mt-1"><a href="${standard.图片路径}" target="_blank" class="text-blue-600 hover:underline"><i class="far fa-image mr-1"></i>查看图片</a></div>` : ''}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.分类 || '-'}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.专业 || '-'}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${standard.分值 || '-'}</td>
@@ -1758,6 +1783,19 @@
                     standardAttribute.value = (standardData.属性 || '控制项').trim();
                     standardName.value = (standardData.标准名称 || '成都市标').trim();
                     
+                    // 处理图片显示
+                    if (standardData.图片路径) {
+                        // 确保图片路径是完整URL
+                        if (standardData.图片路径.startsWith('/')) {
+                            imagePreview.src = standardData.图片路径;
+                        } else {
+                            imagePreview.src = '/' + standardData.图片路径;
+                        }
+                        imagePreviewContainer.classList.remove('hidden');
+                    } else {
+                        imagePreviewContainer.classList.add('hidden');
+                    }
+                    
                     // 控制台打印数据，帮助调试
                     console.log('编辑标准数据:', standardData);
             } else {
@@ -1772,6 +1810,10 @@
         // 关闭标准模态框
         function closeStandardModal() {
                 standardModal.classList.add('hidden');
+                // 重置图片预览
+                document.getElementById('imagePreviewContainer').classList.add('hidden');
+                document.getElementById('imagePreview').src = '';
+                document.getElementById('standardImage').value = '';
             }
             
             // 编辑标准
@@ -1998,17 +2040,22 @@
                 const standardId = document.getElementById('standardId').value;
                 const isEdit = standardId !== '';
                 
-                // 构建表单数据
-                const formData = {
-                    '条文号': document.getElementById('standardNum').value,
-                    '分类': document.getElementById('standardCategory').value,
-                    '专业': document.getElementById('standardMajor').value,
-                    '条文内容': document.getElementById('standardContent').value,
-                    '分值': document.getElementById('standardScore').value,
-                    '审查材料': document.getElementById('standardMaterial').value,
-                    '属性': document.getElementById('standardAttribute').value,
-                    '标准名称': document.getElementById('standardName').value
-                };
+                // 使用FormData处理表单数据，支持文件上传
+                const formData = new FormData();
+                formData.append('条文号', document.getElementById('standardNum').value);
+                formData.append('分类', document.getElementById('standardCategory').value);
+                formData.append('专业', document.getElementById('standardMajor').value);
+                formData.append('条文内容', document.getElementById('standardContent').value);
+                formData.append('分值', document.getElementById('standardScore').value);
+                formData.append('审查材料', document.getElementById('standardMaterial').value);
+                formData.append('属性', document.getElementById('standardAttribute').value);
+                formData.append('标准名称', document.getElementById('standardName').value);
+                
+                // 添加图片文件（如果有）
+                const imageFile = document.getElementById('standardImage').files[0];
+                if (imageFile) {
+                    formData.append('image', imageFile);
+                }
                 
                 // 确定API端点和方法
                 const url = isEdit ? `/admin/api/standards/${standardId}` : '/admin/api/standards';
@@ -2026,12 +2073,7 @@
                 // 发起API请求
                 fetch(url, {
                     method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(formData),
+                    body: formData,
                     credentials: 'same-origin'
                 })
                 .then(response => {
@@ -2066,6 +2108,155 @@
             // 初始化
             loadStandardNames();
             loadStandards();
+            
+            // 图片上传和预览功能
+            const standardImage = document.getElementById('standardImage');
+            const imagePreview = document.getElementById('imagePreview');
+            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+            const removeImageBtn = document.getElementById('removeImageBtn');
+            const pasteImageBtn = document.getElementById('pasteImageBtn');
+            
+            // 文件上传预览
+            standardImage.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    previewImage(file);
+                }
+            });
+            
+            // 剪贴板粘贴功能
+            pasteImageBtn.addEventListener('click', function() {
+                // 提示用户使用键盘粘贴
+                Swal.fire({
+                    title: '请按Ctrl+V粘贴图片',
+                    text: '请确保剪贴板中有图片内容',
+                    icon: 'info',
+                    confirmButtonText: '确定'
+                });
+            });
+            
+            // 初始化标准模态窗口粘贴功能
+            standardModal.addEventListener('paste', function(e) {
+                // 如果焦点在文本区域内，不处理粘贴事件
+                if (document.activeElement === standardContent || document.activeElement === standardMaterial) {
+                    return;
+                }
+                
+                // 从剪贴板获取数据
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const items = clipboardData.items;
+                
+                // 查找图片数据
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        // 获取图片文件
+                        const blob = items[i].getAsFile();
+                        
+                        // 预览图片
+                        previewImage(blob);
+                        
+                        // 阻止默认粘贴行为
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            });
+            
+            // 全局粘贴事件监听
+            document.addEventListener('paste', function(e) {
+                // 检查当前标准模态窗口是否显示
+                if (standardModal.classList.contains('hidden')) {
+                    return;
+                }
+                
+                // 如果焦点在文本区域内，不处理粘贴事件
+                if (document.activeElement === standardContent || document.activeElement === standardMaterial) {
+                    return;
+                }
+                
+                // 从剪贴板获取数据
+                const clipboardData = e.clipboardData || window.clipboardData;
+                const items = clipboardData.items;
+                
+                // 查找图片数据
+                let hasImage = false;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        hasImage = true;
+                        // 获取图片文件
+                        const blob = items[i].getAsFile();
+                        
+                        // 预览图片
+                        previewImage(blob);
+                        
+                        // 阻止默认粘贴行为
+                        e.preventDefault();
+                        
+                        // 显示成功提示
+                        Swal.fire({
+                            title: '图片已粘贴',
+                            icon: 'success',
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                        return;
+                    }
+                }
+                
+                // 只有在用户主动点击粘贴按钮后才提示未找到图片
+                if (!hasImage && e.isTrusted && document.activeElement === pasteImageBtn) {
+                    Swal.fire({
+                        title: '未找到图片',
+                        text: '剪贴板中未检测到图片内容',
+                        icon: 'warning',
+                        confirmButtonText: '确定'
+                    });
+                }
+            });
+            
+            // 预览图片通用函数
+            function previewImage(file) {
+                // 只处理图片文件
+                if (!file || !file.type.match(/^image\//)) {
+                    return;
+                }
+                
+                // 处理从剪贴板粘贴的图片，创建合适的文件对象
+                if (file.name === 'image.png' || !file.name) {
+                    // 为粘贴的图片生成一个唯一的文件名
+                    const timestamp = new Date().getTime();
+                    const fileExt = file.type.split('/')[1].replace('jpeg', 'jpg');
+                    const fileName = `pasted_image_${timestamp}.${fileExt}`;
+                    
+                    // 创建新的文件对象
+                    file = new File([file], fileName, { type: file.type });
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // 设置预览图片源
+                    imagePreview.src = e.target.result;
+                    
+                    // 显示预览区域
+                    imagePreviewContainer.classList.remove('hidden');
+                    
+                    // 创建一个新的文件对象并设置到文件输入框
+                    // 注意：这不会更改上传控件的value，但会在表单提交时使用这个文件
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    standardImage.files = dataTransfer.files;
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // 删除图片
+            removeImageBtn.addEventListener('click', function() {
+                standardImage.value = '';
+                imagePreview.src = '';
+                imagePreviewContainer.classList.add('hidden');
+            });
             
             // 暴露全局函数
         window.openStandardModal = openStandardModal;

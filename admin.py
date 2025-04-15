@@ -5,6 +5,9 @@ from functools import wraps
 import random
 import string
 from datetime import datetime
+import os
+from werkzeug.utils import secure_filename
+import time
 
 # 创建管理后台蓝图
 admin_app = Blueprint('admin', __name__, 
@@ -748,7 +751,8 @@ def get_all_standards():
                 '分值': standard.分值,
                 '审查材料': standard.审查材料,
                 '属性': standard.属性,
-                '标准名称': standard.标准名称
+                '标准名称': standard.标准名称,
+                '图片路径': standard.图片路径
             })
         
         print(f"返回标准数据: {len(standards_data)}条")
@@ -816,26 +820,73 @@ def create_standard():
         # 导入评价标准模型
         from app import review_standard, db
         
-        # 获取请求数据
-        data = request.get_json()
-        print(f"创建标准请求数据: {data}")
+        # 处理表单数据或JSON数据
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # 处理表单数据（包含文件上传）
+            standard_data = {
+                '条文号': request.form.get('条文号', ''),
+                '分类': request.form.get('分类', ''),
+                '专业': request.form.get('专业', ''),
+                '条文内容': request.form.get('条文内容', ''),
+                '分值': request.form.get('分值', '0'),
+                '审查材料': request.form.get('审查材料', ''),
+                '属性': request.form.get('属性', '控制项'),
+                '标准名称': request.form.get('标准名称', '成都市标'),
+                '图片路径': None
+            }
+            
+            # 处理图片上传
+            if 'image' in request.files and request.files['image'].filename:
+                image_file = request.files['image']
+                
+                # 确保文件名安全
+                filename = secure_filename(image_file.filename)
+                
+                # 确保上传目录存在
+                upload_folder = os.path.join('static', 'uploads', 'standard_images')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                # 生成唯一文件名（使用时间戳和原文件名）
+                unique_filename = f"{int(time.time())}_{filename}"
+                file_path = os.path.join(upload_folder, unique_filename)
+                
+                # 保存文件
+                image_file.save(file_path)
+                
+                # 更新标准数据的图片路径
+                standard_data['图片路径'] = f"/static/uploads/standard_images/{unique_filename}"
+        else:
+            # 处理JSON数据
+            data = request.get_json()
+            standard_data = {
+                '条文号': data.get('条文号', ''),
+                '分类': data.get('分类', ''),
+                '专业': data.get('专业', ''),
+                '条文内容': data.get('条文内容', ''),
+                '分值': data.get('分值', '0'),
+                '审查材料': data.get('审查材料', ''),
+                '属性': data.get('属性', '控制项'),
+                '标准名称': data.get('标准名称', '成都市标'),
+                '图片路径': None
+            }
         
         # 验证必要字段
         required_fields = ['条文号', '专业', '条文内容', '属性', '标准名称']
         for field in required_fields:
-            if field not in data or not data[field]:
+            if not standard_data[field]:
                 return jsonify({'success': False, 'message': f'缺少必要字段: {field}'}), 400
         
         # 创建新的标准记录
         new_standard = review_standard(
-            条文号=data.get('条文号'),
-            分类=data.get('分类', ''),
-            专业=data.get('专业'),
-            条文内容=data.get('条文内容'),
-            分值=data.get('分值', '0'),
-            审查材料=data.get('审查材料', ''),
-            属性=data.get('属性'),
-            标准名称=data.get('标准名称')
+            条文号=standard_data['条文号'],
+            分类=standard_data['分类'],
+            专业=standard_data['专业'],
+            条文内容=standard_data['条文内容'],
+            分值=standard_data['分值'],
+            审查材料=standard_data['审查材料'],
+            属性=standard_data['属性'],
+            标准名称=standard_data['标准名称'],
+            图片路径=standard_data['图片路径']
         )
         
         db.session.add(new_standard)
@@ -849,7 +900,8 @@ def create_standard():
             'standard': {
                 '序号': new_standard.序号,
                 '条文号': new_standard.条文号,
-                '标准名称': new_standard.标准名称
+                '标准名称': new_standard.标准名称,
+                '图片路径': new_standard.图片路径
             }
         })
     except Exception as e:
@@ -866,31 +918,86 @@ def update_standard(standard_id):
     try:
         # 导入评价标准模型
         from app import review_standard, db
+        import os
+        from werkzeug.utils import secure_filename
         
         # 查找要更新的标准
         standard = review_standard.query.get_or_404(standard_id)
         
-        # 获取请求数据
-        data = request.get_json()
-        print(f"更新标准请求数据: ID={standard_id}, 数据={data}")
+        # 处理表单数据或JSON数据
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # 处理表单数据（包含文件上传）
+            standard_data = {
+                '条文号': request.form.get('条文号', standard.条文号),
+                '分类': request.form.get('分类', standard.分类),
+                '专业': request.form.get('专业', standard.专业),
+                '条文内容': request.form.get('条文内容', standard.条文内容),
+                '分值': request.form.get('分值', standard.分值),
+                '审查材料': request.form.get('审查材料', standard.审查材料),
+                '属性': request.form.get('属性', standard.属性),
+                '标准名称': request.form.get('标准名称', standard.标准名称)
+            }
+            
+            # 处理图片上传
+            if 'image' in request.files and request.files['image'].filename:
+                image_file = request.files['image']
+                
+                # 确保文件名安全
+                filename = secure_filename(image_file.filename)
+                
+                # 确保上传目录存在
+                upload_folder = os.path.join('static', 'uploads', 'standard_images')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                # 生成唯一文件名（使用时间戳和原文件名）
+                unique_filename = f"{int(time.time())}_{filename}"
+                file_path = os.path.join(upload_folder, unique_filename)
+                
+                # 保存文件
+                image_file.save(file_path)
+                
+                # 如果有旧图片，尝试删除
+                if standard.图片路径:
+                    old_image_path = os.path.join('static', standard.图片路径.split('/static/')[-1])
+                    try:
+                        if os.path.exists(old_image_path):
+                            os.remove(old_image_path)
+                    except Exception as e:
+                        print(f"删除旧图片失败: {str(e)}")
+                
+                # 更新标准数据的图片路径
+                standard.图片路径 = f"/static/uploads/standard_images/{unique_filename}"
+        else:
+            # 处理JSON数据
+            data = request.get_json()
+            
+            if '条文号' in data:
+                standard.条文号 = data['条文号']
+            if '分类' in data:
+                standard.分类 = data['分类']
+            if '专业' in data:
+                standard.专业 = data['专业']
+            if '条文内容' in data:
+                standard.条文内容 = data['条文内容']
+            if '分值' in data:
+                standard.分值 = data['分值']
+            if '审查材料' in data:
+                standard.审查材料 = data['审查材料']
+            if '属性' in data:
+                standard.属性 = data['属性']
+            if '标准名称' in data:
+                standard.标准名称 = data['标准名称']
         
         # 更新字段
-        if '条文号' in data:
-            standard.条文号 = data['条文号']
-        if '分类' in data:
-            standard.分类 = data['分类']
-        if '专业' in data:
-            standard.专业 = data['专业']
-        if '条文内容' in data:
-            standard.条文内容 = data['条文内容']
-        if '分值' in data:
-            standard.分值 = data['分值']
-        if '审查材料' in data:
-            standard.审查材料 = data['审查材料']
-        if '属性' in data:
-            standard.属性 = data['属性']
-        if '标准名称' in data:
-            standard.标准名称 = data['标准名称']
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            standard.条文号 = standard_data['条文号']
+            standard.分类 = standard_data['分类']
+            standard.专业 = standard_data['专业']
+            standard.条文内容 = standard_data['条文内容']
+            standard.分值 = standard_data['分值']
+            standard.审查材料 = standard_data['审查材料']
+            standard.属性 = standard_data['属性']
+            standard.标准名称 = standard_data['标准名称']
         
         db.session.commit()
         
@@ -1053,7 +1160,8 @@ def get_standard(standard_id):
             '分值': standard.分值,
             '审查材料': standard.审查材料,
             '属性': standard.属性,
-            '标准名称': standard.标准名称
+            '标准名称': standard.标准名称,
+            '图片路径': standard.图片路径
         }
         
         return jsonify({

@@ -250,6 +250,7 @@ class review_standard(db.Model):
     审查材料 = db.Column(db.Text)
     属性 = db.Column(db.String(20))  # 属性字段，包含控制项、评分项
     标准名称 = db.Column(db.String(20))  # 标准名称字段
+    图片路径 = db.Column(db.String(255))  # 条文图片路径字段
 
 class FormData(db.Model):
     __tablename__ = 'form_data'
@@ -265,4 +266,4 @@ class FormData(db.Model):
     standard_selection = db.Column(db.String(20))
     form_data = db.Column(db.Text)  # 存储JSON格式的表单数据
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())    
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())

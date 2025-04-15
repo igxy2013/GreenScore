@@ -3,6 +3,22 @@
 <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
 <input type="hidden" id="current-project-id" name="current-project-id" value="{{ project.id if project else '' }}">
 
+<!-- 添加图片相关样式 -->
+<style>
+    .standard-image-container {
+        margin-top: 8px;
+    }
+    .standard-image {
+        max-height: 150px;
+        object-fit: contain;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .standard-image:hover {
+        transform: scale(1.02);
+    }
+</style>
+
 {% if current_level == '提高级' %}
 <!-- 在提高级页面加载浮动徽章组件 -->
 {% include 'components/floating_badge.html' %}
@@ -72,7 +88,16 @@
                     <span class="category-tag category-{{ standard.分类 }}">{{ standard.分类 }}</span>
                 </td>
                 {% endif %}
-                <td class="px-6 py-4 text-base text-gray-700">{{ standard.条文内容 }}</td>
+                <td class="px-6 py-4 text-base text-gray-700">
+                    {% if standard.图片路径 %}
+                    <div class="mb-2">{{ standard.条文内容 }}</div>
+                    <div class="standard-image-container">
+                        <img src="{{ standard.图片路径 }}" alt="条文图片" class="standard-image max-w-full h-auto rounded border border-gray-200 hover:border-primary transition-colors cursor-pointer" onclick="showImageModal(this.src)">
+                    </div>
+                    {% else %}
+                    {{ standard.条文内容 }}
+                    {% endif %}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">{{ standard.分值 }}</td>
                 
                 {% if current_level == '基本级' %}
@@ -131,8 +156,45 @@
     {% endif %}
 </div>
 
+<!-- 图片模态框 -->
+<div id="imageModal" class="fixed inset-0 z-50 hidden overflow-auto bg-black bg-opacity-75 flex items-center justify-center p-4">
+    <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-auto">
+        <div class="p-2 flex justify-between items-center border-b">
+            <h3 class="text-lg font-medium text-gray-900">图片预览</h3>
+            <button type="button" class="text-gray-400 hover:text-gray-500" onclick="closeImageModal()">
+                <i class="ri-close-line text-xl"></i>
+            </button>
+        </div>
+        <div class="p-4 flex justify-center">
+            <img id="modalImage" src="" alt="放大图片" class="max-w-full max-h-[80vh]">
+        </div>
+    </div>
+</div>
+
 <!-- 添加标准表格相关的JavaScript -->
 <script>
+    // 图片模态框相关函数
+    function showImageModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        modalImage.src = imageSrc;
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+    
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+    
+    // 点击模态框背景关闭
+    document.getElementById('imageModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeImageModal();
+        }
+    });
+    
     document.addEventListener('DOMContentLoaded', function() {
         console.log('=== 初始化提高级页面 ===');
         // 检查是否为给排水专业
@@ -584,4 +646,4 @@
             }
         }
     }
-</script> 
+</script>
