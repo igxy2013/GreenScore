@@ -3163,6 +3163,25 @@ def extract_project_info_api():
         app.logger.error(f"处理文件时出错: {str(e)}")
         return jsonify({'success': False, 'message': f'处理请求失败: {str(e)}'}), 500
 
+@app.route('/log-js-error', methods=['POST'])
+def log_js_error():
+    """记录前端JavaScript加载错误"""
+    try:
+        data = request.get_json()
+        error_type = data.get('type', 'unknown')
+        error_message = data.get('message', 'No message')
+        error_url = data.get('url', 'No URL')
+        user_agent = request.headers.get('User-Agent', 'Unknown')
+        
+        print(f"前端JS错误: {error_type} - {error_message} - URL: {error_url} - User-Agent: {user_agent}")
+        
+        # 这里可以将错误记录到日志文件或数据库中
+        
+        return jsonify({"status": "success", "message": "Error logged successfully"})
+    except Exception as e:
+        print(f"记录JS错误时出现异常: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 if __name__ == '__main__':
     # 初始化数据库
     init_db()

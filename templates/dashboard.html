@@ -12,9 +12,6 @@
     <input type="hidden" id="current-project-id" value="{{ project.id if project else '21' }}">
     <input type="hidden" id="current-project-standard" value="{{ project.standard if project else '成都市标' }}">
     
-    <!-- 添加全局页面加载指示器 -->
-    {% include 'components/page_loader.html' %}
-    
     <div class="page-container">
         <div class="flex min-h-screen">
             <!-- 侧边导航栏 -->

@@ -1,0 +1,84 @@
+/**
+ * GreenScore系统标准表格样式
+ * 主要处理表格展示效果
+ */
+
+/* 表格样式优化 */
+.standards-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.standards-table th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 12px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+}
+
+.standards-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.standards-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* 按钮样式 */
+.standards-table .btn {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.standards-table .edit-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+.standards-table .delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* 分页控件样式 */
+.dataTables_paginate {
+    margin-top: 15px;
+}
+
+.dataTables_paginate .paginate_button {
+    padding: 5px 10px;
+    margin: 0 2px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.dataTables_paginate .paginate_button.current {
+    background-color: #4CAF50;
+    color: white;
+}
+
+/* 搜索框样式 */
+.dataTables_filter input {
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-left: 6px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .standards-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .standards-table th, 
+    .standards-table td {
+        white-space: nowrap;
+    }
+} 

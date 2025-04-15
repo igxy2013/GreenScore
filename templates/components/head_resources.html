@@ -3,8 +3,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>智能绿建评价系统</title>
 <script src="/static/js/iframe-resizer.js"></script>
+<!-- 添加错误处理脚本，优先加载 -->
+<script src="/static/js/error-handler.js"></script>
 <!-- 先加载Alpine.js -->
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script defer src="/static/js/libs/alpine.min.js"></script>
 <!-- 加载loader.js -->
 <script src="{{ url_for('static', filename='js/loader.js') }}"></script>
 <!-- 加载气候区划查询工具 -->
@@ -25,10 +27,10 @@
 <script src="/static/js/green_building_score_calculator.js"></script>
 <!-- 在 head 部分添加对 db_updater.js 的引用 -->
 <script src="/static/js/db_updater.js"></script>
- <!-- 使用Font Awesome图标库 -->
- <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
- <!-- 引入自定义样式表 -->
- <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
+<!-- 使用Font Awesome图标库 -->
+<link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+<!-- 引入自定义样式表 -->
+<link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
 
 <!-- 引入样式文件 -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
@@ -71,12 +73,12 @@ function filterTableByClause(query) {
 <!-- 添加climate_zone.js引用，放在页面头部的script标签之前 -->
 <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
 <!-- 引入Chart.js用于数据可视化 -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/libs/chart.min.js"></script>
 <script src="/static/js/green_building_score_calculator.js"></script>
 <!-- 在 head 部分添加对 db_updater.js 的引用 -->
 <script src="/static/js/db_updater.js"></script>
 <!-- 引入iframe-resizer.js用于iframe高度自适应 -->
-<script src="{{ url_for('static', filename='js/iframe-resizer.js') }}"></script>
+<script src="/static/js/libs/iframe-resizer.js"></script>
 <!-- 添加menu.js引用，确保在所有使用它的代码之前 -->
 <script src="/static/js/menu.js"></script>
 <script>
@@ -222,13 +224,99 @@ table th {
     display: block;
     margin: 0 auto;
 }
+</style>
 
-.loading {
-    text-align: center;
-    display: none;
-    margin: 20px 0;
-}
-.loading img {
-    width: 50px;
-}
-</style> 
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="成都市绿色建筑评价系统 - 专注于推动绿色建筑发展，提供评价、监管和管理服务">
+    <meta name="keywords" content="绿色建筑,评价系统,成都,能效,环保建筑">
+    <meta name="author" content="成都市住房和城乡建设局">
+    <meta name="robots" content="index, follow">
+    <meta name="google" content="notranslate">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="theme-color" content="#4CAF50">
+    
+    <!-- Favicon 图标 -->
+    <link rel="icon" href="/static/image/logo-mini.png" type="image/png">
+    <link rel="apple-touch-icon" href="/static/image/logo-mini.png">
+    
+    <!-- Remixicon 图标库 -->
+    <link href="/static/css/remixicon.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <link href="/static/css/tailwind.min.css" rel="stylesheet">
+    
+    <!-- 标准表格样式 -->
+    <link href="/static/css/standards/standards-table.css" rel="stylesheet">
+
+    <!-- 自定义全局CSS -->
+    <style>
+        :root {
+            --primary-color: #2e8b57;  /* 深绿色 */
+            --secondary-color: #4CAF50; /* 中绿色 */
+            --accent-color: #8BC34A;   /* 浅绿色 */
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+            --dark-bg: #343a40;
+            --border-color: #dee2e6;
+        }
+        
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .primary-bg {
+            background-color: var(--primary-color);
+        }
+        
+        .secondary-bg {
+            background-color: var(--secondary-color);
+        }
+        
+        .accent-bg {
+            background-color: var(--accent-color);
+        }
+        
+        .text-primary {
+            color: var(--primary-color);
+        }
+        
+        .text-secondary {
+            color: var(--secondary-color);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #236c44;
+        }
+    </style>
+    
+    <!-- 自动检测暗黑模式并应用 -->
+    <script>
+        // 检测系统暗黑模式
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark-mode');
+        }
+        
+        // 监听系统暗黑模式变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (e.matches) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        });
+    </script>
+</head> 

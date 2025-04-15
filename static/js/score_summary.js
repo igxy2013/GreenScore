@@ -69,12 +69,6 @@ async function fetchScoreSummary(forceRefresh = false) {
         // 获取项目评价标准
         let projectStandard = document.getElementById('current-project-standard')?.value || '成都市标';
         
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
         // 使用async/await简化异步处理
         const response = await fetch(`/api/get_score_summary?project_id=${projectId}&force_refresh=${forceRefresh}`);
         if (!response.ok) {
@@ -108,20 +102,9 @@ async function fetchScoreSummary(forceRefresh = false) {
             }, 100);
         }
 
-        // 隐藏加载指示器
-        if (pageLoader) {
-            pageLoader.style.display = 'none';
-        }
-        
         return data;
     } catch (error) {
         console.error('获取评分汇总数据失败:', error);
-        
-        // 隐藏加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'none';
-        }
         
         // 显示错误提示
         alert('获取评分汇总数据失败: ' + error.message);

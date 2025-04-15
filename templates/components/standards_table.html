@@ -330,12 +330,6 @@
     function saveScores() {
         console.log('开始保存评分信息');
         
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-        
         // 创建评分数据对象
         const projectId = document.getElementById('project_id').value;
         const scoreData = {
@@ -421,11 +415,6 @@
         .then(response => {
             console.log('服务器响应状态:', response.status);
             
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
             if (!response.ok) {
                 throw new Error('保存失败: ' + response.status);
             }
@@ -484,11 +473,6 @@
             } else {
                 alert('保存失败，请重试: ' + error.message);
             }
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
         });
     }
     
@@ -504,12 +488,6 @@
         }
         
         console.log('开始加载评分数据，项目ID:', projectId, '强制刷新:', forceRefresh);
-        
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
         
         try {
             console.log('使用/api/project_scores端点');
@@ -629,20 +607,11 @@
                     if (typeof toast === 'function') {
                         toast('加载评分数据失败: ' + error.message, 'error');
                     }
-                })
-                .finally(() => {
-                    // 隐藏加载指示器
-                    if (pageLoader) {
-                        pageLoader.style.display = 'none';
-                    }
                 });
         } catch (error) {
             console.error('加载过程发生异常:', error);
             if (typeof toast === 'function') {
                 toast('加载过程发生异常:' + error.message, 'error');
-            }
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
             }
         }
     }

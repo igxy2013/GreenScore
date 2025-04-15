@@ -58,20 +58,11 @@
             }, 100);
         }
         
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
         // 获取项目ID
         const projectId = document.getElementById('current-project-id').value;
 
         if (!projectId) {
             alert('请先选择项目');
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
             if (wordMenuItem) {
                 wordMenuItem.classList.remove('loading');
                 wordMenuItem.style.backgroundImage = '';
@@ -120,11 +111,6 @@
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
             // 完成进度条
             if (wordMenuItem) {
                 clearInterval(progressInterval);
@@ -144,11 +130,6 @@
         .catch(error => {
             console.error('生成报审表失败:', error);
             alert(error.message || '生成报审表失败，请重试');
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
             
             // 重置进度条
             if (wordMenuItem) {
@@ -219,19 +200,10 @@
             }, 100);
         }
         
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
         // 获取项目ID
         const projectId = document.getElementById('current-project-id').value;
         if (!projectId) {
             alert('请先选择项目');
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
             if (dwgMenuItem) {
                 dwgMenuItem.classList.remove('loading');
                 dwgMenuItem.style.backgroundImage = '';
@@ -354,11 +326,6 @@
                 throw new Error('无法处理下载响应');
             }
             
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
             // 完成进度条
             if (dwgMenuItem) {
                 clearInterval(progressInterval);
@@ -378,11 +345,6 @@
         .catch(error => {
             console.error('生成绿色建筑设计专篇失败:', error);
             alert(error.message || '生成绿色建筑设计专篇失败，请重试');
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
             
             // 重置进度条
             if (dwgMenuItem) {
@@ -459,21 +421,12 @@
             }, 100);
         }
         
-        // 显示加载指示器
-        const pageLoader = document.getElementById('page-loader');
-        if (pageLoader) {
-            pageLoader.style.display = 'flex';
-        }
-
         // 获取当前项目ID
         const projectId = document.getElementById('project_id').value;
         console.log("项目ID:", projectId);
         
         if (!projectId) {
             alert('未找到项目ID');
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
             if (reportMenuItem) {
                 reportMenuItem.classList.remove('loading');
                 reportMenuItem.style.backgroundImage = '';
@@ -526,11 +479,6 @@
             a.click();
             window.URL.revokeObjectURL(url);
             
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
-            
             // 完成进度条
             if (reportMenuItem) {
                 clearInterval(progressInterval);
@@ -550,11 +498,6 @@
         .catch(error => {
             console.error('生成报告失败:', error);
             alert(error.message || '生成绿建自评估报告失败，请稍后重试');
-            
-            // 隐藏加载指示器
-            if (pageLoader) {
-                pageLoader.style.display = 'none';
-            }
             
             // 重置进度条
             if (reportMenuItem) {

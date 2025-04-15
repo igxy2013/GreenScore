@@ -448,10 +448,6 @@ document.addEventListener('DOMContentLoaded', function() {
             standard: standard
         };
         
-        // 显示加载中提示
-        const loaderElement = document.getElementById('page-loader');
-        if (loaderElement) loaderElement.style.display = 'flex';
-        
         // 发送API请求获取数据
         fetch('/api/project_scores?' + new URLSearchParams({
             project_id: projectId,
@@ -474,17 +470,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 更新表单数据
             updateFormWithData(data, level);
-            
-            // 显示成功提示
-            showToast('数据加载成功', 'success');
+        
         })
         .catch(error => {
             console.error('加载数据出错:', error);
             showToast(`加载数据失败: ${error.message}`, 'error');
-        })
-        .finally(() => {
-            // 隐藏加载中提示
-            if (loaderElement) loaderElement.style.display = 'none';
         });
     }
     
