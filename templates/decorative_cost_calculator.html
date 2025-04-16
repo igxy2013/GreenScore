@@ -7,6 +7,8 @@
 
     <!-- 立即加载CSS文件，避免闪烁 -->
     <link href="/static/css/tailwind.min.css" rel="stylesheet">
+    <!-- 添加Remix图标库 -->
+    <link href="/static/css/remixicon.css" rel="stylesheet">
     <script src="/static/js/lib/xlsx.full.min.js" defer></script>
     <script src="/static/js/lib/jszip.min.js" defer></script>
     <script src="/static/js/lib/FileSaver.min.js" defer></script>
@@ -56,6 +58,8 @@
         
         .row-actions {
             display: flex;
+            justify-content: center;
+            align-items: center;
             gap: 8px;
         }
         
@@ -131,7 +135,7 @@
         }
         
         .image-cell {
-            width: 120px;
+            width: 140px;
             vertical-align: middle;
         }
         
@@ -139,7 +143,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
         }
         
         .image-preview {
@@ -153,9 +157,10 @@
         
         .image-actions {
             display: flex;
-            gap: 4px;
+            gap: 8px;
             width: 100%;
             margin-top: 4px;
+            justify-content: center;
         }
         
         .upload-image-btn, .paste-image-btn {
@@ -165,7 +170,59 @@
         }
         
         .ml-1 {
-            margin-left: 0.25rem;
+            margin-left: 0.5rem;
+        }
+        
+        /* 美化图标按钮 */
+        .image-actions .btn,
+        .row-actions .btn {
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-actions .icon-btn,
+        .row-actions .icon-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .image-actions .icon-btn i,
+        .row-actions .icon-btn i {
+            margin: 0;
+            font-size: 1.2rem; /* 减小图标大小 */
+            position: static;
+            top: auto;
+            left: auto;
+            transform: none;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .image-actions .icon-btn,
+            .row-actions .icon-btn {
+                width: 30px;
+                height: 30px;
+            }
+            
+            .image-actions .icon-btn i,
+            .row-actions .icon-btn i {
+                font-size: 1.25rem;
+            }
+        }
+        
+        /* 优化表格列宽 */
+        th:nth-child(8), /* 示意图列 */
+        th:nth-child(9) { /* 操作列 */
+            text-align: center;
+            min-width: 80px;
         }
     </style>
 </head>
@@ -234,15 +291,15 @@
                                         <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
                                         <div class="image-actions">
                                             <input type="file" class="image-input" accept="image/*" style="display: none;">
-                                            <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
-                                            <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
-                                            <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                            <button class="btn btn-sm btn-primary upload-image-btn icon-btn" title="上传图片"><i class="ri-upload-line"></i></button>
+                                            <button class="btn btn-sm btn-primary paste-image-btn icon-btn ml-1" title="粘贴"><i class="ri-clipboard-line"></i></button>
+                                            <button class="btn btn-sm btn-danger remove-image-btn icon-btn ml-1" style="display: none;" title="删除"><i class="ri-delete-bin-line"></i></button>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="row-actions">
-                                        <button class="btn btn-danger btn-sm delete-row">删除</button>
+                                        <button class="btn btn-danger btn-sm delete-row icon-btn" title="删除"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -284,15 +341,15 @@
                                         <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
                                         <div class="image-actions">
                                             <input type="file" class="image-input" accept="image/*" style="display: none;">
-                                            <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
-                                            <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
-                                            <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                            <button class="btn btn-sm btn-primary upload-image-btn icon-btn" title="上传图片"><i class="ri-upload-line"></i></button>
+                                            <button class="btn btn-sm btn-primary paste-image-btn icon-btn ml-1" title="粘贴"><i class="ri-clipboard-line"></i></button>
+                                            <button class="btn btn-sm btn-danger remove-image-btn icon-btn ml-1" style="display: none;" title="删除"><i class="ri-delete-bin-line"></i></button>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="row-actions">
-                                        <button class="btn btn-danger btn-sm delete-row">删除</button>
+                                        <button class="btn btn-danger btn-sm delete-row icon-btn" title="删除"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -334,15 +391,15 @@
                                         <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
                                         <div class="image-actions">
                                             <input type="file" class="image-input" accept="image/*" style="display: none;">
-                                            <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
-                                            <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
-                                            <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                            <button class="btn btn-sm btn-primary upload-image-btn icon-btn" title="上传图片"><i class="ri-upload-line"></i></button>
+                                            <button class="btn btn-sm btn-primary paste-image-btn icon-btn ml-1" title="粘贴"><i class="ri-clipboard-line"></i></button>
+                                            <button class="btn btn-sm btn-danger remove-image-btn icon-btn ml-1" style="display: none;" title="删除"><i class="ri-delete-bin-line"></i></button>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="row-actions">
-                                        <button class="btn btn-danger btn-sm delete-row">删除</button>
+                                        <button class="btn btn-danger btn-sm delete-row icon-btn" title="删除"><i class="ri-delete-bin-line"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -471,15 +528,15 @@
                             <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
                             <div class="image-actions">
                                 <input type="file" class="image-input" accept="image/*" style="display: none;">
-                                <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
-                                <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
-                                <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                <button class="btn btn-sm btn-primary upload-image-btn icon-btn" title="上传图片"><i class="ri-upload-line"></i></button>
+                                <button class="btn btn-sm btn-primary paste-image-btn icon-btn ml-1" title="粘贴"><i class="ri-clipboard-line"></i></button>
+                                <button class="btn btn-sm btn-danger remove-image-btn icon-btn ml-1" style="display: none;" title="删除"><i class="ri-delete-bin-line"></i></button>
                             </div>
                         </div>
                     </td>
                     <td>
                         <div class="row-actions">
-                            <button class="btn btn-danger btn-sm delete-row">删除</button>
+                            <button class="btn btn-danger btn-sm delete-row icon-btn" title="删除"><i class="ri-delete-bin-line"></i></button>
                         </div>
                     </td>
                 `;
@@ -597,8 +654,6 @@
                 
                // 获取项目信息
                const urlParams = new URLSearchParams(window.location.search);
-                console.log("URL参数:", window.location.search);
-                console.log("URL路径:", window.location.pathname);
                 
                 // 从URL路径中提取项目ID - 格式通常是 /project/{project_id}
                 let projectIdFromPath = null;
@@ -606,19 +661,15 @@
                 if (pathMatch && pathMatch[1]) {
                     projectIdFromPath = pathMatch[1];
                 }
-                console.log("从URL路径提取的项目ID:", projectIdFromPath);
                 
                 // 从URL参数中获取项目ID
                 const projectIdFromUrl = urlParams.get('project_id');
-                console.log("从URL参数获取的项目ID:", projectIdFromUrl);
                 
                 // 从隐藏字段获取项目ID
                 const projectIdFromElement = document.getElementById('current-project-id')?.value;
-                console.log("从页面元素获取的项目ID (current-project-id):", projectIdFromElement);
-                
+
                 // 优先使用路径中的ID，然后是URL参数，最后是隐藏字段中的ID
                 const projectId = projectIdFromPath || projectIdFromUrl || projectIdFromElement || null;
-                console.log("最终使用的项目ID:", projectId);
                 
                 if (!projectId) {
                     alert("未能获取到项目ID，无法导出计算书！请确保URL中包含project_id参数。");
