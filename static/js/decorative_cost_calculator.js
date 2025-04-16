@@ -696,3 +696,71 @@ function addImageEventListeners(row) {
     });
 }
 
+// 设置全局粘贴事件处理函数
+function setupGlobalPasteForTarget(row) {
+    const targetRow = row;
+    const imagePreview = targetRow.querySelector('.image-preview');
+    const removeImageBtn = targetRow.querySelector('.remove-image-btn');
+    
+    // 创建并显示提示信息
+    const pasteHelp = document.createElement('div');
+    pasteHelp.className = 'paste-help';
+    pasteHelp.textContent = '请按下Ctrl+V粘贴图片';
+    pasteHelp.style.color = '#3b82f6';
+    pasteHelp.style.fontSize = '0.8rem';
+    pasteHelp.style.textAlign = 'center';
+    pasteHelp.style.marginTop = '4px';
+    
+    const imageActionsDiv = targetRow.querySelector('.image-actions');
+    imageActionsDiv.appendChild(pasteHelp);
+    
+    // 监听全局的粘贴事件
+    const handlePaste = function(e) {
+        if (e.clipboardData && e.clipboardData.items) {
+            const items = e.clipboardData.items;
+            
+            // 查找图片数据
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    
+                    // 读取图片数据
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        // 更新图片预览
+                        imagePreview.src = event.target.result;
+                        imagePreview.style.display = 'block';
+                        imagePreview.dataset.imageData = event.target.result;
+                        
+                        // 显示删除按钮
+                        removeImageBtn.style.display = 'block';
+                        
+                        // 移除提示文本
+                        if (pasteHelp.parentNode) {
+                            pasteHelp.parentNode.removeChild(pasteHelp);
+                        }
+                        
+                        // 移除全局粘贴事件监听器
+                        document.removeEventListener('paste', handlePaste);
+                    };
+                    reader.readAsDataURL(blob);
+                    
+                    // 阻止默认粘贴行为
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
+    };
+    
+    // 添加粘贴事件监听器
+    document.addEventListener('paste', handlePaste);
+    
+    // 设置一个超时移除粘贴帮助提示
+    setTimeout(() => {
+        if (pasteHelp.parentNode) {
+            pasteHelp.parentNode.removeChild(pasteHelp);
+        }
+    }, 5000);
+}
+

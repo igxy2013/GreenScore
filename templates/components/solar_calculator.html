@@ -153,7 +153,7 @@
 
     <!-- 月度详细统计模态窗口 -->
     <div id="monthlyModal" class="fixed inset-0 bg-black bg-opacity-50 z-[99999]" style="display: none;">
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl p-4 max-w-5xl w-full max-h-[98vh] overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl p-4 max-w-4xl w-[80%]">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold text-gray-900">月度详细统计</h2>
                 <button id="closeMonthlyModal" class="modal-close-button" title="关闭" aria-label="关闭模态窗口">
@@ -269,10 +269,10 @@
         overflow: hidden;
     }
     .monthly-chart-container {
-        height: 350px;
+        height: 220px;
+        min-height: 180px;
         width: 100%;
         position: relative;
-        overflow: hidden;
     }
     .gradient-bg {
         background: linear-gradient(135deg, #4f9cf9, #2c7be5);
@@ -335,6 +335,24 @@
         width: 100%;
         height: 100%;
         z-index: 99999;
+        overflow: hidden; /* 防止背景滚动 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #monthlyModal > div {
+        position: relative;
+        margin: 0 auto;
+        max-height: 90vh; /* 最大高度为视口高度的90% */
+        height: auto;
+        overflow-y: auto; /* 允许内容滚动 */
+        display: flex;
+        flex-direction: column;
+        /* 移除绝对定位相关样式 */
+        transform: none;
+        top: auto;
+        left: auto;
     }
     
     #monthlyModal .table-header {
@@ -345,14 +363,58 @@
         border-bottom: 2px solid #e5e7eb;
     }
     
+    #monthlyModal th, #monthlyModal td {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+        line-height: 1.2rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    #monthlyModal thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f3f4f6;
+    }
+    
     #monthlyModal th {
         font-weight: 600;
-        text-transform: uppercase;
-        color: #4b5563;
+        text-align: left;
         background-color: #f3f4f6;
         border-bottom: 2px solid #e5e7eb;
     }
     
+    #monthlyModal td {
+        border-bottom: 1px solid #e5e7eb;
+        background-color: white;
+    }
+    
+    #monthlyModal tbody tr:hover {
+        background-color: #f9fafb;
+    }
+    
+    /* 响应式修复 */
+    @media (max-width: 768px) {
+        #monthlyModal .grid.grid-cols-2 {
+            grid-template-columns: 1fr;
+        }
+        
+        .monthly-chart-container {
+            height: 180px;
+        }
+    }
+    
+    /* 确保图表容器有固定尺寸 */
+    #monthlyModal .monthly-chart-container {
+        height: 220px;
+        min-height: 180px;
+        width: 100%;
+        margin-bottom: 15px;
+        background-color: white;
+        border-radius: 4px;
+        position: relative;
+    }
+
     /* 修正关闭按钮样式 */
     .modal-close-button {
         position: absolute;
@@ -376,6 +438,22 @@
         background-color: #fee2e2;
         color: #ef4444;
         transform: scale(1.05);
+    }
+
+    /* 表格区域高度优化 */
+    #monthlyModal .grid.grid-cols-2 {
+        max-height: calc(90vh - 400px); /* 动态计算剩余空间 */
+        overflow-y: auto;
+        margin-bottom: 1rem;
+    }
+    
+    /* 表格样式优化 */
+    #monthlyModal table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        font-size: 0.8rem;
+        border: 1px solid #e5e7eb;
     }
 </style>
 

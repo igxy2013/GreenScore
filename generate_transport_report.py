@@ -71,7 +71,7 @@ def generate_transport_report(data):
         
         # 3. 结论
         if isinstance(conclusion, dict):
-            conclusion_text = f"{conclusion.get('result6_1_2', '')}\n\n{conclusion.get('result6_2_1', '')}总得分：{conclusion.get('totalScore', 0)}分"
+            conclusion_text = f"{conclusion.get('result6_1_2', '')}\n{conclusion.get('result6_2_1', '')}总得分：{conclusion.get('totalScore', 0)}分"
             project_data['结论'] = conclusion_text
         
         # 4. 设计日期

@@ -624,6 +624,10 @@
         <!-- 结果内容将通过 JavaScript 动态填充 -->
     </div>
 </div>
+
+<!-- 导出加载组件 -->
+{% include 'components/export_loading_modal.html' %}
+
 <!-- 页面主要JS -->
 <script src="/static/js/calculator.js"></script>
 <!-- 绿色建材计算器JS -->
@@ -632,3 +636,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
+<!-- 导出功能JS文件 -->
+<script src="{{ url_for('static', filename='js/exportWord.js') }}" defer></script>

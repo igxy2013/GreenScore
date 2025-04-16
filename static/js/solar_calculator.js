@@ -373,12 +373,29 @@ function updateCharts(monthlyData, area, efficiency, firstYearDegradation) {
     // 显示结果区域
     document.getElementById("results").style.display = "grid";
     
-    // 清除旧图表
-    if (window.radiationChart) {
-        window.radiationChart.destroy();
+    // 清除旧图表 - 使用更健壮的实现
+    try {
+        if (window.radiationChart && typeof window.radiationChart.destroy === 'function') {
+            window.radiationChart.destroy();
+        } else if (window.radiationChart) {
+            console.warn('辐射图表实例存在但没有destroy方法');
+            window.radiationChart = null;
+        }
+    } catch (err) {
+        console.error('销毁旧的辐射图表时出错:', err);
+        window.radiationChart = null;
     }
-    if (window.generationChart) {
-        window.generationChart.destroy();
+    
+    try {
+        if (window.generationChart && typeof window.generationChart.destroy === 'function') {
+            window.generationChart.destroy();
+        } else if (window.generationChart) {
+            console.warn('发电量图表实例存在但没有destroy方法');
+            window.generationChart = null;
+        }
+    } catch (err) {
+        console.error('销毁旧的发电量图表时出错:', err);
+        window.generationChart = null;
     }
     
     // 辐射量图表
@@ -516,9 +533,26 @@ function createModalCharts(monthlyData, area, efficiency, firstYearDegradation) 
         window.modalGenerationChart = null;
     }
     
-    // 确保canvas处于干净状态，重置为空画布
-    radiationCanvas.getContext('2d').clearRect(0, 0, radiationCanvas.width, radiationCanvas.height);
-    generationCanvas.getContext('2d').clearRect(0, 0, generationCanvas.width, generationCanvas.height);
+    // 确保canvas处于干净状态，尺寸合适
+    const setCanvasSize = (canvas) => {
+        const parent = canvas.parentElement;
+        if (parent) {
+            // 设置正确的高度
+            canvas.style.height = '200px';
+            canvas.height = 200;
+            canvas.width = parent.offsetWidth || 400;
+            canvas.style.width = '100%';
+            
+            // 清除画布
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+    };
+    
+    setCanvasSize(radiationCanvas);
+    setCanvasSize(generationCanvas);
     
     // 创建新图表
     try {
@@ -542,7 +576,40 @@ function createModalCharts(monthlyData, area, efficiency, firstYearDegradation) 
                 maintainAspectRatio: false,
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            boxWidth: 10,
+                            padding: 6,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        titleFont: {
+                            size: 11
+                        },
+                        bodyFont: {
+                            size: 10
+                        }
                     }
                 }
             }
@@ -568,11 +635,58 @@ function createModalCharts(monthlyData, area, efficiency, firstYearDegradation) 
                 maintainAspectRatio: false,
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            boxWidth: 10,
+                            padding: 6,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        titleFont: {
+                            size: 11
+                        },
+                        bodyFont: {
+                            size: 10
+                        }
                     }
                 }
             }
         });
+        
+        // 确保图表正确渲染，使用短延迟触发更新
+        setTimeout(() => {
+            if (window.modalRadiationChart && typeof window.modalRadiationChart.update === 'function') {
+                window.modalRadiationChart.update();
+                console.log('辐射图表已更新');
+            }
+            
+            if (window.modalGenerationChart && typeof window.modalGenerationChart.update === 'function') {
+                window.modalGenerationChart.update();
+                console.log('发电量图表已更新');
+            }
+        }, 100);
+        
     } catch (err) {
         console.error('创建图表时出错:', err);
         showErrorInModal('创建图表时出错: ' + err.message);
@@ -630,10 +744,12 @@ function fillModalTableImpl(monthlyData, tableBody1, tableBody2) {
     }
     
     // 确保数据按照月份顺序排序
+    const monthsOrder = {
+        "一月": 1, "二月": 2, "三月": 3, "四月": 4, "五月": 5, "六月": 6, 
+        "七月": 7, "八月": 8, "九月": 9, "十月": 10, "十一月": 11, "十二月": 12
+    };
+    
     const monthlyDataSorted = [...monthlyData].sort((a, b) => {
-        // 提取月份的数字部分并比较
-        const monthsOrder = {"一月": 1, "二月": 2, "三月": 3, "四月": 4, "五月": 5, "六月": 6, 
-                           "七月": 7, "八月": 8, "九月": 9, "十月": 10, "十一月": 11, "十二月": 12};
         return monthsOrder[a.month] - monthsOrder[b.month];
     });
     
@@ -641,31 +757,47 @@ function fillModalTableImpl(monthlyData, tableBody1, tableBody2) {
     
     // 遍历排序后的数据，分别填充到左右两个表格
     monthlyDataSorted.forEach(item => {
-        const monthNum = {"一月": 1, "二月": 2, "三月": 3, "四月": 4, "五月": 5, "六月": 6, 
-                         "七月": 7, "八月": 8, "九月": 9, "十月": 10, "十一月": 11, "十二月": 12}[item.month];
+        const monthNum = monthsOrder[item.month];
         
         if (!monthNum) {
             console.warn('无法识别的月份:', item.month);
             return;
         }
         
-        // 创建行内容HTML
-        const rowHTML = `
-            <tr>
-                <td class="px-2 py-2 whitespace-nowrap text-sm text-gray-900">${item.month}</td>
-                <td class="px-2 py-2 whitespace-nowrap text-sm text-gray-900 text-right">${item.radiation.toFixed(2)}</td>
-                <td class="px-2 py-2 whitespace-nowrap text-sm text-gray-900 text-right">${item.generation.toFixed(2)}</td>
-                <td class="px-2 py-2 whitespace-nowrap text-sm text-gray-900 text-right">${item.dailyAvg.toFixed(2)}</td>
-            </tr>
-        `;
+        // 创建行元素而不是使用HTML字符串
+        const row = document.createElement('tr');
+        
+        // 月份单元格
+        const monthCell = document.createElement('td');
+        monthCell.className = "px-2 py-2 whitespace-nowrap text-sm text-gray-900";
+        monthCell.textContent = item.month;
+        row.appendChild(monthCell);
+        
+        // 太阳能辐射量单元格
+        const radiationCell = document.createElement('td');
+        radiationCell.className = "px-2 py-2 whitespace-nowrap text-sm text-gray-900 text-right";
+        radiationCell.textContent = item.radiation.toFixed(2);
+        row.appendChild(radiationCell);
+        
+        // 发电量单元格
+        const generationCell = document.createElement('td');
+        generationCell.className = "px-2 py-2 whitespace-nowrap text-sm text-gray-900 text-right";
+        generationCell.textContent = item.generation.toFixed(2);
+        row.appendChild(generationCell);
+        
+        // 日均辐射量单元格
+        const dailyAvgCell = document.createElement('td');
+        dailyAvgCell.className = "px-2 py-2 whitespace-nowrap text-sm text-gray-900 text-right";
+        dailyAvgCell.textContent = item.dailyAvg.toFixed(2);
+        row.appendChild(dailyAvgCell);
         
         // 根据月份判断填充到哪个表格
         if (monthNum <= 6) {
             // 1-6月填充到左侧表格
-            tableBody1.insertAdjacentHTML('beforeend', rowHTML);
+            tableBody1.appendChild(row);
         } else {
             // 7-12月填充到右侧表格
-            tableBody2.insertAdjacentHTML('beforeend', rowHTML);
+            tableBody2.appendChild(row);
         }
     });
     
@@ -754,7 +886,7 @@ function showMonthlyModal() {
     }
     
     console.log('模态窗口当前类名:', modal.className);
-    modal.style.display = 'block';  // 使用block而不是flex
+    modal.style.display = 'flex';  // 使用flex而不是block，以便应用居中样式
     modal.classList.remove("hidden");
     console.log('移除hidden类后的类名:', modal.className);
     
@@ -921,6 +1053,54 @@ function showErrorInModal(errorMessage) {
         errorElem.style.display = "block";
     }
 }
+
+// 调整Canvas元素尺寸
+function resizeCanvasElements(radiationCanvas, generationCanvas) {
+    // 获取父容器尺寸
+    const container1 = radiationCanvas.parentElement;
+    const container2 = generationCanvas.parentElement;
+    
+    if (container1 && container2) {
+        // 设置Canvas尺寸与父容器匹配
+        const setCanvasSize = (canvas, container) => {
+            const rect = container.getBoundingClientRect();
+            // 重置Canvas物理尺寸，确保图表正确绘制
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+        };
+        
+        setCanvasSize(radiationCanvas, container1);
+        setCanvasSize(generationCanvas, container2);
+        
+        console.log('Canvas元素尺寸已调整为：', {
+            辐射图表: { width: radiationCanvas.width, height: radiationCanvas.height },
+            发电量图表: { width: generationCanvas.width, height: generationCanvas.height }
+        });
+        
+        // 如果图表已经创建，触发重绘
+        if (window.modalRadiationChart && typeof window.modalRadiationChart.resize === 'function') {
+            window.modalRadiationChart.resize();
+            console.log('辐射图表已重绘');
+        }
+        
+        if (window.modalGenerationChart && typeof window.modalGenerationChart.resize === 'function') {
+            window.modalGenerationChart.resize();
+            console.log('发电量图表已重绘');
+        }
+    }
+}
+
+// 监听窗口大小变化，调整图表尺寸
+window.addEventListener('resize', debounce(function() {
+    const radiationCanvas = document.getElementById('modalRadiationChart');
+    const generationCanvas = document.getElementById('modalGenerationChart');
+    
+    if (radiationCanvas && generationCanvas) {
+        resizeCanvasElements(radiationCanvas, generationCanvas);
+    }
+}, 250));
 
 // 导出函数
 window.solarCalculator = {

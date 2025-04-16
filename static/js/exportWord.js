@@ -143,6 +143,24 @@
             
             console.log("最终使用的项目ID:", projectId);
             
+            // 显示加载提示窗口
+            try {
+                if (typeof ExportLoadingModal !== 'undefined') {
+                    ExportLoadingModal.show({
+                        title: '正在生成计算书',
+                        description: '请耐心等待，文档生成需要一点时间...',
+                        showTimer: true,
+                        showBackdrop: false,
+                        autoTimeout: 30000
+                    });
+                } else {
+                    console.warn("ExportLoadingModal组件未定义，使用基本加载提示");
+                }
+            } catch (modalError) {
+                console.error("显示导出加载模态框失败:", modalError);
+                // 继续执行，不阻断导出流程
+            }
+            
             // 获取项目信息
             let projectInfo = {};
             
@@ -241,6 +259,17 @@
         } catch (error) {
             alert(`导出失败: ${error.message}`);
             console.error('导出Word错误详情:', error);
+        } finally {
+            // 隐藏加载提示窗口
+            try {
+                if (typeof ExportLoadingModal !== 'undefined') {
+                    ExportLoadingModal.hide();
+                } else {
+                    console.warn("ExportLoadingModal组件未定义，无法隐藏加载提示");
+                }
+            } catch (modalError) {
+                console.error("隐藏导出加载模态框失败:", modalError);
+            }
         }
     };
 
