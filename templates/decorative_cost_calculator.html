@@ -7,11 +7,13 @@
 
     <!-- 立即加载CSS文件，避免闪烁 -->
     <link href="/static/css/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+    <script src="/static/js/lib/xlsx.full.min.js" defer></script>
+    <script src="/static/js/lib/jszip.min.js" defer></script>
+    <script src="/static/js/lib/FileSaver.min.js" defer></script>
     <script src="/static/js/exportWord.js" defer></script>
     <script src="{{ url_for('static', filename='js/iframe-resizer.contentWindow.js') }}"></script>
+    <!-- 加载导出加载组件 -->
+    <script src="{{ url_for('static', filename='js/components/export-loading.js') }}"></script>
     <style>
         html, body {
             overflow: hidden;
@@ -127,6 +129,44 @@
             border-radius: 0.375rem;
             background-color: #f8fafc;
         }
+        
+        .image-cell {
+            width: 120px;
+            vertical-align: middle;
+        }
+        
+        .image-preview-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .image-preview {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            object-fit: cover;
+            cursor: pointer;
+            max-width: 100px;
+            max-height: 80px;
+        }
+        
+        .image-actions {
+            display: flex;
+            gap: 4px;
+            width: 100%;
+            margin-top: 4px;
+        }
+        
+        .upload-image-btn, .paste-image-btn {
+            width: 100%;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+        }
+        
+        .ml-1 {
+            margin-left: 0.25rem;
+        }
     </style>
 </head>
 <body class="min-h-screen py-0 px-0">
@@ -137,6 +177,7 @@
         
         <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
             <div id="projectName" style="display:none;"></div>
+            <input type="hidden" id="current-project-id" value="">
             
             <div id="decorative-cost-calculator" class="space-y-6">
                 <div class="table-container">
@@ -150,6 +191,7 @@
                                 <th>单体总造价(万元)</th>
                                 <th>装饰性构件设计比例(%)</th>
                                 <th>装饰性构件造价(万元)</th>
+                                <th>示意图</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -159,7 +201,7 @@
                                     <input type="text" class="input-field" placeholder="请输入子项名称">
                                 </td>
                                 <td>
-                                    <select class="building-type-select">
+                                    <select class="building-type-select" aria-label="建筑类型">
                                         <option value="">请选择建筑类型</option>
                                         <option value="住宅" data-price="3200">住宅</option>
                                         <option value="商业" data-price="3500">商业</option>
@@ -186,6 +228,17 @@
                                 </td>
                                 <td>
                                     <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                                </td>
+                                <td class="image-cell">
+                                    <div class="image-preview-container">
+                                        <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
+                                        <div class="image-actions">
+                                            <input type="file" class="image-input" accept="image/*" style="display: none;">
+                                            <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
+                                            <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
+                                            <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="row-actions">
@@ -198,7 +251,7 @@
                                     <input type="text" class="input-field" placeholder="请输入子项名称">
                                 </td>
                                 <td>
-                                    <select class="building-type-select">
+                                    <select class="building-type-select" aria-label="建筑类型">
                                         <option value="">请选择建筑类型</option>
                                         <option value="住宅" data-price="3200">住宅</option>
                                         <option value="商业" data-price="3500">商业</option>
@@ -225,6 +278,17 @@
                                 </td>
                                 <td>
                                     <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                                </td>
+                                <td class="image-cell">
+                                    <div class="image-preview-container">
+                                        <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
+                                        <div class="image-actions">
+                                            <input type="file" class="image-input" accept="image/*" style="display: none;">
+                                            <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
+                                            <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
+                                            <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="row-actions">
@@ -237,7 +301,7 @@
                                     <input type="text" class="input-field" placeholder="请输入子项名称">
                                 </td>
                                 <td>
-                                    <select class="building-type-select">
+                                    <select class="building-type-select" aria-label="建筑类型">
                                         <option value="">请选择建筑类型</option>
                                         <option value="住宅" data-price="3200">住宅</option>
                                         <option value="商业" data-price="3500">商业</option>
@@ -264,6 +328,17 @@
                                 </td>
                                 <td>
                                     <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
+                                </td>
+                                <td class="image-cell">
+                                    <div class="image-preview-container">
+                                        <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
+                                        <div class="image-actions">
+                                            <input type="file" class="image-input" accept="image/*" style="display: none;">
+                                            <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
+                                            <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
+                                            <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="row-actions">
@@ -302,16 +377,58 @@
             const exportBtn = document.getElementById('export-btn');
             const clearBtn = document.getElementById('clear-btn');
             
-            // 建筑类型对应的综合单价指标
-            const unitPriceMap = {
-                '住宅': 2800,
-                '办公': 3200,
-                '商业': 3500,
-                '医院': 4000,
-                '学校': 3800,
-                '工业': 2500,
-                '其他': 3000
-            };
+            // 初始化项目ID - 多种方式尝试获取项目ID
+            let projectId = null;
+            
+            // 1. 从模板直接获取（服务器端渲染）
+            const projectIdFromTemplate = "{{ project_id }}";
+            if (projectIdFromTemplate && projectIdFromTemplate !== "None") {
+                projectId = projectIdFromTemplate;
+                console.log("从模板获取项目ID:", projectId);
+            } 
+            
+            // 2. 从URL参数获取
+            if (!projectId) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const projectIdFromUrl = urlParams.get('project_id');
+                if (projectIdFromUrl) {
+                    projectId = projectIdFromUrl;
+                    console.log("从URL参数获取项目ID:", projectId);
+                }
+            }
+            
+            // 3. 尝试从父窗口获取 (iframe情况)
+            if (!projectId && window.parent !== window) {
+                try {
+                    // 尝试从父窗口URL中获取
+                    const parentUrl = new URL(window.parent.location.href);
+                    const parentProjectId = parentUrl.searchParams.get('project_id');
+                    if (parentProjectId) {
+                        projectId = parentProjectId;
+                        console.log("从父窗口URL获取项目ID:", projectId);
+                    } else if (window.parent.currentProjectId) {
+                        // 或者从父窗口的全局变量获取
+                        projectId = window.parent.currentProjectId;
+                        console.log("从父窗口变量获取项目ID:", projectId);
+                    }
+                    
+                    // 检查父窗口路径中是否包含项目ID
+                    const parentPathMatch = window.parent.location.pathname.match(/\/project\/(\d+)/);
+                    if (!projectId && parentPathMatch && parentPathMatch[1]) {
+                        projectId = parentPathMatch[1];
+                        console.log("从父窗口路径获取项目ID:", projectId);
+                    }
+                } catch (e) {
+                    console.error("尝试从父窗口获取项目ID时出错:", e);
+                }
+            }
+            
+            if (projectId) {
+                document.getElementById('current-project-id').value = projectId;
+                console.log("最终使用的项目ID:", projectId);
+            } else {
+                console.log("警告：未能获取到项目ID");
+            }
             
             // 添加新行
             addRowBtn.addEventListener('click', function() {
@@ -321,7 +438,7 @@
                         <input type="text" class="input-field" placeholder="请输入子项名称">
                     </td>
                     <td>
-                        <select class="building-type-select">
+                        <select class="building-type-select" aria-label="建筑类型">
                             <option value="">请选择建筑类型</option>
                             <option value="住宅" data-price="3200">住宅</option>
                             <option value="商业" data-price="3500">商业</option>
@@ -349,6 +466,17 @@
                     <td>
                         <input type="number" class="calculated-field decorative-cost" placeholder="装饰性构件造价" readonly>
                     </td>
+                    <td class="image-cell">
+                        <div class="image-preview-container">
+                            <img class="image-preview" src="" alt="示意图" style="display: none; max-width: 100px; max-height: 80px;">
+                            <div class="image-actions">
+                                <input type="file" class="image-input" accept="image/*" style="display: none;">
+                                <button class="btn btn-sm btn-primary upload-image-btn">上传图片</button>
+                                <button class="btn btn-sm btn-primary paste-image-btn ml-1">粘贴</button>
+                                <button class="btn btn-sm btn-danger remove-image-btn ml-1" style="display: none;">删除</button>
+                            </div>
+                        </div>
+                    </td>
                     <td>
                         <div class="row-actions">
                             <button class="btn btn-danger btn-sm delete-row">删除</button>
@@ -359,6 +487,7 @@
                 
                 // 为新行中的输入字段添加事件监听器
                 addInputEventListeners(newRow);
+                addImageEventListeners(newRow);
                 
                 // 为新行中的删除按钮添加事件监听器
                 const deleteBtn = newRow.querySelector('.delete-row');
@@ -375,6 +504,7 @@
             const rows = tbody.querySelectorAll('tr');
             rows.forEach(row => {
                 addInputEventListeners(row);
+                addImageEventListeners(row);
                 
                 // 为删除按钮添加事件监听器
                 const deleteBtn = row.querySelector('.delete-row');
@@ -484,14 +614,16 @@
                 
                 // 从隐藏字段获取项目ID
                 const projectIdFromElement = document.getElementById('current-project-id')?.value;
-                const transportProjectId = document.getElementById('transport-project-id')?.value;
                 console.log("从页面元素获取的项目ID (current-project-id):", projectIdFromElement);
-                console.log("从页面元素获取的项目ID (transport-project-id):", transportProjectId);
                 
-                // 优先使用路径中的ID，然后是URL参数，然后是transport-project-id，最后是current-project-id
-                // const projectId = projectIdFromPath || projectIdFromUrl || transportProjectId || projectIdFromElement;
-                const projectId = 131;
+                // 优先使用路径中的ID，然后是URL参数，最后是隐藏字段中的ID
+                const projectId = projectIdFromPath || projectIdFromUrl || projectIdFromElement || null;
                 console.log("最终使用的项目ID:", projectId);
+                
+                if (!projectId) {
+                    alert("未能获取到项目ID，无法导出计算书！请确保URL中包含project_id参数。");
+                    return;
+                }
                 
                 let projectInfo = {};
                 
@@ -520,19 +652,65 @@
                     console.error("获取项目信息时发生错误:", error);
                 }
 
+                // 准备表格数据格式
+                const tableRows = [];
+                
+                // 处理每一行数据，转换成Word表格需要的格式
+                data.rows.forEach(row => {
+                    // 计算装饰性构件造价占单栋建筑总造价的比例（%）
+                    const totalCost = parseFloat(row.totalCost) || 0;
+                    const decorativeCost = parseFloat(row.decorativeCost) || 0;
+                    const percentage = totalCost > 0 ? ((decorativeCost / totalCost) * 100).toFixed(2) + '%' : '0.00%';
+                    
+                    tableRows.push({
+                        subItem: row.subItem || '',                            // 子项名称
+                        decorativeCost: decorativeCost.toFixed(2) || '0.00',   // 装饰性构件造价（万元）
+                        totalCost: totalCost.toFixed(2) || '0.00',             // 单栋建筑总造价（万元）
+                        percentage: percentage                                 // 装饰性构件造价占单栋建筑总造价的比例（%）
+                    });
+                });
+
                 // 准备要发送到服务器的数据
                 const exportData = {
                     projectId: projectId,
                     projectInfo: projectInfo,
                     rows: data.rows,
+                    tableRows: tableRows,  // 新增的表格格式数据
                     templateFile: '装饰性构件造价比例计算书.docx'
                 };
                 
-                // 显示加载提示
-                const loadingElem = document.createElement('div');
-                loadingElem.id = 'exportLoading';
-                loadingElem.innerHTML = '<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div class="bg-white p-4 rounded shadow-lg text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto"></div><p class="mt-2">正在生成计算书，请稍候...</p></div></div>';
-                document.body.appendChild(loadingElem);
+                // 收集所有行的图片数据
+                const allImages = [];
+                for (const row of data.rows) {
+                    if (row.imageData) {
+                        allImages.push(row.imageData);
+                    }
+                }
+                
+                // 将图片数据添加到项目信息中
+                if (allImages.length > 0) {
+                    if (!exportData.projectInfo) {
+                        exportData.projectInfo = {};
+                    }
+                    
+                    // 第一张图片使用常规键（向后兼容）
+                    exportData.projectInfo.示意图 = allImages[0];
+                    
+                    // 所有图片添加到数组中
+                    exportData.projectInfo.示意图数组 = allImages;
+                    
+                    console.log(`已添加${allImages.length}张示意图数据到导出信息`);
+                }
+                
+                // 显示加载提示窗口
+                ExportLoadingModal.show({
+                    title: '正在生成计算书',
+                    description: '请耐心等待，文档生成需要一点时间...',
+                    showTimer: false,
+                    showBackdrop: false,
+                    footerText: '您的文件即将准备就绪',
+                    autoTimeout: 30000
+                });
                 
                 // 发送请求到后端API
                 fetch('/api/generate_decorative_cost_report', {
@@ -543,8 +721,8 @@
                     body: JSON.stringify(exportData)
                 })
                 .then(response => {
-                    // 移除加载提示
-                    document.body.removeChild(loadingElem);
+                    // 隐藏加载提示窗口
+                    ExportLoadingModal.hide();
                     
                     if (!response.ok) {
                         // 如果响应不成功，解析错误消息
@@ -592,6 +770,15 @@
                             select.dispatchEvent(event);
                         });
                     });
+                    
+                    // 清空图片
+                    const imageElements = document.querySelectorAll('.image-preview');
+                    imageElements.forEach(img => {
+                        img.src = '';
+                        img.style.display = 'none';
+                        delete img.dataset.imageData;
+                    });
+                    
                     localStorage.removeItem('decorativeCostData');
                 }
             });
@@ -609,6 +796,9 @@
                     const totalCost = row.querySelector('td:nth-child(5) input').value;
                     const designRatio = row.querySelector('td:nth-child(6) input').value;
                     const decorativeCost = row.querySelector('td:nth-child(7) input').value;
+                    const imagePreview = row.querySelector('.image-preview');
+                    const imageData = imagePreview && imagePreview.style.display !== 'none' ? 
+                                       imagePreview.dataset.imageData : null;
                     
                     if (subItem || buildingType || buildingArea || totalCost || designRatio) {
                         rowData.push({
@@ -618,7 +808,8 @@
                             buildingArea,
                             totalCost,
                             designRatio,
-                            decorativeCost
+                            decorativeCost,
+                            imageData
                         });
                     }
                 });
@@ -669,6 +860,23 @@
                         const designRatioInput = firstRow.querySelector('td:nth-child(6) input');
                         buildingAreaInput.dispatchEvent(new Event('input'));
                         designRatioInput.dispatchEvent(new Event('input'));
+                        
+                        // 处理图片数据
+                        const imagePreview = firstRow.querySelector('.image-preview');
+                        const removeImageBtn = firstRow.querySelector('.remove-image-btn');
+                        if (item.imageData) {
+                            imagePreview.src = item.imageData;
+                            imagePreview.style.display = 'block';
+                            imagePreview.dataset.imageData = item.imageData;
+                            // 显示删除按钮
+                            removeImageBtn.style.display = 'block';
+                        } else {
+                            imagePreview.src = '';
+                            imagePreview.style.display = 'none';
+                            delete imagePreview.dataset.imageData;
+                            // 隐藏删除按钮
+                            removeImageBtn.style.display = 'none';
+                        }
                     }
                     
                     // 添加其他行数据
@@ -689,12 +897,210 @@
                         const designRatioInput = row.querySelector('td:nth-child(6) input');
                         buildingAreaInput.dispatchEvent(new Event('input'));
                         designRatioInput.dispatchEvent(new Event('input'));
+                        
+                        // 处理图片数据
+                        const imagePreview = row.querySelector('.image-preview');
+                        const removeImageBtn = row.querySelector('.remove-image-btn');
+                        if (item.imageData) {
+                            imagePreview.src = item.imageData;
+                            imagePreview.style.display = 'block';
+                            imagePreview.dataset.imageData = item.imageData;
+                            // 显示删除按钮
+                            removeImageBtn.style.display = 'block';
+                        } else {
+                            imagePreview.src = '';
+                            imagePreview.style.display = 'none';
+                            delete imagePreview.dataset.imageData;
+                            // 隐藏删除按钮
+                            removeImageBtn.style.display = 'none';
+                        }
                     }
                 }
             }
             
             // 加载保存的数据
             loadSavedData();
+        });
+
+        // 添加图片相关事件监听器的函数
+        function addImageEventListeners(row) {
+            const imagePreviewContainer = row.querySelector('.image-preview-container');
+            const imageInput = row.querySelector('.image-input');
+            const imagePreview = row.querySelector('.image-preview');
+            const uploadImageBtn = row.querySelector('.upload-image-btn');
+            const pasteImageBtn = row.querySelector('.paste-image-btn');
+            const removeImageBtn = row.querySelector('.remove-image-btn');
+            
+            // 上传图片按钮点击事件
+            uploadImageBtn.addEventListener('click', function() {
+                imageInput.click();
+            });
+            
+            // 文件输入变化事件
+            imageInput.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        imagePreview.src = event.target.result;
+                        imagePreview.style.display = 'block';
+                        // 保存图片数据以便后续导出
+                        imagePreview.dataset.imageData = event.target.result;
+                        // 显示删除按钮
+                        removeImageBtn.style.display = 'block';
+                    };
+                    
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+            
+            // 粘贴图片按钮点击事件
+            pasteImageBtn.addEventListener('click', function() {
+                // 焦点需要在文档上才能捕获粘贴事件
+                document.body.focus();
+                navigator.clipboard.read().then(clipboardItems => {
+                    for (const clipboardItem of clipboardItems) {
+                        for (const type of clipboardItem.types) {
+                            if (type.startsWith('image/')) {
+                                clipboardItem.getType(type).then(blob => {
+                                    const reader = new FileReader();
+                                    reader.onload = function(event) {
+                                        imagePreview.src = event.target.result;
+                                        imagePreview.style.display = 'block';
+                                        // 保存图片数据以便后续导出
+                                        imagePreview.dataset.imageData = event.target.result;
+                                        // 显示删除按钮
+                                        removeImageBtn.style.display = 'block';
+                                    };
+                                    reader.readAsDataURL(blob);
+                                });
+                                break;
+                            }
+                        }
+                    }
+                }).catch(err => {
+                    // 捕获 navigator.clipboard.read() 的可能权限错误
+                    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+                        alert('无法读取剪贴板。请确保您的浏览器设置允许访问剪贴板。\n\n尝试使用快捷键 Ctrl+V 直接粘贴。');
+                        // 设置当前行的全局粘贴事件
+                        setupGlobalPasteForTarget(row);
+                    } else {
+                        console.error('粘贴图片失败:', err);
+                        alert('粘贴图片失败: ' + err.message);
+                    }
+                });
+            });
+            
+            // 删除图片按钮点击事件
+            removeImageBtn.addEventListener('click', function() {
+                imagePreview.src = '';
+                imagePreview.style.display = 'none';
+                delete imagePreview.dataset.imageData;
+                // 隐藏删除按钮
+                removeImageBtn.style.display = 'none';
+            });
+            
+            // 图片预览点击事件（放大查看）
+            imagePreview.addEventListener('click', function() {
+                if (this.src) {
+                    const modal = document.createElement('div');
+                    modal.style.position = 'fixed';
+                    modal.style.top = '0';
+                    modal.style.left = '0';
+                    modal.style.width = '100%';
+                    modal.style.height = '100%';
+                    modal.style.backgroundColor = 'rgba(0,0,0,0.8)';
+                    modal.style.display = 'flex';
+                    modal.style.alignItems = 'center';
+                    modal.style.justifyContent = 'center';
+                    modal.style.zIndex = '1000';
+                    modal.style.cursor = 'pointer';
+                    
+                    const img = document.createElement('img');
+                    img.src = this.src;
+                    img.style.maxWidth = '90%';
+                    img.style.maxHeight = '90%';
+                    img.style.objectFit = 'contain';
+                    
+                    modal.appendChild(img);
+                    document.body.appendChild(modal);
+                    
+                    modal.onclick = function() {
+                        document.body.removeChild(modal);
+                    };
+                }
+            });
+        }
+
+        // 设置当前行的全局粘贴事件 (备用方案)
+        function setupGlobalPasteForTarget(targetRow) {
+            const pasteHandler = function(e) {
+                if (e.clipboardData && e.clipboardData.items) {
+                    const items = e.clipboardData.items;
+                    
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf("image") !== -1) {
+                            const blob = items[i].getAsFile();
+                            const reader = new FileReader();
+                            const imagePreview = targetRow.querySelector('.image-preview');
+                            const removeImageBtn = targetRow.querySelector('.remove-image-btn');
+                            
+                            reader.onload = function(event) {
+                                imagePreview.src = event.target.result;
+                                imagePreview.style.display = 'block';
+                                // 保存图片数据以便后续导出
+                                imagePreview.dataset.imageData = event.target.result;
+                                // 显示删除按钮
+                                removeImageBtn.style.display = 'block';
+                            };
+                            
+                            reader.readAsDataURL(blob);
+                            // 一旦处理完毕，移除事件监听器
+                            document.removeEventListener('paste', pasteHandler);
+                            break;
+                        }
+                    }
+                }
+            };
+            
+            // 添加一次性粘贴事件
+            document.addEventListener('paste', pasteHandler);
+            
+            // 通知用户
+            alert('请按下 Ctrl+V 粘贴图片');
+        }
+
+        // 全局粘贴事件监听
+        document.addEventListener('paste', function(e) {
+            // 只有在特定焦点元素上才处理粘贴事件
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.classList.contains('paste-image-btn')) {
+                if (e.clipboardData && e.clipboardData.items) {
+                    const items = e.clipboardData.items;
+                    
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].type.indexOf("image") !== -1) {
+                            e.preventDefault(); // 阻止默认粘贴行为
+                            
+                            const blob = items[i].getAsFile();
+                            const reader = new FileReader();
+                            //
+                            const currentRow = activeElement.closest('tr');
+                            const imagePreview = currentRow.querySelector('.image-preview');
+                            
+                            reader.onload = function(event) {
+                                imagePreview.src = event.target.result;
+                                imagePreview.style.display = 'block';
+                                // 保存图片数据以便后续导出
+                                imagePreview.dataset.imageData = event.target.result;
+                            };
+                            
+                            reader.readAsDataURL(blob);
+                            break;
+                        }
+                    }
+                }
+            }
         });
     </script>
 </body>

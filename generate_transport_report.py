@@ -10,6 +10,8 @@ from docx.shared import Inches, Pt
 from docx.oxml.ns import qn
 # 导入我们的自定义占位符处理函数
 from process_custom_placeholders import process_custom_placeholders
+# 导入目录更新函数
+from utils.document_generator import update_toc
 
 def generate_transport_report(data):
     """
@@ -114,6 +116,18 @@ def generate_transport_report(data):
         
         # 第二步：处理特殊占位符（图片和表格）
         final_output_path = process_custom_placeholders(temp_output_path, custom_data)
+        
+        # 第三步：更新文档目录
+        try:
+            print(f"\n开始更新文档目录...")
+            update_result = update_toc(final_output_path)
+            if update_result:
+                print("文档目录更新成功")
+            else:
+                print("文档目录更新失败或不需要更新")
+        except Exception as toc_err:
+            print(f"更新目录时出错 (非致命): {str(toc_err)}")
+            # 目录更新失败不影响整体报告生成
         
         print(f"\n报告生成完成: {final_output_path}")
         

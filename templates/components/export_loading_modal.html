@@ -1,0 +1,53 @@
+<!-- 导出加载组件 -->
+<script src="{{ url_for('static', filename='js/components/export-loading.js') }}"></script>
+
+<script>
+    /**
+     * 导出加载组件使用示例
+     *
+     * 在需要显示导出加载状态的页面引入此组件，然后使用以下方法：
+     * 
+     * 显示加载窗口：
+     * const loadingModal = ExportLoadingModal.show({
+     *     title: '正在生成报告', 
+     *     description: '请耐心等待...',
+     *     showTimer: true,
+     *     showBackdrop: false,
+     *     autoTimeout: 30000
+     * });
+     * 
+     * 隐藏加载窗口：
+     * ExportLoadingModal.hide();
+     */
+    
+    // 示例：如何使用此组件
+    document.addEventListener('DOMContentLoaded', function() {
+        // 这里仅作为示例 - 实际使用时应该移除这段代码
+        if (document.getElementById('demo-loading-btn')) {
+            document.getElementById('demo-loading-btn').addEventListener('click', function() {
+                // 显示加载窗口
+                ExportLoadingModal.show({
+                    title: '正在生成示例报告',
+                    description: '这是一个演示，窗口将在3秒后自动关闭',
+                    showTimer: true,
+                    showBackdrop: true,
+                    autoTimeout: 3000
+                });
+            });
+        }
+    });
+</script>
+
+<!-- 示例按钮 - 仅用于演示，实际使用时可以移除 -->
+<div class="text-center mt-4" id="demo-container" style="display: none;">
+    <button id="demo-loading-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none">
+        显示加载窗口演示
+    </button>
+</div>
+
+<script>
+    // 仅在开发环境显示演示按钮
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        document.getElementById('demo-container').style.display = 'block';
+    }
+</script> 

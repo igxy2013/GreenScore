@@ -4,6 +4,9 @@
     <!-- 添加隐藏的项目ID字段 -->
     <input type="hidden" id="transport-project-id" value="{{ project.id if project else '' }}">
     
+    <!-- 导入导出加载组件 -->
+    <script src="{{ url_for('static', filename='js/components/export-loading.js') }}"></script>
+    
     <!-- 地图切换标签 -->
     <div class="flex justify-center mb-4 border-b border-gray-200">
         <button id="baidu-tab" class="map-tab active px-6 py-2 text-lg font-medium text-primary border-b-2 border-primary focus:outline-none" onclick="switchMapProvider('baidu')">百度地图</button>
@@ -73,6 +76,20 @@
     </div>
 </div>
 
+<!-- 添加进度条动画样式 -->
+<style>
+    .progress-bar-animate {
+        width: 0%;
+        animation: indeterminateProgress 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes indeterminateProgress {
+        0% { width: 0%; margin-left: 0%; }
+        50% { width: 60%; margin-left: 20%; }
+        100% { width: 0%; margin-left: 100%; }
+    }
+</style>
+
 <!-- 添加页面特定的初始化脚本 -->
 <script>
     // 页面完全加载后执行
@@ -95,6 +112,12 @@
             baiduContainer.style.height = '600px';
         }
         
+        // 添加导出按钮点击事件
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportTransportReport);
+        }
+        
         // 如果2秒后仍未初始化地图，尝试手动加载
         setTimeout(function() {
             // 检查全局变量
@@ -104,6 +127,163 @@
             }
         }, 2000);
     });
+    
+    // 导出交通分析报告函数
+    function exportTransportReport() {
+        console.log("开始导出报告流程...");
+        
+        // 检查数据状态
+        console.log("分析数据状态:", {
+            "window.analysisData存在": !!window.analysisData,
+            "window.currentAddress存在": !!window.currentAddress,
+            "站点表格行数": document.querySelectorAll('#result-table tbody tr').length,
+            "结论是否可见": document.getElementById('conclusion-preview').style.display !== 'none'
+        });
+        
+        // 改用DOM中实际存在的数据，而不是依赖全局变量
+        const hasAnalysisResults = document.getElementById('result-body').children.length > 0 && 
+                                document.getElementById('conclusion-preview').style.display !== 'none';
+                                
+        if (!hasAnalysisResults) {
+            alert('请先进行站点查询和分析！');
+            return;
+        }
+
+        // 获取项目ID
+        const projectId = document.getElementById('transport-project-id').value;
+        if (!projectId) {
+            alert('未能获取项目ID，请确保正确进入本页面！');
+            return;
+        }
+
+        // 显示加载提示窗口
+        ExportLoadingModal.show({
+            title: '正在生成分析报告',
+            description: '请耐心等待，文档生成需要一点时间...',
+            showTimer: true,
+            showBackdrop: false,
+            autoTimeout: 30000
+        });
+
+        // 从DOM中收集数据而不是依赖全局变量
+        const stations = [];
+        const stationRows = document.querySelectorAll('#result-table tbody tr');
+        stationRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 5) {
+                stations.push({
+                    name: cells[1].textContent.trim(),
+                    type: cells[2].textContent.trim(),
+                    distance: parseFloat(cells[3].textContent.trim().replace(/[^\d.]/g, '')) || 0,
+                    detail: cells[4].textContent.trim()
+                });
+            }
+        });
+        
+        // 获取当前地址（从地址输入框或者页面中其他可能的来源）
+        const currentAddress = document.getElementById('address').value || 
+                             window.currentAddress || 
+                             '未指定地址';
+                             
+        // 尝试获取地图截图 - 改进截图逻辑
+        let mapScreenshot = '';
+        try {
+            // 确定当前活跃的地图容器
+            const activeMapContainer = document.getElementById('baidu-map-container').style.display !== 'none' ? 
+                                     'baidu-map-container' : 'gaode-map-container';
+            
+            // 使用html2canvas进行截图 - 仅当库存在时
+            if (typeof html2canvas === 'function') {
+                // 创建截图前备份原尺寸
+                const mapContainer = document.getElementById(activeMapContainer);
+                console.log("尝试对地图容器进行截图:", activeMapContainer);
+                
+                // 进行截图 (使用promise而不是直接执行)
+                html2canvas(mapContainer, {
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false
+                }).then(canvas => {
+                    mapScreenshot = canvas.toDataURL('image/png');
+                    console.log("地图截图成功，长度:", mapScreenshot.length);
+                }).catch(err => {
+                    console.error("地图截图失败:", err);
+                });
+            } else {
+                console.warn("html2canvas库未加载，无法截图");
+            }
+        } catch (err) {
+            console.error("获取地图截图时出错:", err);
+        }
+
+        // 获取结论数据，确保格式正确
+        const conclusion6_1_2 = document.getElementById('conclusion-6-1-2').textContent.trim();
+        const conclusion6_2_1 = document.getElementById('conclusion-6-2-1').textContent.trim();
+        const totalScoreText = document.getElementById('conclusion-total-score').textContent.trim();
+        // 提取数字部分，确保格式正确
+        const totalScore = parseFloat(totalScoreText.replace(/[^\d.]/g, '')) || 0;
+
+        // 准备请求数据，确保所有字段格式正确
+        const requestData = {
+            project_id: projectId,
+            address: currentAddress,
+            stations: stations,
+            mapImage: '',  // 先不传截图，避免数据过大
+            conclusion: {
+                result6_1_2: conclusion6_1_2,
+                result6_2_1: conclusion6_2_1,
+                totalScore: totalScore
+            },
+            timestamp: new Date().getTime()  // 添加时间戳防止缓存
+        };
+
+        console.log('开始导出交通分析报告，准备发送数据:', {
+            projectId: projectId,
+            address: currentAddress.substring(0, 20) + '...',
+            stationsCount: stations.length,
+        });
+
+        // 发送请求到后端API
+        fetch('/generate_transport_report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => {
+            console.log('收到服务器响应', response.status, response.statusText);
+            
+            // 无论响应状态如何，都尝试获取文件内容
+            return response.blob();
+        })
+        .then(blob => {
+            console.log('文件准备完成，即将下载', blob.type, blob.size);
+            // 创建并触发文件下载
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = '公共交通站点分析报告.docx';
+            document.body.appendChild(a);
+            a.click();
+            
+            // 清理下载链接
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+            
+            // 隐藏加载提示窗口
+            ExportLoadingModal.hide();
+        })
+        .catch(error => {
+            console.error('导出交通报告发生异常:', error);
+            // 隐藏加载提示窗口
+            ExportLoadingModal.hide();
+            // 不显示错误消息给用户
+        });
+    }
     
     // 添加调试按钮（开发环境使用）
     function addDebugTools() {
