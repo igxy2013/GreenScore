@@ -352,7 +352,7 @@
                     {% include 'components/project_info.html' %}
                     {% elif current_page == 'green_materials' %}
                     <!-- 绿色建材计算器内容 -->
-                    {% include 'components/green_materials.html' %}
+                    {% include 'components/calculator.html' %}
                     {% elif current_page == 'decorative_cost_calculator' %}
                     <!-- 装饰性构件造价比例计算器内容 -->
                     {% include 'components/decorative_cost_calculator.html' %}
@@ -376,16 +376,20 @@
     
     <!-- 加载项目信息相关JS -->
     {% if current_page == 'project_info' %}
-    <!-- 加载气候区划查询工具 -->
-    <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
-    <!-- 加载绿建得分计算工具 -->
-    <script src="{{ url_for('static', filename='js/green_building_score_calculator.js') }}"></script>
-    <!-- 加载数据库更新工具 -->
-    <script src="{{ url_for('static', filename='js/db_updater.js') }}"></script>
     <!-- Switchery库 - iOS样式开关 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/switchery/0.8.2/switchery.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/switchery/0.8.2/switchery.min.js"></script>
     <script src="{{ url_for('static', filename='js/project_info.js') }}"></script>
+    {% endif %}
+    
+    <!-- 装饰性构件造价计算器JS文件 -->
+    {% if current_page == 'decorative_cost_calculator' %}
+    <script src="{{ url_for('static', filename='js/decorative_cost_calculator.js') }}"></script>
+    {% endif %}
+    
+    <!-- 太阳能计算器JS文件 -->
+    {% if current_page == 'solar_calculator' %}
+    <script src="{{ url_for('static', filename='js/solar_calculator.js') }}"></script>
     {% endif %}
 </body>
 </html>

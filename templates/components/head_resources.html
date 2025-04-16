@@ -1,8 +1,7 @@
 <!-- 头部资源组件 - CSS和JavaScript引用 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>智能绿建评价系统</title>
-<script src="/static/js/iframe-resizer.js"></script>
+<title>{{ page_title | default('智能绿建评价系统') }}</title>
 <!-- 添加错误处理脚本，优先加载 -->
 <script src="/static/js/error-handler.js"></script>
 <!-- 先加载Alpine.js -->
@@ -20,6 +19,9 @@
 <!-- 绿色建材计算所需的外部库 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
+<!-- 绿色建材计算器JS -->
+<script src="{{ url_for('static', filename='js/calculator.js') }}" defer></script>
 <!-- 添加word_template_handler.js引用 -->
 <script src="{{ url_for('static', filename='js/word_template_handler.js') }}" defer></script>
 <script src="/static/js/green_building_score_calculator.js"></script>

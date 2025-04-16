@@ -1,6 +1,8 @@
+(function() {
 // 省市联动功能
-let provinceData = {};
-let cityData = {};
+// 只在全局变量未定义时才声明
+var provinceData = {};
+var cityData = {};
 
 // 初始化省市数据
 document.addEventListener('DOMContentLoaded', function() {
@@ -305,15 +307,8 @@ function updateProvinceCity() {
             const scoreSection = document.querySelector('.mt-6.bg-white.rounded-lg.shadow-sm.border.border-gray-200.p-4');
             if (scoreSection) {
                 scoreSection.style.display = 'block';
-                // 强制触发iframe高度重新计算
-                setTimeout(resizeIframe, 100);
             }
             
-            // 强制滚动到页面底部，确保看到绿建得分计算区域
-            setTimeout(function() {
-                window.scrollTo(0, document.body.scrollHeight);
-                resizeIframe();
-            }, 1000);
         });
         
         // 计算得分并更新数据库
@@ -437,59 +432,61 @@ function updateProvinceCity() {
         }
         
         // 为保存按钮添加点击事件
-        const saveBtn = document.getElementById('saveProjectInfoBtn');
-        if (saveBtn) {
-            saveBtn.addEventListener('click', function(e) {
-                e.preventDefault(); // 阻止表单默认提交
-                
-                // 获取表单数据
-                const form = this.closest('form');
-                const formData = new FormData(form);
-                
-                // 发送AJAX请求保存数据
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        toast('项目信息保存成功', 'success');
-                        // 更新页面显示的项目ID
-                        if (data.project_id) {
-                            document.getElementById('project_id').value = data.project_id;
+        // 检查是否已绑定事件处理程序
+        {
+            const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
+            if (saveProjectInfoBtn) {
+                saveProjectInfoBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); // 阻止表单默认提交
+                    
+                    // 获取表单数据
+                    const form = this.closest('form');
+                    const formData = new FormData(form);
+                    
+                    // 发送AJAX请求保存数据
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
                         }
-                        
-                        // 使用直接跳转方式强制从服务器重新加载整个页面
-                        setTimeout(() => {
-                            // 检测是否在iframe中
-                            const projectId = document.getElementById('project_id').value || data.project_id;
-                            if (window.self !== window.top) {
-                                // 在iframe中，需要操作父窗口
-                                window.parent.location.href = `/project/${projectId}`;
-                            } else {
-                                // 不在iframe中，直接跳转当前窗口
-                                window.location.href = `/project/${projectId}`;
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            toast('项目信息保存成功', 'success');
+                            // 更新页面显示的项目ID
+                            if (data.project_id) {
+                                document.getElementById('project_id').value = data.project_id;
                             }
-                        }, 1000); // 延迟1秒后跳转，让用户看到成功提示
-                    } else {
-                        toast('保存失败: ' + (data.message || '未知错误'), 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('保存项目信息出错:', error);
-                    toast('保存失败: ' + error.message, 'error');
+                            
+                            // 使用直接跳转方式强制从服务器重新加载整个页面
+                            setTimeout(() => {
+                                const projectId = document.getElementById('project_id').value || data.project_id;
+                                window.location.href = `/project/${projectId}`;
+                            }, 1000); // 延迟1秒后跳转，让用户看到成功提示
+                        } else {
+                            toast('保存失败: ' + (data.message || '未知错误'), 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('保存项目信息出错:', error);
+                        toast('保存失败: ' + error.message, 'error');
+                    });
                 });
-            });
+            }
         }
         
         // AI提取项目信息相关函数
         // 全局变量存储粘贴的图片
-        let pastedImage = null;
-        let currentTab = 'word'; // 当前激活的标签页
+        // 检查是否已经声明过
+        if (typeof pastedImage === 'undefined') {
+            var pastedImage = null;
+        }
+        // 检查是否已经声明过
+        if (typeof currentTab === 'undefined') {
+            var currentTab = 'word'; // 当前激活的标签页
+        }
         
         // 切换标签页
         function switchTab(tab) {
@@ -1627,44 +1624,11 @@ function updateProvinceCity() {
         });
 
     
-    // 确保页面完全加载后绿建得分区域可见
-    
-        // 页面加载完成后执行
-        window.addEventListener('load', function() {
-            console.log("页面完全加载完成");
-            
-            // 确保绿建得分计算区域可见
-            const scoreSection = document.querySelector('.mt-6.bg-white.rounded-lg.shadow-sm.border.border-gray-200.p-4');
-            if (scoreSection) {
-                console.log("找到得分区域，确保其可见");
-                scoreSection.style.display = 'block';
-                scoreSection.style.visibility = 'visible';
-                scoreSection.style.opacity = '1';
-            }
-            
-            // 立即计算一次得分
-            if (typeof calculateAndUpdateScores === 'function') {
-                calculateAndUpdateScores();
-            }
-            
-            // 强制调整iframe高度
-            if (typeof resizeIframe === 'function') {
-                resizeIframe();
-            }
-            
-            // 通知父页面可能需要调整iframe高度
-            window.parent.postMessage({
-                type: 'resize',
-                height: document.body.scrollHeight
-            }, '*');
-        });
-
-    
     // Toast通知系统
     
     // 全局Toast函数实现
     function toast(message, type = 'info') {
-        // 尝试在当前iframe中显示Toast
+        // 显示Toast
         const container = document.getElementById('custom-toast-container');
         if (container) {
             // 确保container有足够高的z-index
@@ -1708,18 +1672,6 @@ function updateProvinceCity() {
                 }, 300);
             }, 3000);
         }
-        
-        // 同时尝试向父窗口发送消息
-        try {
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage({
-                    type: 'toast',
-                    message: message,
-                    toastType: type
-                }, '*');
-                console.log('向父窗口发送Toast通知:', message);
-            }
-        } catch (e) {
-            console.error('向父窗口发送消息失败:', e);
-        }
     }
+
+})();

@@ -1,3 +1,72 @@
+(function() {
+        // 全局定义一个ExportLoadingModal备用对象
+        window.ExportLoadingModal = window.ExportLoadingModal || {
+            show: function(options) {
+                console.log('ExportLoadingModal.show 被调用', options);
+                // 创建一个简单的模态框显示加载中
+                const modalDiv = document.createElement('div');
+                modalDiv.id = 'simple-export-loading-modal';
+                modalDiv.style.position = 'fixed';
+                modalDiv.style.top = '0';
+                modalDiv.style.left = '0';
+                modalDiv.style.width = '100%';
+                modalDiv.style.height = '100%';
+                modalDiv.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                modalDiv.style.display = 'flex';
+                modalDiv.style.justifyContent = 'center';
+                modalDiv.style.alignItems = 'center';
+                modalDiv.style.zIndex = '9999';
+                
+                const content = document.createElement('div');
+                content.style.backgroundColor = 'white';
+                content.style.padding = '20px';
+                content.style.borderRadius = '5px';
+                content.style.maxWidth = '400px';
+                content.style.textAlign = 'center';
+                
+                const title = document.createElement('h3');
+                title.textContent = options.title || '正在处理';
+                
+                const description = document.createElement('p');
+                description.textContent = options.description || '请稍候...';
+                
+                content.appendChild(title);
+                content.appendChild(description);
+                modalDiv.appendChild(content);
+                
+                document.body.appendChild(modalDiv);
+                
+                // 如果设置了自动超时
+                if (options.autoTimeout) {
+                    setTimeout(() => {
+                        this.hide();
+                    }, options.autoTimeout);
+                }
+            },
+            hide: function() {
+                console.log('ExportLoadingModal.hide 被调用');
+                // 移除简单模态框
+                const modalDiv = document.getElementById('simple-export-loading-modal');
+                if (modalDiv && modalDiv.parentNode) {
+                    modalDiv.parentNode.removeChild(modalDiv);
+                }
+            }
+        };
+        
+        // 全局报告数据对象
+        const reportData = {
+            categories: {
+                Q1: { score: 0, label: '墙面装饰材料', total: 45, items: [] },
+                Q2: { score: 0, label: '地面装饰材料', total: 35, items: [] },
+                Q3: { score: 0, label: '顶面装饰材料', total: 15, items: [] },
+                Q4: { score: 0, label: '其他装饰材料', total: 5, items: [] }
+            },
+            totalScore: 0,
+            result: 0,
+            Original: '',
+            standardText: '装饰成本计算标准'
+        };
+        
         document.addEventListener('DOMContentLoaded', function() {
             // 获取表格和按钮元素
             const table = document.getElementById('decorative-cost-table');
@@ -201,41 +270,43 @@
             
             // 导出计算书函数
             async function exportReport() {
-                const data = collectData();
-                
-                if (data.rows.length === 0) {
-                    alert('请先添加数据再导出计算书！');
-                    return;
-                }
-                
-               // 获取项目信息
-               const urlParams = new URLSearchParams(window.location.search);
-                
-                // 从URL路径中提取项目ID - 格式通常是 /project/{project_id}
-                let projectIdFromPath = null;
-                const pathMatch = window.location.pathname.match(/\/project\/(\d+)/);
-                if (pathMatch && pathMatch[1]) {
-                    projectIdFromPath = pathMatch[1];
-                }
-                
-                // 从URL参数中获取项目ID
-                const projectIdFromUrl = urlParams.get('project_id');
-                
-                // 从隐藏字段获取项目ID
-                const projectIdFromElement = document.getElementById('current-project-id')?.value;
-
-                // 优先使用路径中的ID，然后是URL参数，最后是隐藏字段中的ID
-                const projectId = projectIdFromPath || projectIdFromUrl || projectIdFromElement || null;
-                
-                if (!projectId) {
-                    alert("未能获取到项目ID，无法导出计算书！请确保URL中包含project_id参数。");
-                    return;
-                }
-                
-                let projectInfo = {};
-                
                 try {
-                    if (projectId) {
+                    const data = collectData();
+                    
+                    if (!data || !data.rows || data.rows.length === 0) {
+                        alert('请先添加数据再导出计算书！');
+                        return;
+                    }
+                    
+                   // 获取项目信息
+                   const urlParams = new URLSearchParams(window.location.search);
+                    
+                    // 从URL路径中提取项目ID - 格式通常是 /project/{project_id}
+                    let projectIdFromPath = null;
+                    const pathMatch = window.location.pathname.match(/\/project\/(\d+)/);
+                    if (pathMatch && pathMatch[1]) {
+                        projectIdFromPath = pathMatch[1];
+                    }
+                    
+                    // 从URL参数中获取项目ID
+                    const projectIdFromUrl = urlParams.get('project_id');
+                    
+                    // 从隐藏字段获取项目ID
+                    const projectIdElement = document.getElementById('current-project-id');
+                    const projectIdFromElement = projectIdElement ? projectIdElement.value : null;
+
+                    // 优先使用路径中的ID，然后是URL参数，最后是隐藏字段中的ID
+                    const projectId = projectIdFromPath || projectIdFromUrl || projectIdFromElement || null;
+                    
+                    if (!projectId) {
+                        alert("未能获取到项目ID，无法导出计算书！请确保URL中包含project_id参数。");
+                        console.error("未能获取到项目ID，导出失败");
+                        return;
+                    }
+                    
+                    let projectInfo = {};
+                    
+                    try {
                         console.log("正在通过API获取项目信息...");
                         const projectInfoResponse = await fetch(`/api/project_info?project_id=${projectId}`);
                         
@@ -250,113 +321,143 @@
                             } catch (e) {
                                 console.error("无法获取错误详情:", e);
                             }
+                            // 继续执行，使用空项目信息
+                            alert("获取项目信息失败，将使用默认信息继续导出。");
                         }
-                    } else {
-                        alert("未提供项目ID，无法获取项目信息!");
-                        return;
+                    } catch (error) {
+                        console.error("获取项目信息时发生错误:", error);
+                        alert("获取项目信息时发生错误，将使用默认信息继续导出。");
+                        // 继续执行，使用空项目信息
+                    }
+
+                    // 准备表格数据格式
+                    const tableRows = [];
+                    
+                    // 处理每一行数据，转换成Word表格需要的格式
+                    data.rows.forEach(row => {
+                        // 计算装饰性构件造价占单栋建筑总造价的比例（%）
+                        const totalCost = parseFloat(row.totalCost) || 0;
+                        const decorativeCost = parseFloat(row.decorativeCost) || 0;
+                        const percentage = totalCost > 0 ? ((decorativeCost / totalCost) * 100).toFixed(2) + '%' : '0.00%';
+                        
+                        tableRows.push({
+                            subItem: row.subItem || '',                            // 子项名称
+                            decorativeCost: decorativeCost.toFixed(2) || '0.00',   // 装饰性构件造价（万元）
+                            totalCost: totalCost.toFixed(2) || '0.00',             // 单栋建筑总造价（万元）
+                            percentage: percentage                                 // 装饰性构件造价占单栋建筑总造价的比例（%）
+                        });
+                    });
+
+                    // 准备要发送到服务器的数据
+                    const exportData = {
+                        projectId: projectId,
+                        projectInfo: projectInfo,
+                        rows: data.rows,
+                        tableRows: tableRows,  // 新增的表格格式数据
+                        templateFile: '装饰性构件造价比例计算书.docx'
+                    };
+                    
+                    // 收集所有行的图片数据
+                    const allImages = [];
+                    for (const row of data.rows) {
+                        if (row.imageData) {
+                            allImages.push(row.imageData);
+                        }
+                    }
+                    
+                    // 将图片数据添加到项目信息中
+                    if (allImages.length > 0) {
+                        if (!exportData.projectInfo) {
+                            exportData.projectInfo = {};
+                        }
+                        
+                        // 第一张图片使用常规键（向后兼容）
+                        exportData.projectInfo.示意图 = allImages[0];
+                        
+                        // 所有图片添加到数组中
+                        exportData.projectInfo.示意图数组 = allImages;
+                        
+                        console.log(`已添加${allImages.length}张示意图数据到导出信息`);
+                    }
+                    
+                    // 显示加载提示窗口
+                    try {
+                        window.ExportLoadingModal.show({
+                            title: '正在生成计算书',
+                            description: '请耐心等待，文档生成需要一点时间...',
+                            showTimer: false,
+                            showBackdrop: false,
+                            footerText: '您的文件即将准备就绪',
+                            autoTimeout: 30000
+                        });
+                    } catch (modalError) {
+                        console.error("显示导出加载模态框失败:", modalError);
+                        // 继续执行，不阻断导出流程
+                    }
+                    
+                    // 发送请求到后端API
+                    try {
+                        const response = await fetch('/api/generate_decorative_cost_report', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(exportData)
+                        });
+                        
+                        // 隐藏加载提示窗口
+                        try {
+                            window.ExportLoadingModal.hide();
+                        } catch (modalError) {
+                            console.error("隐藏导出加载模态框失败:", modalError);
+                        }
+                        
+                        if (!response.ok) {
+                            // 尝试读取错误信息
+                            let errorMessage = '导出失败';
+                            try {
+                                const errorData = await response.json();
+                                errorMessage = errorData.error || errorMessage;
+                            } catch (e) {
+                                console.error("无法解析错误响应:", e);
+                            }
+                            alert('导出失败: ' + errorMessage);
+                            return;
+                        }
+                        
+                        // 获取blob数据
+                        const blob = await response.blob();
+                        
+                        // 创建下载链接
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = (projectInfo.name || '装饰性构件造价') + '-装饰性构件造价比例计算书.docx';
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // 清理
+                        setTimeout(() => {
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        }, 100);
+                        
+                    } catch (error) {
+                        // 隐藏加载提示窗口
+                        try {
+                            window.ExportLoadingModal.hide();
+                        } catch (modalError) {
+                            console.error("隐藏导出加载模态框失败:", modalError);
+                        }
+                        
+                        alert('导出失败: ' + (error.message || '未知错误'));
+                        console.error('导出错误:', error);
                     }
                 } catch (error) {
-                    console.error("获取项目信息时发生错误:", error);
+                    alert('导出过程中发生错误: ' + (error.message || '未知错误'));
+                    console.error('导出主函数错误:', error);
                 }
-
-                // 准备表格数据格式
-                const tableRows = [];
-                
-                // 处理每一行数据，转换成Word表格需要的格式
-                data.rows.forEach(row => {
-                    // 计算装饰性构件造价占单栋建筑总造价的比例（%）
-                    const totalCost = parseFloat(row.totalCost) || 0;
-                    const decorativeCost = parseFloat(row.decorativeCost) || 0;
-                    const percentage = totalCost > 0 ? ((decorativeCost / totalCost) * 100).toFixed(2) + '%' : '0.00%';
-                    
-                    tableRows.push({
-                        subItem: row.subItem || '',                            // 子项名称
-                        decorativeCost: decorativeCost.toFixed(2) || '0.00',   // 装饰性构件造价（万元）
-                        totalCost: totalCost.toFixed(2) || '0.00',             // 单栋建筑总造价（万元）
-                        percentage: percentage                                 // 装饰性构件造价占单栋建筑总造价的比例（%）
-                    });
-                });
-
-                // 准备要发送到服务器的数据
-                const exportData = {
-                    projectId: projectId,
-                    projectInfo: projectInfo,
-                    rows: data.rows,
-                    tableRows: tableRows,  // 新增的表格格式数据
-                    templateFile: '装饰性构件造价比例计算书.docx'
-                };
-                
-                // 收集所有行的图片数据
-                const allImages = [];
-                for (const row of data.rows) {
-                    if (row.imageData) {
-                        allImages.push(row.imageData);
-                    }
-                }
-                
-                // 将图片数据添加到项目信息中
-                if (allImages.length > 0) {
-                    if (!exportData.projectInfo) {
-                        exportData.projectInfo = {};
-                    }
-                    
-                    // 第一张图片使用常规键（向后兼容）
-                    exportData.projectInfo.示意图 = allImages[0];
-                    
-                    // 所有图片添加到数组中
-                    exportData.projectInfo.示意图数组 = allImages;
-                    
-                    console.log(`已添加${allImages.length}张示意图数据到导出信息`);
-                }
-                
-                // 显示加载提示窗口
-                ExportLoadingModal.show({
-                    title: '正在生成计算书',
-                    description: '请耐心等待，文档生成需要一点时间...',
-                    showTimer: false,
-                    showBackdrop: false,
-                    footerText: '您的文件即将准备就绪',
-                    autoTimeout: 30000
-                });
-                
-                // 发送请求到后端API
-                fetch('/api/generate_decorative_cost_report', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(exportData)
-                })
-                .then(response => {
-                    // 隐藏加载提示窗口
-                    ExportLoadingModal.hide();
-                    
-                    if (!response.ok) {
-                        // 如果响应不成功，解析错误消息
-                        return response.json().then(data => {
-                            throw new Error(data.error || '导出失败');
-                        });
-                    }
-                    
-                    // 创建下载链接
-                    return response.blob();
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = data.projectName ? 
-                        `${data.projectName}-装饰性构件造价比例计算书.docx` : 
-                        '装饰性构件造价比例计算书.docx';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                })
-                .catch(error => {
-                    alert('导出失败: ' + error.message);
-                    console.error('导出错误:', error);
-                });
             }
             
             // 清空数据
@@ -392,136 +493,160 @@
             
             // 收集表格和项目数据
             function collectData() {
-                const rows = tbody.querySelectorAll('tr');
-                const rowData = [];
-                
-                rows.forEach(row => {
-                    const subItem = row.querySelector('td:nth-child(1) input').value;
-                    const buildingType = row.querySelector('td:nth-child(2) select').value;
-                    const unitPrice = row.querySelector('td:nth-child(3) input').value;
-                    const buildingArea = row.querySelector('td:nth-child(4) input').value;
-                    const totalCost = row.querySelector('td:nth-child(5) input').value;
-                    const designRatio = row.querySelector('td:nth-child(6) input').value;
-                    const decorativeCost = row.querySelector('td:nth-child(7) input').value;
-                    const imagePreview = row.querySelector('.image-preview');
-                    const imageData = imagePreview && imagePreview.style.display !== 'none' ? 
-                                       imagePreview.dataset.imageData : null;
-                    
-                    if (subItem || buildingType || buildingArea || totalCost || designRatio) {
-                        rowData.push({
-                            subItem,
-                            buildingType,
-                            unitPrice,
-                            buildingArea,
-                            totalCost,
-                            designRatio,
-                            decorativeCost,
-                            imageData
-                        });
+                try {
+                    if (!tbody) {
+                        console.error("找不到tbody元素");
+                        return { rows: [] };
                     }
-                });
-                
-                return {
-                    rows: rowData
-                };
+                    
+                    const rows = tbody.querySelectorAll('tr');
+                    const rowData = [];
+                    
+                    rows.forEach(row => {
+                        try {
+                            const subItem = row.querySelector('td:nth-child(1) input')?.value || '';
+                            const buildingTypeElem = row.querySelector('td:nth-child(2) select');
+                            const buildingType = buildingTypeElem ? buildingTypeElem.value : '';
+                            const unitPrice = row.querySelector('td:nth-child(3) input')?.value || '';
+                            const buildingArea = row.querySelector('td:nth-child(4) input')?.value || '';
+                            const totalCost = row.querySelector('td:nth-child(5) input')?.value || '';
+                            const designRatio = row.querySelector('td:nth-child(6) input')?.value || '';
+                            const decorativeCost = row.querySelector('td:nth-child(7) input')?.value || '';
+                            const imagePreview = row.querySelector('.image-preview');
+                            const imageData = imagePreview && imagePreview.style.display !== 'none' ? 
+                                               imagePreview.dataset.imageData : null;
+                            
+                            if (subItem || buildingType || buildingArea || totalCost || designRatio) {
+                                rowData.push({
+                                    subItem,
+                                    buildingType,
+                                    unitPrice,
+                                    buildingArea,
+                                    totalCost,
+                                    designRatio,
+                                    decorativeCost,
+                                    imageData
+                                });
+                            }
+                        } catch (rowError) {
+                            console.error("处理数据行时出错:", rowError);
+                            // 继续处理下一行，不中断整个过程
+                        }
+                    });
+                    
+                    return {
+                        rows: rowData
+                    };
+                } catch (error) {
+                    console.error("收集数据时出错:", error);
+                    return { rows: [] };
+                }
             }
             
-            // 加载保存的数据
+            // 从本地存储加载数据并填充表格
             function loadSavedData() {
-                const savedData = localStorage.getItem('decorativeCostData');
-                
-                if (savedData) {
-                    const data = JSON.parse(savedData);
-                    
-                    // 如果没有行数据，直接返回
-                    if (!data.rows || data.rows.length === 0) {
+                try {
+                    // 获取保存的数据
+                    const savedData = localStorage.getItem('decorativeCostData');
+                    if (!savedData) {
+                        console.log('没有找到保存的数据');
                         return;
                     }
                     
-                    // 清空现有行，只保留一行
-                    while (tbody.children.length > 1) {
-                        tbody.removeChild(tbody.lastChild);
+                    const parsedData = JSON.parse(savedData);
+                    if (!parsedData || !parsedData.rows || !Array.isArray(parsedData.rows) || parsedData.rows.length === 0) {
+                        console.log('保存的数据格式无效或为空');
+                        return;
                     }
                     
-                    // 清空第一行数据
-                    const firstRow = tbody.querySelector('tr');
-                    const firstRowInputs = firstRow.querySelectorAll('input');
-                    firstRowInputs.forEach(input => {
-                        input.value = '';
+                    // 清除现有行
+                    if (!tbody) {
+                        console.error("找不到tbody元素");
+                        return;
+                    }
+                    
+                    // 保留第一行并清除其它行
+                    const rows = tbody.querySelectorAll('tr');
+                    for (let i = rows.length - 1; i > 0; i--) {
+                        tbody.removeChild(rows[i]);
+                    }
+                    
+                    // 恢复第一行数据
+                    let firstRowRestored = false;
+                    
+                    // 填充数据到表格
+                    parsedData.rows.forEach((rowData, index) => {
+                        try {
+                            let row;
+                            if (index === 0 && rows.length > 0) {
+                                // 使用现有的第一行
+                                row = rows[0];
+                                firstRowRestored = true;
+                            } else {
+                                // 为其他数据添加新行
+                                addRowBtn.click(); // 使用已有的addRowBtn按钮触发添加行
+                                row = tbody.querySelectorAll('tr')[index];
+                            }
+                            
+                            if (!row) {
+                                console.error(`找不到索引为 ${index} 的行`);
+                                return;
+                            }
+                            
+                            // 填充输入框
+                            const subItemInput = row.querySelector('td:nth-child(1) input');
+                            if (subItemInput) subItemInput.value = rowData.subItem || '';
+                            
+                            const buildingTypeSelect = row.querySelector('td:nth-child(2) select');
+                            if (buildingTypeSelect) buildingTypeSelect.value = rowData.buildingType || '';
+                            
+                            const unitPriceInput = row.querySelector('td:nth-child(3) input');
+                            if (unitPriceInput) unitPriceInput.value = rowData.unitPrice || '';
+                            
+                            const buildingAreaInput = row.querySelector('td:nth-child(4) input');
+                            if (buildingAreaInput) buildingAreaInput.value = rowData.buildingArea || '';
+                            
+                            const totalCostInput = row.querySelector('td:nth-child(5) input');
+                            if (totalCostInput) totalCostInput.value = rowData.totalCost || '';
+                            
+                            const designRatioInput = row.querySelector('td:nth-child(6) input');
+                            if (designRatioInput) designRatioInput.value = rowData.designRatio || '';
+                            
+                            const decorativeCostInput = row.querySelector('td:nth-child(7) input');
+                            if (decorativeCostInput) decorativeCostInput.value = rowData.decorativeCost || '';
+                            
+                            // 恢复图片（如果有）
+                            if (rowData.imageData) {
+                                const imagePreview = row.querySelector('.image-preview');
+                                if (imagePreview) {
+                                    imagePreview.style.display = 'block';
+                                    imagePreview.src = rowData.imageData;  // 使用src属性而不是backgroundImage
+                                    imagePreview.dataset.imageData = rowData.imageData;
+                                    
+                                    // 显示删除按钮
+                                    const removeButton = row.querySelector('.remove-image-btn');
+                                    if (removeButton) {
+                                        removeButton.style.display = 'block';
+                                    }
+                                }
+                            }
+                            
+                            // 触发计算事件
+                            const calculateEvent = new Event('input', { bubbles: true });
+                            const buildingAreaInputForEvent = row.querySelector('td:nth-child(4) input');
+                            if (buildingAreaInputForEvent) {
+                                buildingAreaInputForEvent.dispatchEvent(calculateEvent);
+                            }
+                            
+                        } catch (rowError) {
+                            console.error(`恢复第 ${index} 行数据时出错:`, rowError);
+                        }
                     });
-                    const firstRowSelect = firstRow.querySelector('select');
-                    firstRowSelect.selectedIndex = 0;
                     
-                    // 填充第一行数据
-                    if (data.rows.length > 0) {
-                        const item = data.rows[0];
-                        firstRow.querySelector('td:nth-child(1) input').value = item.subItem || '';
-                        firstRow.querySelector('td:nth-child(2) select').value = item.buildingType || '';
-                        // 触发buildingType的change事件以更新unitPrice
-                        const event = new Event('change');
-                        firstRow.querySelector('td:nth-child(2) select').dispatchEvent(event);
-                        firstRow.querySelector('td:nth-child(4) input').value = item.buildingArea || '';
-                        firstRow.querySelector('td:nth-child(6) input').value = item.designRatio || '';
-                        // 触发计算
-                        const buildingAreaInput = firstRow.querySelector('td:nth-child(4) input');
-                        const designRatioInput = firstRow.querySelector('td:nth-child(6) input');
-                        buildingAreaInput.dispatchEvent(new Event('input'));
-                        designRatioInput.dispatchEvent(new Event('input'));
-                        
-                        // 处理图片数据
-                        const imagePreview = firstRow.querySelector('.image-preview');
-                        const removeImageBtn = firstRow.querySelector('.remove-image-btn');
-                        if (item.imageData) {
-                            imagePreview.src = item.imageData;
-                            imagePreview.style.display = 'block';
-                            imagePreview.dataset.imageData = item.imageData;
-                            // 显示删除按钮
-                            removeImageBtn.style.display = 'block';
-                        } else {
-                            imagePreview.src = '';
-                            imagePreview.style.display = 'none';
-                            delete imagePreview.dataset.imageData;
-                            // 隐藏删除按钮
-                            removeImageBtn.style.display = 'none';
-                        }
-                    }
+                    console.log('成功加载保存的数据');
                     
-                    // 添加其他行数据
-                    for (let i = 1; i < data.rows.length; i++) {
-                        addRowBtn.click();
-                        const row = tbody.lastChild;
-                        const item = data.rows[i];
-                        
-                        row.querySelector('td:nth-child(1) input').value = item.subItem || '';
-                        row.querySelector('td:nth-child(2) select').value = item.buildingType || '';
-                        // 触发buildingType的change事件以更新unitPrice
-                        const event = new Event('change');
-                        row.querySelector('td:nth-child(2) select').dispatchEvent(event);
-                        row.querySelector('td:nth-child(4) input').value = item.buildingArea || '';
-                        row.querySelector('td:nth-child(6) input').value = item.designRatio || '';
-                        // 触发计算
-                        const buildingAreaInput = row.querySelector('td:nth-child(4) input');
-                        const designRatioInput = row.querySelector('td:nth-child(6) input');
-                        buildingAreaInput.dispatchEvent(new Event('input'));
-                        designRatioInput.dispatchEvent(new Event('input'));
-                        
-                        // 处理图片数据
-                        const imagePreview = row.querySelector('.image-preview');
-                        const removeImageBtn = row.querySelector('.remove-image-btn');
-                        if (item.imageData) {
-                            imagePreview.src = item.imageData;
-                            imagePreview.style.display = 'block';
-                            imagePreview.dataset.imageData = item.imageData;
-                            // 显示删除按钮
-                            removeImageBtn.style.display = 'block';
-                        } else {
-                            imagePreview.src = '';
-                            imagePreview.style.display = 'none';
-                            delete imagePreview.dataset.imageData;
-                            // 隐藏删除按钮
-                            removeImageBtn.style.display = 'none';
-                        }
-                    }
+                } catch (error) {
+                    console.error('加载保存的数据时出错:', error);
                 }
             }
             
@@ -641,34 +766,59 @@
 
         // 设置当前行的全局粘贴事件 (备用方案)
         function setupGlobalPasteForTarget(targetRow) {
+            // 使用对象存储粘贴处理器，以便后续移除
+            if (!window._pasteHandlers) {
+                window._pasteHandlers = new Map();
+            }
+            
+            // 保存对应行唯一ID
+            const rowId = 'paste-target-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            targetRow.dataset.pasteTargetId = rowId;
+            
             const pasteHandler = function(e) {
-                if (e.clipboardData && e.clipboardData.items) {
-                    const items = e.clipboardData.items;
-                    
-                    for (let i = 0; i < items.length; i++) {
-                        if (items[i].type.indexOf("image") !== -1) {
-                            const blob = items[i].getAsFile();
-                            const reader = new FileReader();
-                            const imagePreview = targetRow.querySelector('.image-preview');
-                            const removeImageBtn = targetRow.querySelector('.remove-image-btn');
-                            
-                            reader.onload = function(event) {
-                                imagePreview.src = event.target.result;
-                                imagePreview.style.display = 'block';
-                                // 保存图片数据以便后续导出
-                                imagePreview.dataset.imageData = event.target.result;
-                                // 显示删除按钮
-                                removeImageBtn.style.display = 'block';
-                            };
-                            
-                            reader.readAsDataURL(blob);
-                            // 一旦处理完毕，移除事件监听器
-                            document.removeEventListener('paste', pasteHandler);
-                            break;
+                try {
+                    if (e.clipboardData && e.clipboardData.items) {
+                        const items = e.clipboardData.items;
+                        
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].type.indexOf("image") !== -1) {
+                                const blob = items[i].getAsFile();
+                                const reader = new FileReader();
+                                const imagePreview = targetRow.querySelector('.image-preview');
+                                const removeImageBtn = targetRow.querySelector('.remove-image-btn');
+                                
+                                reader.onload = function(event) {
+                                    try {
+                                        imagePreview.src = event.target.result;
+                                        imagePreview.style.display = 'block';
+                                        // 保存图片数据以便后续导出
+                                        imagePreview.dataset.imageData = event.target.result;
+                                        // 显示删除按钮
+                                        removeImageBtn.style.display = 'block';
+                                    } catch (displayError) {
+                                        console.error("显示粘贴图片时出错:", displayError);
+                                    }
+                                    
+                                    // 一旦处理完毕，移除事件监听器
+                                    document.removeEventListener('paste', window._pasteHandlers.get(rowId));
+                                    window._pasteHandlers.delete(rowId);
+                                };
+                                
+                                reader.readAsDataURL(blob);
+                                break;
+                            }
                         }
                     }
+                } catch (pasteError) {
+                    console.error("全局粘贴处理时出错:", pasteError);
+                    // 移除事件监听器，防止重复错误
+                    document.removeEventListener('paste', window._pasteHandlers.get(rowId));
+                    window._pasteHandlers.delete(rowId);
                 }
             };
+            
+            // 保存处理器引用
+            window._pasteHandlers.set(rowId, pasteHandler);
             
             // 添加一次性粘贴事件
             document.addEventListener('paste', pasteHandler);
@@ -679,33 +829,41 @@
 
         // 全局粘贴事件监听
         document.addEventListener('paste', function(e) {
-            // 只有在特定焦点元素上才处理粘贴事件
-            const activeElement = document.activeElement;
-            if (activeElement && activeElement.classList.contains('paste-image-btn')) {
-                if (e.clipboardData && e.clipboardData.items) {
-                    const items = e.clipboardData.items;
-                    
-                    for (let i = 0; i < items.length; i++) {
-                        if (items[i].type.indexOf("image") !== -1) {
-                            e.preventDefault(); // 阻止默认粘贴行为
-                            
-                            const blob = items[i].getAsFile();
-                            const reader = new FileReader();
-                            //
-                            const currentRow = activeElement.closest('tr');
-                            const imagePreview = currentRow.querySelector('.image-preview');
-                            
-                            reader.onload = function(event) {
-                                imagePreview.src = event.target.result;
-                                imagePreview.style.display = 'block';
-                                // 保存图片数据以便后续导出
-                                imagePreview.dataset.imageData = event.target.result;
-                            };
-                            
-                            reader.readAsDataURL(blob);
-                            break;
+            try {
+                // 只有在特定焦点元素上才处理粘贴事件
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.classList.contains('paste-image-btn')) {
+                    if (e.clipboardData && e.clipboardData.items) {
+                        const items = e.clipboardData.items;
+                        
+                        for (let i = 0; i < items.length; i++) {
+                            if (items[i].type.indexOf("image") !== -1) {
+                                e.preventDefault(); // 阻止默认粘贴行为
+                                
+                                const blob = items[i].getAsFile();
+                                const reader = new FileReader();
+                                //
+                                const currentRow = activeElement.closest('tr');
+                                const imagePreview = currentRow.querySelector('.image-preview');
+                                const removeImageBtn = currentRow.querySelector('.remove-image-btn');
+                                
+                                reader.onload = function(event) {
+                                    imagePreview.src = event.target.result;
+                                    imagePreview.style.display = 'block';
+                                    // 保存图片数据以便后续导出
+                                    imagePreview.dataset.imageData = event.target.result;
+                                    // 显示删除按钮
+                                    removeImageBtn.style.display = 'block';
+                                };
+                                
+                                reader.readAsDataURL(blob);
+                                break;
+                            }
                         }
                     }
                 }
+            } catch (error) {
+                console.error("全局粘贴事件处理出错:", error);
             }
         });
+})();

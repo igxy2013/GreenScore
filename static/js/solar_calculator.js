@@ -427,19 +427,9 @@ function updateCharts(monthlyData, area, efficiency, firstYearDegradation) {
                 y: {
                     beginAtZero: true
                 }
-            },
-            animation: {
-                onComplete: function() {
-                    // 图表动画完成后调整iframe高度
-                    resizeIframe();
-                }
             }
         }
     });
-    
-    // 延迟调整iframe高度，确保DOM已经完全渲染
-    setTimeout(resizeIframe, 100);
-    setTimeout(resizeIframe, 500);  // 再次调整，确保图表完全渲染
     
     return {
         annualRadiation,
@@ -470,10 +460,6 @@ function updateMonthlyTable(monthlyData) {
     
     // 显示月度数据表格
     document.getElementById("monthlyData").style.display = "block";
-    
-    // 调整iframe高度以适应新增内容
-    setTimeout(resizeIframe, 100);
-    setTimeout(resizeIframe, 500);  // 再次调整，确保表格完全渲染
 }
 
 // 创建模态窗口图表
@@ -777,9 +763,6 @@ function showMonthlyModal() {
     
     // 每次显示模态窗口时，都重新设置关闭事件
     setupModalCloseEvents();
-    
-    // 调整iframe高度
-    setTimeout(resizeIframe, 100);
 }
 
 // 隐藏模态窗口
@@ -809,9 +792,6 @@ function hideMonthlyModal() {
     
     // 恢复页面滚动
     document.body.style.overflow = "";
-    
-    // 调整iframe高度
-    setTimeout(resizeIframe, 100);
     
     console.log('模态窗口已成功隐藏');
 }
@@ -1031,18 +1011,6 @@ function debounce(func, wait) {
     };
 }
 
-// 上次发送的高度
-let lastSentHeight = 0;
-
-// 设置iframe自适应高度函数
-// 注意：此函数已被iframe-resizer.contentWindow.js替代，保留此函数是为了兼容现有代码调用
-// 实际高度调整由iframe-resizer自动完成
-const resizeIframe = debounce(function() {
-    // 不需要手动实现，iframe-resizer已经处理了高度调整
-    // 此处仅保留空函数，以兼容现有代码调用
-    console.log('resizeIframe被调用，但实际高度调整由iframe-resizer处理');
-}, 100);
-
 // 页面加载完成后初始化
 document.addEventListener("DOMContentLoaded", function() {
     console.log('页面加载完成');
@@ -1069,16 +1037,13 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 5000);
     }
     
-    // 不需要手动设置初始高度，iframe-resizer会自动处理
-    
     // 开始监听DOM变化
     startObserving();
 }, 800); // 给足够时间让页面渲染
 
 // 开始监听DOM变化
 function startObserving() {
-    // 由于iframe-resizer会自动监听高度变化，这里只保留window resize事件监听
-    // 监听窗口大小变化
+    // 删除高度监听相关代码，只保留窗口大小变化监听
     window.addEventListener('resize', function() {
         console.log('窗口大小变化');
     });
@@ -1163,8 +1128,6 @@ function startApp() {
                         top: document.body.scrollHeight,
                         behavior: 'smooth'
                     });
-                    // 调整iframe高度
-                    resizeIframe();
                 }, 100);
             }
         });

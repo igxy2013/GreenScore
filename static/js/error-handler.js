@@ -102,6 +102,20 @@
         errorData.page = window.location.href;
         errorData.timestamp = new Date().toISOString();
         
+        // 检查错误信息是否完整，如果不完整尝试添加更多上下文
+        if (!errorData.message || errorData.message === 'undefined') {
+            errorData.message = '未捕获到错误信息';
+            errorData.additionalInfo = '页面路径: ' + window.location.pathname;
+            
+            // 尝试获取当前执行的脚本
+            const scripts = document.querySelectorAll('script');
+            const loadedScripts = Array.from(scripts)
+                .filter(s => s.src)
+                .map(s => s.src)
+                .join(', ');
+            errorData.loadedScripts = loadedScripts;
+        }
+        
         // 发送错误数据
         fetch('/log-js-error', {
             method: 'POST',

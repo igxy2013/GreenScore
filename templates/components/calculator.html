@@ -1,0 +1,628 @@
+<div class="container-wrapper max-w-7xl mx-auto">
+    <div class="flex flex-col items-center justify-center mb-10 text-center">
+        <h1 class="text-3xl font-bold text-primary mb-2">绿色建材应用比例计算</h1>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+        <div class="flex gap-6 mb-8">
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">子项名称</label>
+                <input type="text" id="buildingNo" placeholder="子项名称" class="w-full px-3 py-2 border border-gray-300 rounded-button text-sm placeholder-gray-400">
+                <input type="hidden" id="project_id" value="{{ current_project_id }}">
+            </div>
+
+            <div class="flex-1">
+                <label class="block text-sm font-medium text-gray-700 mb-2">评价依据</label>
+                <select id="standardSelection" class="w-full px-3 py-2 border border-gray-300 rounded-button text-sm placeholder-gray-400">
+                    <option value="municipal">成都市标</option>
+                    <option value="provincial">四川省标</option>
+                    <option value="national">通用国标</option>
+                </select>
+            </div>
+        </div>
+
+    <div id="indicators" class="space-y-6">
+        <div class="category bg-white rounded-lg shadow-lg overflow-hidden" data-category="Q1">
+            <h3 class="bg text-white px-6 py-4 flex justify-between items-center cursor-pointer text-lg">
+                主体及围护结构工程用材 Q1（45分）
+                <span class="toggle">▼</span>
+            </h3>
+            <div class="sub-items p-6">
+                <div class="sub-item font-bold header-row">
+                    <span class="col-indicator">二级指标</span>
+                    <span class="col-requirement">应用比例要求</span>
+                    <span class="col-actual">绿材应用比例</span>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">预拌混凝土</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" value="100" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">预拌砂浆</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" value="100" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">砌体材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">石材</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">防水密封材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">保温隔热材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">混凝土构件</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">钢结构构件</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">木结构构件</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">轻钢龙骨</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">节能门窗</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">遮阳制品</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">建筑幕墙</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">墙板</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">其他类</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <p class="note-italic">注：二级指标中选中项为本项目实际使用项目,包括绿色建材和非绿色建材。</p>
+            </div>
+        </div>
+        <div class="category bg-white rounded-lg shadow-lg overflow-hidden" data-category="Q2">
+            <h3 class="bg text-white px-6 py-4 flex justify-between items-center cursor-pointer text-lg">
+                装饰装修工程用材 Q2（35分）
+                <span class="toggle">▼</span>
+            </h3>
+            <div class="sub-items p-6">
+                <div class="sub-item font-bold header-row">
+                    <span class="col-indicator">二级指标</span>
+                    <span class="col-requirement">应用比例要求</span>
+                    <span class="col-actual">绿材应用比例</span>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">吊顶及配件</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">墙面涂料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">装配式集成墙面</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">壁纸（布）</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">建筑装饰板</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">装修用木制品</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">石膏装饰材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">抗菌净化材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">建筑陶瓷制品</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">地坪材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">卫生洁具</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">其他类</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <p class="note-italic">注：二级指标中选中项为本项目实际使用项目,包括绿色建材和非绿色建材。</p>
+            </div>
+        </div>
+        <div class="category bg-white rounded-lg shadow-lg overflow-hidden" data-category="Q3">
+            <h3 class="bg text-white px-6 py-4 flex justify-between items-center cursor-pointer text-lg">
+                机电安装工程用材 Q3（15分）
+                <span class="toggle">▼</span>
+            </h3>
+            <div class="sub-items p-6">
+                <div class="sub-item font-bold header-row">
+                    <span class="col-indicator">二级指标</span>
+                    <span class="col-requirement">应用比例要求</span>
+                    <span class="col-actual">绿材应用比例</span>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">管材管件</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">LED 照明产品</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">电线电缆</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">新风净化设备及其系统</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">采暖空调设备及其系统</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">热泵产品及其系统</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">辐射供暖供冷设备及其系统</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">一体化生活污水处理设备</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">太阳能光伏发电系统</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">其他类</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%</div>
+                    </div>
+                </div>
+                <p class="note-italic">注：二级指标中选中项为本项目实际使用项目,包括绿色建材和非绿色建材。</p>
+            </div>
+        </div>
+        <div class="category bg-white rounded-lg shadow-lg overflow-hidden" data-category="Q4">
+            <h3 class="bg text-white px-6 py-4 flex justify-between items-center cursor-pointer text-lg">
+                室外工程用材 Q4（5分）
+                <span class="toggle">▼</span>
+            </h3>
+            <div class="sub-items p-6">
+                <div class="sub-item font-bold header-row">
+                    <span class="col-indicator">二级指标</span>
+                    <span class="col-requirement">应用比例要求</span>
+                    <span class="col-actual">绿材应用比例</span>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">雨水收集回用系统</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">透水铺装材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">屋顶绿化材料</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">机械式停车设备</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <div class="sub-item checkbox-wrapper">
+                    <div class="checkbox-container">
+                        <input type="checkbox" checked="true">
+                        <span class="custom-checkbox"></span>
+                    </div>
+                    <span class="col-indicator">其他类</span> 
+                    <span class="col-requirement">≥80%</span> 
+                    <div class="col-actual">
+                        <div class="input-container">
+                            <input type="number" min="0" max="100" placeholder="实际比例" class="px-2 py-1 border border-gray-300 rounded-button text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">%
+                        </div>
+                    </div>
+                </div>
+                <p class="note-italic">注：二级指标中选中项为本项目实际使用项目,包括绿色建材和非绿色建材。</p>
+            </div>
+        </div>
+    </div>
+    <div class="flex space-x-4 mt-8">
+        <button onclick="calculate()" class="px-6 py-3 bg-primary text-white rounded-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            立即计算
+        </button>
+        <button onclick="exportWord()" class="px-6 py-3 bg-primary text-white rounded-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            导出计算书
+        </button>
+        <button onclick="saveForm()" class="px-6 py-3 bg-white text-primary border border-primary rounded-button hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            保存数据
+        </button>
+    </div>
+
+    <div id="result" class="mt-8 bg-white rounded-lg shadow-xl p-8 hidden">
+        <!-- 结果内容将通过 JavaScript 动态填充 -->
+    </div>
+</div>
+<!-- 页面主要JS -->
+<script src="/static/js/calculator.js"></script>
