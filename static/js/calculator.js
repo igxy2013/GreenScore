@@ -238,6 +238,7 @@
             const formData = {
                 buildingNo: document.getElementById('buildingNo').value || '',
                 standardSelection: document.getElementById('standardSelection').value || 'municipal',
+                project_id: document.getElementById('project_id').value || '', // 获取当前项目ID
                 formData: {}
             };
 
@@ -313,7 +314,15 @@
         }
         
         try {
-            const response = await fetch('/api/load_form');
+            // 获取当前项目ID
+            const projectId = document.getElementById('project_id').value;
+            // 构建请求URL，加入项目ID参数
+            let url = '/api/load_form';
+            if (projectId) {
+                url += `?project_id=${projectId}`;
+            }
+            
+            const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
                 

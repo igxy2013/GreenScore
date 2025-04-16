@@ -1156,7 +1156,15 @@ def filter_standards():
 @app.route('/calculator')
 @login_required
 def calculator():
-    return render_template('calculator.html')
+    # 获取项目ID参数
+    project_id = request.args.get('project_id')
+    # 如果没有提供项目ID，则使用当前用户的第一个项目
+    if not project_id:
+        project = Project.query.first()
+        if project:
+            project_id = project.id
+            
+    return render_template('calculator.html', current_project_id=project_id)
 
 @app.route('/decorative_cost_calculator')
 @login_required
@@ -1192,12 +1200,15 @@ def save_form():
         if not data:
             return jsonify({'error': '没有收到数据'}), 400
             
-        # 检查当前项目
-        project = Project.query.first()
-        project_id = project.id if project else None
+        # 获取当前用户的项目ID
+        project_id = data.get('project_id')
+        if not project_id:
+            # 没有提供项目ID时，获取第一个项目
+            project = Project.query.first()
+            project_id = project.id if project else None
         
         # 查找现有表单数据或创建新的
-        form_data = FormData.query.first()
+        form_data = FormData.query.filter_by(project_id=project_id).first()
         if not form_data:
             form_data = FormData()
             form_data.project_id = project_id
@@ -1230,8 +1241,15 @@ def load_form():
     try:
         import json
         
-        # 获取最新的表单数据
-        form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
+        # 获取项目ID参数
+        project_id = request.args.get('project_id')
+        
+        # 根据项目ID查询表单数据
+        if project_id:
+            form_data = FormData.query.filter_by(project_id=project_id).order_by(FormData.updated_at.desc()).first()
+        else:
+            # 兼容旧版本，不传项目ID时获取最新的表单数据
+            form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
         
         if not form_data:
             return jsonify({'error': '没有找到保存的数据'}), 404
@@ -1244,6 +1262,7 @@ def load_form():
             'constructionUnit': form_data.construction_unit,
             'designUnit': form_data.design_unit,
             'standardSelection': form_data.standard_selection,
+            'project_id': form_data.project_id,
             'formData': json.loads(form_data.form_data) if form_data.form_data else {}
         }
         
@@ -1271,11 +1290,14 @@ def get_project_info():
         else:
             # 如果没有提供项目ID，则获取第一个项目
             project = Project.query.first()
+            project_id = project.id if project else None
             print(f"未提供项目ID，获取第一个项目: {'找到' if project else '未找到'}")
         
-        # 获取最新的表单数据
-        form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
-        print(f"获取最新表单数据: {'找到' if form_data else '未找到'}")
+        # 获取该项目的表单数据
+        form_data = None
+        if project_id:
+            form_data = FormData.query.filter_by(project_id=project_id).order_by(FormData.updated_at.desc()).first()
+            print(f"获取项目ID={project_id}的表单数据: {'找到' if form_data else '未找到'}")
         
         # 辅助函数：格式化浮点数，保留2位小数
         def format_float(value):
