@@ -6,133 +6,79 @@
 (function() {
     // 全局错误处理
     window.addEventListener('error', function(event) {
-        // 检查是否是资源加载错误
-        if (event.target && (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK')) {
-            handleResourceError(event);
-            return;
-        }
+        console.error('JS错误被捕获:', event.error);
         
-        // 常规JS错误处理
-        logError({
-            type: 'javascript',
-            message: event.message,
-            url: event.filename,
+        // 记录错误到控制台
+        const errorDetails = {
+            message: event.message || '未知错误',
+            file: event.filename,
             line: event.lineno,
             column: event.colno,
-            stack: event.error ? event.error.stack : null
-        });
-    }, true); // 捕获阶段处理，确保能捕获资源加载错误
-    
-    // Promise未处理的拒绝
-    window.addEventListener('unhandledrejection', function(event) {
-        logError({
-            type: 'promise',
-            message: event.reason ? (event.reason.message || String(event.reason)) : 'Promise rejected',
-            stack: event.reason && event.reason.stack
-        });
+            stack: event.error ? event.error.stack : null,
+            timestamp: new Date().toISOString(),
+            page: window.location.href
+        };
+        
+        console.error('错误详情:', errorDetails);
+        
+        // 可选：向后端报告错误
+        // reportErrorToBackend(errorDetails);
+        
+        // 防止错误冒泡
+        event.preventDefault();
     });
     
-    // 资源加载错误处理
-    function handleResourceError(event) {
-        const target = event.target;
-        const url = target.src || target.href;
+    // 未捕获的Promise错误
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('未处理的Promise拒绝:', event.reason);
         
-        // 检查CDN资源
-        if (url && url.includes('cdn.jsdelivr.net')) {
-            console.warn(`CDN资源加载失败: ${url}，尝试使用本地资源`);
-            
-            // 替换为本地资源
-            if (url.includes('alpine')) {
-                replaceResource(target, '/static/js/libs/alpine.min.js');
-            } else if (url.includes('chart.js')) {
-                replaceResource(target, '/static/js/libs/chart.min.js');
-            } else if (url.includes('iframe-resizer.js')) {
-                replaceResource(target, '/static/js/libs/iframe-resizer.js');
-            }
-            
-            // 记录错误
-            logError({
-                type: 'resource',
-                message: `资源加载失败: ${target.tagName}`,
-                url: url,
-                element: target.outerHTML
+        // 防止错误冒泡
+        event.preventDefault();
+    });
+    
+    // 向后端报告错误的函数
+    function reportErrorToBackend(errorDetails) {
+        try {
+            fetch('/api/log_js_error', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(errorDetails)
+            }).catch(err => {
+                console.error('无法发送错误报告:', err);
             });
-            
-            // 阻止事件冒泡
-            event.preventDefault();
-            return false;
+        } catch (e) {
+            console.error('发送错误报告时出错:', e);
         }
     }
     
-    // 替换资源
-    function replaceResource(element, newUrl) {
-        if (element.tagName === 'SCRIPT') {
-            const newScript = document.createElement('script');
-            newScript.src = newUrl;
-            
-            // 复制原始属性
-            Array.from(element.attributes).forEach(attr => {
-                if (attr.name !== 'src') {
-                    newScript.setAttribute(attr.name, attr.value);
-                }
-            });
-            
-            // 替换原始脚本
-            element.parentNode.replaceChild(newScript, element);
-        } else if (element.tagName === 'LINK' && element.rel === 'stylesheet') {
-            const newLink = document.createElement('link');
-            newLink.href = newUrl;
-            newLink.rel = 'stylesheet';
-            
-            // 复制原始属性
-            Array.from(element.attributes).forEach(attr => {
-                if (attr.name !== 'href') {
-                    newLink.setAttribute(attr.name, attr.value);
-                }
-            });
-            
-            // 替换原始链接
-            element.parentNode.replaceChild(newLink, element);
-        }
-    }
-    
-    // 记录错误到服务器
-    function logError(errorData) {
-        // 添加页面信息
-        errorData.page = window.location.href;
-        errorData.timestamp = new Date().toISOString();
-        
-        // 检查错误信息是否完整，如果不完整尝试添加更多上下文
-        if (!errorData.message || errorData.message === 'undefined') {
-            errorData.message = '未捕获到错误信息';
-            errorData.additionalInfo = '页面路径: ' + window.location.pathname;
-            
-            // 尝试获取当前执行的脚本
-            const scripts = document.querySelectorAll('script');
-            const loadedScripts = Array.from(scripts)
-                .filter(s => s.src)
-                .map(s => s.src)
-                .join(', ');
-            errorData.loadedScripts = loadedScripts;
+    // 显示错误消息的辅助函数
+    window.showErrorMessage = function(container, message) {
+        if (!container) {
+            // 尝试找到一个合适的容器
+            container = document.querySelector('.main-content') || 
+                      document.querySelector('main') || 
+                      document.body;
         }
         
-        // 发送错误数据
-        fetch('/log-js-error', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(errorData),
-            // 使用keepalive确保页面卸载时也能发送请求
-            keepalive: true
-        }).catch(err => {
-            console.error('Error logging failed:', err);
-        });
+        const errorMsg = document.createElement('div');
+        errorMsg.className = 'alert alert-danger js-error-message';
+        errorMsg.style.padding = '10px';
+        errorMsg.style.margin = '10px 0';
+        errorMsg.style.backgroundColor = '#f8d7da';
+        errorMsg.style.color = '#721c24';
+        errorMsg.style.borderRadius = '4px';
+        errorMsg.style.border = '1px solid #f5c6cb';
+        errorMsg.textContent = message || '页面加载时发生错误，请刷新页面或联系管理员。';
         
-        // 打印到控制台以便调试
-        console.error('GreenScore错误:', errorData);
-    }
-    
-    // 初始化消息
-    console.log('GreenScore错误处理已初始化');
+        // 添加到容器顶部
+        if (container.firstChild) {
+            container.insertBefore(errorMsg, container.firstChild);
+        } else {
+            container.appendChild(errorMsg);
+        }
+        
+        return errorMsg;
+    };
 })(); 

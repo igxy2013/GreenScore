@@ -15,13 +15,6 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
 <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
-
-<!-- 绿色建材计算所需的外部库 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
-<!-- 绿色建材计算器JS -->
-<script src="{{ url_for('static', filename='js/calculator.js') }}" defer></script>
 <!-- 添加word_template_handler.js引用 -->
 <script src="{{ url_for('static', filename='js/word_template_handler.js') }}" defer></script>
 <script src="/static/js/green_building_score_calculator.js"></script>
@@ -31,17 +24,13 @@
 <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
 <!-- 引入自定义样式表 -->
 <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
-
 <!-- 引入样式文件 -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/all.min.css') }}">
 <!-- 使用本地Font Awesome图标库替代Remix Icon -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/icon-compatibility.css') }}">
 
-<!-- 引入JavaScript文件 -->
-<script src="{{ url_for('static', filename='js/score_helper.js') }}"></script>
-<script src="{{ url_for('static', filename='js/score_summary.js') }}"></script>
-<script src="{{ url_for('static', filename='js/public_transport_analytics.js') }}"></script>
+
 <script>
 function filterTableByClause(query) {
     // 获取所有表格行
@@ -74,11 +63,8 @@ function filterTableByClause(query) {
 <script src="{{ url_for('static', filename='js/climate_zone.js') }}"></script>
 <!-- 引入Chart.js用于数据可视化 -->
 <script src="/static/js/libs/chart.min.js"></script>
-<script src="/static/js/green_building_score_calculator.js"></script>
 <!-- 在 head 部分添加对 db_updater.js 的引用 -->
 <script src="/static/js/db_updater.js"></script>
-<!-- 引入iframe-resizer.js用于iframe高度自适应 -->
-<script src="/static/js/libs/iframe-resizer.js"></script>
 <!-- 添加menu.js引用，确保在所有使用它的代码之前 -->
 <script src="/static/js/menu.js"></script>
 <script>
@@ -239,19 +225,6 @@ table th {
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="theme-color" content="#4CAF50">
     
-    <!-- Favicon 图标 -->
-    <link rel="icon" href="/static/image/logo-mini.png" type="image/png">
-    <link rel="apple-touch-icon" href="/static/image/logo-mini.png">
-    
-    <!-- Remixicon 图标库 -->
-    <link href="/static/css/remixicon.css" rel="stylesheet">
-    
-    <!-- Tailwind CSS -->
-    <link href="/static/css/tailwind.min.css" rel="stylesheet">
-    
-    <!-- 标准表格样式 -->
-    <link href="/static/css/standards/standards-table.css" rel="stylesheet">
-
     <!-- 自动检测暗黑模式并应用 -->
     <script>
         // 检测系统暗黑模式
