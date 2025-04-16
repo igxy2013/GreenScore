@@ -3,11 +3,141 @@
 // 只在全局变量未定义时才声明
 var provinceData = {};
 var cityData = {};
+// 用户权限控制状态
+var userPermissions = null;
+var isFormReadOnly = false;
 
 // 初始化省市数据
 document.addEventListener('DOMContentLoaded', function() {
     initializeProvinceCitySelectors();
+    
+    // 加载用户权限并初始化表单状态
+    loadUserPermissions();
 });
+
+// 加载用户权限
+function loadUserPermissions() {
+    const projectIdElement = document.getElementById('project_id');
+    if (!projectIdElement) return;
+    
+    const projectId = projectIdElement.value;
+    if (!projectId) return;
+    
+    fetch(`/api/projects/${projectId}/permissions`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                userPermissions = data.permissions;
+                // 根据权限设置表单可编辑状态
+                updateFormEditability();
+            } else {
+                console.warn("获取权限失败:", data.error);
+                // 默认设置为只读模式
+                setFormReadOnly(true);
+            }
+        })
+        .catch(error => {
+            console.error("获取用户权限出错:", error);
+            // 出错时默认设置为只读模式
+            setFormReadOnly(true);
+        });
+}
+
+// 根据权限更新表单可编辑状态
+function updateFormEditability() {
+    if (!userPermissions) {
+        setFormReadOnly(true);
+        return;
+    }
+    
+    // 检查是否有编辑权限
+    const role = userPermissions.role;
+    const permissions = userPermissions.permissions;
+    
+    // 创建者或具有"管理"权限的用户可以编辑
+    if (role === '创建者' || permissions === '管理' || permissions === '编辑') {
+        setFormReadOnly(false);
+        // 添加权限提示
+        showPermissionIndicator(role, permissions, false);
+    } else {
+        // 其他情况设为只读
+        setFormReadOnly(true);
+        // 添加权限提示
+        showPermissionIndicator(role, permissions, true);
+    }
+}
+
+// 显示权限提示信息
+function showPermissionIndicator(role, permissions, isReadOnly) {
+    // 检查是否已经存在权限提示元素
+    let permissionIndicator = document.getElementById('permission-indicator');
+    if (!permissionIndicator) {
+        // 创建权限提示元素
+        permissionIndicator = document.createElement('div');
+        permissionIndicator.id = 'permission-indicator';
+        permissionIndicator.className = 'fixed top-4 right-4 px-3 py-2 rounded-lg shadow-md z-50 flex items-center space-x-2 text-sm';
+        
+        // 插入到页面中
+        document.body.appendChild(permissionIndicator);
+    }
+    
+    // 设置样式和内容
+    if (isReadOnly) {
+        permissionIndicator.className = 'fixed top-4 right-4 px-3 py-2 rounded-lg shadow-md z-50 flex items-center space-x-2 text-sm bg-amber-100 text-amber-800 border border-amber-200';
+        permissionIndicator.innerHTML = `
+            <i class="fas fa-lock"></i>
+            <span>只读模式 (角色: ${role}, 权限: ${permissions})</span>
+        `;
+    } else {
+        permissionIndicator.className = 'fixed top-4 right-4 px-3 py-2 rounded-lg shadow-md z-50 flex items-center space-x-2 text-sm bg-green-100 text-green-800 border border-green-200';
+        permissionIndicator.innerHTML = `
+            <i class="fas fa-edit"></i>
+            <span>编辑模式 (角色: ${role}, 权限: ${permissions})</span>
+        `;
+    }
+}
+
+// 设置表单为只读状态
+function setFormReadOnly(readOnly) {
+    isFormReadOnly = readOnly;
+    
+    // 获取所有输入元素
+    const inputElements = document.querySelectorAll('input, select, textarea');
+    inputElements.forEach(element => {
+        element.disabled = readOnly;
+        
+        // 添加视觉提示
+        if (readOnly) {
+            element.classList.add('bg-gray-100');
+            element.classList.add('cursor-not-allowed');
+        } else {
+            element.classList.remove('bg-gray-100');
+            element.classList.remove('cursor-not-allowed');
+        }
+    });
+    
+    // 获取所有按钮（除了导航和关闭按钮）
+    const buttons = document.querySelectorAll('button:not(.nav-button):not(.close-button)');
+    buttons.forEach(button => {
+        if (readOnly) {
+            // 在只读模式下禁用所有提交和保存按钮
+            if (button.type === 'submit' || 
+                button.id === 'saveBtn' || 
+                button.textContent.includes('保存') || 
+                button.textContent.includes('提交') ||
+                button.textContent.includes('上传') ||
+                button.textContent.includes('添加')) {
+                button.disabled = true;
+                button.classList.add('opacity-50');
+                button.classList.add('cursor-not-allowed');
+            }
+        } else {
+            button.disabled = false;
+            button.classList.remove('opacity-50');
+            button.classList.remove('cursor-not-allowed');
+        }
+    });
+}
 
 // 初始化省市选择器
 function initializeProvinceCitySelectors() {
@@ -143,6 +273,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (loadStarCaseBtn) {
         loadStarCaseBtn.addEventListener('click', async function() {
             try {
+                // 检查表单是否为只读模式
+                if (isFormReadOnly) {
+                    alert('您没有编辑权限，无法载入星级案例数据。');
+                    return;
+                }
+                
                 // 获取项目ID
                 const projectId = document.getElementById('project_id').value;
                 if (!projectId) {
@@ -439,6 +575,12 @@ function calculateAndUpdateScores() {
         saveProjectInfoBtn.addEventListener('click', function(e) {
             e.preventDefault(); // 阻止表单默认提交
             
+            // 检查是否有编辑权限
+            if (isFormReadOnly) {
+                toast('您没有编辑权限，无法保存项目信息', 'error');
+                return;
+            }
+            
             // 获取表单数据
             const form = this.closest('form');
             const formData = new FormData(form);
@@ -466,7 +608,14 @@ function calculateAndUpdateScores() {
                         window.location.href = `/project/${projectId}`;
                     }, 1000); // 延迟1秒后跳转，让用户看到成功提示
                 } else {
-                    toast('保存失败: ' + (data.message || '未知错误'), 'error');
+                    // 检查是否是权限错误
+                    if (data.error && (data.error.includes('权限') || data.error.includes('permission'))) {
+                        toast('保存失败: 您没有编辑此项目的权限', 'error');
+                        // 更新权限状态
+                        setFormReadOnly(true);
+                    } else {
+                        toast('保存失败: ' + (data.message || data.error || '未知错误'), 'error');
+                    }
                 }
             })
             .catch(error => {
@@ -595,6 +744,13 @@ function showWordFileName(file) {
 // 将showAiExtractModal函数和相关函数暴露到全局作用域
 window.showAiExtractModal = function() {
     console.log("调用showAiExtractModal函数");
+    
+    // 检查是否有编辑权限
+    if (isFormReadOnly) {
+        toast('您没有编辑权限，无法使用AI提取功能', 'error');
+        return;
+    }
+    
     const modal = document.getElementById('aiExtractModal');
     
     if (!modal) {
@@ -746,13 +902,29 @@ function initFileUploadListeners() {
 // 提取项目信息
 function extractProjectInfo() {
     console.log("extractProjectInfo函数被调用");
-    // 显示加载状态
-    document.getElementById('extractLoading').classList.remove('hidden');
-    document.getElementById('extractResult').classList.add('hidden');
-    document.getElementById('applyButton').classList.add('hidden');
     
-    let fileToUpload = null;
-    let apiEndpoint = '/api/extract_project_info';
+    // 检查是否有编辑权限
+    if (isFormReadOnly) {
+        toast('您没有编辑权限，无法使用AI提取功能', 'error');
+        hideAiExtractModal(); // 关闭模态框
+        return;
+    }
+    
+    const wordFileInput = document.getElementById('wordFileInput');
+    const imageFileInput = document.getElementById('imageFileInput');
+    const extractResult = document.getElementById('extractResult');
+    const extractLoading = document.getElementById('extractLoading');
+    const applyButton = document.getElementById('applyButton');
+    
+    // 隐藏上一次的结果
+    if (extractResult) extractResult.classList.add('hidden');
+    if (applyButton) applyButton.classList.add('hidden');
+    
+    // 显示加载状态
+    if (extractLoading) extractLoading.classList.remove('hidden');
+    
+    // 准备上传的数据
+    const formData = new FormData();
     
     console.log("当前激活的标签页:", currentTab);
     console.log("Word标签页状态:", document.getElementById('wordUploadTab').classList.contains('active'));
@@ -767,71 +939,12 @@ function extractProjectInfo() {
             document.getElementById('extractLoading').classList.add('hidden');
             return;
         }
-        fileToUpload = wordFileInput.files[0];
-        console.log("已选择Word文件:", fileToUpload.name);
-        // 创建表单数据 - 对于Word文档使用word_file字段
-        const formData = new FormData();
-        formData.append('word_file', fileToUpload);
-        
-        // 发送请求
-        console.log("正在发送Word文件提取请求...");
-        fetch(apiEndpoint, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            // 隐藏加载状态
-            document.getElementById('extractLoading').classList.add('hidden');
-            
-            if (data.success) {
-                // 显示提取结果
-                const extractedInfo = document.getElementById('extractedInfo');
-                let infoHTML = '';
-                
-                // 兼容旧版和新版接口返回格式
-                const projectInfo = data.project_info || data.info;
-                console.log("API返回的原始数据:", JSON.stringify(data));
-                console.log("提取到的项目信息:", JSON.stringify(projectInfo));
-                
-                // 遍历提取的信息并格式化显示
-                for (const key in projectInfo) {
-                    // 跳过原始文本字段
-                    if (key === 'raw_text') continue;
-                    infoHTML += `<div class="mb-1">
-                        <span class="text-purple-300 font-medium">${key}:</span> 
-                        <span class="text-gray-200">${projectInfo[key] || '-'}</span>
-                    </div>`;
-                }
-                
-                extractedInfo.innerHTML = infoHTML;
-                document.getElementById('extractResult').classList.remove('hidden');
-                document.getElementById('applyButton').classList.remove('hidden');
-                
-                // 存储提取的信息以便后续应用
-                window.extractedProjectInfo = projectInfo;
-                console.log("已保存提取信息到window.extractedProjectInfo");
-                
-                // 验证保存是否成功
-                setTimeout(() => {
-                    console.log("验证提取信息:", window.extractedProjectInfo ? "已保存" : "未保存");
-                    if (window.extractedProjectInfo) {
-                        console.log("保存的字段:", Object.keys(window.extractedProjectInfo).join(", "));
-                    }
-                }, 100);
-            } else {
-                alert('提取失败: ' + (data.message || '未知错误'));
-            }
-        })
-        .catch(error => {
-            document.getElementById('extractLoading').classList.add('hidden');
-            console.error('提取项目信息出错:', error);
-            alert('提取失败: ' + error.message);
-        });
+        formData.append('word_file', wordFileInput.files[0]);
+        console.log("已选择Word文件:", wordFileInput.files[0].name);
     } else {
         // 直接使用else而不是检查图片标签页是否激活
         console.log("当前是图片标签页");
-        const imageFile = document.getElementById('imageFileInput').files[0] || pastedImage;
+        const imageFile = imageFileInput.files[0] || pastedImage;
         console.log("提取图片信息，图片文件：", imageFile ? imageFile.name : "无");
         
         if (!imageFile) {
@@ -839,81 +952,65 @@ function extractProjectInfo() {
             document.getElementById('extractLoading').classList.add('hidden');
             return;
         }
-        fileToUpload = imageFile;
-        console.log("图片文件信息:", fileToUpload.name, fileToUpload.size, fileToUpload.type);
-        
-        // 创建表单数据 - 对于图片使用image_file字段
-        const formData = new FormData();
-        
-        // 尝试使用另一个名称参数 'file'，与后端代码匹配
-        formData.append('file', fileToUpload);
-        console.log("已创建FormData并添加图片文件，使用参数名'file'");
-        
-        // 发送请求
-        console.log("开始发送API请求到：", apiEndpoint);
-        fetch(apiEndpoint, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                // 不设置Content-Type，让浏览器自动处理multipart/form-data
-            }
-        })
-        .then(response => {
-            console.log("收到API响应，状态码：", response.status);
-            if (!response.ok) {
-                throw new Error(`服务器响应错误: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            // 隐藏加载状态
-            document.getElementById('extractLoading').classList.add('hidden');
-            
-            if (data.success) {
-                // 显示提取结果
-                const extractedInfo = document.getElementById('extractedInfo');
-                let infoHTML = '';
-                
-                // 兼容旧版和新版接口返回格式
-                const projectInfo = data.project_info || data.info;
-                console.log("API返回的原始数据:", JSON.stringify(data));
-                console.log("提取到的项目信息:", JSON.stringify(projectInfo));
-                
-                // 遍历提取的信息并格式化显示
-                for (const key in projectInfo) {
-                    // 跳过原始文本字段
-                    if (key === 'raw_text') continue;
-                    infoHTML += `<div class="mb-1">
-                        <span class="text-purple-300 font-medium">${key}:</span> 
-                        <span class="text-gray-200">${projectInfo[key] || '-'}</span>
-                    </div>`;
-                }
-                
-                extractedInfo.innerHTML = infoHTML;
-                document.getElementById('extractResult').classList.remove('hidden');
-                document.getElementById('applyButton').classList.remove('hidden');
-                
-                // 存储提取的信息以便后续应用
-                window.extractedProjectInfo = projectInfo;
-                console.log("已保存提取信息到window.extractedProjectInfo");
-                
-                // 验证保存是否成功
-                setTimeout(() => {
-                    console.log("验证提取信息:", window.extractedProjectInfo ? "已保存" : "未保存");
-                    if (window.extractedProjectInfo) {
-                        console.log("保存的字段:", Object.keys(window.extractedProjectInfo).join(", "));
-                    }
-                }, 100);
-            } else {
-                alert('提取失败: ' + (data.message || '未知错误'));
-            }
-        })
-        .catch(error => {
-            document.getElementById('extractLoading').classList.add('hidden');
-            console.error('提取项目信息出错:', error);
-            alert('提取失败: ' + error.message);
-        });
+        formData.append('file', imageFile);
+        console.log("图片文件信息:", imageFile.name, imageFile.size, imageFile.type);
     }
+    
+    // 发送请求
+    console.log("正在发送API请求到：", '/api/extract_project_info');
+    fetch('/api/extract_project_info', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // 隐藏加载状态
+        document.getElementById('extractLoading').classList.add('hidden');
+        
+        if (data.success) {
+            // 显示提取结果
+            const extractedInfo = document.getElementById('extractedInfo');
+            let infoHTML = '';
+            
+            // 兼容旧版和新版接口返回格式
+            const projectInfo = data.project_info || data.info;
+            console.log("API返回的原始数据:", JSON.stringify(data));
+            console.log("提取到的项目信息:", JSON.stringify(projectInfo));
+            
+            // 遍历提取的信息并格式化显示
+            for (const key in projectInfo) {
+                // 跳过原始文本字段
+                if (key === 'raw_text') continue;
+                infoHTML += `<div class="mb-1">
+                    <span class="text-purple-300 font-medium">${key}:</span> 
+                    <span class="text-gray-200">${projectInfo[key] || '-'}</span>
+                </div>`;
+            }
+            
+            extractedInfo.innerHTML = infoHTML;
+            document.getElementById('extractResult').classList.remove('hidden');
+            document.getElementById('applyButton').classList.remove('hidden');
+            
+            // 存储提取的信息以便后续应用
+            window.extractedProjectInfo = projectInfo;
+            console.log("已保存提取信息到window.extractedProjectInfo");
+            
+            // 验证保存是否成功
+            setTimeout(() => {
+                console.log("验证提取信息:", window.extractedProjectInfo ? "已保存" : "未保存");
+                if (window.extractedProjectInfo) {
+                    console.log("保存的字段:", Object.keys(window.extractedProjectInfo).join(", "));
+                }
+            }, 100);
+        } else {
+            alert('提取失败: ' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        document.getElementById('extractLoading').classList.add('hidden');
+        console.error('提取项目信息出错:', error);
+        alert('提取失败: ' + error.message);
+    });
 }
 
 // 将extractProjectInfo函数暴露到全局作用域
@@ -924,6 +1021,13 @@ window.extractProjectInfo = function() {
 // 应用提取的信息到表单
 function applyExtractedInfo() {
     try {
+        // 检查是否有编辑权限
+        if (isFormReadOnly) {
+            toast('您没有编辑权限，无法应用提取的信息', 'error');
+            hideAiExtractModal(); // 关闭模态框
+            return;
+        }
+        
         console.log("开始应用提取的信息到表单...");
         const info = window.extractedProjectInfo;
         if (!info) {

@@ -35,7 +35,7 @@ def init_mysql_database():
             logger.info("数据库表创建成功")
             
             # 检查是否需要创建管理员用户
-            from models import User
+            from models import User, ProjectCollaborator, ProjectInvitation
             admin = User.query.filter_by(role='admin').first()
             if not admin:
                 admin = User()

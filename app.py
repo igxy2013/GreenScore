@@ -41,7 +41,8 @@ from export import (
 )
 from models import (
     db, User, InvitationCode, LogRecord,
-    Project, review_standard, FormData
+    Project, review_standard, FormData,
+    ProjectCollaborator, ProjectInvitation
 )
 from admin import admin_app
 from utils.extract_word_info import extract_project_info
@@ -876,6 +877,15 @@ def create_project():
             project_id = project.id
             app.logger.info(f"项目创建成功: ID={project_id}, 名称={project_name}")
             
+            # 添加创建者作为协作者记录
+            collaborator = ProjectCollaborator(
+                project_id=project_id,
+                user_id=user_id,
+                role='创建者',
+                permissions='管理'
+            )
+            db.session.add(collaborator)
+            
             # 提交事务
             db.session.commit()
             return jsonify({
@@ -912,8 +922,18 @@ def check_project_access(project_id):
         if not user_id:
             return False
         
+        # 检查是否为项目创建者
         project = Project.query.filter_by(id=project_id, user_id=user_id).first()
-        return project is not None
+        if project:
+            return True
+        
+        # 检查是否为项目协作者
+        collaborator = ProjectCollaborator.query.filter_by(
+            project_id=project_id, 
+            user_id=user_id
+        ).first()
+        
+        return collaborator is not None
     except Exception as e:
         print(f"检查项目访问权限失败: {str(e)}")
         return False
@@ -932,13 +952,16 @@ def project_detail(project_id):
         # 获取page参数，默认为project_info
         page = request.args.get('page', 'project_info')
         
+        # 获取用户的项目权限信息
+        user_permissions = get_project_permissions(project_id)
+        
         # 如果页面类型为公共交通分析，使用iframe加载页面
         if page == 'public_transport_analysis':
             app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
-            return render_template('dashboard.html', project=project, current_page=page)
+            return render_template('dashboard.html', project=project, current_page=page, user_permissions=user_permissions)
         
         app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
-        return render_template('dashboard.html', project=project, current_page=page)
+        return render_template('dashboard.html', project=project, current_page=page, user_permissions=user_permissions)
     except Exception as e:
         app.logger.error(f"获取项目详情失败: {str(e)}")
         app.logger.error(traceback.format_exc())
@@ -1357,38 +1380,6 @@ def get_project_info():
         print(f"获取项目信息时出错: {str(e)}")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
-@app.route('/api/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-        
-        if not email or not password:
-            return jsonify({'error': '请输入邮箱和密码'}), 400
-            
-        user = User.query.filter_by(email=email).first()
-        
-        if user and user.check_password(password):
-            # 更新最后在线时间
-            try:
-                # 尝试使用timezone.utc (Python 3.8+)
-                user.last_seen = datetime.now(timezone.utc)
-            except (AttributeError, TypeError):
-                # 回退到旧方法
-                user.last_seen = datetime.utcnow()
-            db.session.commit()
-            
-            session['user_id'] = user.id
-            session['username'] = user.email  # 添加用户邮箱到 session
-            session['role'] = user.role  # 添加用户角色到 session
-            return jsonify({'success': True, 'redirect': '/project_management'})
-        else:
-            return jsonify({'error': '邮箱或密码错误'}), 401
-            
-    except Exception as e:
-        app.logger.error(f"登录错误: {str(e)}")
-        return jsonify({'error': '登录失败，请稍后重试'}), 500
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -1534,18 +1525,56 @@ def get_projects():
         if not user_id:
             return jsonify({'error': '用户未登录'}), 401
         
-        # 获取该用户的所有项目
-        projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
+        # 获取该用户创建的所有项目
+        own_projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
         
-        # 将项目数据转换为JSON格式
+        # 获取该用户作为协作者参与的所有项目
+        collaborated_project_ids = db.session.query(ProjectCollaborator.project_id) \
+                                  .filter_by(user_id=user_id) \
+                                  .all()
+        
+        collaborated_project_ids = [pid[0] for pid in collaborated_project_ids]
+        collaborated_projects = []
+        
+        if collaborated_project_ids:
+            collaborated_projects = Project.query.filter(Project.id.in_(collaborated_project_ids)) \
+                                   .order_by(Project.created_at.desc()) \
+                                   .all()
+        
+        # 合并两类项目并转换为JSON格式
         projects_data = []
-        for project in projects:
+        
+        # 添加用户创建的项目
+        for project in own_projects:
             # 确保项目对象有效
             if project is None:
                 continue
                 
             # 使用to_dict方法获取项目数据
             project_data = project.to_dict()
+            # 标记为自己创建的项目
+            project_data['is_owner'] = True
+            project_data['role'] = '创建者'
+            project_data['permissions'] = '管理'
+            projects_data.append(project_data)
+        
+        # 添加用户作为协作者参与的项目
+        for project in collaborated_projects:
+            if project is None:
+                continue
+            
+            project_data = project.to_dict()
+            
+            # 获取协作者信息
+            collaborator = ProjectCollaborator.query.filter_by(
+                project_id=project.id,
+                user_id=user_id
+            ).first()
+            
+            # 标记为协作项目
+            project_data['is_owner'] = False
+            project_data['role'] = collaborator.role if collaborator else '参与者'
+            project_data['permissions'] = collaborator.permissions if collaborator else '只读'
             projects_data.append(project_data)
         
         return jsonify({
@@ -3283,6 +3312,505 @@ def user_dashboard():
         current_page = 'decorative_cost_calculator'
     
     return render_template('dashboard.html', project=project, current_page=current_page)
+
+# 项目协作相关API
+
+# 获取项目协作者列表
+@app.route('/api/projects/<int:project_id>/collaborators', methods=['GET'])
+@login_required
+def get_project_collaborators(project_id):
+    try:
+        # 检查项目访问权限
+        permissions = get_project_permissions(project_id)
+        if not permissions:
+            return jsonify({'error': '您没有权限访问该项目'}), 403
+        
+        # 获取项目信息
+        project = Project.query.get_or_404(project_id)
+        
+        # 获取项目创建者信息
+        creator = User.query.get(project.user_id)
+        
+        # 获取项目所有协作者
+        collaborators = ProjectCollaborator.query.filter_by(project_id=project_id).all()
+        
+        # 构建协作者列表
+        collaborator_list = []
+        for collab in collaborators:
+            user = User.query.get(collab.user_id)
+            if user:
+                collaborator_list.append({
+                    'id': collab.id,
+                    'user_id': user.id,
+                    'email': user.email,
+                    'role': collab.role,
+                    'permissions': collab.permissions,
+                    'joined_at': collab.joined_at.strftime('%Y-%m-%d %H:%M:%S') if collab.joined_at else None,
+                    'is_creator': (user.id == project.user_id)
+                })
+        
+        # 构建项目信息
+        project_info = {
+            'id': project.id,
+            'name': project.name,
+            'creator': {
+                'id': creator.id if creator else None,
+                'email': creator.email if creator else None
+            },
+            'collaborators': collaborator_list
+        }
+        
+        return jsonify({
+            'success': True,
+            'project': project_info
+        })
+    except Exception as e:
+        app.logger.error(f"获取项目协作者列表失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'获取项目协作者列表失败: {str(e)}'}), 500
+
+# 导入需要的模块
+import secrets
+import hashlib
+from datetime import timedelta
+
+# 生成项目分享链接
+@app.route('/api/projects/<int:project_id>/share', methods=['POST'])
+@login_required
+def generate_share_link(project_id):
+    try:
+        # 检查是否为项目创建者或有管理权限的协作者
+        permissions = get_project_permissions(project_id)
+        if not permissions or permissions['permissions'] != '管理':
+            return jsonify({'error': '您没有权限分享该项目'}), 403
+        
+        data = request.get_json()
+        expires_days = data.get('expires_days', 7)  # 默认7天有效期
+        collaborator_permissions = data.get('permissions', '只读')  # 默认只读权限
+        
+        # 生成随机令牌
+        token = secrets.token_hex(32)
+        
+        # 计算过期时间
+        expires_at = datetime.utcnow() + timedelta(days=expires_days)
+        
+        # 创建邀请记录
+        invitation = ProjectInvitation(
+            project_id=project_id,
+            token=token,
+            permissions=collaborator_permissions,
+            created_by=session.get('user_id'),
+            expires_at=expires_at,
+            is_active=True
+        )
+        
+        db.session.add(invitation)
+        db.session.commit()
+        
+        # 构建分享链接
+        share_link = f"{request.host_url.rstrip('/')}/join_project?token={token}"
+        
+        return jsonify({
+            'success': True,
+            'share_link': share_link,
+            'token': token,
+            'expires_at': expires_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'permissions': collaborator_permissions
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"生成项目分享链接失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'生成项目分享链接失败: {str(e)}'}), 500
+
+# 通过分享链接加入项目
+@app.route('/join_project', methods=['GET'])
+def join_project_page():
+    token = request.args.get('token')
+    if not token:
+        flash('无效的邀请链接', 'error')
+        return redirect(url_for('index'))
+    
+    # 检查令牌是否有效
+    invitation = ProjectInvitation.query.filter_by(token=token, is_active=True).first()
+    if not invitation or invitation.is_expired():
+        flash('邀请链接已过期或无效', 'error')
+        return redirect(url_for('index'))
+    
+    # 检查用户是否已登录
+    if 'user_id' not in session:
+        # 将令牌保存到session，登录后再处理
+        session['pending_invitation'] = token
+        flash('请先登录以加入项目', 'info')
+        return redirect(url_for('login_page'))
+    
+    # 检查用户是否已经是项目协作者
+    user_id = session.get('user_id')
+    existing = ProjectCollaborator.query.filter_by(
+        project_id=invitation.project_id,
+        user_id=user_id
+    ).first()
+    
+    if existing:
+        # 如果已经是协作者，直接进入项目
+        flash('您已经是该项目的协作者', 'info')
+        return redirect(url_for('project_detail', project_id=invitation.project_id))
+    
+    # 获取项目信息
+    project = Project.query.get_or_404(invitation.project_id)
+    
+    # 添加用户为项目协作者
+    collaborator = ProjectCollaborator(
+        project_id=invitation.project_id,
+        user_id=user_id,
+        role='参与者',
+        permissions=invitation.permissions,
+        invited_by=invitation.created_by
+    )
+    
+    try:
+        db.session.add(collaborator)
+        
+        # 可选：标记邀请为已使用
+        # invitation.is_active = False
+        
+        db.session.commit()
+        flash(f'您已成功加入项目：{project.name}', 'success')
+        return redirect(url_for('project_detail', project_id=invitation.project_id))
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"加入项目失败: {str(e)}")
+        flash('加入项目失败，请稍后重试', 'error')
+        return redirect(url_for('index'))
+
+# 处理登录后的待处理邀请
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email', '')
+    password = data.get('password', '')
+    
+    if not email or not password:
+        return jsonify({'error': '请输入邮箱和密码'}), 400
+    user = User.query.filter_by(email=email).first()
+    
+    if user and user.check_password(password):
+        session['user_id'] = user.id
+        session['user_email'] = user.email
+        session['is_admin'] = user.is_admin()
+        
+        # 更新最后在线时间
+        user.last_seen = datetime.utcnow()
+        db.session.commit()
+        
+        # 处理待处理的项目邀请
+        pending_invitation = session.pop('pending_invitation', None)
+        redirect_url = url_for('project_management')
+        
+        if pending_invitation:
+            invitation = ProjectInvitation.query.filter_by(token=pending_invitation, is_active=True).first()
+            if invitation and not invitation.is_expired():
+                # 检查用户是否已经是项目协作者
+                existing = ProjectCollaborator.query.filter_by(
+                    project_id=invitation.project_id,
+                    user_id=user.id
+                ).first()
+                
+                if not existing:
+                    # 添加用户为项目协作者
+                    collaborator = ProjectCollaborator(
+                        project_id=invitation.project_id,
+                        user_id=user.id,
+                        role='参与者',
+                        permissions=invitation.permissions,
+                        invited_by=invitation.created_by
+                    )
+                    
+                    try:
+                        db.session.add(collaborator)
+                        db.session.commit()
+                        redirect_url = url_for('project_detail', project_id=invitation.project_id)
+                    except Exception as e:
+                        db.session.rollback()
+                        app.logger.error(f"处理邀请失败: {str(e)}")
+                else:
+                    redirect_url = url_for('project_detail', project_id=invitation.project_id)
+        
+        # 记录登录成功日志
+        LogRecord.add_log(
+            level="INFO",
+            message=f"用户 {email} 登录成功",
+            source="login",
+            user_id=user.id,
+            ip_address=request.remote_addr,
+            path=request.path,
+            method=request.method,
+            user_agent=request.user_agent.string
+        )
+        
+        return jsonify({
+            'success': True, 
+            'redirect': redirect_url,
+            'is_admin': user.is_admin()
+        })
+    else:
+        # 记录登录失败日志
+        LogRecord.add_log(
+            level="WARNING",
+            message=f"用户 {email} 登录失败",
+            source="login",
+            ip_address=request.remote_addr,
+            path=request.path,
+            method=request.method,
+            user_agent=request.user_agent.string
+        )
+        
+        return jsonify({'error': '邮箱或密码错误'}), 401
+
+# 移除项目协作者
+@app.route('/api/projects/<int:project_id>/collaborators/<int:collaborator_id>', methods=['DELETE'])
+@login_required
+def remove_collaborator(project_id, collaborator_id):
+    try:
+        # 检查是否为项目创建者或有管理权限的协作者
+        permissions = get_project_permissions(project_id)
+        if not permissions or permissions['permissions'] != '管理':
+            return jsonify({'error': '您没有权限管理协作者'}), 403
+        
+        # 获取协作者信息
+        collaborator = ProjectCollaborator.query.get_or_404(collaborator_id)
+        
+        # 检查要删除的是否是项目关联的协作者
+        if collaborator.project_id != project_id:
+            return jsonify({'error': '协作者ID与项目不匹配'}), 400
+        
+        # 阻止删除创建者
+        if collaborator.role == '创建者':
+            return jsonify({'error': '无法移除项目创建者'}), 400
+        
+        # 删除协作者
+        db.session.delete(collaborator)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '已移除协作者'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"移除协作者失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'移除协作者失败: {str(e)}'}), 500
+
+# 更新协作者权限
+@app.route('/api/projects/<int:project_id>/collaborators/<int:collaborator_id>', methods=['PUT'])
+@login_required
+def update_collaborator_permissions(project_id, collaborator_id):
+    try:
+        # 检查是否为项目创建者或有管理权限的协作者
+        permissions = get_project_permissions(project_id)
+        if not permissions or permissions['permissions'] != '管理':
+            return jsonify({'error': '您没有权限管理协作者'}), 403
+        
+        data = request.get_json()
+        new_permissions = data.get('permissions')
+        
+        if not new_permissions or new_permissions not in ['只读', '编辑', '管理']:
+            return jsonify({'error': '无效的权限设置'}), 400
+        
+        # 获取协作者信息
+        collaborator = ProjectCollaborator.query.get_or_404(collaborator_id)
+        
+        # 检查协作者是否属于当前项目
+        if collaborator.project_id != project_id:
+            return jsonify({'error': '协作者ID与项目不匹配'}), 400
+        
+        # 阻止修改创建者权限
+        if collaborator.role == '创建者':
+            return jsonify({'error': '无法修改项目创建者的权限'}), 400
+        
+        # 更新权限
+        collaborator.permissions = new_permissions
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '协作者权限已更新',
+            'collaborator': collaborator.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"更新协作者权限失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'更新协作者权限失败: {str(e)}'}), 500
+
+# 获取项目分享链接
+@app.route('/api/projects/<int:project_id>/invitations', methods=['GET'])
+@login_required
+def get_project_invitations(project_id):
+    try:
+        # 检查是否为项目创建者或有管理权限的协作者
+        permissions = get_project_permissions(project_id)
+        if not permissions or permissions['permissions'] != '管理':
+            return jsonify({'error': '您没有权限查看邀请链接'}), 403
+        
+        # 获取项目的所有活跃邀请
+        invitations = ProjectInvitation.query.filter_by(
+            project_id=project_id,
+            is_active=True
+        ).all()
+        
+        # 构建邀请列表
+        invitation_list = []
+        for inv in invitations:
+            # 跳过已过期的邀请
+            if inv.is_expired():
+                continue
+                
+            creator = User.query.get(inv.created_by)
+            invitation_list.append({
+                'id': inv.id,
+                'token': inv.token,
+                'permissions': inv.permissions,
+                'creator': creator.email if creator else None,
+                'created_at': inv.created_at.strftime('%Y-%m-%d %H:%M:%S') if inv.created_at else None,
+                'expires_at': inv.expires_at.strftime('%Y-%m-%d %H:%M:%S') if inv.expires_at else None,
+                'share_link': f"{request.host_url.rstrip('/')}/join_project?token={inv.token}"
+            })
+        
+        return jsonify({
+            'success': True,
+            'invitations': invitation_list
+        })
+    except Exception as e:
+        app.logger.error(f"获取项目邀请链接失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'获取项目邀请链接失败: {str(e)}'}), 500
+
+# 撤销项目邀请链接
+@app.route('/api/projects/<int:project_id>/invitations/<int:invitation_id>', methods=['DELETE'])
+@login_required
+def revoke_invitation(project_id, invitation_id):
+    try:
+        # 检查是否为项目创建者或有管理权限的协作者
+        permissions = get_project_permissions(project_id)
+        if not permissions or permissions['permissions'] != '管理':
+            return jsonify({'error': '您没有权限撤销邀请链接'}), 403
+        
+        # 获取邀请信息
+        invitation = ProjectInvitation.query.get_or_404(invitation_id)
+        
+        # 检查邀请是否属于当前项目
+        if invitation.project_id != project_id:
+            return jsonify({'error': '邀请ID与项目不匹配'}), 400
+        
+        # 撤销邀请
+        invitation.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '邀请已撤销'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"撤销邀请失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'撤销邀请失败: {str(e)}'}), 500
+
+# 离开项目（协作者主动离开）
+@app.route('/api/projects/<int:project_id>/leave', methods=['POST'])
+@login_required
+def leave_project(project_id):
+    try:
+        user_id = session.get('user_id')
+        
+        # 获取项目信息
+        project = Project.query.get_or_404(project_id)
+        
+        # 检查用户是否为项目创建者
+        if project.user_id == user_id:
+            return jsonify({'error': '项目创建者不能离开项目'}), 400
+        
+        # 获取协作者记录
+        collaborator = ProjectCollaborator.query.filter_by(
+            project_id=project_id,
+            user_id=user_id
+        ).first()
+        
+        if not collaborator:
+            return jsonify({'error': '您不是该项目的协作者'}), 404
+        
+        # 删除协作者记录
+        db.session.delete(collaborator)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '您已成功离开项目'
+        })
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"离开项目失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'离开项目失败: {str(e)}'}), 500
+
+# 获取用户对项目的权限
+def get_project_permissions(project_id):
+    """获取当前用户对项目的权限"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return None
+        
+        # 检查是否为项目创建者
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+        if project:
+            return {
+                'role': '创建者',
+                'permissions': '管理'  # 创建者拥有最高权限
+            }
+        
+        # 检查是否为项目协作者
+        collaborator = ProjectCollaborator.query.filter_by(
+            project_id=project_id, 
+            user_id=user_id
+        ).first()
+        
+        if collaborator:
+            return {
+                'role': collaborator.role,
+                'permissions': collaborator.permissions
+            }
+        
+        return None
+    except Exception as e:
+        print(f"获取项目权限失败: {str(e)}")
+        return None
+
+# 获取用户对项目的权限API
+@app.route('/api/projects/<int:project_id>/permissions', methods=['GET'])
+@login_required
+def get_user_project_permissions(project_id):
+    try:
+        permissions = get_project_permissions(project_id)
+        if not permissions:
+            return jsonify({
+                'success': False,
+                'error': '您没有权限访问该项目'
+            }), 403
+        
+        return jsonify({
+            'success': True,
+            'permissions': permissions
+        })
+    except Exception as e:
+        app.logger.error(f"获取项目权限失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': f'获取权限失败: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     # 初始化数据库

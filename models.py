@@ -267,3 +267,76 @@ class FormData(db.Model):
     form_data = db.Column(db.Text)  # 存储JSON格式的表单数据
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+class ProjectCollaborator(db.Model):
+    """项目协作者模型"""
+    __tablename__ = 'project_collaborators'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='参与者')  # 角色：创建者、参与者
+    permissions = db.Column(db.String(20), nullable=False, default='只读')  # 权限：只读、编辑、管理
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    invited_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    # 定义唯一约束，确保一个用户只能以一种角色参与一个项目
+    __table_args__ = (db.UniqueConstraint('project_id', 'user_id', name='uix_project_user'),)
+    
+    # 定义与Project的关系
+    project = db.relationship('Project', backref=db.backref('collaborators', lazy='dynamic', cascade='all, delete-orphan'))
+    
+    # 定义与User的关系
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('collaborations', lazy='dynamic'))
+    inviter = db.relationship('User', foreign_keys=[invited_by])
+    
+    def to_dict(self):
+        """转换为字典表示"""
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'user_id': self.user_id,
+            'user_email': self.user.email if self.user else None,
+            'role': self.role,
+            'permissions': self.permissions,
+            'joined_at': self.joined_at.strftime('%Y-%m-%d %H:%M:%S') if self.joined_at else None,
+            'invited_by': self.invited_by,
+            'inviter_email': self.inviter.email if self.inviter else None
+        }
+
+class ProjectInvitation(db.Model):
+    """项目邀请模型"""
+    __tablename__ = 'project_invitations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id', ondelete='CASCADE'), nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=False)
+    permissions = db.Column(db.String(20), nullable=False, default='只读')
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # 定义与Project的关系
+    project = db.relationship('Project', backref=db.backref('invitations', lazy='dynamic', cascade='all, delete-orphan'))
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def is_expired(self):
+        """检查邀请是否已过期"""
+        return datetime.utcnow() > self.expires_at
+    
+    def to_dict(self):
+        """转换为字典表示"""
+        return {
+            'id': self.id,
+            'project_id': self.project_id,
+            'project_name': self.project.name if self.project else None,
+            'token': self.token,
+            'permissions': self.permissions,
+            'created_by': self.created_by,
+            'creator_email': self.creator.email if self.creator else None,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
+            'expires_at': self.expires_at.strftime('%Y-%m-%d %H:%M:%S') if self.expires_at else None,
+            'is_active': self.is_active,
+            'is_expired': self.is_expired()
+        }

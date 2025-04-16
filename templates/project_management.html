@@ -82,7 +82,7 @@
     .table-container {
         position: relative;
         z-index: 1;
-        min-height: 600px;
+        min-height: 500px;
         padding-bottom: 100px;
         flex: 1;
         overflow: visible;
@@ -163,7 +163,7 @@
     }
 
     .content-card {
-        min-height: 700px;
+        min-height: 500px;
         display: flex;
         flex-direction: column;
     }
@@ -225,6 +225,13 @@
                         <option value="已暂停">已暂停</option>
                         <option value="已取消">已取消</option>
                     </select>
+
+                    <label class="text-gray-700 ml-4">角色：</label>
+                    <select id="roleFilter" class="px-4 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary focus:border-primary" title="项目角色过滤器">
+                        <option value="all">全部</option>
+                        <option value="创建者">我创建的</option>
+                        <option value="参与者">我参与的</option>
+                    </select>
                 </div>
                 
                 <div class="relative w-full overflow-x-auto max-h-[500px] overflow-y-auto table-container">
@@ -237,12 +244,13 @@
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">评价标准</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">项目状态</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">创建时间</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">我的角色</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider relative">操作</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200" id="projectList">
                             <tr>
-                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                                     正在加载项目列表...
                                 </td>
                             </tr>
@@ -271,14 +279,14 @@
             
             <!-- 创建新项目模态窗口 -->
             <div id="createProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 relative">
+                <div class="bg-white rounded-lg shadow-xl w-full max-w-1xl p-6 relative">
                     <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" title="关闭">
                         <i class="fas fa-times text-xl"></i>
                     </button>
                     <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">创建新项目</h3>
                     
                     <form id="modalProjectForm" action="/create_project" method="POST" class="space-y-6">
-                        <div class="grid grid-cols-1 gap-6">
+                        <div class="grid grid-cols-1 gap-2">
                             <div>
                                 <label for="project_name" class="block text-base font-medium text-gray-700 mb-1">项目名称 <span class="text-red-500">*</span></label>
                                 <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary" placeholder="请输入项目名称" required>
@@ -391,6 +399,116 @@
         </div>
     </div>
     
+    <!-- 项目分享模态窗口 -->
+    <div id="shareProjectModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+            <button id="closeShareModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" title="关闭">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">分享项目</h3>
+            
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold mb-2 text-gray-800">已有分享链接</h4>
+                <div id="existingInvitations" class="bg-gray-50 p-4 rounded-lg max-h-40 overflow-y-auto mb-4">
+                    <p class="text-gray-500 text-center py-2">正在加载...</p>
+                </div>
+            </div>
+            
+            <form id="shareProjectForm" class="space-y-4">
+                <input type="hidden" id="shareProjectId" name="shareProjectId">
+                
+                <div>
+                    <label for="sharePermissions" class="block text-base font-medium text-gray-700 mb-1">访问权限</label>
+                    <div class="relative">
+                        <select id="sharePermissions" name="sharePermissions" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="访问权限">
+                            <option value="只读">只读 - 可查看项目内容</option>
+                            <option value="编辑">编辑 - 可修改项目内容</option>
+                            <option value="管理">管理 - 可管理项目和协作者</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="shareExpireDays" class="block text-base font-medium text-gray-700 mb-1">链接有效期</label>
+                    <div class="relative">
+                        <select id="shareExpireDays" name="shareExpireDays" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="链接有效期">
+                            <option value="1">1天</option>
+                            <option value="3">3天</option>
+                            <option value="7" selected>7天</option>
+                            <option value="30">30天</option>
+                            <option value="90">90天</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                            <i class="fas fa-chevron-down text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-center">
+                    <button type="submit" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                        生成分享链接
+                    </button>
+                </div>
+            </form>
+            
+            <div id="shareResultContainer" class="mt-6 hidden">
+                <h4 class="text-lg font-semibold mb-2 text-gray-800">分享链接</h4>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex items-center mb-2">
+                        <input type="text" id="shareLink" class="w-full px-4 py-2 border border-gray-300 rounded-l-button focus:ring-2 focus:ring-primary focus:border-primary" readonly aria-label="分享链接">
+                        <button id="copyShareLinkBtn" class="px-4 py-2 bg-primary text-white rounded-r-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50" title="复制链接">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-500">分享此链接给其他人，他们可以通过此链接加入项目。</p>
+                    <p class="text-sm text-gray-500">链接有效期至: <span id="linkExpireTime"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 管理协作者模态窗口 -->
+    <div id="manageCollaboratorsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 relative">
+            <button id="closeCollaboratorsModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" title="关闭">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">管理项目协作者</h3>
+            <h4 id="collaboratorsProjectName" class="text-lg font-medium text-center mb-4"></h4>
+            
+            <div class="mb-4">
+                <h5 class="text-base font-medium text-gray-800 mb-2">创建者</h5>
+                <div id="projectCreator" class="bg-gray-100 p-3 rounded-lg mb-4">
+                    <p class="text-gray-500 text-center py-2">加载中...</p>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h5 class="text-base font-medium text-gray-800">项目协作者</h5>
+                    <button id="refreshCollaboratorsBtn" class="text-primary hover:text-primary/80 text-sm">
+                        <i class="fas fa-sync-alt mr-1"></i> 刷新
+                    </button>
+                </div>
+                <div id="collaboratorsList" class="bg-gray-50 p-4 rounded-lg min-h-[150px] max-h-[300px] overflow-y-auto">
+                    <p class="text-gray-500 text-center py-2">加载中...</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex flex-col sm:flex-row justify-between gap-4">
+                <button id="generateShareLinkBtn" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-button hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-opacity-50">
+                    <i class="fas fa-share-alt mr-2"></i> 生成分享链接
+                </button>
+                <button id="closeManageCollaboratorsBtn" class="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-button hover:bg-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-opacity-50">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         // 页面加载完成后获取项目列表
         document.addEventListener('DOMContentLoaded', function() {
@@ -447,7 +565,7 @@
                 }
             });
             
-            // 添加项目操作的事件委托（删除和修改状态）
+            // 添加项目操作的事件委托（删除、修改状态、分享项目和管理协作者）
             document.getElementById('projectList').addEventListener('click', function(e) {
                 // 处理删除按钮点击
                 const deleteBtn = e.target.closest('.delete-project-btn');
@@ -469,15 +587,58 @@
                     // 打开状态修改模态框
                     openUpdateStatusModal(projectId, projectName);
                 }
+                
+                // 处理分享项目按钮点击
+                const shareBtn = e.target.closest('.share-project-btn');
+                if (shareBtn) {
+                    const projectId = shareBtn.getAttribute('data-project-id');
+                    const projectName = shareBtn.getAttribute('data-project-name');
+                    
+                    // 打开分享项目模态框
+                    openShareModal(projectId, projectName);
+                }
+                
+                // 处理管理协作者按钮点击
+                const manageBtn = e.target.closest('.manage-collaborators-btn');
+                if (manageBtn) {
+                    const projectId = manageBtn.getAttribute('data-project-id');
+                    const projectName = manageBtn.getAttribute('data-project-name');
+                    
+                    // 打开管理协作者模态框
+                    openManageCollaboratorsModal(projectId, projectName);
+                }
+                
+                // 处理退出项目按钮点击
+                const leaveBtn = e.target.closest('.leave-project-btn');
+                if (leaveBtn) {
+                    const projectId = leaveBtn.getAttribute('data-project-id');
+                    const projectName = leaveBtn.getAttribute('data-project-name');
+                    
+                    if (confirm(`确定要退出项目"${projectName}"吗？`)) {
+                        leaveProject(projectId);
+                    }
+                }
             });
             
             // 初始化状态修改模态框
             initUpdateStatusModal();
             
+            // 初始化分享模态窗口
+            initShareModal();
+            
+            // 初始化协作者管理模态窗口
+            initManageCollaboratorsModal();
+            
             // 处理下拉菜单的显示和隐藏
             document.addEventListener('click', function(e) {
                 const dropdownTrigger = e.target.closest('.dropdown-trigger');
                 const dropdownContainer = e.target.closest('[data-dropdown-container]');
+                
+                console.log('点击事件:', {
+                    'target': e.target.tagName,
+                    '是否触发按钮': !!dropdownTrigger,
+                    '是否在下拉容器内': !!dropdownContainer
+                });
                 
                 // 关闭所有其他打开的下拉菜单
                 document.querySelectorAll('.dropdown-menu:not(.hidden)').forEach(menu => {
@@ -488,8 +649,14 @@
                 
                 if (dropdownTrigger) {
                     const dropdownMenu = dropdownTrigger.parentElement.querySelector('.dropdown-menu');
-                    dropdownMenu.classList.toggle('hidden');
-                    e.stopPropagation();
+                    console.log('找到下拉菜单:', !!dropdownMenu, dropdownMenu ? dropdownMenu.className : '未找到');
+                    
+                    // 确保下拉菜单存在
+                    if (dropdownMenu) {
+                        dropdownMenu.classList.toggle('hidden');
+                        console.log('切换下拉菜单显示状态:', !dropdownMenu.classList.contains('hidden'));
+                        e.stopPropagation();
+                    }
                 } else if (!dropdownContainer) {
                     // 点击其他地方时关闭所有下拉菜单
                     document.querySelectorAll('.dropdown-menu').forEach(menu => {
@@ -559,10 +726,14 @@
                         // 应用搜索过滤
                         const searchTerm = document.getElementById('projectSearchInput').value.toLowerCase();
                         const statusFilter = document.getElementById('statusFilter').value;
+                        const roleFilter = document.getElementById('roleFilter').value;
                         const filteredProjects = allProjects.filter(project => {
                             const nameMatch = project.name && project.name.toLowerCase().includes(searchTerm);
                             const statusMatch = statusFilter === 'all' || (project.status === statusFilter);
-                            return nameMatch && statusMatch;
+                            const roleMatch = roleFilter === 'all' || 
+                                             (roleFilter === '创建者' && project.is_owner) ||
+                                             (roleFilter === '参与者' && !project.is_owner);
+                            return nameMatch && statusMatch && roleMatch;
                         });
                         
                         // 计算分页信息
@@ -702,12 +873,16 @@
                 // 获取过滤条件
                 const searchTerm = document.getElementById('projectSearchInput').value.toLowerCase();
                 const statusFilter = document.getElementById('statusFilter').value;
+                const roleFilter = document.getElementById('roleFilter').value;
                 
                 // 过滤项目
                 const filteredProjects = projects.filter(project => {
                     const nameMatch = project.name && project.name.toLowerCase().includes(searchTerm);
                     const statusMatch = statusFilter === 'all' || (project.status === statusFilter);
-                    return nameMatch && statusMatch;
+                    const roleMatch = roleFilter === 'all' || 
+                                     (roleFilter === '创建者' && project.is_owner) ||
+                                     (roleFilter === '参与者' && !project.is_owner);
+                    return nameMatch && statusMatch && roleMatch;
                 });
                 
                 if (filteredProjects.length === 0) {
@@ -771,6 +946,11 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${project.created_at ? new Date(project.created_at).toLocaleDateString() : '未知'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${project.is_owner ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}">
+                                ${project.role || '创建者'} · ${project.permissions || '管理'}
+                            </span>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm flex items-center space-x-2">
                             <a href="/project/${project.id}" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors cursor-pointer">
                                 进入项目
@@ -783,6 +963,7 @@
                                 </button>
                                 <div class="hidden dropdown-menu">
                                     <div class="py-1">
+                                        ${project.is_owner || project.permissions === '管理' ? `
                                         <button type="button" 
                                             class="w-full px-4 py-2 text-left text-sm text-blue-500 hover:bg-blue-100/80 transition-colors flex items-center space-x-2 group update-status-btn"
                                             data-project-id="${project.id}" 
@@ -790,6 +971,35 @@
                                             <i class="fas fa-edit text-blue-500 group-hover:text-blue-600 transition-colors"></i>
                                             <span class="group-hover:text-blue-600 transition-colors">修改状态</span>
                                         </button>
+                                        ` : ''}
+                                        ${project.is_owner || project.permissions === '管理' ? `
+                                        <button type="button" 
+                                            class="w-full px-4 py-2 text-left text-sm text-green-500 hover:bg-green-100/80 transition-colors flex items-center space-x-2 group share-project-btn"
+                                            data-project-id="${project.id}" 
+                                            data-project-name="${project.name || ''}">
+                                            <i class="fas fa-share-alt text-green-500 group-hover:text-green-600 transition-colors"></i>
+                                            <span class="group-hover:text-green-600 transition-colors">分享项目</span>
+                                        </button>
+                                        ` : ''}
+                                        ${project.is_owner || project.permissions === '管理' ? `
+                                        <button type="button" 
+                                            class="w-full px-4 py-2 text-left text-sm text-purple-500 hover:bg-purple-100/80 transition-colors flex items-center space-x-2 group manage-collaborators-btn"
+                                            data-project-id="${project.id}" 
+                                            data-project-name="${project.name || ''}">
+                                            <i class="fas fa-users text-purple-500 group-hover:text-purple-600 transition-colors"></i>
+                                            <span class="group-hover:text-purple-600 transition-colors">管理协作者</span>
+                                        </button>
+                                        ` : ''}
+                                        ${!project.is_owner ? `
+                                        <button type="button" 
+                                            class="w-full px-4 py-2 text-left text-sm text-orange-500 hover:bg-orange-100/80 transition-colors flex items-center space-x-2 group leave-project-btn"
+                                            data-project-id="${project.id}" 
+                                            data-project-name="${project.name || ''}">
+                                            <i class="fas fa-sign-out-alt text-orange-500 group-hover:text-orange-600 transition-colors"></i>
+                                            <span class="group-hover:text-orange-600 transition-colors">退出项目</span>
+                                        </button>
+                                        ` : ''}
+                                        ${project.is_owner ? `
                                         <button type="button" 
                                             class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-100/80 transition-colors flex items-center space-x-2 group delete-project-btn"
                                             data-project-id="${project.id}" 
@@ -797,6 +1007,7 @@
                                             <i class="fas fa-trash-alt text-red-500 group-hover:text-red-600 transition-colors"></i>
                                             <span class="group-hover:text-red-600 transition-colors">删除</span>
                                         </button>
+                                        ` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -1123,6 +1334,511 @@
                 }
             });
         });
+
+        // 初始化项目分享和协作者管理模态窗口
+        function initShareModal() {
+            const modal = document.getElementById('shareProjectModal');
+            const closeBtn = document.getElementById('closeShareModalBtn');
+            const form = document.getElementById('shareProjectForm');
+            const copyBtn = document.getElementById('copyShareLinkBtn');
+            
+            // 关闭模态窗口
+            closeBtn.addEventListener('click', function() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+            
+            // 点击模态窗口外部关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // 提交分享表单
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const projectId = document.getElementById('shareProjectId').value;
+                const permissions = document.getElementById('sharePermissions').value;
+                const expireDays = document.getElementById('shareExpireDays').value;
+                
+                // 显示加载中状态
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>处理中...';
+                
+                try {
+                    const response = await fetch(`/api/projects/${projectId}/share`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            permissions: permissions,
+                            expires_days: parseInt(expireDays)
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        // 显示分享链接
+                        document.getElementById('shareLink').value = data.share_link;
+                        document.getElementById('linkExpireTime').textContent = data.expires_at;
+                        document.getElementById('shareResultContainer').classList.remove('hidden');
+                        
+                        // 刷新已有分享链接列表
+                        fetchProjectInvitations(projectId);
+                    } else {
+                        showNotification(data.error || '生成分享链接失败', 'error');
+                    }
+                } catch (error) {
+                    console.error('生成分享链接失败:', error);
+                    showNotification('生成分享链接失败，请稍后重试', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            });
+            
+            // 复制分享链接
+            copyBtn.addEventListener('click', function() {
+                const linkInput = document.getElementById('shareLink');
+                linkInput.select();
+                document.execCommand('copy');
+                
+                showNotification('链接已复制到剪贴板', 'success');
+            });
+        }
+        
+        // 打开分享模态窗口
+        function openShareModal(projectId, projectName) {
+            const modal = document.getElementById('shareProjectModal');
+            document.getElementById('shareProjectId').value = projectId;
+            
+            // 隐藏之前的分享结果
+            document.getElementById('shareResultContainer').classList.add('hidden');
+            
+            // 重置表单
+            document.getElementById('shareProjectForm').reset();
+            
+            // 获取已有的分享链接
+            fetchProjectInvitations(projectId);
+            
+            // 显示模态窗口
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 打开管理协作者模态窗口
+        function openManageCollaboratorsModal(projectId, projectName) {
+            const modal = document.getElementById('manageCollaboratorsModal');
+            
+            // 设置项目ID和名称
+            modal.setAttribute('data-project-id', projectId);
+            modal.setAttribute('data-project-name', projectName);
+            document.getElementById('collaboratorsProjectName').textContent = `项目: ${projectName}`;
+            
+            // 获取项目协作者信息
+            fetchProjectCollaborators(projectId);
+            
+            // 显示模态窗口
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 防止背景滚动
+        }
+        
+        // 获取项目邀请链接
+        async function fetchProjectInvitations(projectId) {
+            const container = document.getElementById('existingInvitations');
+            container.innerHTML = '<p class="text-gray-500 text-center py-2">正在加载...</p>';
+            
+            try {
+                const response = await fetch(`/api/projects/${projectId}/invitations`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    if (data.invitations && data.invitations.length > 0) {
+                        let html = '';
+                        
+                        data.invitations.forEach(inv => {
+                            html += `
+                                <div class="mb-2 p-2 border border-gray-200 rounded-lg bg-white">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <div>
+                                            <span class="text-xs font-medium text-gray-700">权限: 
+                                                <span class="font-normal ${getPermissionColor(inv.permissions)}">${inv.permissions}</span>
+                                            </span>
+                                        </div>
+                                        <button class="text-red-500 hover:text-red-700 revoke-invitation-btn" 
+                                            data-invitation-id="${inv.id}" 
+                                            data-project-id="${projectId}"
+                                            title="撤销此链接">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    </div>
+                                    <div class="text-xs text-gray-500 flex items-center justify-between">
+                                        <span>创建于: ${formatDate(inv.created_at)}</span>
+                                        <span>过期于: ${formatDate(inv.expires_at)}</span>
+                                    </div>
+                                    <div class="mt-1 flex items-center">
+                                        <input type="text" value="${inv.share_link}" class="text-xs w-full p-1 border border-gray-300 rounded-l-sm" readonly>
+                                        <button class="p-1 bg-primary text-white rounded-r-sm hover:bg-primary/90 copy-link-btn"
+                                            data-link="${inv.share_link}">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        container.innerHTML = html;
+                        
+                        // 添加复制链接按钮事件
+                        container.querySelectorAll('.copy-link-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const link = this.getAttribute('data-link');
+                                navigator.clipboard.writeText(link).then(() => {
+                                    showNotification('链接已复制到剪贴板', 'success');
+                                });
+                            });
+                        });
+                        
+                        // 添加撤销邀请按钮事件
+                        container.querySelectorAll('.revoke-invitation-btn').forEach(btn => {
+                            btn.addEventListener('click', async function() {
+                                const invitationId = this.getAttribute('data-invitation-id');
+                                const projectId = this.getAttribute('data-project-id');
+                                
+                                if (confirm('确定要撤销此邀请链接吗？')) {
+                                    try {
+                                        const response = await fetch(`/api/projects/${projectId}/invitations/${invitationId}`, {
+                                            method: 'DELETE'
+                                        });
+                                        
+                                        const data = await response.json();
+                                        
+                                        if (response.ok && data.success) {
+                                            showNotification('邀请已撤销', 'success');
+                                            fetchProjectInvitations(projectId);
+                                        } else {
+                                            showNotification(data.error || '撤销邀请失败', 'error');
+                                        }
+                                    } catch (error) {
+                                        console.error('撤销邀请失败:', error);
+                                        showNotification('撤销邀请失败，请稍后重试', 'error');
+                                    }
+                                }
+                            });
+                        });
+                    } else {
+                        container.innerHTML = '<p class="text-gray-500 text-center py-2">暂无有效的分享链接</p>';
+                    }
+                } else {
+                    container.innerHTML = `<p class="text-red-500 text-center py-2">${data.error || '获取邀请链接失败'}</p>`;
+                }
+            } catch (error) {
+                console.error('获取项目邀请链接失败:', error);
+                container.innerHTML = '<p class="text-red-500 text-center py-2">获取邀请链接失败，请稍后重试</p>';
+            }
+        }
+        
+        // 初始化协作者管理模态窗口
+        function initManageCollaboratorsModal() {
+            const modal = document.getElementById('manageCollaboratorsModal');
+            const closeBtn = document.getElementById('closeCollaboratorsModalBtn');
+            const closeManageBtn = document.getElementById('closeManageCollaboratorsBtn');
+            const refreshBtn = document.getElementById('refreshCollaboratorsBtn');
+            const generateShareLinkBtn = document.getElementById('generateShareLinkBtn');
+            
+            // 关闭模态窗口
+            closeBtn.addEventListener('click', function() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+            
+            closeManageBtn.addEventListener('click', function() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            });
+            
+            // 点击模态窗口外部关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+            
+            // 刷新协作者列表
+            refreshBtn.addEventListener('click', function() {
+                const projectId = modal.getAttribute('data-project-id');
+                fetchProjectCollaborators(projectId);
+            });
+            
+            // 生成分享链接
+            generateShareLinkBtn.addEventListener('click', function() {
+                const projectId = modal.getAttribute('data-project-id');
+                const projectName = modal.getAttribute('data-project-name');
+                
+                // 关闭当前模态窗口
+                modal.classList.add('hidden');
+                
+                // 打开分享模态窗口
+                openShareModal(projectId, projectName);
+            });
+        }
+        
+        // 获取项目协作者
+        async function fetchProjectCollaborators(projectId) {
+            const creatorContainer = document.getElementById('projectCreator');
+            const collaboratorsContainer = document.getElementById('collaboratorsList');
+            
+            creatorContainer.innerHTML = '<p class="text-gray-500 text-center py-2">加载中...</p>';
+            collaboratorsContainer.innerHTML = '<p class="text-gray-500 text-center py-2">加载中...</p>';
+            
+            try {
+                const response = await fetch(`/api/projects/${projectId}/collaborators`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // 显示项目创建者
+                    creatorContainer.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mr-3">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-800 font-medium">${data.project.creator.email}</p>
+                                    <p class="text-xs text-gray-500">创建者 · 管理权限</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 获取普通协作者（排除创建者）
+                    const collaborators = data.project.collaborators.filter(c => c.role !== '创建者');
+                    
+                    if (collaborators.length > 0) {
+                        let html = '';
+                        
+                        collaborators.forEach(c => {
+                            html += `
+                                <div class="mb-3 p-3 border border-gray-200 rounded-lg bg-white">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center">
+                                            <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 mr-3">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-gray-800">${c.email}</p>
+                                                <p class="text-xs text-gray-500">
+                                                    ${c.role} · ${c.permissions} · 
+                                                    加入于 ${formatDate(c.joined_at)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <div class="relative mr-2">
+                                                <button class="px-2 py-1 text-sm border border-gray-300 rounded-button hover:bg-gray-100 change-permission-btn"
+                                                    data-collaborator-id="${c.id}"
+                                                    data-project-id="${projectId}"
+                                                    data-current-permission="${c.permissions}">
+                                                    修改权限
+                                                </button>
+                                                <div class="hidden permission-dropdown absolute right-0 mt-2 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
+                                                    <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 permission-option" data-value="只读">只读</button>
+                                                    <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 permission-option" data-value="编辑">编辑</button>
+                                                    <button class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 permission-option" data-value="管理">管理</button>
+                                                </div>
+                                            </div>
+                                            <button class="px-2 py-1 text-sm text-red-500 border border-red-200 rounded-button hover:bg-red-50 remove-collaborator-btn"
+                                                data-collaborator-id="${c.id}"
+                                                data-project-id="${projectId}"
+                                                data-email="${c.email}">
+                                                移除
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        collaboratorsContainer.innerHTML = html;
+                        
+                        // 添加权限修改按钮事件
+                        collaboratorsContainer.querySelectorAll('.change-permission-btn').forEach(btn => {
+                            btn.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                
+                                // 关闭所有其他权限下拉菜单
+                                document.querySelectorAll('.permission-dropdown:not(.hidden)').forEach(dropdown => {
+                                    if (dropdown !== this.nextElementSibling) {
+                                        dropdown.classList.add('hidden');
+                                    }
+                                });
+                                
+                                // 切换当前下拉菜单
+                                const dropdown = this.nextElementSibling;
+                                dropdown.classList.toggle('hidden');
+                            });
+                        });
+                        
+                        // 添加权限选项点击事件
+                        collaboratorsContainer.querySelectorAll('.permission-option').forEach(option => {
+                            option.addEventListener('click', async function() {
+                                const newPermission = this.getAttribute('data-value');
+                                const dropdown = this.closest('.permission-dropdown');
+                                const btn = dropdown.previousElementSibling;
+                                const collaboratorId = btn.getAttribute('data-collaborator-id');
+                                const projectId = btn.getAttribute('data-project-id');
+                                const currentPermission = btn.getAttribute('data-current-permission');
+                                
+                                // 如果权限没有变化，直接关闭下拉菜单
+                                if (newPermission === currentPermission) {
+                                    dropdown.classList.add('hidden');
+                                    return;
+                                }
+                                
+                                // 更新协作者权限
+                                try {
+                                    const response = await fetch(`/api/projects/${projectId}/collaborators/${collaboratorId}`, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            permissions: newPermission
+                                        })
+                                    });
+                                    
+                                    const data = await response.json();
+                                    
+                                    if (response.ok && data.success) {
+                                        showNotification('协作者权限已更新', 'success');
+                                        btn.setAttribute('data-current-permission', newPermission);
+                                        
+                                        // 更新显示的权限文本
+                                        const permissionText = btn.closest('.mb-3').querySelector('.text-xs.text-gray-500');
+                                        const textParts = permissionText.textContent.split('·');
+                                        permissionText.textContent = `${textParts[0]}· ${newPermission} · ${textParts[2]}`;
+                                    } else {
+                                        showNotification(data.error || '更新权限失败', 'error');
+                                    }
+                                } catch (error) {
+                                    console.error('更新协作者权限失败:', error);
+                                    showNotification('更新权限失败，请稍后重试', 'error');
+                                } finally {
+                                    dropdown.classList.add('hidden');
+                                }
+                            });
+                        });
+                        
+                        // 添加移除协作者按钮事件
+                        collaboratorsContainer.querySelectorAll('.remove-collaborator-btn').forEach(btn => {
+                            btn.addEventListener('click', async function() {
+                                const collaboratorId = this.getAttribute('data-collaborator-id');
+                                const projectId = this.getAttribute('data-project-id');
+                                const email = this.getAttribute('data-email');
+                                
+                                if (confirm(`确定要移除协作者 ${email} 吗？`)) {
+                                    try {
+                                        const response = await fetch(`/api/projects/${projectId}/collaborators/${collaboratorId}`, {
+                                            method: 'DELETE'
+                                        });
+                                        
+                                        const data = await response.json();
+                                        
+                                        if (response.ok && data.success) {
+                                            showNotification('协作者已移除', 'success');
+                                            fetchProjectCollaborators(projectId);
+                                        } else {
+                                            showNotification(data.error || '移除协作者失败', 'error');
+                                        }
+                                    } catch (error) {
+                                        console.error('移除协作者失败:', error);
+                                        showNotification('移除协作者失败，请稍后重试', 'error');
+                                    }
+                                }
+                            });
+                        });
+                        
+                        // 点击其他区域关闭权限下拉菜单
+                        document.addEventListener('click', function() {
+                            document.querySelectorAll('.permission-dropdown').forEach(dropdown => {
+                                dropdown.classList.add('hidden');
+                            });
+                        });
+                    } else {
+                        collaboratorsContainer.innerHTML = '<p class="text-gray-500 text-center py-2">暂无协作者</p>';
+                    }
+                } else {
+                    creatorContainer.innerHTML = `<p class="text-red-500 text-center py-2">${data.error || '获取创建者信息失败'}</p>`;
+                    collaboratorsContainer.innerHTML = `<p class="text-red-500 text-center py-2">${data.error || '获取协作者列表失败'}</p>`;
+                }
+            } catch (error) {
+                console.error('获取项目协作者失败:', error);
+                creatorContainer.innerHTML = '<p class="text-red-500 text-center py-2">获取创建者信息失败，请稍后重试</p>';
+                collaboratorsContainer.innerHTML = '<p class="text-red-500 text-center py-2">获取协作者列表失败，请稍后重试</p>';
+            }
+        }
+        
+        // 根据权限获取颜色类名
+        function getPermissionColor(permission) {
+            switch (permission) {
+                case '只读':
+                    return 'text-blue-500';
+                case '编辑':
+                    return 'text-green-500';
+                case '管理':
+                    return 'text-purple-500';
+                default:
+                    return 'text-gray-500';
+            }
+        }
+        
+        // 格式化日期
+        function formatDate(dateString) {
+            if (!dateString) return '未知';
+            
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // 退出项目
+        function leaveProject(projectId) {
+            fetch(`/api/projects/${projectId}/leave`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 显示成功消息
+                    showNotification('已成功退出项目', 'success');
+                    
+                    // 重新加载项目列表
+                    fetchProjects();
+                } else {
+                    showNotification('退出项目失败: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('退出项目失败:', error);
+                showNotification('退出项目失败，请稍后重试', 'error');
+            });
+        }
     </script>
 </body>
 </html>
