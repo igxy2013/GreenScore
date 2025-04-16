@@ -2420,26 +2420,35 @@ def update_project_scores_efficient(project_id, scores):
 # 注册export.py中的generate_word函数为app的路由
 @app.route('/api/generate_word', methods=['POST'])
 def handle_generate_word():
-    # 处理Word导出请求
+    """
+    处理生成Word文档的请求
+    """
     try:
-        # 从请求中获取数据
+        # 获取请求数据
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 提取必要参数
+        project_id = data.get('project_id')
+        if not project_id:
+            return jsonify({"error": "缺少项目ID参数"}), 400
+            
+        # 获取标准参数，默认为成都市标
+        standard = data.get('standard', '成都市标')
         
-        # 调用word_template.py中的函数生成文档
-        from word_template import generate_word_from_form_data
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        request_data = {
+            'project_id': project_id,
+            'standard': standard,
+            'use_cache': False
+        }
         
-        # 调用函数生成Word文档
-        output = generate_word_from_form_data(data)
-        
-        if not output:
-            return jsonify({'error': '生成Word文档失败'}), 500
-        
-        # 发送Word文档作为响应
-        return send_file(output, as_attachment=True, download_name='绿建报审表.docx')
+        # 调用generate_word函数
+        return generate_word(request_data)
     except Exception as e:
-        app.logger.error(f"生成Word文档失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"处理生成Word请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
 
 @app.route('/api/generate_decorative_cost_report', methods=['POST'])
 def generate_decorative_cost_report():
