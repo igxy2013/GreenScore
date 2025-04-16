@@ -4,8 +4,14 @@
  * 可在多个页面复用，支持计时器、超时保护和自定义标题
  */
 
-// 避免全局命名空间污染
-const ExportLoadingModal = (function() {
+// 使用立即执行函数避免全局命名空间污染
+(function() {
+    // 如果已经存在ExportLoadingModal，就不再重复定义
+    if (typeof window.ExportLoadingModal !== 'undefined') {
+        console.log('ExportLoadingModal已存在，跳过重复定义');
+        return;
+    }
+    
     // 私有变量
     let currentTimerId = null;
     let currentSafetyTimeoutId = null;
@@ -218,14 +224,17 @@ const ExportLoadingModal = (function() {
         }
     }
     
-    // 公开API
-    return {
+    // 公开API - 将ExportLoadingModal暴露为全局对象
+    window.ExportLoadingModal = {
         show,
         hide
     };
+    
+    // 输出调试信息
+    console.log('ExportLoadingModal组件已成功初始化');
 })();
 
 // 如果在Node.js环境中，导出模块
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ExportLoadingModal;
+if (typeof module !== 'undefined' && module.exports && typeof window !== 'undefined') {
+    module.exports = window.ExportLoadingModal;
 } 

@@ -23,7 +23,7 @@ from flask_migrate import Migrate
 from flask import (
     Flask, Blueprint, Response, flash, jsonify, redirect, 
     render_template, request, send_file, send_from_directory,
-    session, url_for
+    session, url_for, abort
 )
 from flask_caching import Cache
 from flask_cors import CORS
@@ -626,7 +626,7 @@ def get_project(project_id=None):
     try:
         if project_id:
             # 获取指定ID的项目
-            project = Project.query.get(project_id)
+            project = db.session.get(Project, project_id)
         else:
             # 获取第一个项目
             project = Project.query.first()
@@ -648,7 +648,7 @@ def save_project_info(form_data):
         
         # 如果有项目ID，获取现有项目；否则创建新项目
         if project_id:
-            project = Project.query.get(project_id)
+            project = db.session.get(Project, project_id)
             if not project:
                 print(f"未找到ID为{project_id}的项目，创建新项目")
                 project = Project()
@@ -953,7 +953,10 @@ def delete_project(project_id):
         if not check_project_access(project_id):
             return jsonify({'error': '您没有权限删除该项目'}), 403
         
-        project = Project.query.get_or_404(project_id)
+        project = db.session.get(Project, project_id)
+        if not project:
+            return abort(404)  # 返回404错误，项目不存在
+            
         db.session.delete(project)
         db.session.commit()
         
@@ -1078,7 +1081,7 @@ def filter_standards():
         # 获取项目信息
         project = None
         if project_id:
-            project = Project.query.get(project_id)
+            project = db.session.get(Project, project_id)
         
         # 获取项目对应的标准名称
         standard_name = None
@@ -1754,7 +1757,7 @@ def get_star_case_scores():
             }), 400
 
         # 获取项目信息
-        target_project = Project.query.get(target_project_id)
+        target_project = db.session.get(Project, target_project_id)
         if not target_project:
             return jsonify({
                 'success': False,
@@ -2356,7 +2359,7 @@ def update_project_scores_efficient(project_id, scores):
     """高效更新项目表中的评分数据，不使用with_for_update以避免锁定延迟"""
     try:
         # 使用单独的会话避免锁定主会话
-        project = Project.query.get(project_id)
+        project = db.session.get(Project, project_id)
         if not project:
             if app.debug:
                 app.logger.warning(f"找不到要更新评分的项目: ID={project_id}")
@@ -2546,7 +2549,7 @@ def update_project_status(project_id):
         new_status = data['status']
         
         # 获取项目
-        project = Project.query.get(project_id)
+        project = db.session.get(Project, project_id)
         if not project:
             app.logger.warning(f"项目 {project_id} 不存在")
             return jsonify({'success': False, 'message': '项目不存在'}), 404
@@ -2595,7 +2598,7 @@ def delete_project_api(project_id):
             return jsonify({'error': '用户未登录'}), 401
         
         # 获取项目
-        project = Project.query.get(project_id)
+        project = db.session.get(Project, project_id)
         if not project:
             app.logger.warning(f"项目 {project_id} 不存在")
             return jsonify({'error': '项目不存在'}), 404
@@ -3246,7 +3249,7 @@ def user_dashboard():
     # 如果请求查看太阳能计算器或装饰性构件造价计算器且有项目ID，获取项目信息
     project = None
     if project_id:
-        project = Project.query.get(project_id)
+        project = db.session.get(Project, project_id)
     
     # 设置当前页面
     current_page = 'project_info'  # 默认页面

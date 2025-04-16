@@ -1,6 +1,6 @@
 <!-- 装饰性构件造价比例计算器组件 -->
 <!-- 引入Remix Icon图标库 -->
-<link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/remixicon.css') }}" rel="stylesheet">
 <div class="decorative-cost-calculator-container">
     <div class="flex flex-col items-center justify-center mb-10 text-center">
         <h1 class="text-3xl font-bold text-primary mb-2">装饰性构件造价比例计算</h1>
@@ -9,8 +9,6 @@
     <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
         <div id="projectName" style="display:none;"></div>
         <input type="hidden" id="current-project-id" value="{{ project.id if project else '' }}">
-            <!-- 导入导出加载组件 -->
-    <script src="{{ url_for('static', filename='js/components/export-loading.js') }}"></script>
         <div id="decorative-cost-calculator" class="space-y-6">
             <div class="table-container">
                 <table id="decorative-cost-table">
