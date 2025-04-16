@@ -1160,20 +1160,16 @@ def calculator():
 def decorative_cost_calculator():
     # 获取项目ID参数
     project_id = request.args.get('project_id')
-    return render_template('decorative_cost_calculator.html', project_id=project_id)
+    # 重定向到主页面，并添加查询参数指示显示装饰性构件造价比例计算
+    return redirect(url_for('user_dashboard', show_decorative=1, project_id=project_id))
 
 @app.route('/solar_calculator')
 @login_required
 def solar_calculator():
     # 获取项目ID参数
     project_id = request.args.get('project_id')
-    project = None
-    
-    # 如果提供了项目ID，获取项目信息
-    if project_id:
-        project = Project.query.get(project_id)
-    
-    return render_template('solar_calculator.html', project=project)
+    # 重定向到主页面，并添加查询参数指示显示太阳能计算器
+    return redirect(url_for('dashboard', show_solar=1, project_id=project_id))
 
 # 添加清除缓存的路由（可选，用于管理员手动刷新缓存）
 @app.route('/clear_cache')
@@ -3238,6 +3234,30 @@ def log_js_error():
     except Exception as e:
         print(f"记录JS错误时出现异常: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/dashboard')
+@login_required
+def user_dashboard():
+    # 获取show_solar参数和show_decorative参数
+    show_solar = request.args.get('show_solar', '0')
+    show_decorative = request.args.get('show_decorative', '0')
+    project_id = request.args.get('project_id')
+    
+    # 如果请求查看太阳能计算器或装饰性构件造价计算器且有项目ID，获取项目信息
+    project = None
+    if project_id:
+        project = Project.query.get(project_id)
+    
+    # 设置当前页面
+    current_page = 'project_info'  # 默认页面
+    
+    # 根据参数决定显示哪个组件
+    if show_solar == '1':
+        current_page = 'solar_calculator'
+    elif show_decorative == '1':
+        current_page = 'decorative_cost_calculator'
+    
+    return render_template('dashboard.html', project=project, current_page=current_page)
 
 if __name__ == '__main__':
     # 初始化数据库

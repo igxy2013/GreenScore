@@ -33,6 +33,25 @@ async function getProjectLocation(projectId) {
     }
 }
 
+// 获取当前项目ID和标准信息
+function getProjectInfo() {
+    try {
+        // 直接从当前页面获取项目ID和标准
+        const projectIdElement = document.getElementById('current-project-id');
+        const projectStandardElement = document.getElementById('current-project-standard');
+        
+        if (projectIdElement) {
+            return {
+                projectId: projectIdElement.value,
+                projectStandard: projectStandardElement ? projectStandardElement.value : ''
+            };
+        }
+    } catch (e) {
+        console.error('获取项目信息失败:', e);
+    }
+    return { projectId: null, projectStandard: null };
+}
+
 // 初始化地图
 function initMap() {
     // 如果BMap不存在，显示提示信息并返回null

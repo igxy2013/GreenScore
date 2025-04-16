@@ -1,7 +1,493 @@
-<!-- 项目信息表单 -->
-<div class="project-info-container">
-    <!-- 使用iframe嵌入项目信息页面，并使用iframe-resizer.js管理高度 -->
-    <iframe id="projectInfoIframe" src="{{ url_for('project_info_page', project_id=project.id if project else '') }}" 
-        style="width:100%; border:none;" scrolling="no"
-        title="项目信息" loading="eager"></iframe>
-</div> 
+
+    <!-- 自定义Toast组件 -->
+    <div id="custom-toast-container" class="fixed bottom-4 right-4 z-[9999]"></div>
+    <div>
+        <button id="aiExtractButton" onclick="showAiExtractModal()" class="ai-extract-btn flex items-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white px-3 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] group">
+            <i class="fas fa-robot mr-3 text-xl ai-icon"></i>
+            <span class="font-medium text-lg">AI提取项目信息</span>
+            <div class="ai-pulse"></div>
+        </button>
+    </div>
+    <!-- AI提取项目信息模态框 -->
+    <div id="aiExtractModal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold">AI提取项目信息</h3>
+                <button class="text-purple-300 hover:text-purple-100 p-1 rounded-full hover:bg-purple-900 transition-all" onclick="closeAiExtractModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Tab切换按钮 -->
+            <div class="flex mb-6 bg-gray-800 rounded-lg p-1">
+                <button id="wordTabBtn" onclick="switchTab('word')" class="tab-btn active flex-1 py-2 rounded-md text-center text-gray-300 transition-all">
+                    <i class="fas fa-file-word mr-2"></i>Word文档
+                </button>
+                <button id="imageTabBtn" onclick="switchTab('image')" class="tab-btn flex-1 py-2 rounded-md text-center text-gray-300 transition-all">
+                    <i class="fas fa-image mr-2"></i>图片识别
+                </button>
+            </div>
+            
+            <!-- Word文档上传区域 -->
+            <div id="wordUploadTab" class="mb-6">
+                <label for="wordFileInput" class="block cursor-pointer">
+                    <div id="wordDropArea" class="text-center py-4 border-2 border-dashed border-purple-500 rounded-lg hover:border-purple-300 transition-all bg-gray-800 word-upload-area">
+                        <i class="fas fa-file-word text-purple-400 text-4xl mb-3"></i>
+                        <p class="text-gray-300 mb-1">点击或拖放Word文档到此处</p>
+                        <p class="text-gray-400 text-sm">支持.doc和.docx格式</p>
+                    </div>
+                </label>
+                <input type="file" id="wordFileInput" accept=".doc,.docx" class="hidden">
+                <div id="wordFileName" class="mt-2 text-sm text-center text-gray-400 hidden"></div>
+            </div>
+            
+            <!-- 图片上传和粘贴区域 -->
+            <div id="imageUploadTab" class="mb-6 hidden">
+                <label for="imageFileInput" class="block cursor-pointer" id="imageDropLabel">
+                    <div id="imageDropArea" class="border-2 border-dashed border-purple-500 rounded-lg p-4 mb-3 text-center bg-gray-800 hover:border-purple-300 transition-all relative overflow-hidden">
+                        <div id="dropAreaText">
+                            <i class="fas fa-cloud-upload-alt text-purple-400 text-3xl mb-2"></i>
+                            <p class="text-gray-300">点击或拖放图片到此处</p>
+                            <p class="text-gray-400 text-sm">支持 JPG, JPEG, PNG, BMP 格式</p>
+                        </div>
+                        <div id="previewContainer" class="hidden">
+                            <img id="imagePreview" class="max-h-40 mx-auto mb-2" />
+                            <button type="button" onclick="clearImagePreview(event)" class="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </label>
+                <input type="file" id="imageFileInput" accept=".jpg,.jpeg,.png,.bmp" class="hidden">
+                <div class="flex justify-between items-center">
+                    <p class="text-gray-400 text-sm"><i class="fas fa-info-circle mr-1"></i> 提示：您也可以直接按 Ctrl+V 粘贴剪贴板中的图片</p>
+                    <button type="button" id="clearImageBtn" class="text-sm text-red-400 hover:text-red-300 hidden">
+                        <i class="fas fa-trash-alt mr-1"></i>移除图片
+                    </button>
+                </div>
+            </div>
+            
+            <div id="extractResult" class="mb-6 hidden">
+                <h4 class="font-bold text-purple-300 mb-2">提取结果:</h4>
+                <div id="extractedInfo" class="p-4 bg-gray-800 rounded-md text-sm max-h-56 overflow-y-auto"></div>
+            </div>
+            <div id="extractLoading" class="mb-6 hidden">
+                <div class="flex items-center justify-center p-4 bg-gray-800 rounded-md">
+                    <i class="fas fa-spinner text-purple-400 text-2xl mr-3"></i>
+                    <span class="text-gray-300">智能提取中，请稍候...</span>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="closeAiExtractModal()" class="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-all">
+                    取消
+                </button>
+                <button type="button" id="extractButton" onclick="extractProjectInfo()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-bold extract-button">
+                    提取信息
+                </button>
+                <button type="button" id="applyButton" onclick="applyExtractedInfo()" class="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg hover:from-green-700 hover:to-teal-700 transition-all hidden">
+                    应用到表单
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- 项目信息表单 -->
+    <form action="{{ url_for('handle_form') }}" method="post" class="space-y-4 mt-4 bg-white rounded-lg shadow-sm">
+        <input type="hidden" name="form_type" value="project_info">
+        <input type="hidden" id="project_id" name="project_id" value="{{ project.id if project else '' }}">
+        <input type="hidden" id="project_name_hidden" value="{{ project.name if project else '' }}">
+        <input type="hidden" id="current-project-id" value="{{ project.id if project else '' }}">
+        <input type="hidden" id="current-project-standard" value="{{ project.standard if project else '成都市标' }}">
+        
+        <!-- 基本信息部分 -->
+        <h3 class="text-lg font-medium text-primary mb-4 px-2 py-2">基本信息</h3>
+        <div class="overflow-x-auto rounded-lg grid grid-cols-3 gap-c-1 rounded-lg">
+            <div class="mb-4 px-3 ">
+                <label for="project_name" class="block text-base font-medium text-primary mb-2">项目名称 <span class="text-red-500">*</span></label>
+                <input type="text" id="project_name" name="project_name" class="w-full px-4 py-2 border border-gray-300 rounded-button " placeholder="请输入项目名称" value="{{ project.name if project else '' }}" required>
+            </div>
+            
+            <div class="mb-4 px-3">
+                <label for="project_code" class="block text-base font-medium text-primary mb-2">项目编号</label>
+                <input type="text" id="project_code" name="project_code" class="w-full px-4 py-2 border border-gray-300 rounded-button" placeholder="请输入项目编号" value="{{ project.code if project and project.code is not none else '' }}">
+            </div>
+            
+            <div class="mb-4 px-3">
+                <label for="construction_unit" class="block text-base font-medium text-primary mb-2">建设单位</label>
+                <input type="text" id="construction_unit" name="construction_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button " placeholder="请输入建设单位名称" value="{{ project.construction_unit if project and project.construction_unit is not none else '' }}">
+            </div>
+            
+            <div class="mb-4 px-3">
+                <label for="design_unit" class="block text-base font-medium text-primary mb-2">设计单位</label>
+                <input type="text" id="design_unit" name="design_unit" class="w-full px-4 py-2 border border-gray-300 rounded-button  " placeholder="请输入设计单位名称" value="{{ project.design_unit if project and project.design_unit is not none else '' }}">
+            </div>
+            
+            <div class="mb-4 px-3">
+                <label for="project_location" class="block text-base font-medium text-primary mb-2">项目地点</label>
+                <div class="flex space-x-2 province-city-container">
+                    <select id="province" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()" title="省份">
+                        <option value="">正在加载...</option>
+                    </select>
+                    <select id="city" class="flex-1 px-4 py-2 border border-gray-300 rounded-button" onchange="updateProvinceCity()" title="城市">
+                        <option value="">请选择城市</option>
+                    </select>
+                    <input type="hidden" id="project_location" name="project_location" value="{{ project.location if project and project.location is not none else '' }}">
+                </div>
+            </div>
+            
+            <div class="mb-4 px-3">
+                <label for="building_type" class="block text-base font-medium text-primary mb-2">建筑类型</label>
+                <div class="relative">
+                    <select id="building_type" name="building_type" class="w-full px-4 py-2 border border-gray-300 rounded-button focus:ring-2 focus:ring-primary focus:border-primary appearance-none pr-8" required title="建筑类型">
+                        <option value="">请选择建筑类型</option>
+                        <option value="居住建筑" {% if project and project.building_type == '居住建筑' %}selected{% endif %}>居住建筑</option>
+                        <option value="公共建筑" {% if project and project.building_type == '公共建筑' %}selected{% endif %}>公共建筑</option>
+                        <option value="居住+公共建筑" {% if project and project.building_type == '居住+公共建筑' %}selected{% endif %}>居住+公共建筑</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-4 px-3">
+                <label for="standard_selection" class="block text-base font-medium text-primary mb-2">评价标准</label>
+                <div class="mt-2">
+                    <select id="standard_selection" name="standard_selection" class="w-full px-4 py-2 border border-gray-300 rounded-button">
+                        <option value="">请选择评价标准</option>
+                        <option value="国标" {% if project and project.standard == '国标' %}selected{% endif %}>绿色建筑评价标准 GB/T 50378-2019（2024版）</option>
+                        <option value="四川省标" {% if project and project.standard == '四川省标' %}selected{% endif %}>四川省民用绿色建筑设计施工图阶段审查技术要点（2024版）</option>
+                        <option value="成都市标" {% if project and project.standard == '成都市标' %}selected{% endif %}>成都市绿色建筑施工图设计与审查技术要点（2024版）</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-4 px-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label for="climate_zone" class="block text-base font-medium text-primary">建筑气候区划</label>
+                    <a href="{{ url_for('static', filename='image/气候区划.png') }}" target="_blank" class="underline text-blue-600 px-2 py-1 rounded-md transition-all duration-300 hover:bg-blue-50 hover:text-purple-600 hover:shadow-sm text-sm">
+                        <i class="fas fa-external-link-alt text-blue-500 mr-1"></i>查看气候区划图
+                    </a>
+                </div>
+                <div class="relative">
+                    <select id="climate_zone" name="climate_zone" class="w-full px-4 py-2 border border-gray-300 rounded-button appearance-none pr-8" title="建筑气候区划">
+                        <option value="">请选择建筑气候区划</option>
+                        <option value="I" {% if project and project.climate_zone == 'I' %}selected{% endif %}>I</option>
+                        <option value="II" {% if project and project.climate_zone == 'II' %}selected{% endif %}>II</option>
+                        <option value="III" {% if project and project.climate_zone == 'III' %}selected{% endif %}>III</option>
+                        <option value="IV" {% if project and project.climate_zone == 'IV' %}selected{% endif %}>IV</option>
+                        <option value="V" {% if project and project.climate_zone == 'V' %}selected{% endif %}>V</option>
+                        <option value="VI" {% if project and project.climate_zone == 'VI' %}selected{% endif %}>VI</option>
+                        <option value="VII" {% if project and project.climate_zone == 'VII' %}selected{% endif %}>VII</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4 px-3">
+                <label for="star_rating_target" class="block text-base font-medium text-primary mb-2">星级目标</label>
+                <div class="relative">
+                    <select id="star_rating_target" name="star_rating_target" class="w-full px-4 py-2 border border-gray-300 rounded-button appearance-none pr-8">
+                        <option value="基本级" {% if project and project.star_rating_target == '基本级' %}selected{% endif %}>基本级</option>
+                        <option value="一星级" {% if project and project.star_rating_target == '一星级' %}selected{% endif %}>一星级</option>
+                        <option value="二星级" {% if project and project.star_rating_target == '二星级' %}selected{% endif %}>二星级</option>
+                        <option value="三星级" {% if project and project.star_rating_target == '三星级' %}selected{% endif %}>三星级</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8">
+        <h3 class="text-xl font-medium text-primary mb-4 mt-8 px-2">详细信息</h3>
+        <div class="overflow-x-auto rounded-lg">
+            <table class="min-w-full detail-table divide-y divide-gray-200">
+                <colgroup>
+                    <col style="width: 16.66%;">
+                    <col style="width: 16.66%;">
+                    <col style="width: 16.66%;">
+                    <col style="width: 16.66%;">
+                    <col style="width: 16.66%;">
+                    <col style="width: 16.66%;">
+                </colgroup>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- 第一行 -->
+                    <tr>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="total_land_area" class="block text-sm font-medium text-gray-700 mb-1">总用地面积（平方米）</label>
+                            <input type="number" step="0.01" id="total_land_area" name="total_land_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.total_land_area is not none %}{{ '%.2f'|format(project.total_land_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="total_building_area" class="block text-sm font-medium text-gray-700 mb-1">总建筑面积（平方米）</label>
+                            <input type="number" step="0.01" id="total_building_area" name="total_building_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.total_building_area is not none %}{{ '%.2f'|format(project.total_building_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="above_ground_area" class="block text-sm font-medium text-gray-700 mb-1">地上建筑面积（平方米）</label>
+                            <input type="number" step="0.01" id="above_ground_area" name="above_ground_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.above_ground_area is not none %}{{ '%.2f'|format(project.above_ground_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="underground_area" class="block text-sm font-medium text-gray-700 mb-1">地下建筑面积（平方米）</label>
+                            <input type="number" step="0.01" id="underground_area" name="underground_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.underground_area is not none %}{{ '%.2f'|format(project.underground_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="first_floor_underground_area" class="block text-sm font-medium text-gray-700 mb-1">地下一层建筑面积（平方米）</label>
+                            <input type="number" step="0.01" id="first_floor_underground_area" name="first_floor_underground_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.underground_floor_area is not none %}{{ '%.2f'|format(project.underground_floor_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="ground_parking_spaces" class="block text-sm font-medium text-gray-700 mb-1">地面停车位数量</label>
+                            <input type="number" id="ground_parking_spaces" name="ground_parking_spaces" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.ground_parking_spaces is not none %}{{ project.ground_parking_spaces }}{% else %}{% endif %}">
+                        </td>
+                    </tr>
+                    <!-- 第二行 -->
+                    <tr>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="plot_ratio" class="block text-sm font-medium text-gray-700 mb-1">容积率</label>
+                            <input type="number" step="0.01" id="plot_ratio" name="plot_ratio" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.plot_ratio is not none %}{{ '%.2f'|format(project.plot_ratio) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="building_base_area" class="block text-sm font-medium text-gray-700 mb-1">建筑基底面积（平方米）</label>
+                            <input type="number" step="0.01" id="building_base_area" name="building_base_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.building_base_area is not none %}{{ '%.2f'|format(project.building_base_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="building_density" class="block text-sm font-medium text-gray-700 mb-1">建筑密度（%）</label>
+                            <input type="number" step="0.01" id="building_density" name="building_density" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.building_density is not none %}{{ '%.2f'|format(project.building_density) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="green_area" class="block text-sm font-medium text-gray-700 mb-1">绿地面积（平方米）</label>
+                            <input type="number" step="0.01" id="green_area" name="green_area" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.green_area is not none %}{{ '%.2f'|format(project.green_area) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="green_ratio" class="block text-sm font-medium text-gray-700 mb-1">绿地率（%）</label>
+                            <input type="number" step="0.01" id="green_ratio" name="green_ratio" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.green_ratio is not none %}{{ '%.2f'|format(project.green_ratio) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="residential_units" class="block text-sm font-medium text-gray-700 mb-1">住宅户数</label>
+                            <input type="number" id="residential_units" name="residential_units" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.residential_units is not none %}{{ project.residential_units }}{% else %}{% endif %}">
+                        </td>
+                    </tr>
+                    <!-- 第三行 -->
+                    <tr>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="building_floors" class="block text-sm font-medium text-gray-700 mb-1">建筑层数（地上/地下）</label>
+                            <input type="text" id="building_floors" name="building_floors" class="w-full px-2 py-1 border border-gray-300 rounded-md" placeholder="例如：18/2" value="{{ project.building_floors if project and project.building_floors is not none else '' }}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="building_height" class="block text-sm font-medium text-gray-700 mb-1">建筑高度（米）</label>
+                            <input type="number" step="0.01" id="building_height" name="building_height" class="w-full px-2 py-1 border border-gray-300 rounded-md" value="{% if project and project.building_height is not none %}{{ '%.2f'|format(project.building_height) }}{% else %}{% endif %}">
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="ac_type" class="block text-sm font-medium text-gray-700 mb-1">空调形式</label>
+                            <div class="relative">
+                                <select id="ac_type" name="ac_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="分体式空调" {% if project and project.air_conditioning_type == '分体式空调' %}selected{% endif %}>分体式空调</option>
+                                    <option value="多联式空调" {% if project and project.air_conditioning_type == '多联式空调' %}selected{% endif %}>多联式空调</option>
+                                    <option value="集中空调" {% if project and project.air_conditioning_type == '集中空调' %}selected{% endif %}>集中空调</option>
+                                    <option value="组合形式" {% if project and project.air_conditioning_type == '组合形式' %}selected{% endif %}>组合形式</option>
+                                    <option value="无" {% if project and project.air_conditioning_type == '无' %}selected{% endif %}>无</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="avg_floors" class="block text-sm font-medium text-gray-700 mb-1">住宅平均层数</label>
+                            <div class="relative">
+                                <select id="avg_floors" name="avg_floors" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="平均3层及以下" {% if project and project.average_floors == '平均3层及以下' %}selected{% endif %}>平均3层及以下</option>
+                                    <option value="平均4-6层" {% if project and project.average_floors == '平均4-6层' %}selected{% endif %}>平均4-6层</option>
+                                    <option value="平均7-9层" {% if project and project.average_floors == '平均7-9层' %}selected{% endif %}>平均7-9层</option>
+                                    <option value="平均10-18层" {% if project and project.average_floors == '平均10-18层' %}selected{% endif %}>平均10-18层</option>
+                                    <option value="平均19层及以上" {% if project and project.average_floors == '平均19层及以上' %}selected{% endif %}>平均19层及以上</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="has_garbage_room" class="block text-sm font-medium text-gray-700 mb-1">有无垃圾用房</label>
+                            <div class="relative">
+                                <select id="has_garbage_room" name="has_garbage_room" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="有" {% if project and project.has_garbage_room == '有' %}selected{% endif %}>有</option>
+                                    <option value="无" {% if project and project.has_garbage_room == '无' %}selected{% endif %}>无</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="has_elevator" class="block text-sm font-medium text-gray-700 mb-1">有无电梯或扶梯</label>
+                            <div class="relative">
+                                <select id="has_elevator" name="has_elevator" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="有" {% if project and project.has_elevator == '有' %}selected{% endif %}>有</option>
+                                    <option value="无" {% if project and project.has_elevator == '无' %}selected{% endif %}>无</option>
+                                </select>
+                            </div>
+                        </td>
+                    </tr>
+                    <!-- 第四行 -->
+                    <tr>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="has_underground_garage" class="block text-sm font-medium text-gray-700 mb-1">有无地下车库</label>
+                            <div class="relative">
+                                <select id="has_underground_garage" name="has_underground_garage" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="有" {% if project and project.has_underground_garage == '有' %}selected{% endif %}>有</option>
+                                    <option value="无" {% if project and project.has_underground_garage == '无' %}selected{% endif %}>无</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap w-1/6">
+                            <label for="construction_type" class="block text-sm font-medium text-gray-700 mb-1">项目建设情况</label>
+                            <div class="relative">
+                                <select id="construction_type" name="construction_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="新区建设" {% if project and project.construction_type == '新区建设' %}selected{% endif %}>新区建设</option>
+                                    <option value="旧区改建" {% if project and project.construction_type == '旧区改建' %}selected{% endif %}>旧区改建</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="has_water_landscape" class="block text-sm font-medium text-gray-700 mb-1">有无景观水体</label>
+                            <div class="relative">
+                                <select id="has_water_landscape" name="has_water_landscape" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="有" {% if project and project.has_water_landscape == '有' %}selected{% endif %}>有</option>
+                                    <option value="无" {% if project and project.has_water_landscape == '无' %}selected{% endif %}>无</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="is_fully_decorated" class="block text-sm font-medium text-gray-700 mb-1">是否为全装修项目</label>
+                            <div class="relative">
+                                <select id="is_fully_decorated" name="is_fully_decorated" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="是" {% if project and project.is_fully_decorated == '是' %}selected{% endif %}>是</option>
+                                    <option value="否" {% if project and project.is_fully_decorated == '否' %}selected{% endif %}>否</option>
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="public_building_type" class="block text-sm font-medium text-gray-700 mb-1">公建类型</label>
+                            <div class="relative">
+                                <select id="public_building_type" name="public_building_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="办公" {% if project and project.public_building_type == '办公' %}selected{% endif %}>办公</option>
+                                    <option value="商业" {% if project and project.public_building_type == '商业' %}selected{% endif %}>商业</option>
+                                    <option value="金融" {% if project and project.public_building_type == '金融' %}selected{% endif %}>金融</option>
+                                    <option value="旅馆饭店" {% if project and project.public_building_type == '旅馆饭店' %}selected{% endif %}>旅馆饭店</option>
+                                    <option value="交通枢纽" {% if project and project.public_building_type == '交通枢纽' %}selected{% endif %}>交通枢纽</option>
+                                    <option value="教育" {% if project and project.public_building_type == '教育' %}selected{% endif %}>教育</option>
+                                    <option value="文化" {% if project and project.public_building_type == '文化' %}selected{% endif %}>文化</option>
+                                    <option value="体育" {% if project and project.public_building_type == '体育' %}selected{% endif %}>体育</option>
+                                    <option value="医疗" {% if project and project.public_building_type == '医疗' %}selected{% endif %}>医疗</option>
+                                    <option value="卫生" {% if project and project.public_building_type == '卫生' %}selected{% endif %}>卫生</option>
+                                    <option value="社会福利" {% if project and project.public_building_type == '社会福利' %}selected{% endif %}>社会福利</option>
+                                </select>
+
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 whitespace-nowrap w-1/6">
+                            <label for="public_green_space" class="block text-sm font-medium text-gray-700 mb-1">绿地向公众开放</label>
+                            <div class="relative">
+                                <select id="public_green_space" name="public_green_space" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
+                                    <option value="">请选择</option>
+                                    <option value="是" {% if project and project.public_green_space == '是' %}selected{% endif %}>是</option>
+                                    <option value="否" {% if project and project.public_green_space == '否' %}selected{% endif %}>否</option>
+                                </select>
+
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        </div>
+        
+        <!-- 保存按钮 -->
+        <div class="-mt-2 py-3 pb-5">
+            <button type="submit" id="saveProjectInfoBtn" class="px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                保存项目信息
+            </button>
+            <button type="button" id="loadStarCaseBtn" class="ml-4 px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                载入星级案例
+            </button>   
+        </div>
+    </form>
+    <!-- 自动计算得分 --> 
+    <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center mb-3">
+            <div class="w-5 h-5 text-primary mr-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-primary">绿建得分自动计算</h3>
+            <div class="inline-block ml-2 align-middle">
+                <input type="checkbox" id="scoreToggle" class="js-switch" checked title="开启或关闭绿建得分自动计算" aria-label="开启或关闭绿建得分自动计算">
+            </div>
+            <script>
+                // 添加toggle开关的事件监听
+                document.addEventListener('DOMContentLoaded', function() {
+                    const scoreToggle = document.getElementById('scoreToggle');
+                    
+                    // 从localStorage获取之前保存的开关状态
+                    const savedToggleState = localStorage.getItem('scoreToggleState');
+                    if (savedToggleState !== null) {
+                        // 设置复选框状态为之前保存的状态
+                        scoreToggle.checked = savedToggleState === 'true';
+                    }
+                    
+                    // 初始化Switchery开关
+                    var switchery = new Switchery(scoreToggle, { 
+                        color: '#34C759',  // 打开时的颜色（Apple风格）
+                        secondaryColor: '#e9e9ea',  // 关闭时的颜色
+                        jackColor: '#ffffff',  // 圆形按钮的颜色
+                        jackSecondaryColor: '#ffffff', // 关闭时按钮的颜色
+                        size: 'small'  // 开关大小
+                    });
+                    
+                    if (scoreToggle) {
+                        // 保存原始的calculateAndUpdateScores函数
+                        const originalCalculateAndUpdateScores = window.calculateAndUpdateScores;
+                        
+                        // 重写calculateAndUpdateScores函数
+                        window.calculateAndUpdateScores = function() {
+                            // 只有当toggle开启时才执行计算
+                            if (scoreToggle.checked) {
+                                return originalCalculateAndUpdateScores.apply(this, arguments);
+                            } else {
+                                console.log("自动计算得分功能已关闭");
+                                return false;
+                            }
+                        };
+                        
+                        // 监听toggle状态变化
+                        scoreToggle.addEventListener('change', function() {
+                            console.log("得分计算开关状态:", this.checked ? "开启" : "关闭");
+                            // 将开关状态保存到localStorage
+                            localStorage.setItem('scoreToggleState', this.checked);
+                            
+                            if (this.checked) {
+                                // 如果开启，立即计算一次
+                                originalCalculateAndUpdateScores();
+                            }
+                        });
+                    }
+                });
+            </script>
+        </div>
+        <div class="flex flex-row gap-4 w-full">
+            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                <div class="text-sm text-gray-600">人均居住用地指标</div>
+                <div id="per_capita_land_score" class="font-semibold text-gray-800 text-center">0分</div>
+            </div>
+            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                <div class="text-sm text-gray-600">公建容积率指标</div>
+                <div id="plot_ratio_score" class="font-semibold text-gray-800 text-center">0分</div>
+            </div>
+            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                <div class="text-sm text-gray-600">地下空间开发利用</div>
+                <div id="underground_score" class="font-semibold text-gray-800 text-center">0分</div>
+            </div>
+            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                <div class="text-sm text-gray-600">绿化用地指标</div>
+                <div id="green_space_score" class="font-semibold text-gray-800 text-center">0分</div>
+            </div>
+            <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">
+                <div class="text-sm text-gray-600">停车设施指标</div>
+                <div id="parking_score" class="font-semibold text-gray-800 text-center">0分</div>
+            </div>
+        </div>
+    </div>
+<script src="{{ url_for('static', filename='js/project_info.js') }}"></script>    
