@@ -2,6 +2,63 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log("menu.js 开始加载...");
     
+    // 添加专门用于处理菜单抖动的CSS
+    const style = document.createElement('style');
+    style.textContent = `
+        /* 防止页面加载过程中的菜单抖动 */
+        body {
+            scroll-behavior: smooth;
+        }
+        
+        /* 固定菜单图标尺寸 */
+        .submenu-item i, .menu-item i {
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            transform: translateZ(0) !important;
+            will-change: transform;
+        }
+        
+        /* 确保菜单项宽度固定 */
+        .submenu-item, .menu-item {
+            position: relative;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* 在页面跳转前保持菜单可见 */
+        .menu-content.expanded {
+            display: block !important;
+            height: auto !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* 为加载新页面添加预加载遮罩，可以平滑过渡 */
+        body::after {
+            content: "";
+            position: fixed;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: -1;
+            transition: background 0.2s ease;
+        }
+        
+        body.navigating::after {
+            background: rgba(255, 255, 255, 0.3);
+            z-index: 9998;
+        }
+    `;
+    document.head.appendChild(style);
+    
     // 获取菜单元素 - 使用let而不是const允许后面重新赋值
     let basicMenuToggle = document.getElementById('basicMenuToggle');
     let basicMenuContent = document.getElementById('basicMenuContent');
@@ -18,15 +75,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 "报告:", reportMenuToggle ? "找到" : "未找到",
                 "专项计算:", specialCalcMenuToggle ? "找到" : "未找到");
     
-    // 防止页面跳动的函数
-    function preventPageJump() {
+    // 防止页面跳动的函数 - 修改此函数，仅保存当前点击的子菜单所属父菜单状态
+    function preventPageJump(currentMenuId) {
         // 记录当前滚动位置
         const scrollPosition = window.scrollY;
+        
+        // 设置导航状态，添加遮罩
+        document.body.classList.add('navigating');
+        
+        // 清除所有菜单的保存状态
+        clearAllMenuStates();
+        
+        // 只保存当前菜单的状态
+        if (currentMenuId) {
+            localStorage.setItem(`menu_expanded_${currentMenuId}`, 'true');
+            console.log(`仅保存菜单状态: ${currentMenuId}`);
+        }
         
         // 在下一个事件循环中恢复滚动位置
         setTimeout(() => {
             window.scrollTo(0, scrollPosition);
-        }, 0);
+        }, 10);
+    }
+
+    // 清除所有菜单状态的函数
+    function clearAllMenuStates() {
+        console.log("清除所有菜单展开状态");
+        // 清除所有菜单状态
+        localStorage.removeItem(`menu_expanded_basicMenuContent`);
+        localStorage.removeItem(`menu_expanded_advancedMenuContent`);
+        localStorage.removeItem(`menu_expanded_reportMenuContent`);
+        localStorage.removeItem(`menu_expanded_specialCalcMenuContent`);
     }
 
     // 获取当前页面信息
@@ -36,8 +115,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log("当前页面信息:", "级别:", currentLevel, "页面:", currentPage, "专业:", currentSpecialty);
 
-    // 保存菜单状态到 sessionStorage 的函数
-    function saveMenuState() {
+    // 保存菜单状态到 localStorage (不用sessionStorage，确保跨页面保持)
+    function saveMenuState(specificMenuId = null) {
+        if (specificMenuId) {
+            // 如果指定了特定菜单ID，则只保存该菜单的状态
+            clearAllMenuStates();
+            localStorage.setItem(`menu_expanded_${specificMenuId}`, 'true');
+            console.log(`仅保存指定菜单状态: ${specificMenuId}`);
+        } else {
+            // 否则保存全局菜单状态对象（用于手动点击菜单时）
         const menuState = {
             basicMenuExpanded: basicMenuContent?.classList.contains('expanded') || false,
             advancedMenuExpanded: advancedMenuContent?.classList.contains('expanded') || false,
@@ -47,8 +133,9 @@ document.addEventListener('DOMContentLoaded', function() {
             currentPage: currentPage,
             currentSpecialty: currentSpecialty
         };
-        sessionStorage.setItem('menuState', JSON.stringify(menuState));
-        console.log("菜单状态已保存:", menuState);
+            localStorage.setItem('menuState', JSON.stringify(menuState));
+            console.log("全局菜单状态已保存:", menuState);
+        }
     }
 
     // 首先移除可能存在的旧事件监听器（通过克隆节点的方式）
@@ -129,8 +216,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // 更新菜单样式
             basicMenuContent.style.display = basicMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
-            // 保存菜单状态
+            // 保存菜单状态 - 用户手动点击切换
             saveMenuState();
+            
+            // 如果展开了此菜单，则在localStorage中保存其展开状态
+            if (basicMenuContent.classList.contains('expanded')) {
+                clearAllMenuStates();
+                localStorage.setItem(`menu_expanded_basicMenuContent`, 'true');
+            } else {
+                localStorage.removeItem(`menu_expanded_basicMenuContent`);
+            }
         });
     }
     
@@ -157,8 +252,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // 更新菜单样式
             advancedMenuContent.style.display = advancedMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
-            // 保存菜单状态
+            // 保存菜单状态 - 用户手动点击切换
             saveMenuState();
+            
+            // 如果展开了此菜单，则在localStorage中保存其展开状态
+            if (advancedMenuContent.classList.contains('expanded')) {
+                clearAllMenuStates();
+                localStorage.setItem(`menu_expanded_advancedMenuContent`, 'true');
+            } else {
+                localStorage.removeItem(`menu_expanded_advancedMenuContent`);
+            }
         });
     }
     
@@ -185,8 +288,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // 更新菜单样式
             reportMenuContent.style.display = reportMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
-            // 保存菜单状态
+            // 保存菜单状态 - 用户手动点击切换
             saveMenuState();
+            
+            // 如果展开了此菜单，则在localStorage中保存其展开状态
+            if (reportMenuContent.classList.contains('expanded')) {
+                clearAllMenuStates();
+                localStorage.setItem(`menu_expanded_reportMenuContent`, 'true');
+            } else {
+                localStorage.removeItem(`menu_expanded_reportMenuContent`);
+            }
         });
     }
     
@@ -218,128 +329,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // 更新菜单样式
             specialCalcMenuContent.style.display = specialCalcMenuContent.classList.contains('expanded') ? 'block' : 'none';
             
-            // 保存菜单状态
+            // 保存菜单状态 - 用户手动点击切换
             saveMenuState();
+            
+            // 如果展开了此菜单，则在localStorage中保存其展开状态
+            if (specialCalcMenuContent.classList.contains('expanded')) {
+                clearAllMenuStates();
+                localStorage.setItem(`menu_expanded_specialCalcMenuContent`, 'true');
+                } else {
+                localStorage.removeItem(`menu_expanded_specialCalcMenuContent`);
+            }
         });
     }
-    
-    // 尝试从 sessionStorage 恢复菜单状态
-    function restoreMenuState() {
-        try {
-            const savedState = sessionStorage.getItem('menuState');
-            if (savedState) {
-                const menuState = JSON.parse(savedState);
-                console.log("尝试恢复菜单状态:", menuState);
-                
-                // 如果当前页面与保存时的页面类似，则恢复菜单状态
-                const isSamePage = (
-                    currentLevel === menuState.currentLevel || 
-                    currentPage === menuState.currentPage ||
-                    (currentLevel && currentLevel === menuState.currentLevel && currentSpecialty === menuState.currentSpecialty)
-                );
-                
-                if (isSamePage) {
-                    console.log("当前页面与保存的页面相似，恢复菜单状态");
-                    
-                    // 恢复基本级菜单状态
-                    if (basicMenuContent && menuState.basicMenuExpanded) {
-                        basicMenuContent.classList.add('expanded');
-                        basicMenuContent.style.display = 'block';
-                        const arrow = basicMenuToggle?.querySelector('.ri-arrow-down-s-line');
-                        if (arrow) arrow.style.transform = 'rotate(180deg)';
-                    }
-                    
-                    // 恢复提高级菜单状态
-                    if (advancedMenuContent && menuState.advancedMenuExpanded) {
-                        advancedMenuContent.classList.add('expanded');
-                        advancedMenuContent.style.display = 'block';
-                        const arrow = advancedMenuToggle?.querySelector('.ri-arrow-down-s-line');
-                        if (arrow) arrow.style.transform = 'rotate(180deg)';
-                    }
-                    
-                    // 恢复报告菜单状态
-                    if (reportMenuContent && menuState.reportMenuExpanded) {
-                        reportMenuContent.classList.add('expanded');
-                        reportMenuContent.style.display = 'block';
-                        const arrow = reportMenuToggle?.querySelector('.ri-arrow-down-s-line');
-                        if (arrow) arrow.style.transform = 'rotate(180deg)';
-                    }
-                    
-                    // 恢复专项计算菜单状态
-                    if (specialCalcMenuContent && menuState.specialCalcMenuExpanded) {
-                        specialCalcMenuContent.classList.add('expanded');
-                        specialCalcMenuContent.style.display = 'block';
-                        const arrow = specialCalcMenuToggle?.querySelector('.ri-arrow-down-s-line');
-                        if (arrow) arrow.style.transform = 'rotate(180deg)';
-                    }
-                    
-                    return true;
-                } else {
-                    console.log("当前页面与保存的页面不同，不恢复菜单状态");
-                }
-            }
-        } catch (error) {
-            console.error("恢复菜单状态时出错:", error);
-        }
-        return false;
-    }
-    
-    // 根据当前页面设置初始菜单状态
-    function setInitialMenuState() {
-        console.log("设置初始菜单状态:", "级别:", currentLevel, "页面:", currentPage);
-        
-        // 首先尝试恢复保存的菜单状态
-        if (restoreMenuState()) {
-            console.log("已从保存的状态恢复菜单");
-            return;
-        }
-        
-        // 确保所有菜单初始都是折叠状态
-        collapseOtherMenus("");
-        
-        // 如果没有保存的状态或恢复失败，根据当前页面设置菜单
-        if (currentLevel === '基本级' && basicMenuContent) {
-            console.log("展开基本级菜单");
-            basicMenuContent.classList.add('expanded');
-            basicMenuContent.style.display = 'block';
-            if (basicMenuToggle) {
-                const arrow = basicMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-        } else if (currentLevel === '提高级' && advancedMenuContent) {
-            console.log("展开提高级菜单");
-            advancedMenuContent.classList.add('expanded');
-            advancedMenuContent.style.display = 'block';
-            if (advancedMenuToggle) {
-                const arrow = advancedMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-        } else if (currentPage === 'report_table' && reportMenuContent) {
-            // 如果当前页面是报告导出相关页面，展开报告导出菜单
-            console.log("展开报告菜单");
-            reportMenuContent.classList.add('expanded');
-            reportMenuContent.style.display = 'block';
-            if (reportMenuToggle) {
-                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-        } else if ((currentPage === 'solar_calculator' || currentPage === 'green_materials' || currentPage === 'public_transport_analysis') && specialCalcMenuContent) {
-            // 如果当前页面是专项计算相关页面，展开专项计算菜单
-            console.log("展开专项计算菜单");
-            specialCalcMenuContent.classList.add('expanded');
-            specialCalcMenuContent.style.display = 'block';
-            if (specialCalcMenuToggle) {
-                const arrow = specialCalcMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-        }
-        
-        // 保存设置的菜单状态
-        saveMenuState();
-    }
-    
-    // 设置初始菜单状态
-    setInitialMenuState();
     
     // 为所有子菜单链接添加点击事件处理
     const allSubmenuItems = document.querySelectorAll('.submenu-item');
@@ -351,6 +352,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // 阻止事件冒泡，防止触发父菜单的折叠
             e.stopPropagation();
             
+            // 获取父菜单内容元素
+            const parentMenu = this.closest('.menu-content');
+            if (!parentMenu) {
+                console.log("未找到父级菜单");
+                return true;
+            }
+            
             // 检查是否有href属性且不是javascript:开头
             const href = this.getAttribute('href');
             if (href && !href.startsWith('javascript:')) {
@@ -359,30 +367,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 获取菜单项的层级和专业信息
                 const menuLevel = this.getAttribute('data-level') || 
-                                  (this.closest('.menu-content').id.includes('basic') ? '基本级' : 
-                                  this.closest('.menu-content').id.includes('advanced') ? '提高级' : '');
+                                  (parentMenu.id.includes('basic') ? '基本级' : 
+                                   parentMenu.id.includes('advanced') ? '提高级' : '');
                 
                 const menuSpecialty = this.getAttribute('data-specialty') || '';
                 
                 // 保存当前选中的菜单信息，用于页面加载后自动加载数据
                 if (menuLevel && menuSpecialty) {
                     console.log(`保存菜单信息: 级别=${menuLevel}, 专业=${menuSpecialty}`);
-                    sessionStorage.setItem('selectedMenuLevel', menuLevel);
-                    sessionStorage.setItem('selectedMenuSpecialty', menuSpecialty);
-                    
-                    // 如果页面已经加载完成并匹配当前选择，直接加载数据
-                    if (document.readyState === 'complete') {
-                        console.log('页面已加载完成，尝试直接加载数据');
-                        loadFormDataFromDatabase(menuLevel, menuSpecialty);
-                    }
+                    localStorage.setItem('selectedMenuLevel', menuLevel);
+                    localStorage.setItem('selectedMenuSpecialty', menuSpecialty);
                 }
                 
-                // 在导航前调用防止页面跳动的函数
-                preventPageJump();
+                // 清除所有菜单状态，仅保存当前父菜单
+                clearAllMenuStates();
+                localStorage.setItem(`menu_expanded_${parentMenu.id}`, 'true');
+                console.log(`仅保存父菜单状态: ${parentMenu.id}`);
                 
-                // 保存当前菜单状态
-                saveMenuState();
-                return;
+                // 在导航前调用防止页面跳动的函数，传入当前父菜单ID
+                preventPageJump(parentMenu.id);
+                
+                // 不阻止默认跳转
+                return true;
             }
             
             // 检查是否为报告导出子菜单下的项 - 这些按钮有onclick事件
@@ -392,8 +398,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 阻止默认行为，让onclick正常执行
                 e.preventDefault();
                 
-                // 保存当前菜单状态
-                saveMenuState();
+                // 保存当前菜单状态，仅保存当前父菜单
+                if (parentMenu) {
+                    clearAllMenuStates();
+                    localStorage.setItem(`menu_expanded_${parentMenu.id}`, 'true');
+                }
                 return;
             }
             
@@ -401,276 +410,90 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // 页面加载完成后尝试加载表单数据
-    document.addEventListener('DOMContentLoaded', function() {
-        // 从sessionStorage获取之前选择的菜单信息
-        const selectedLevel = sessionStorage.getItem('selectedMenuLevel');
-        const selectedSpecialty = sessionStorage.getItem('selectedMenuSpecialty');
+    // 页面加载时，根据之前保存的状态恢复菜单
+    function restoreMenusOnPageLoad() {
+        console.log("恢复菜单状态...");
         
-        // 检查当前页面是否与选择的菜单匹配
-        const currentLevel = document.body.getAttribute('data-level') || '';
-        const currentSpecialty = document.body.getAttribute('data-specialty') || '';
+        // 检查是否有菜单展开状态
+        let hasExpandedMenu = false;
         
-        if (selectedLevel && selectedSpecialty && 
-            (currentLevel === selectedLevel || !currentLevel) && 
-            (currentSpecialty === selectedSpecialty || !currentSpecialty)) {
-            console.log('页面加载完成，开始加载数据库数据');
-            // 等待页面完全渲染后再加载数据
-            setTimeout(() => {
-                loadFormDataFromDatabase(selectedLevel, selectedSpecialty);
-            }, 500);
+        // 首先折叠所有菜单
+        const allMenus = document.querySelectorAll('.menu-content');
+        allMenus.forEach(menu => {
+            menu.classList.remove('expanded');
+            menu.style.display = 'none';
+            
+            // 重置所有箭头
+            const toggleId = menu.id.replace('Content', 'Toggle');
+            const toggle = document.getElementById(toggleId);
+            if (toggle) {
+                const arrow = toggle.querySelector('.ri-arrow-down-s-line');
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+            }
+        });
+        
+        // 恢复各个菜单内容区域
+        const menuContents = document.querySelectorAll('.menu-content');
+        menuContents.forEach(menu => {
+            const isExpanded = localStorage.getItem(`menu_expanded_${menu.id}`) === 'true';
+            if (isExpanded) {
+                hasExpandedMenu = true;
+                menu.classList.add('expanded');
+                menu.style.display = 'block';
+                
+                // 更新对应菜单按钮的箭头
+                const toggleId = menu.id.replace('Content', 'Toggle');
+                const toggle = document.getElementById(toggleId);
+                if (toggle) {
+                    const arrow = toggle.querySelector('.ri-arrow-down-s-line');
+                    if (arrow) arrow.style.transform = 'rotate(180deg)';
+                }
+            }
+        });
+        
+        // 如果没有展开的菜单，检查URL参数是否有指定菜单
+        if (!hasExpandedMenu) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const menuParam = urlParams.get('menu');
+            
+            if (menuParam) {
+                const targetMenu = document.getElementById(menuParam + 'Content');
+                if (targetMenu) {
+                    targetMenu.classList.add('expanded');
+                    targetMenu.style.display = 'block';
+                    
+                    // 更新箭头
+                    const toggleId = targetMenu.id.replace('Content', 'Toggle');
+                    const toggle = document.getElementById(toggleId);
+                    if (toggle) {
+                        const arrow = toggle.querySelector('.ri-arrow-down-s-line');
+                        if (arrow) arrow.style.transform = 'rotate(180deg)';
+                    }
+                }
+            }
         }
+        
+        // 移除导航状态
+        document.body.classList.remove('navigating');
+    }
+    
+    // 页面加载完成后，恢复菜单状态
+    window.addEventListener('DOMContentLoaded', function() {
+        restoreMenusOnPageLoad();
     });
     
-    /**
-     * 从数据库加载表单数据
-     * @param {string} level - 级别（基本级/提高级）
-     * @param {string} specialty - 专业名称
-     */
-    function loadFormDataFromDatabase(level, specialty) {
-        console.log(`开始从数据库加载数据: 级别=${level}, 专业=${specialty}`);
-        
-        // 获取当前项目ID
-        const projectId = getCurrentProjectId();
-        if (!projectId) {
-            console.error('无法获取项目ID，数据加载失败');
-            return;
-        }
-        
-        // 获取当前项目标准
-        const standard = getCurrentProjectStandard() || '成都市标';
-        
-        // 准备请求数据
-        const requestData = {
-            project_id: projectId,
-            level: level,
-            specialty: specialty,
-            standard: standard
-        };
-        
-        // 发送API请求获取数据
-        fetch('/api/project_scores?' + new URLSearchParams({
-            project_id: projectId,
-            level: level,
-            specialty: specialty,
-            standard: standard
-        }))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP错误，状态码: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('获取到的数据:', data);
-            
-            if (!data.success) {
-                throw new Error(data.message || '获取数据失败');
-            }
-            
-            // 更新表单数据
-            updateFormWithData(data, level);
-        
-        })
-        .catch(error => {
-            console.error('加载数据出错:', error);
-            showToast(`加载数据失败: ${error.message}`, 'error');
-        });
-    }
-    
-    /**
-     * 更新表单数据
-     * @param {Object} data - 从服务器获取的数据
-     * @param {string} level - 级别（基本级/提高级）
-     */
-    function updateFormWithData(data, level) {
-        console.log('开始更新表单数据');
-        
-        // 获取表格中的所有行
-        const tableRows = document.querySelectorAll('tbody tr');
-        if (!tableRows.length) {
-            console.log('未找到表格行，可能页面还未完全加载');
-            return;
-        }
-        
-        // 从数据中提取评分信息
-        const scores = data.sample_scores || [];
-        const scoreMap = {};
-        
-        // 将数据整理成以条文号为键的映射
-        scores.forEach(score => {
-            scoreMap[score.clause_number] = {
-                is_achieved: score.is_achieved,
-                score: score.score,
-                technical_measures: score.technical_measures || ''
-            };
-        });
-        
-        console.log('整理后的数据映射:', scoreMap);
-        
-        // 更新表格数据
-        tableRows.forEach(row => {
-            // 获取条文号
-            const clauseCell = row.querySelector('td:first-child');
-            if (!clauseCell) return;
-            
-            const clauseNumber = clauseCell.textContent.trim();
-            const scoreData = scoreMap[clauseNumber];
-            
-            if (scoreData) {
-                console.log(`更新条文 ${clauseNumber} 的数据:`, scoreData);
-                
-                if (level === '基本级') {
-                    // 对于基本级，更新是否达标和技术措施
-                    const isAchievedSelect = row.querySelector('.is-achieved-select');
-                    const technicalMeasuresTextarea = row.querySelector('textarea[data-clause]');
-                    
-                    if (isAchievedSelect) {
-                        isAchievedSelect.value = scoreData.is_achieved;
-                    }
-                    
-                    if (technicalMeasuresTextarea) {
-                        technicalMeasuresTextarea.value = scoreData.technical_measures;
-                    }
-                } else if (level === '提高级') {
-                    // 对于提高级，更新得分和技术措施
-                    const scoreInput = row.querySelector('input[type="number"]');
-                    const technicalMeasuresTextarea = row.querySelector('textarea[data-clause]');
-                    
-                    if (scoreInput) {
-                        scoreInput.value = scoreData.score;
-                    }
-                    
-                    if (technicalMeasuresTextarea) {
-                        technicalMeasuresTextarea.value = scoreData.technical_measures;
-                    }
-                }
-            }
-        });
-        
-        console.log('表单数据更新完成');
-    }
-    
-    /**
-     * 显示提示消息
-     * @param {string} message - 消息内容
-     * @param {string} type - 消息类型（success/error/info/warning）
-     */
-    function showToast(message, type = 'info') {
-        // 检查是否已存在toast容器
-        let toastContainer = document.getElementById('toast-container');
-        
-        // 如果没有toast容器，创建一个
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.style.position = 'fixed';
-            toastContainer.style.top = '20px';
-            toastContainer.style.right = '20px';
-            toastContainer.style.zIndex = '9999';
-            document.body.appendChild(toastContainer);
-        }
-        
-        // 创建toast元素
-        const toast = document.createElement('div');
-        toast.className = `custom-toast ${type}`;
-        
-        // 设置图标
-        let icon = '';
-        switch (type) {
-            case 'success': icon = 'fa-check-circle'; break;
-            case 'error': icon = 'fa-times-circle'; break;
-            case 'warning': icon = 'fa-exclamation-triangle'; break;
-            default: icon = 'fa-info-circle';
-        }
-        
-        // 设置toast内容
-        toast.innerHTML = `
-            <div class="custom-toast-icon">
-                <i class="fas ${icon}"></i>
-            </div>
-            <div class="custom-toast-message">${message}</div>
-        `;
-        
-        // 添加到容器
-        toastContainer.appendChild(toast);
-        
-        // 3秒后自动移除
-        setTimeout(() => {
-            toast.style.animation = 'toast-out 0.3s ease-out forwards';
-            setTimeout(() => {
-                toastContainer.removeChild(toast);
-                if (toastContainer.children.length === 0) {
-                    document.body.removeChild(toastContainer);
-                }
-            }, 300);
-        }, 3000);
-    }
-    
-    // 强制修复菜单展开状态（延迟执行以确保页面完全加载）
-    setTimeout(function() {
-        console.log("开始检查并修复菜单状态");
-        
-        // 检查样式并强制修复
-        if (basicMenuContent && currentLevel === '基本级') {
-            console.log("强制展开基本级菜单");
-            basicMenuContent.classList.add('expanded');
-            basicMenuContent.style.display = 'block';
-            const arrow = basicMenuToggle?.querySelector('.ri-arrow-down-s-line');
-            if (arrow) arrow.style.transform = 'rotate(180deg)';
-        }
-        
-        if (advancedMenuContent && currentLevel === '提高级') {
-            console.log("强制展开提高级菜单");
-            advancedMenuContent.classList.add('expanded');
-            advancedMenuContent.style.display = 'block';
-            const arrow = advancedMenuToggle?.querySelector('.ri-arrow-down-s-line');
-            if (arrow) arrow.style.transform = 'rotate(180deg)';
-        }
-        
-        if (reportMenuContent) {
-            // 检查当前是否有报告相关页面（兼容report_table、dwg_export等不同页面）
-            if (currentPage === 'report_table' || currentPage === 'dwg_export') {
-                console.log("强制展开报告菜单");
-                reportMenuContent.classList.add('expanded');
-                reportMenuContent.classList.add('keep-open');
-                reportMenuContent.style.display = 'block';
-                const arrow = reportMenuToggle?.querySelector('.ri-arrow-down-s-line');
-                if (arrow) arrow.style.transform = 'rotate(180deg)';
-            }
-            
-            // 为报告菜单下的子菜单项保持一致的样式，确保它们不会被隐藏
-            const reportSubMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
-            reportSubMenuItems.forEach(item => {
-                // 保持原有的布局和样式
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.paddingLeft = '1rem';
-                item.style.paddingRight = '1rem';
-                item.style.paddingTop = '0.75rem';
-                item.style.paddingBottom = '0.75rem';
-                console.log("为报告子菜单项添加一致样式:", item.textContent.trim());
-            });
-        }
-        
-        if (specialCalcMenuContent && (currentPage === 'solar_calculator' || currentPage === 'green_materials' || currentPage === 'public_transport_analysis')) {
-            console.log("强制展开专项计算菜单");
-            specialCalcMenuContent.classList.add('expanded');
-            specialCalcMenuContent.style.display = 'block';
-            const arrow = specialCalcMenuToggle?.querySelector('.ri-arrow-down-s-line');
-            if (arrow) arrow.style.transform = 'rotate(180deg)';
-        }
-        
-        // 保存强制修复后的菜单状态
-        saveMenuState();
-        
-        console.log("菜单状态修复完成");
-    }, 300); // 延迟300ms执行
+    // 在页面完全加载后，再次检查和修复菜单状态
+    window.addEventListener('load', function() {
+        setTimeout(restoreMenusOnPageLoad, 50);
+    });
     
     // 在页面卸载前保存当前菜单状态
     window.addEventListener('beforeunload', function() {
-        saveMenuState();
+        // 页面卸载前不需要做额外操作，仅使用当前保存的状态
     });
+    
+    // 初始调用一次恢复菜单
+    restoreMenusOnPageLoad();
     
     console.log("menu.js加载完成");
 }); 

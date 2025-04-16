@@ -848,3 +848,34 @@ th {
   --tw-text-opacity: 1;
   color: rgb(147 51 234 / var(--tw-text-opacity));
 }
+
+/* 菜单图标固定尺寸和定位样式 - 防止图标区域抖动 */
+.submenu-item i, .menu-item i {
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    transform: translateZ(0) !important; /* 启用GPU加速 */
+    will-change: transform !important;
+}
+
+/* 菜单项整体的稳定样式 */
+.submenu-item, .menu-item {
+    position: relative !important;
+    transform: translateZ(0) !important;
+    backface-visibility: hidden !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+
+/* 修复子菜单内容区域 */
+.menu-content {
+    transition: none !important;
+    transform: translateZ(0) !important;
+}
+
+/* 页面过渡效果 */
+.menu-content.expanded {
+    display: block !important;
+}
