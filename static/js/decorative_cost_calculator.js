@@ -1,57 +1,4 @@
-
-window.ExportLoadingModal = window.ExportLoadingModal || {
-    show: function(options) {
-        console.log('ExportLoadingModal.show 被调用', options);
-        // 创建一个简单的模态框显示加载中
-        const modalDiv = document.createElement('div');
-        modalDiv.id = 'simple-export-loading-modal';
-        modalDiv.style.position = 'fixed';
-        modalDiv.style.top = '0';
-        modalDiv.style.left = '0';
-        modalDiv.style.width = '100%';
-        modalDiv.style.height = '100%';
-        modalDiv.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        modalDiv.style.display = 'flex';
-        modalDiv.style.justifyContent = 'center';
-        modalDiv.style.alignItems = 'center';
-        modalDiv.style.zIndex = '9999';
-        
-        const content = document.createElement('div');
-        content.style.backgroundColor = 'white';
-        content.style.padding = '20px';
-        content.style.borderRadius = '5px';
-        content.style.maxWidth = '400px';
-        content.style.textAlign = 'center';
-        
-        const title = document.createElement('h3');
-        title.textContent = options.title || '正在处理';
-        
-        const description = document.createElement('p');
-        description.textContent = options.description || '请稍候...';
-        
-        content.appendChild(title);
-        content.appendChild(description);
-        modalDiv.appendChild(content);
-        
-        document.body.appendChild(modalDiv);
-        
-        // 如果设置了自动超时
-        if (options.autoTimeout) {
-            setTimeout(() => {
-                this.hide();
-            }, options.autoTimeout);
-        }
-    },
-    hide: function() {
-        console.log('ExportLoadingModal.hide 被调用');
-        // 移除简单模态框
-        const modalDiv = document.getElementById('simple-export-loading-modal');
-        if (modalDiv && modalDiv.parentNode) {
-            modalDiv.parentNode.removeChild(modalDiv);
-        }
-    }
-};
-
+// 删除自定义的ExportLoadingModal定义，使用导入的组件
 
 document.addEventListener('DOMContentLoaded', function() {
     // 获取表格和按钮元素
@@ -368,12 +315,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 显示加载提示窗口
             try {
-                window.ExportLoadingModal.show({
+                ExportLoadingModal.show({
                     title: '正在生成计算书',
                     description: '请耐心等待，文档生成需要一点时间...',
-                    showTimer: false,
+                    showTimer: true,
                     showBackdrop: false,
-                    footerText: '您的文件即将准备就绪',
                     autoTimeout: 30000
                 });
             } catch (modalError) {
@@ -393,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 隐藏加载提示窗口
                 try {
-                    window.ExportLoadingModal.hide();
+                    ExportLoadingModal.hide();
                 } catch (modalError) {
                     console.error("隐藏导出加载模态框失败:", modalError);
                 }
@@ -419,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
-                a.download = (projectInfo.name || '装饰性构件造价') + '-装饰性构件造价比例计算书.docx';
+                a.download =  '装饰性构件造价比例计算书.docx';
                 document.body.appendChild(a);
                 a.click();
                 
@@ -432,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (error) {
                 // 隐藏加载提示窗口
                 try {
-                    window.ExportLoadingModal.hide();
+                    ExportLoadingModal.hide();
                 } catch (modalError) {
                     console.error("隐藏导出加载模态框失败:", modalError);
                 }

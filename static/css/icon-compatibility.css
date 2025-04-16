@@ -17,6 +17,8 @@
 .ri-file-list-3-line:before { content: "\f15c"; /* fa-file-alt */ }
 .ri-book-line:before { content: "\f02d"; /* fa-book */ }
 .ri-calculator-line:before { content: "\f1ec"; /* fa-calculator */ }
+.ri-money-dollar-circle-line:before { content: "\f155"; /* fa-dollar-sign */ }
+.ri-bus-line:before { content: "\f207"; /* fa-bus */ }
 .ri-search-line:before { content: "\f002"; /* fa-search */ }
 .ri-arrow-left-line:before { content: "\f060"; /* fa-arrow-left */ }
 .ri-save-line:before { content: "\f0c7"; /* fa-save */ }

@@ -93,3 +93,4 @@ __pycache__/
 static/reports/
 /static/temp/
 node_modules/
+uploads/
