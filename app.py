@@ -3812,6 +3812,54 @@ def get_user_project_permissions(project_id):
             'error': f'获取权限失败: {str(e)}'
         }), 500
 
+# 用户个人设置API
+@app.route('/api/user/profile', methods=['GET', 'POST'])
+def user_profile():
+    # 检查用户是否已登录
+    user_email = session.get('user_email')
+    if not user_email:
+        return jsonify({'success': False, 'message': '请先登录'}), 401
+    
+    # 查询用户信息
+    user = User.query.filter_by(email=user_email).first()
+    if not user:
+        return jsonify({'success': False, 'message': '用户不存在'}), 404
+    
+    if request.method == 'GET':
+        # 返回用户信息
+        return jsonify({
+            'success': True,
+            'user': user.to_dict()
+        })
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        
+        try:
+            # 更新用户信息
+            if 'nickname' in data:
+                user.nickname = data['nickname']
+            if 'gender' in data:
+                user.gender = data['gender']
+            if 'avatar_index' in data:
+                user.avatar_index = data['avatar_index']
+            
+            # 保存到数据库
+            db.session.commit()
+            
+            # 更新session中的昵称
+            session['nickname'] = user.nickname
+            
+            return jsonify({
+                'success': True,
+                'message': '个人信息更新成功',
+                'user': user.to_dict()
+            })
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"更新用户信息时出错: {str(e)}")
+            return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+
 if __name__ == '__main__':
     # 初始化数据库
     init_db()

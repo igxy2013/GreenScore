@@ -8,33 +8,33 @@
 <div class="user-menu" id="userMenu">
     <!-- 用户信息 -->
     <div class="flex items-center px-4 py-3 border-b border-gray-100">
-        <i class="fas fa-user-circle text-primary text-xl"></i>
-        <span class="ml-2 text-gray-700 font-medium">
-            {{ session.get('user_email', '未登录').split('@')[0] }}
+        <i class="fas fa-user-circle text-primary text-xl" id="userMenuAvatar"></i>
+        <span class="ml-3 text-gray-700 font-medium" id="userMenuName">
+            {{ session.get('nickname', session.get('user_email', '未登录').split('@')[0]) }}
         </span>
     </div>
     
-    <!-- 系统设置选项 -->
-    <div class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer hidden">
-        <i class="fas fa-cog text-gray-500"></i>
-        <span class="ml-2 text-gray-700">系统设置</span>
+    <!-- 个人设置选项 -->
+    <div id="userSettingsBtn" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
+        <i class="fas fa-cog text-gray-500 w-5 text-center"></i>
+        <span class="ml-2 text-gray-700">个人设置</span>
     </div>
     
     <!-- 用户指南选项 -->
     <a href="{{ url_for('user_guide') }}" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-        <i class="fas fa-book text-gray-500"></i>
+        <i class="fas fa-book text-gray-500 w-5 text-center"></i>
         <span class="ml-2 text-gray-700">用户使用指南</span>
     </a>
     
     <!-- 联系我们选项 -->
     <div id="contactUsBtn" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-        <i class="fas fa-paper-plane text-gray-500"></i>
+        <i class="fas fa-paper-plane text-gray-500 w-5 text-center"></i>
         <span class="ml-2 text-gray-700">联系我们</span>
     </div>
     
     <!-- 退出登录选项 -->
     <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer group">
-        <i class="fas fa-sign-out-alt text-gray-500 group-hover:text-red-500"></i>
+        <i class="fas fa-sign-out-alt text-gray-500 group-hover:text-red-500 w-5 text-center"></i>
         <span class="ml-2 text-gray-700 group-hover:text-red-500">退出登录</span>
     </a>
 </div>
@@ -85,7 +85,58 @@
     pointer-events: auto;
 }
 
-/* 联系我们模态框样式 */
+/* 联系我们和设置模态框共用样式 */
+.modal-base {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    padding: 1.5rem;
+}
+
+/* 头像选择样式 */
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.avatar-option {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.avatar-option:hover {
+    transform: scale(1.05);
+}
+
+.avatar-option.selected {
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+}
+
 .contact-modal {
     position: fixed;
     top: 0;
@@ -116,8 +167,332 @@ document.addEventListener('DOMContentLoaded', function() {
     const userIcon = document.getElementById('userIcon');
     const userMenu = document.getElementById('userMenu');
     const contactUsBtn = document.getElementById('contactUsBtn');
+    const userSettingsBtn = document.getElementById('userSettingsBtn');
+    const userMenuAvatar = document.getElementById('userMenuAvatar');
+    const userMenuName = document.getElementById('userMenuName');
     
     let contactModal = null;
+    let userSettingsModal = null;
+    let userInfo = {
+        nickname: "{{ session.get('nickname', session.get('user_email', '').split('@')[0]) }}",
+        gender: '保密',
+        avatar_index: 0
+    };
+    
+    // 预设头像数组
+    const avatars = [
+        '<i class="fas fa-user-circle text-primary text-3xl"></i>',
+        '<i class="fas fa-user-ninja text-indigo-500 text-3xl"></i>',
+        '<i class="fas fa-user-astronaut text-purple-500 text-3xl"></i>',
+        '<i class="fas fa-user-tie text-blue-500 text-3xl"></i>',
+        '<i class="fas fa-user-graduate text-green-500 text-3xl"></i>',
+        '<i class="fas fa-user-secret text-gray-700 text-3xl"></i>',
+        '<i class="fas fa-user-md text-red-500 text-3xl"></i>',
+        '<i class="fas fa-robot text-yellow-500 text-3xl"></i>'
+    ];
+    
+    // 获取用户信息
+    function fetchUserInfo() {
+        fetch('/api/user/profile')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    userInfo = data.user;
+                    updateUserDisplay();
+                }
+            })
+            .catch(error => {
+                console.error('获取用户信息失败:', error);
+            });
+    }
+    
+    // 更新用户显示
+    function updateUserDisplay() {
+        // 更新菜单中的用户名
+        if (userMenuName) {
+            userMenuName.textContent = userInfo.nickname;
+        }
+        
+        // 更新用户图标和菜单中的头像
+        updateAvatar(userInfo.avatar_index);
+    }
+    
+    // 更新头像显示
+    function updateAvatar(avatarIndex) {
+        const avatarIcon = avatars[avatarIndex].match(/<i class="([^"]+)"[^>]*><\/i>/);
+        const iconClass = avatarIcon ? avatarIcon[1] : "fas fa-user-circle text-primary";
+        
+        // 更新用户图标
+        if (userIcon) {
+            const iconElement = userIcon.querySelector('i');
+            if (iconElement) {
+                iconElement.className = iconClass + ' text-xl';
+            }
+        }
+        
+        // 更新菜单中的头像
+        if (userMenuAvatar) {
+            userMenuAvatar.className = iconClass + ' text-xl';
+        }
+    }
+    
+    // 创建个人设置模态框
+    function createUserSettingsModal() {
+        userSettingsModal = document.createElement('div');
+        userSettingsModal.className = 'modal-base';
+        
+        const modalContent = document.createElement('div');
+        modalContent.className = 'modal-content';
+        modalContent.onclick = function(e) {
+            e.stopPropagation();
+        };
+        
+        // 标题和关闭按钮
+        const header = document.createElement('div');
+        header.className = 'flex justify-between items-center mb-4';
+        
+        const title = document.createElement('h3');
+        title.className = 'text-xl font-bold';
+        title.textContent = '个人设置';
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'text-gray-500 hover:text-gray-700';
+        closeBtn.title = '关闭';
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.onclick = closeUserSettingsModal;
+        
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        
+        // 表单内容
+        const form = document.createElement('form');
+        form.className = 'space-y-4';
+        form.id = 'userSettingsForm';
+        
+        // 昵称设置
+        const nicknameGroup = document.createElement('div');
+        nicknameGroup.innerHTML = `
+            <label for="nickname" class="block text-sm font-medium text-gray-400 mb-1">昵称</label>
+            <input type="text" id="nickname" name="nickname" class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent text-gray-700">
+        `;
+        
+        // 性别设置
+        const genderGroup = document.createElement('div');
+        genderGroup.innerHTML = `
+            <label class="block text-sm font-medium text-gray-400 mb-1">性别</label>
+            <div class="flex space-x-4">
+                <label class="inline-flex items-center">
+                    <input type="radio" name="gender" value="male" class="form-radio text-primary">
+                    <span class="ml-2">男</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="gender" value="female" class="form-radio text-primary">
+                    <span class="ml-2">女</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" name="gender" value="other" class="form-radio text-primary">
+                    <span class="ml-2">保密</span>
+                </label>
+            </div>
+        `;
+        
+        // 头像设置
+        const avatarGroup = document.createElement('div');
+        avatarGroup.innerHTML = `
+            <label class="block text-sm font-medium text-gray-400 mb-1">选择头像</label>
+            <div class="avatar-grid" id="avatarGrid"></div>
+        `;
+        
+        form.appendChild(nicknameGroup);
+        form.appendChild(genderGroup);
+        form.appendChild(avatarGroup);
+        
+        // 底部按钮
+        const footer = document.createElement('div');
+        footer.className = 'mt-6 flex justify-end space-x-3';
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300';
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = '取消';
+        cancelBtn.onclick = closeUserSettingsModal;
+        
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90';
+        saveBtn.type = 'button';
+        saveBtn.textContent = '保存';
+        saveBtn.onclick = saveUserSettings;
+        
+        footer.appendChild(cancelBtn);
+        footer.appendChild(saveBtn);
+        
+        // 组装模态框
+        modalContent.appendChild(header);
+        modalContent.appendChild(form);
+        modalContent.appendChild(footer);
+        userSettingsModal.appendChild(modalContent);
+        
+        // 点击模态框背景关闭
+        userSettingsModal.onclick = closeUserSettingsModal;
+        
+        // 添加到body
+        document.body.appendChild(userSettingsModal);
+        
+        // 渲染头像选项
+        const avatarGrid = document.getElementById('avatarGrid');
+        if (avatarGrid) {
+            avatars.forEach((avatar, index) => {
+                const avatarOption = document.createElement('div');
+                avatarOption.className = 'avatar-option';
+                avatarOption.dataset.index = index;
+                avatarOption.innerHTML = avatar;
+                
+                // 检查是否是当前选中的头像
+                if (index === userInfo.avatar_index) {
+                    avatarOption.classList.add('selected');
+                }
+                
+                // 点击选择头像
+                avatarOption.addEventListener('click', function() {
+                    document.querySelectorAll('.avatar-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                });
+                
+                avatarGrid.appendChild(avatarOption);
+            });
+        }
+        
+        // 阻止页面滚动
+        document.body.style.overflow = 'hidden';
+        
+        // 设置表单默认值
+        const nicknameInput = document.getElementById('nickname');
+        if (nicknameInput) {
+            nicknameInput.value = userInfo.nickname;
+        }
+        
+        // 设置性别选择
+        const genderRadios = document.querySelectorAll('input[name="gender"]');
+        if (genderRadios.length > 0) {
+            // 默认选中"保密"
+            let selectedGender = 'other';
+            
+            // 如果用户有性别设置，则使用用户设置
+            if (userInfo.gender) {
+                selectedGender = userInfo.gender;
+            }
+            
+            // 设置选中状态
+            for (const radio of genderRadios) {
+                if (radio.value === selectedGender) {
+                    radio.checked = true;
+                    break;
+                }
+            }
+        }
+        
+        console.log('个人设置模态框已创建并打开');
+        return userSettingsModal;
+    }
+    
+    // 保存用户设置
+    function saveUserSettings() {
+        const nickname = document.getElementById('nickname').value;
+        const gender = document.querySelector('input[name="gender"]:checked').value;
+        const selectedAvatar = document.querySelector('.avatar-option.selected').dataset.index;
+        
+        // 显示保存中提示
+        const saveBtn = userSettingsModal.querySelector('button:last-child');
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '保存中...';
+        saveBtn.disabled = true;
+        
+        // 准备数据
+        const userData = {
+            nickname: nickname,
+            gender: gender,
+            avatar_index: parseInt(selectedAvatar)
+        };
+        
+        // 调用API保存到数据库
+        fetch('/api/user/profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新本地用户信息
+                userInfo = data.user;
+                
+                // 更新显示
+                updateUserDisplay();
+                
+                // 关闭模态框
+                closeUserSettingsModal();
+                
+                // 显示成功消息
+                showToast('个人信息保存成功');
+            } else {
+                // 显示错误消息
+                showToast('保存失败: ' + data.message, 'error');
+                
+                // 恢复保存按钮
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('保存用户信息失败:', error);
+            showToast('保存失败，请稍后重试', 'error');
+            
+            // 恢复保存按钮
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+        });
+    }
+    
+    // 显示提示消息
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'} shadow-lg z-[9999]`;
+        toast.textContent = message;
+        
+        document.body.appendChild(toast);
+        
+        // 3秒后自动消失
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 500);
+        }, 3000);
+    }
+    
+    // 显示个人设置模态框
+    function showUserSettingsModal() {
+        if (!userSettingsModal) {
+            userSettingsModal = createUserSettingsModal();
+        } else {
+            userSettingsModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    // 关闭个人设置模态框
+    function closeUserSettingsModal() {
+        if (userSettingsModal) {
+            userSettingsModal.style.display = 'none';
+            document.body.style.overflow = '';
+            console.log('个人设置模态框已关闭');
+        }
+    }
     
     // 创建联系我们模态框
     function createContactModal() {
@@ -243,6 +618,15 @@ document.addEventListener('DOMContentLoaded', function() {
             showContactModal();
         });
     }
+    
+    // 点击个人设置显示设置模态框
+    if (userSettingsBtn) {
+        userSettingsBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (userMenu) userMenu.classList.remove('active');
+            showUserSettingsModal();
+        });
+    }
 
     // 点击页面其他区域关闭菜单
     document.addEventListener('click', function(e) {
@@ -251,7 +635,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // 页面加载时获取用户信息
+    fetchUserInfo();
+    
     // 将关闭函数添加到全局作用域，以便其他地方可以调用
     window.closeContactModal = closeContactModal;
+    window.closeUserSettingsModal = closeUserSettingsModal;
+    window.updateUserDisplay = updateUserDisplay;
 });
 </script> 

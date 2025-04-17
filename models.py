@@ -152,6 +152,11 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_seen = db.Column(db.DateTime)  # 最后在线时间
     
+    # 添加个人信息字段
+    nickname = db.Column(db.String(50))  # 用户昵称
+    gender = db.Column(db.String(10))  # 性别
+    avatar_index = db.Column(db.Integer, default=0)  # 头像索引
+    
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
         
@@ -166,6 +171,19 @@ class User(UserMixin, db.Model):
         if not self.last_seen:
             return False
         return (datetime.utcnow() - self.last_seen).total_seconds() < 900  # 15分钟 = 900秒
+        
+    def to_dict(self):
+        """转换为字典表示"""
+        return {
+            'id': self.id,
+            'email': self.email,
+            'role': self.role,
+            'nickname': self.nickname or self.email.split('@')[0],
+            'gender': self.gender or '保密',
+            'avatar_index': self.avatar_index or 0,
+            'is_online': self.is_online(),
+            'last_seen': self.last_seen.strftime('%Y-%m-%d %H:%M:%S') if self.last_seen else None
+        }
 
 class InvitationCode(db.Model):
     __tablename__ = 'invitation_codes'

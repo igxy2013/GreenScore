@@ -58,12 +58,12 @@ function updateFormEditability() {
     if (role === '创建者' || permissions === '管理' || permissions === '编辑') {
         setFormReadOnly(false);
         // 添加权限提示
-        showPermissionIndicator(role, permissions, false);
+        // showPermissionIndicator(role, permissions, false);
     } else {
         // 其他情况设为只读
         setFormReadOnly(true);
         // 添加权限提示
-        showPermissionIndicator(role, permissions, true);
+        // showPermissionIndicator(role, permissions, true);
     }
 }
 
