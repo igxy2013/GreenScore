@@ -1,4 +1,6 @@
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/switchery/0.8.2/switchery.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/switchery/0.8.2/switchery.min.js"></script>
+    <script src="{{ url_for('static', filename='js/project_info.js') }}"></script>
     <!-- 自定义Toast组件 -->
     <div id="custom-toast-container" class="fixed bottom-4 right-4 z-[9999]"></div>
     <div>
@@ -9,8 +11,8 @@
         </button>
     </div>
     <!-- AI提取项目信息模态框 -->
-    <div id="aiExtractModal" class="modal-backdrop">
-        <div class="modal-content">
+    <div id="aiExtractModal" class="dashboard-modal-backdrop">
+        <div class="dashboard-modal-content">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold">AI提取项目信息</h3>
                 <button class="text-purple-300 hover:text-purple-100 p-1 rounded-full hover:bg-purple-900 transition-all" onclick="closeAiExtractModal()">
@@ -490,3 +492,21 @@
             </div>
         </div>
     </div>
+
+<!-- 项目信息表单的JavaScript -->
+<script>
+    // 确保与新类名兼容的显示/隐藏模态框函数
+    function showAiExtractModal() {
+        const modal = document.getElementById('aiExtractModal');
+        if (modal) {
+            modal.classList.add('show');
+        }
+    }
+    
+    function closeAiExtractModal() {
+        const modal = document.getElementById('aiExtractModal');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+</script>

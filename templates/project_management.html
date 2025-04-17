@@ -476,7 +476,7 @@
             <button id="closeCollaboratorsModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700" title="关闭">
                 <i class="fas fa-times text-xl"></i>
             </button>
-            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">管理项目协作者</h3>
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-center">管理项目成员</h3>
             <h4 id="collaboratorsProjectName" class="text-lg font-medium text-center mb-4"></h4>
             
             <div class="mb-4">
@@ -488,7 +488,7 @@
             
             <div class="mb-4">
                 <div class="flex justify-between items-center mb-2">
-                    <h5 class="text-base font-medium text-gray-800">项目协作者</h5>
+                    <h5 class="text-base font-medium text-gray-800">项目成员</h5>
                     <button id="refreshCollaboratorsBtn" class="text-primary hover:text-primary/80 text-sm">
                         <i class="fas fa-sync-alt mr-1"></i> 刷新
                     </button>
@@ -987,7 +987,7 @@
                                             data-project-id="${project.id}" 
                                             data-project-name="${project.name || ''}">
                                             <i class="fas fa-users text-purple-500 group-hover:text-purple-600 transition-colors"></i>
-                                            <span class="group-hover:text-purple-600 transition-colors">管理协作者</span>
+                                            <span class="group-hover:text-purple-600 transition-colors">管理项目成员</span>
                                         </button>
                                         ` : ''}
                                         ${!project.is_owner ? `
@@ -1612,14 +1612,14 @@
                                     <i class="fas fa-user"></i>
                                 </div>
                                 <div>
-                                    <p class="text-gray-800 font-medium">${data.project.creator.email}</p>
+                                    <p class="text-gray-800 font-medium">${data.project.creator.nickname || data.project.creator.email}</p>
                                     <p class="text-xs text-gray-500">创建者 · 管理权限</p>
                                 </div>
                             </div>
                         </div>
                     `;
                     
-                    // 获取普通协作者（排除创建者）
+                    // 获取普通成员（排除创建者）
                     const collaborators = data.project.collaborators.filter(c => c.role !== '创建者');
                     
                     if (collaborators.length > 0) {
@@ -1634,7 +1634,7 @@
                                                 <i class="fas fa-user"></i>
                                             </div>
                                             <div>
-                                                <p class="text-gray-800">${c.email}</p>
+                                                <p class="text-gray-800">${c.nickname || c.email}</p>
                                                 <p class="text-xs text-gray-500">
                                                     ${c.role} · ${c.permissions} · 
                                                     加入于 ${formatDate(c.joined_at)}
@@ -1658,7 +1658,7 @@
                                             <button class="px-2 py-1 text-sm text-red-500 border border-red-200 rounded-button hover:bg-red-50 remove-collaborator-btn"
                                                 data-collaborator-id="${c.id}"
                                                 data-project-id="${projectId}"
-                                                data-email="${c.email}">
+                                                data-email="${c.nickname || c.email}">
                                                 移除
                                             </button>
                                         </div>
@@ -1744,7 +1744,7 @@
                                 const projectId = this.getAttribute('data-project-id');
                                 const email = this.getAttribute('data-email');
                                 
-                                if (confirm(`确定要移除协作者 ${email} 吗？`)) {
+                                if (confirm(`确定要移除项目成员 ${email} 吗？`)) {
                                     try {
                                         const response = await fetch(`/api/projects/${projectId}/collaborators/${collaboratorId}`, {
                                             method: 'DELETE'
@@ -1753,14 +1753,14 @@
                                         const data = await response.json();
                                         
                                         if (response.ok && data.success) {
-                                            showNotification('协作者已移除', 'success');
+                                            showNotification('项目成员已移除', 'success');
                                             fetchProjectCollaborators(projectId);
                                         } else {
-                                            showNotification(data.error || '移除协作者失败', 'error');
+                                            showNotification(data.error || '移除项目成员失败', 'error');
                                         }
                                     } catch (error) {
-                                        console.error('移除协作者失败:', error);
-                                        showNotification('移除协作者失败，请稍后重试', 'error');
+                                        console.error('移除项目成员失败:', error);
+                                        showNotification('移除项目成员失败，请稍后重试', 'error');
                                     }
                                 }
                             });
@@ -1773,7 +1773,7 @@
                             });
                         });
                     } else {
-                        collaboratorsContainer.innerHTML = '<p class="text-gray-500 text-center py-2">暂无协作者</p>';
+                        collaboratorsContainer.innerHTML = '<p class="text-gray-500 text-center py-2">暂无项目成员</p>';
                     }
                 } else {
                     creatorContainer.innerHTML = `<p class="text-red-500 text-center py-2">${data.error || '获取创建者信息失败'}</p>`;

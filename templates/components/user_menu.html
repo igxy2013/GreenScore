@@ -1,7 +1,10 @@
 <!-- 用户菜单组件 -->
 <!-- 用户图标 -->
 <div class="user-icon" id="userIcon">
-    <i class="fas fa-user-circle text-primary text-xl"></i>
+    <i class="fas fa-user-circle text-white text-lg"></i>
+    <span class="ml-3 text-white font-medium truncate user-nickname" id="userIconName">
+        {{ session.get('nickname', session.get('user_email', '未登录').split('@')[0]) }}
+    </span>
 </div>
 
 <!-- 用户菜单，默认隐藏 -->
@@ -47,42 +50,26 @@
     left: 20px;
     bottom: 20px;
     z-index: 60;
-    width: 42px;
-    height: 42px;
-    background-color: white;
-    border-radius: 50%;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: auto;
+    max-width: 180px; /* 限制最大宽度 */
+    min-width: 46px;
+    height: 46px;
+    padding: 0 15px 0 12px;
+    background: #3176FF;
+    border-radius: 23px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 8px;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
-.user-icon:hover {
-    transform: scale(1.05);
-}
-
-.user-menu {
-    position: fixed;
-    left: 20px;
-    bottom: 72px;
-    z-index: 50;
-    background-color: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    width: 170px;
-    transition: all 0.3s ease;
-    transform-origin: bottom left;
-    opacity: 0;
-    transform: scale(0.95);
-    pointer-events: none;
-}
-
-.user-menu.active {
-    opacity: 1;
-    transform: scale(1);
-    pointer-events: auto;
+.user-icon i {
+    position: relative;
+    z-index: 2;
+    font-size: 1.25rem; /* 确保图标大小足够 */
+    display: block;
 }
 
 /* 联系我们和设置模态框共用样式 */
@@ -133,7 +120,7 @@
 }
 
 .avatar-option.selected {
-    border-color: #4F46E5;
+    border-color: #60A5FA;
     box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
 }
 
@@ -157,6 +144,57 @@
     width: 100%;
     max-width: 500px;
     padding: 1.5rem;
+}
+
+.user-nickname {
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.875rem;
+}
+
+/* 添加响应式调整 */
+@media (max-width: 640px) {
+    .user-icon {
+        max-width: 160px;
+    }
+    
+    .user-nickname {
+        max-width: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    .user-icon {
+        max-width: 46px; /* 在小屏幕上只显示图标 */
+    }
+    
+    .user-nickname {
+        display: none; /* 隐藏昵称 */
+    }
+}
+
+.user-menu {
+    position: fixed;
+    left: 20px;
+    bottom: 72px;
+    z-index: 50;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 170px;
+    transition: all 0.3s ease;
+    transform-origin: bottom left;
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+}
+
+.user-menu.active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
 }
 </style>
 
@@ -203,6 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('获取用户信息失败:', error);
+                // 静默失败，不进行额外操作
             });
     }
     
@@ -211,6 +250,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // 更新菜单中的用户名
         if (userMenuName) {
             userMenuName.textContent = userInfo.nickname;
+        }
+        
+        // 更新图标中的用户名
+        const userIconName = document.getElementById('userIconName');
+        if (userIconName) {
+            userIconName.textContent = userInfo.nickname;
         }
         
         // 更新用户图标和菜单中的头像
@@ -226,7 +271,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (userIcon) {
             const iconElement = userIcon.querySelector('i');
             if (iconElement) {
-                iconElement.className = iconClass + ' text-xl';
+                // 底部图标使用白色文本
+                iconElement.className = iconClass.replace("text-primary", "text-white") + ' text-lg';
             }
         }
         
@@ -607,6 +653,7 @@ document.addEventListener('DOMContentLoaded', function() {
         userIcon.addEventListener('click', function(e) {
             e.stopPropagation();
             userMenu.classList.toggle('active');
+            userIcon.classList.toggle('active');
         });
     }
 
@@ -632,6 +679,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
         if (userMenu && !userMenu.contains(e.target) && userIcon && !userIcon.contains(e.target)) {
             userMenu.classList.remove('active');
+            userIcon.classList.remove('active');
         }
     });
     

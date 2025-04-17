@@ -3343,6 +3343,7 @@ def get_project_collaborators(project_id):
                     'id': collab.id,
                     'user_id': user.id,
                     'email': user.email,
+                    'nickname': user.nickname or user.email.split('@')[0],  # 添加昵称，如果没有则使用邮箱前缀
                     'role': collab.role,
                     'permissions': collab.permissions,
                     'joined_at': collab.joined_at.strftime('%Y-%m-%d %H:%M:%S') if collab.joined_at else None,
@@ -3355,7 +3356,8 @@ def get_project_collaborators(project_id):
             'name': project.name,
             'creator': {
                 'id': creator.id if creator else None,
-                'email': creator.email if creator else None
+                'email': creator.email if creator else None,
+                'nickname': creator.nickname or creator.email.split('@')[0] if creator else None  # 添加创建者昵称
             },
             'collaborators': collaborator_list
         }

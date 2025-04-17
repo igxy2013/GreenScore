@@ -315,6 +315,7 @@ class ProjectCollaborator(db.Model):
             'project_id': self.project_id,
             'user_id': self.user_id,
             'user_email': self.user.email if self.user else None,
+            'nickname': self.user.nickname or self.user.email.split('@')[0] if self.user else None,
             'role': self.role,
             'permissions': self.permissions,
             'joined_at': self.joined_at.strftime('%Y-%m-%d %H:%M:%S') if self.joined_at else None,

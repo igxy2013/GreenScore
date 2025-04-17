@@ -906,7 +906,7 @@ function extractProjectInfo() {
     // 检查是否有编辑权限
     if (isFormReadOnly) {
         toast('您没有编辑权限，无法使用AI提取功能', 'error');
-        hideAiExtractModal(); // 关闭模态框
+        closeAiExtractModal(); // 关闭模态框
         return;
     }
     
@@ -1020,11 +1020,17 @@ window.extractProjectInfo = function() {
 
 // 应用提取的信息到表单
 function applyExtractedInfo() {
+    if (!lastExtractedData) {
+        toast('没有可应用的数据', 'error');
+        closeAiExtractModal(); // 关闭模态框
+        return;
+    }
+    
     try {
         // 检查是否有编辑权限
         if (isFormReadOnly) {
             toast('您没有编辑权限，无法应用提取的信息', 'error');
-            hideAiExtractModal(); // 关闭模态框
+            closeAiExtractModal(); // 关闭模态框
             return;
         }
         
