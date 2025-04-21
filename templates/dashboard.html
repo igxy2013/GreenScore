@@ -3,6 +3,8 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% include 'components/head_resources.html' %}
+    <!-- 错误处理脚本，确保在其他脚本之前加载 -->
+    <script src="{{ url_for('static', filename='js/fixed-error-handler.js') }}" defer></script>
     <!-- 评分汇总相关JavaScript -->
     <script src="{{ url_for('static', filename='js/score_helper.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/score_summary.js') }}" defer></script>
@@ -340,6 +342,9 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- 调试信息显示区域 -->
+    <div id="debug-info" style="display: none; position: fixed; bottom: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; font-size: 12px; z-index: 9999;"></div>
+    
     <!-- 引入用户菜单组件 -->
     {% include 'components/user_menu.html' %}
 
@@ -387,5 +392,33 @@
         </div>
     </div>
     {% include 'components/report_generators.html' %}
+    
+    <!-- 错误处理调试脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 显示调试区域
+            var debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                debugInfo.style.display = 'block';
+                debugInfo.textContent = '页面加载完成，开始检查脚本状态...';
+                
+                // 检查错误处理是否正常初始化
+                setTimeout(function() {
+                    if (typeof window.showErrorMessage === 'function') {
+                        debugInfo.textContent = '错误处理模块已正确加载';
+                        debugInfo.style.backgroundColor = 'rgba(0,128,0,0.7)';
+                        
+                        // 3秒后隐藏调试信息
+                        setTimeout(function() {
+                            debugInfo.style.display = 'none';
+                        }, 3000);
+                    } else {
+                        debugInfo.textContent = '错误处理模块加载失败！';
+                        debugInfo.style.backgroundColor = 'rgba(255,0,0,0.7)';
+                    }
+                }, 1000);
+            }
+        });
+    </script>
 </body>
 </html>

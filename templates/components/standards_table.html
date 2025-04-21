@@ -349,7 +349,37 @@
         }
         
         // 创建评分数据对象
-        const projectId = document.getElementById('project_id').value;
+        // 首先尝试从隐藏字段获取项目ID
+        let projectId = document.getElementById('project_id').value;
+        
+        // 如果项目ID为空，尝试从URL参数中获取
+        if (!projectId) {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                projectId = urlParams.get('project_id');
+                
+                // 如果URL中的参数经过了多次编码，尝试解码
+                if (projectId && projectId.includes('%')) {
+                    projectId = decodeURIComponent(projectId);
+                }
+                
+                console.log('从URL参数中获取项目ID:', projectId);
+            } catch(e) {
+                console.error('解析URL参数错误:', e);
+            }
+        }
+        
+        // 如果仍为空，提示错误并返回
+        if (!projectId) {
+            console.error('项目ID为空，无法保存评分数据');
+            if (typeof toast === 'function') {
+                toast('项目ID为空，无法保存评分数据', 'error');
+            } else {
+                alert('项目ID为空，无法保存评分数据');
+            }
+            return;
+        }
+        
         const scoreData = {
             project_id: projectId,
             level: '{{ current_level }}',
@@ -370,10 +400,21 @@
                 const isAchieved = select.value;
                 const technicalMeasures = document.querySelector(`textarea[data-clause="${clause}"]`).value;
                 
+                // 获取分类信息 - 查找该条文所在行
+                const row = select.closest('tr');
+                let category = '';
+                
+                // 尝试获取分类单元格
+                const categoryCell = row.querySelector('td:nth-child(2)');
+                if (categoryCell && categoryCell.querySelector('.category-tag')) {
+                    category = categoryCell.querySelector('.category-tag').textContent.trim();
+                }
+                
                 scoreData.scores.push({
                     clause_number: clause,
                     is_achieved: isAchieved,
-                    technical_measures: technicalMeasures
+                    technical_measures: technicalMeasures,
+                    category: category
                 });
             });
         } else if ('{{ current_level }}' === '提高级') {
@@ -409,14 +450,29 @@
                     console.warn(`未找到条文 ${clause} 的技术措施输入框`);
                 }
                 
+                // 获取分类信息 - 查找该条文所在行
+                const row = input.closest('tr');
+                let category = '';
+                
+                // 尝试获取分类单元格
+                const categoryCell = row.querySelector('td:nth-child(2)');
+                if (categoryCell && categoryCell.querySelector('.category-tag')) {
+                    category = categoryCell.querySelector('.category-tag').textContent.trim();
+                }
+                
+                // 判断是否达标 - 提高级默认为"是"
+                const isAchieved = parseFloat(score) > 0 ? "是" : "否";
+                
                 scoreData.scores.push({
                     clause_number: clause,
                     score: score,
                     max_score: maxScore,
-                    technical_measures: technicalMeasures
+                    technical_measures: technicalMeasures,
+                    category: category,
+                    is_achieved: isAchieved
                 });
                 
-                console.log(`添加评分数据: 条文=${clause}, 得分=${score}, 最大分值=${maxScore}`);
+                console.log(`添加评分数据: 条文=${clause}, 得分=${score}, 最大分值=${maxScore}, 分类=${category}, 是否达标=${isAchieved}`);
             });
         }
         
@@ -499,7 +555,27 @@
      * @param {boolean} forceRefresh - 是否强制刷新数据
      */
     function loadScores(forceRefresh = false) {
-        const projectId = document.getElementById('project_id').value;
+        // 首先尝试从项目ID隐藏字段获取
+        let projectId = document.getElementById('project_id').value;
+        
+        // 如果项目ID为空，尝试从URL参数中获取
+        if (!projectId) {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                projectId = urlParams.get('project_id');
+                
+                // 如果URL中的参数经过了多次编码，尝试解码
+                if (projectId && projectId.includes('%')) {
+                    projectId = decodeURIComponent(projectId);
+                }
+                
+                console.log('从URL参数中获取项目ID:', projectId);
+            } catch(e) {
+                console.error('解析URL参数错误:', e);
+            }
+        }
+        
+        // 如果仍为空，无法加载
         if (!projectId) {
             console.warn('项目ID为空，无法加载评分数据');
             return;
@@ -618,6 +694,19 @@
                         console.log(`评分数据加载完成: 成功 ${successCount} 项, 失败 ${failCount} 项`);
                     } else {
                         console.warn('没有找到保存的评分数据:', data.message || '未知错误');
+                        // 添加更详细的调试信息
+                        console.log('请求详情:', {
+                            url: url,
+                            projectId: projectId,
+                            level: '{{ current_level }}',
+                            specialty: '{{ current_specialty }}',
+                            responseData: data
+                        });
+                        
+                        // 显示友好的错误提示
+                        if (typeof toast === 'function') {
+                            toast('没有找到保存的评分数据，请先进行评分', 'warning');
+                        }
                     }
                 })
                 .catch(error => {

@@ -1,84 +1,56 @@
 /**
- * GreenScore系统前端错误处理
- * 用于捕获和处理资源加载错误，尝试本地加载并提交错误日志
+ * GreenScore系统前端错误处理 - 调试版本
+ * 用于捕获和处理资源加载错误
  */
 
+// 立即函数，避免污染全局命名空间
 (function() {
-    // 全局错误处理
+    console.log('初始化错误处理模块');
+    
+    // 全局错误处理 - 简化版
     window.addEventListener('error', function(event) {
-        console.error('JS错误被捕获:', event.error);
-        
-        // 记录错误到控制台
-        const errorDetails = {
-            message: event.message || '未知错误',
-            file: event.filename,
-            line: event.lineno,
-            column: event.colno,
-            stack: event.error ? event.error.stack : null,
-            timestamp: new Date().toISOString(),
-            page: window.location.href
-        };
-        
-        console.error('错误详情:', errorDetails);
-        
-        // 可选：向后端报告错误
-        // reportErrorToBackend(errorDetails);
+        console.log('捕获到全局错误:', event.message);
         
         // 防止错误冒泡
-        event.preventDefault();
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+        
+        return true; // 允许浏览器继续处理错误
     });
     
-    // 未捕获的Promise错误
+    // 未捕获的Promise错误 - 简化版
     window.addEventListener('unhandledrejection', function(event) {
-        console.error('未处理的Promise拒绝:', event.reason);
-        
+        console.log('捕获到未处理的Promise拒绝:', 
+            event && event.reason ? event.reason.toString() : '未知原因');
+            
         // 防止错误冒泡
-        event.preventDefault();
+        if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+        }
+        
+        return true; // 允许浏览器继续处理错误
     });
     
-    // 向后端报告错误的函数
-    function reportErrorToBackend(errorDetails) {
-        try {
-            fetch('/api/log_js_error', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(errorDetails)
-            }).catch(err => {
-                console.error('无法发送错误报告:', err);
-            });
-        } catch (e) {
-            console.error('发送错误报告时出错:', e);
-        }
-    }
-    
-    // 显示错误消息的辅助函数
+    // 简化版错误消息显示函数
     window.showErrorMessage = function(container, message) {
+        console.log('显示错误消息:', message);
+        
         if (!container) {
-            // 尝试找到一个合适的容器
-            container = document.querySelector('.main-content') || 
-                      document.querySelector('main') || 
-                      document.body;
+            container = document.body;
         }
         
-        const errorMsg = document.createElement('div');
-        errorMsg.className = 'alert alert-danger js-error-message';
-        errorMsg.style.padding = '10px';
-        errorMsg.style.margin = '10px 0';
-        errorMsg.style.backgroundColor = '#f8d7da';
-        errorMsg.style.color = '#721c24';
-        errorMsg.style.borderRadius = '4px';
-        errorMsg.style.border = '1px solid #f5c6cb';
-        errorMsg.textContent = message || '页面加载时发生错误，请刷新页面或联系管理员。';
+        var errorDiv = document.createElement('div');
+        errorDiv.style.color = 'red';
+        errorDiv.style.padding = '10px';
+        errorDiv.style.margin = '10px';
+        errorDiv.style.border = '1px solid red';
+        errorDiv.textContent = message || '发生错误';
         
-        // 添加到容器顶部
-        if (container.firstChild) {
-            container.insertBefore(errorMsg, container.firstChild);
-        } else {
-            container.appendChild(errorMsg);
-        }
+        container.insertBefore(errorDiv, container.firstChild);
         
-        return errorMsg;
+        return errorDiv;
     };
+    
+    console.log('错误处理模块初始化完成');
 })(); 

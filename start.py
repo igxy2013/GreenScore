@@ -4,6 +4,11 @@ import sys
 import logging
 
 # 配置日志
+# 确保logs文件夹存在
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+    logger.info("Created logs directory")
+
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
