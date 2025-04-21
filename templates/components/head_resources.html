@@ -31,7 +31,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/icon-compatibility.css') }}">
 
 <!-- 添加字体和图标预加载，防止菜单抖动 -->
-<link rel="preload" href="{{ url_for('static', filename='fonts/remixicon.woff2') }}" as="font" type="font/woff2" crossorigin>
+<link rel="prefetch" href="{{ url_for('static', filename='fonts/remixicon.woff2') }}" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="{{ url_for('static', filename='css/all.min.css') }}" as="style">
 <link rel="preload" href="{{ url_for('static', filename='css/tailwind.min.css') }}" as="style">
 

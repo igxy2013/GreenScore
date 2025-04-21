@@ -2156,8 +2156,11 @@ def api_get_score_summary():
         # 获取force_refresh参数
         force_refresh = request.args.get('force_refresh', 'false').lower() == 'true'
         
+        app.logger.info(f"收到评分汇总请求: 项目ID={project_id}, 强制刷新={force_refresh}")
+        
         # 如果没有提供项目ID，返回错误
         if not project_id:
+            app.logger.warning("评分汇总请求缺少项目ID参数")
             return jsonify({'error': '缺少项目ID参数'}), 400
         
         # 转换项目ID为整数
@@ -2166,13 +2169,11 @@ def api_get_score_summary():
         # 获取项目信息，确定评价标准
         project = get_project(project_id)
         if not project:
+            app.logger.warning(f"找不到ID为{project_id}的项目")
             return jsonify({'error': f'找不到ID为{project_id}的项目'}), 404
             
         project_standard = project.standard if project and project.standard else '成都市标'
-        
-        # 只在强制刷新时记录详细日志
-        if force_refresh:
-            app.logger.info(f"获取评分汇总数据: 项目ID={project_id}, 评价标准={project_standard}, 强制刷新={force_refresh}")
+        app.logger.info(f"项目标准: {project_standard}")
         
         # 缓存键
         cache_key = f"score_summary_{project_id}_{project_standard}"
@@ -2180,20 +2181,29 @@ def api_get_score_summary():
         # 如果强制刷新，清除缓存
         if force_refresh and cache.has(cache_key):
             cache.delete(cache_key)
-            if app.debug:
-                app.logger.info(f"清除评分汇总缓存: {cache_key}")
+            app.logger.info(f"清除评分汇总缓存: {cache_key}")
         
         # 获取评分汇总数据
+        app.logger.info(f"开始获取评分汇总数据")
         score_summary = get_score_summary(project_id, force_refresh=force_refresh)
+        app.logger.info(f"获取评分汇总数据完成")
         
         # 检查返回的评分汇总数据评价标准是否与项目标准一致（只在强制刷新时检查）
         if force_refresh and score_summary.get('project_standard') != project_standard:
-            if app.debug:
-                app.logger.warning(f"评分汇总数据的评价标准({score_summary.get('project_standard')})与项目评价标准({project_standard})不一致，重新获取")
+            app.logger.warning(f"评分汇总数据的评价标准({score_summary.get('project_standard')})与项目评价标准({project_standard})不一致，重新获取")
             cache.delete(cache_key)
             score_summary = get_score_summary(project_id, force_refresh=True)
         
+        # 检查数据是否完整
+        if 'specialty_scores' not in score_summary or not score_summary['specialty_scores']:
+            app.logger.warning(f"评分汇总数据不完整，专业得分为空")
+            if 'specialty_scores' not in score_summary:
+                score_summary['specialty_scores'] = {}
+            # 添加一个时间戳，帮助调试
+            score_summary['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
         # 返回评分汇总数据
+        app.logger.info(f"返回评分汇总数据: {len(str(score_summary))} 字节")
         return jsonify(score_summary)
     
     except ValueError as e:
@@ -2201,12 +2211,12 @@ def api_get_score_summary():
         return jsonify({'error': f'参数错误: {str(e)}'}), 400
     except Exception as e:
         app.logger.error(f"获取评分汇总数据失败: {str(e)}")
-        if app.debug:
-            app.logger.error(traceback.format_exc())
+        app.logger.error(traceback.format_exc())
         # 返回错误信息
         return jsonify({
             'error': '获取评分汇总数据失败',
-            'message': str(e) if app.debug else '服务器内部错误'
+            'message': str(e),
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }), 500
 # 获取评分汇总数据的函数
 def get_score_summary(project_id, force_refresh=False):

@@ -3,6 +3,22 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% include 'components/head_resources.html' %}
+    <!-- 评分汇总相关JavaScript -->
+    <script src="{{ url_for('static', filename='js/score_helper.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/score_summary.js') }}" defer></script>
+    <!-- 处理脚本加载错误 -->
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.filename && (
+                e.filename.includes('score_helper.js') || 
+                e.filename.includes('score_summary.js')
+            )) {
+                console.error('评分相关脚本加载失败:', e.message);
+                // 记录错误但不阻止其他脚本运行
+                document.querySelector('#debug-info')?.textContent = '评分相关脚本加载失败';
+            }
+        }, true);
+    </script>
     <!-- 项目信息页面样式 -->
     <style>
      /* 添加动画效果 */
@@ -322,26 +338,6 @@
          animation: fadeIn 0.3s ease-out;
      }
     </style>
-    <!-- 初始化脚本 -->
-<!-- <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 确保报告导出菜单子项保持可见并且样式一致
-        const reportMenuContent = document.getElementById('reportMenuContent');
-        if (reportMenuContent) {
-            const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
-            subMenuItems.forEach(item => {
-                // 保持原有的布局和样式
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.paddingLeft = '1rem';
-                item.style.paddingRight = '1rem';
-                item.style.paddingTop = '0.75rem';
-                item.style.paddingBottom = '0.75rem';
-                console.log("初始化: 保持报告子菜单项样式一致", item.textContent.trim());
-            });
-        }
-    });
-</script>  -->
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- 引入用户菜单组件 -->
