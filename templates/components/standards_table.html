@@ -22,14 +22,14 @@
 {% if current_level == '提高级' %}
 <!-- 在提高级页面加载浮动徽章组件 -->
 {% include 'components/floating_badge.html' %}
-
-<!-- 在提高级页面添加悬浮保存按钮 -->
+{% endif %}
+<!-- 在页面添加悬浮保存按钮 -->
 <div class="fixed bottom-8 right-8 z-50" id="floatingSaveBtn">
     <button class="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:bg-primary-dark transition-colors" title="保存评分信息">
         <i class="ri-save-line text-xl"></i>
     </button>
 </div>
-{% endif %}
+
 
 <div class="overflow-x-auto">
     {% if standards %}

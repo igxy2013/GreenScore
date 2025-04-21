@@ -718,15 +718,15 @@ function fillScoreTable(scores) {
         for (let i = 1; i <= 3; i++) {
             const cellText = row.querySelector(`td:nth-child(${i})`)?.textContent.trim();
             if (cellText && /^\d+\.\d+(\.\d+)*$/.test(cellText)) {
-                clauseNumber = cellText;
+                clauseNumber = cellText.trim();
                 break;
-            }
+            } 
         }
         
         if (!clauseNumber) return;
         
         // 查找匹配的评分数据
-        const scoreData = scores.find(s => s.clause_number === clauseNumber);
+        const scoreData = scores.find(s => s.clause_number.trim() === clauseNumber.trim());
         if (!scoreData) {
             console.log(`未找到条文 ${clauseNumber} 的评分数据`);
             return;
@@ -975,7 +975,7 @@ function collectScoreData() {
                 for (let i = 1; i <= 3; i++) {
                     const cellText = row.querySelector(`td:nth-child(${i})`)?.textContent.trim();
                     if (cellText && /^\d+\.\d+(\.\d+)*$/.test(cellText)) {
-                        clauseNumber = cellText;
+                        clauseNumber = cellText.trim();
                         break;
                     }
                 }
@@ -990,15 +990,15 @@ function collectScoreData() {
                 if (!technicalMeasuresTextarea) return;
                 
                 const contentText = row.querySelector('td:nth-child(3)')?.textContent.trim() || '';
-                let category = getCategory(contentText);
+                let category = getCategory(contentText).trim();
                 
                 scoreData.push({
                     project_name: document.getElementById('current_project_name')?.value || '',
-                    clause_number: clauseNumber,
-                    category: category,
-                    is_achieved: isAchievedSelect.value,
+                    clause_number: clauseNumber.trim(),
+                    category: category.trim(),
+                    is_achieved: isAchievedSelect.value.trim(),
                     score: '0',
-                    technical_measures: technicalMeasuresTextarea.value || ''
+                    technical_measures: technicalMeasuresTextarea.value.trim() || ''
                 });
             } 
             // 提高级
@@ -1008,7 +1008,7 @@ function collectScoreData() {
                 for (let i = 1; i <= 3; i++) {
                     const cellText = row.querySelector(`td:nth-child(${i})`)?.textContent.trim();
                     if (cellText && /^\d+\.\d+(\.\d+)*$/.test(cellText)) {
-                        clauseNumber = cellText;
+                        clauseNumber = cellText.trim();
                         break;
                     }
                 }
@@ -1024,7 +1024,7 @@ function collectScoreData() {
                 } else {
                     // 从整行文本判断分类
                     const rowText = row.textContent.trim();
-                    category = getCategory(rowText);
+                    category = getCategory(rowText).trim();
                 }
                 
                 // 查找得分输入框
@@ -1039,7 +1039,7 @@ function collectScoreData() {
                 
                 let score = '0';
                 if (scoreInput) {
-                    score = scoreInput.value || '0';
+                    score = scoreInput.value.trim() || '0';
                     // 查找可能在不同单元格的最大分值
                     let maxScore = null;
                     for (let i = 3; i <= 5; i++) {
@@ -1058,11 +1058,11 @@ function collectScoreData() {
                 
                 scoreData.push({
                     project_name: document.getElementById('current_project_name')?.value || '',
-                    clause_number: clauseNumber,
-                    category: category,
+                    clause_number: clauseNumber.trim(),
+                    category: category.trim(),
                     is_achieved: '是',
-                    score: score,
-                    technical_measures: technicalMeasuresTextarea?.value || ''
+                    score: score.trim(),
+                    technical_measures: technicalMeasuresTextarea?.value.trim() || ''
                 });
             }
         } catch (rowError) {
