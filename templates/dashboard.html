@@ -392,33 +392,5 @@
         </div>
     </div>
     {% include 'components/report_generators.html' %}
-    
-    <!-- 错误处理调试脚本 -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 显示调试区域
-            var debugInfo = document.getElementById('debug-info');
-            if (debugInfo) {
-                debugInfo.style.display = 'block';
-                debugInfo.textContent = '页面加载完成，开始检查脚本状态...';
-                
-                // 检查错误处理是否正常初始化
-                setTimeout(function() {
-                    if (typeof window.showErrorMessage === 'function') {
-                        debugInfo.textContent = '错误处理模块已正确加载';
-                        debugInfo.style.backgroundColor = 'rgba(0,128,0,0.7)';
-                        
-                        // 3秒后隐藏调试信息
-                        setTimeout(function() {
-                            debugInfo.style.display = 'none';
-                        }, 3000);
-                    } else {
-                        debugInfo.textContent = '错误处理模块加载失败！';
-                        debugInfo.style.backgroundColor = 'rgba(255,0,0,0.7)';
-                    }
-                }, 1000);
-            }
-        });
-    </script>
 </body>
 </html>

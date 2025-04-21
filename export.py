@@ -1141,9 +1141,24 @@ def generate_dwg(request_data):
             if 条文号:
                 # 添加条文号对应的所有信息
                 attributes[条文号] = str(得分)
-                attributes[f"{条文号}措施"] = 技术措施
-                attributes[f"{条文号}达标"] = 是否达标
-                attributes[f"{条文号}分类"] = 分类
+                attributes[f"{条文号}措施"] = 技术措施 if 技术措施 is not None else ""
+                attributes[f"{条文号}达标"] = 是否达标 if 是否达标 is not None else ""
+                attributes[f"{条文号}分类"] = 分类 if 分类 is not None else ""
+                
+        # 确保所有可能的条文号措施字段都存在，即使没有数据
+        # 通过查找所有键中包含"措施"的，如果没有找到对应的条文号，则创建一个为空的
+        all_keys = list(attributes.keys())
+        for key in all_keys:
+            if "措施" in key:
+                clause_num = key.replace("措施", "")
+                # 确保条文号存在
+                if clause_num not in attributes:
+                    attributes[clause_num] = ""
+                # 确保其他相关字段也存在
+                if f"{clause_num}达标" not in attributes:
+                    attributes[f"{clause_num}达标"] = ""
+                if f"{clause_num}分类" not in attributes:
+                    attributes[f"{clause_num}分类"] = ""
         
         # 生成输出文件路径
 

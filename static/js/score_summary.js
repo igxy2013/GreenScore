@@ -952,10 +952,14 @@ function saveScoreData() {
 // 辅助函数：收集评分数据
 function collectScoreData() {
     const scoreData = [];
-    const rows = document.querySelectorAll('table tbody tr');
-    let currentLevel = document.querySelector('.current_level')?.value || '';
+    const table = document.querySelector('table');
+    if (!table) {
+        console.error('未找到表格元素');
+        return [];
+    }
     
-    // 如果没有明确的当前级别标记，则通过表单元素判断
+    // 获取当前级别
+    let currentLevel = document.querySelector('.current_level')?.value || '';
     if (!currentLevel) {
         if (document.querySelector('select.is-achieved-select') || document.querySelector('select[name="is_achieved"]')) {
             currentLevel = '基本级';
@@ -964,109 +968,142 @@ function collectScoreData() {
         }
     }
     
-    console.log(`开始收集评分数据, 级别: ${currentLevel}, 行数: ${rows.length}`);
+    // 获取表头并建立列索引映射
+    const headerCells = Array.from(table.querySelectorAll('thead th'));
+    const headerMap = {};
     
-    rows.forEach((row, index) => {
+    headerCells.forEach((cell, index) => {
+        const headerText = cell.textContent.trim().toLowerCase();
+        headerMap[headerText] = index;
+        
+        // 处理同义词以增强匹配能力
+        if (headerText.includes('条文号')) headerMap['条文号'] = index;
+        if (headerText.includes('分类')) headerMap['分类'] = index;
+        if (headerText.includes('内容')) headerMap['条文内容'] = index;
+        if (headerText.includes('分值')) headerMap['分值'] = index;
+        if (headerText.includes('得分')) headerMap['得分'] = index;
+        if (headerText.includes('技术措施')) headerMap['技术措施'] = index;
+        if (headerText.includes('达标')) headerMap['是否达标'] = index;
+    });
+    
+    console.log('表头映射:', headerMap);
+    console.log(`开始收集评分数据, 级别: ${currentLevel}`);
+    
+    // 获取表格行
+    const rows = table.querySelectorAll('tbody tr');
+    console.log(`表格共有 ${rows.length} 行数据`);
+    
+    // 遍历每一行
+    rows.forEach((row, rowIndex) => {
         try {
-            // 基本级
-            if (currentLevel === '基本级') {
-                // 尝试获取条文号，可能在不同的单元格
-                let clauseNumber = null;
-                for (let i = 1; i <= 3; i++) {
-                    const cellText = row.querySelector(`td:nth-child(${i})`)?.textContent.trim();
-                    if (cellText && /^\d+\.\d+(\.\d+)*$/.test(cellText)) {
-                        clauseNumber = cellText.trim();
-                        break;
-                    }
-                }
-                if (!clauseNumber) return;
-                
-                const isAchievedSelect = row.querySelector('select.is-achieved-select') || row.querySelector('select[name="is_achieved"]');
-                if (!isAchievedSelect) return;
-                
-                const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures') || 
-                                                row.querySelector('textarea[placeholder*="技术措施"]') || 
-                                                row.querySelector('textarea');
-                if (!technicalMeasuresTextarea) return;
-                
-                const contentText = row.querySelector('td:nth-child(3)')?.textContent.trim() || '';
-                let category = getCategory(contentText).trim();
-                
-                scoreData.push({
-                    project_name: document.getElementById('current_project_name')?.value || '',
-                    clause_number: clauseNumber.trim(),
-                    category: category.trim(),
-                    is_achieved: isAchievedSelect.value.trim(),
-                    score: '0',
-                    technical_measures: technicalMeasuresTextarea.value.trim() || ''
-                });
-            } 
-            // 提高级
-            else if (currentLevel === '提高级') {
-                // 尝试获取条文号，可能在不同的单元格
-                let clauseNumber = null;
-                for (let i = 1; i <= 3; i++) {
-                    const cellText = row.querySelector(`td:nth-child(${i})`)?.textContent.trim();
-                    if (cellText && /^\d+\.\d+(\.\d+)*$/.test(cellText)) {
-                        clauseNumber = cellText.trim();
-                        break;
-                    }
-                }
-                if (!clauseNumber) return;
-                
-                // 尝试找到分类标签
-                let category = '';
-                const categoryElement = row.querySelector('td:nth-child(2) span') || row.querySelector('.category-tag');
-                
-                // 如果找不到直接的分类标签，尝试从行内文本推断
-                if (categoryElement) {
-                    category = categoryElement.textContent.trim();
+            const cells = row.querySelectorAll('td');
+            if (cells.length === 0) return; // 跳过空行
+            
+            // 使用表头映射获取各列数据
+            const clauseCell = cells[headerMap['条文号'] || 0];
+            if (!clauseCell) {
+                console.warn(`第 ${rowIndex + 1} 行没有条文号单元格`);
+                return;
+            }
+            
+            // 获取条文号
+            let clauseNumber = clauseCell.textContent.trim();
+            if (!clauseNumber) {
+                // 如果无法获取条文号，使用行号作为备用
+                clauseNumber = `Row_${rowIndex + 1}`;
+                console.log(`使用行号作为条文号: ${clauseNumber}`);
+            }
+            
+            // 获取分类
+            let category = '';
+                const categoryCell = cells[headerMap['分类']];
+                const categoryTag = categoryCell.querySelector('.category-tag');
+                if (categoryTag) {
+                    category = categoryTag.textContent.trim();
                 } else {
-                    // 从整行文本判断分类
-                    const rowText = row.textContent.trim();
-                    category = getCategory(rowText).trim();
+                    category = categoryCell.textContent.trim();
+                }
+
+            
+            // 基本级和提高级通用数据
+            const dataItem = {
+                project_name: document.getElementById('current_project_name')?.value || '',
+                clause_number: clauseNumber,
+                category: category,
+                technical_measures: '',
+                is_achieved: '是',
+                score: '0'
+            };
+            
+            // 根据级别获取特定数据
+            if (currentLevel === '基本级') {
+                // 获取是否达标
+                const isAchievedSelect = row.querySelector('select.is-achieved-select') || row.querySelector('select[name="is_achieved"]');
+                if (isAchievedSelect) {
+                    dataItem.is_achieved = isAchievedSelect.value.trim();
                 }
                 
-                // 查找得分输入框
-                const scoreInput = row.querySelector('input[name="score"]') || 
-                                  row.querySelector('input.score-input') || 
-                                  row.querySelector('input[type="number"]');
-                
-                // 查找技术措施文本框
+                // 获取技术措施
                 const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures') || 
-                                               row.querySelector('textarea[placeholder*="技术措施"]') || 
-                                               row.querySelector('textarea');
-                
+                                                row.querySelector('textarea[name="technical_measures"]');
+                if (technicalMeasuresTextarea) {
+                    dataItem.technical_measures = technicalMeasuresTextarea.value.trim();
+                }
+            } else if (currentLevel === '提高级') {
+                // 获取得分
                 let score = '0';
+                const scoreInput = row.querySelector('input[name="score"]') || 
+                                 row.querySelector('input.score-input') || 
+                                 row.querySelector('input[type="number"]');
+                
                 if (scoreInput) {
-                    score = scoreInput.value.trim() || '0';
-                    // 查找可能在不同单元格的最大分值
-                    let maxScore = null;
-                    for (let i = 3; i <= 5; i++) {
-                        const cellText = row.querySelector(`td:nth-child(${i})`)?.textContent.trim();
-                        if (cellText && !isNaN(parseFloat(cellText))) {
-                            maxScore = parseFloat(cellText);
-                            break;
+                    // 从输入框获取
+                    score = scoreInput.value.trim();
+                    if (score === '-' || score === '—' || score === '') {
+                        score = '0';
+                    } else if (!isNaN(parseFloat(score))) {
+                        score = score;
+                    } else {
+                        score = '0';
+                    }
+                } else {
+                    // 尝试从单元格内容获取
+                    const scoreIndex = headerMap['得分'] || 4;
+                    if (cells[scoreIndex]) {
+                        const scoreText = cells[scoreIndex].textContent.trim();
+                        if (scoreText === '-' || scoreText === '—') {
+                            score = '0';
+                        } else if (!isNaN(parseFloat(scoreText))) {
+                            score = parseFloat(scoreText).toString();
                         }
                     }
-                    
-                    if (maxScore !== null && parseFloat(score) > maxScore) {
-                        score = maxScore.toString();
-                        scoreInput.value = score;
-                    }
                 }
                 
-                scoreData.push({
-                    project_name: document.getElementById('current_project_name')?.value || '',
-                    clause_number: clauseNumber.trim(),
-                    category: category.trim(),
-                    is_achieved: '是',
-                    score: score.trim(),
-                    technical_measures: technicalMeasuresTextarea?.value.trim() || ''
-                });
+                // 保存得分
+                dataItem.score = score;
+                
+                // 获取技术措施
+                const technicalMeasuresTextarea = row.querySelector('textarea.technical-measures') || 
+                                               row.querySelector('textarea[name="technical_measures"]');
+                if (technicalMeasuresTextarea) {
+                    dataItem.technical_measures = technicalMeasuresTextarea.value.trim();
+                }
             }
+            
+            // 添加到收集的数据中
+            scoreData.push(dataItem);
+            
         } catch (rowError) {
-            console.error(`处理第 ${index+1} 行时出错:`, rowError);
+            console.error(`处理第 ${rowIndex + 1} 行时出错:`, rowError);
+            // 保存基本数据作为备用
+            scoreData.push({
+                project_name: document.getElementById('current_project_name')?.value || '',
+                clause_number: `Row_${rowIndex + 1}`,
+                category: '未知分类',
+                is_achieved: currentLevel === '基本级' ? '否' : '是',
+                score: '0',
+                technical_measures: ''
+            });
         }
     });
     
@@ -1074,29 +1111,6 @@ function collectScoreData() {
     return scoreData;
 }
 
-// 辅助函数：从条文内容提取分类
-function getCategory(content) {
-    // 定义分类关键词
-    const categoryKeywords = {
-        '安全耐久': ['安全', '耐久', '结构', '抗震', '防火', '防灾', '使用年限', '耐腐蚀', '安全隐患'],
-        '健康舒适': ['健康', '舒适', '空气', '噪声', '光环境', '温度', '湿度', '通风', '采光', '隔声', '日照'],
-        '生活便利': ['生活', '便利', '便捷', '交通', '无障碍', '服务设施', '信息', '智能化', '停车', '充电'],
-        '资源节约': ['资源', '节约', '节能', '节水', '节地', '节材', '能耗', '光伏', '热水', '水循环', '雨水', '绿色'],
-        '环境宜居': ['环境', '宜居', '绿化', '景观', '生态', '生物', '植被', '垃圾', '污染', '排放', '减排']
-    };
-    
-    // 检查内容中是否包含各分类的关键词
-    for (const [category, keywords] of Object.entries(categoryKeywords)) {
-        for (const keyword of keywords) {
-            if (content.includes(keyword)) {
-                return category;
-            }
-        }
-    }
-    
-    // 默认为"提高与创新"
-    return '提高与创新';
-}
 
 // 辅助函数：恢复按钮状态
 function restoreButton(button, originalText, originalHTML) {

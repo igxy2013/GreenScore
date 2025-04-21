@@ -1878,23 +1878,6 @@ def get_star_case_scores():
                 app.logger.error(f"查询星级案例出错: {str(e)}")
                 case_data = []
             
-            # 原始代码: 如果没有通过地点匹配到数据，则使用基本条件查询 - 已替换为上面的新代码
-            # if not location_matched_case_data:
-            #     # 标准查询
-            #     query = f"""
-            #         SELECT DISTINCT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
-            #         FROM 星级案例
-            #         WHERE {' AND '.join(query_conditions)}
-            #     """
-            #     
-            #     app.logger.info(f"执行标准查询: {query}")
-            #     result = db.session.execute(text(query), query_params)
-            #     case_data = result.fetchall()
-            # else:
-            #     # 使用基于地点匹配的数据
-            #     case_data = location_matched_case_data
-            #     app.logger.info("使用基于项目地点匹配的星级案例数据")
-
             if case_data:
                 app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
                 
