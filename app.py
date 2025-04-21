@@ -1187,7 +1187,7 @@ def calculator():
         if project:
             project_id = project.id
             
-    return render_template('calculator.html', current_project_id=project_id)
+    return render_template('components/calculator.html', current_project_id=project_id)
 
 @app.route('/decorative_cost_calculator')
 @login_required
@@ -1528,9 +1528,13 @@ def get_projects():
         # 获取该用户创建的所有项目
         own_projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
         
-        # 获取该用户作为协作者参与的所有项目
+        # 获取用户自己创建的项目ID列表，用于后面去重
+        own_project_ids = [project.id for project in own_projects]
+        
+        # 获取该用户作为协作者参与的所有项目，排除自己创建的项目
         collaborated_project_ids = db.session.query(ProjectCollaborator.project_id) \
                                   .filter_by(user_id=user_id) \
+                                  .filter(~ProjectCollaborator.project_id.in_(own_project_ids)) \
                                   .all()
         
         collaborated_project_ids = [pid[0] for pid in collaborated_project_ids]

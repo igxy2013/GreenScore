@@ -2,7 +2,7 @@
 <!-- 用户图标 -->
 <div class="user-icon" id="userIcon">
     <i class="fas fa-user-circle text-white text-lg"></i>
-    <span class="ml-3 text-white font-medium truncate user-nickname" id="userIconName">
+    <span class="text-white font-medium truncate user-nickname" id="userIconName">
         {{ session.get('nickname', session.get('user_email', '未登录').split('@')[0]) }}
     </span>
 </div>
@@ -12,7 +12,7 @@
     <!-- 用户信息 -->
     <div class="flex items-center px-4 py-3 border-b border-gray-100">
         <i class="fas fa-user-circle text-primary text-xl" id="userMenuAvatar"></i>
-        <span class="ml-3 text-gray-700 font-medium" id="userMenuName">
+        <span class="ml-2 text-gray-700 font-medium" id="userMenuName">
             {{ session.get('nickname', session.get('user_email', '未登录').split('@')[0]) }}
         </span>
     </div>
@@ -20,25 +20,25 @@
     <!-- 个人设置选项 -->
     <div id="userSettingsBtn" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
         <i class="fas fa-cog text-gray-500 w-5 text-center"></i>
-        <span class="ml-2 text-gray-700">个人设置</span>
+        <span class="ml-1 text-gray-700">个人设置</span>
     </div>
     
     <!-- 用户指南选项 -->
     <a href="{{ url_for('user_guide') }}" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
         <i class="fas fa-book text-gray-500 w-5 text-center"></i>
-        <span class="ml-2 text-gray-700">用户使用指南</span>
+        <span class="ml-1 text-gray-700">用户使用指南</span>
     </a>
     
     <!-- 联系我们选项 -->
     <div id="contactUsBtn" class="flex items-center px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
         <i class="fas fa-paper-plane text-gray-500 w-5 text-center"></i>
-        <span class="ml-2 text-gray-700">联系我们</span>
+        <span class="ml-1 text-gray-700">联系我们</span>
     </div>
     
     <!-- 退出登录选项 -->
     <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 hover:bg-gray-50 cursor-pointer group">
         <i class="fas fa-sign-out-alt text-gray-500 group-hover:text-red-500 w-5 text-center"></i>
-        <span class="ml-2 text-gray-700 group-hover:text-red-500">退出登录</span>
+        <span class="ml-1 text-gray-700 group-hover:text-red-500">退出登录</span>
     </a>
 </div>
 

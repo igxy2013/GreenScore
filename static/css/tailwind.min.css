@@ -180,6 +180,8 @@
 .mt-4 { margin-top: 1rem;}
 .mt-6 { margin-top: 1.5rem; }
 .mt-8 { margin-top: 2rem; }
+.ml-1 { margin-left: 0.25rem; }
+.ml-2 { margin-left: 0.50rem; }
 .ml-3 { margin-left: 0.75rem; }
 
 .w-4 { width: 1rem; }
