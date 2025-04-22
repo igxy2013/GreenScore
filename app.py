@@ -359,15 +359,13 @@ def login_required(f):
     return decorated_function
 
 def sync_score_tables(project_id):
-    """同步得分表和project_scores表的数据"""
+    """同步得分表数据（注：project_scores表已移除）"""
     if not project_id:
         logger.warning("项目ID不能为空，无法同步数据")
         return False
     
     try:
-        # 记录开始时间
-        start_time = datetime.now()
-        logger.info(f"开始同步项目ID={project_id}的得分表和project_scores表数据")
+        logger.info(f"项目ID={project_id}的数据同步功能已更新：project_scores表已移除，不再需要同步操作")
         
         # 获取项目信息
         project = get_project(project_id)
@@ -375,129 +373,11 @@ def sync_score_tables(project_id):
             logger.error(f"项目不存在: ID={project_id}")
             return False
             
-        project_standard = project.standard
-        
-        # 从得分表导入数据到project_scores表
-        count = 0
-        try:
-            result = db.session.execute(
-                text("SELECT COUNT(*) FROM `得分表` WHERE `项目ID` = :project_id"),
-                {"project_id": project_id}
-            )
-            count = result.scalar()
-            logger.info(f"得分表中项目ID={project_id}的记录数: {count}")
-        except Exception as e:
-            logger.error(f"查询得分表记录数时出错: {str(e)}")
-            
-        # 如果不存在记录，跳过同步
-        if count == 0:
-            logger.warning(f"得分表中不存在项目ID={project_id}的记录，跳过同步")
-            return False
-            
-        # 从得分表中获取数据，考虑缺失的列
-        try:
-            # 使用安全的查询方式
-            result = db.session.execute(
-                text("""
-                    SELECT 
-                        `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
-                        `分类`, `是否达标`, `得分`, `技术措施`, 
-                        COALESCE(`评价标准`, :default_standard) as `评价标准`
-                    FROM `得分表` 
-                    WHERE `项目ID` = :project_id
-                """),
-                {"project_id": project_id, "default_standard": project_standard}
-            )
-            
-            scores = result.fetchall()
-            logger.info(f"从得分表中获取到 {len(scores)} 条记录")
-            
-            if not scores:
-                logger.warning(f"得分表中不存在项目ID={project_id}的记录，跳过同步")
-                return False
-                
-            # 先删除project_scores表中的相关记录
-            try:
-                delete_result = db.session.execute(
-                    text("DELETE FROM project_scores WHERE project_id = :project_id"),
-                    {"project_id": project_id}
-                )
-                logger.info(f"已从project_scores表中删除 {delete_result.rowcount} 条记录")
-                db.session.flush()
-            except Exception as e:
-                logger.error(f"删除project_scores表记录时出错: {str(e)}")
-                db.session.rollback()
-                raise
-                
-            # 批量插入数据到project_scores表
-            inserted_count = 0
-            for score in scores:
-                try:
-                    # 解包得分数据，避免数组越界错误
-                    项目ID = score[0] if len(score) > 0 else project_id
-                    项目名称 = score[1] if len(score) > 1 else ""
-                    专业 = score[2] if len(score) > 2 else ""
-                    评价等级 = score[3] if len(score) > 3 else "基本级"
-                    条文号 = score[4] if len(score) > 4 else ""
-                    分类 = score[5] if len(score) > 5 else ""
-                    是否达标 = score[6] if len(score) > 6 else "是"
-                    得分 = score[7] if len(score) > 7 else 0
-                    技术措施 = score[8] if len(score) > 8 else ""
-                    评价标准 = score[9] if len(score) > 9 else project_standard
-                    
-                    # 转换得分为浮点数
-                    try:
-                        if 得分 and str(得分).strip():
-                            score_float = float(得分)
-                        else:
-                            score_float = 0
-                    except (ValueError, TypeError):
-                        logger.warning(f"无法将得分转换为浮点数: {得分}，使用默认值0")
-                        score_float = 0
-                    
-                    # 插入数据到project_scores表
-                    db.session.execute(
-                        text("""
-                            INSERT INTO project_scores (
-                                project_id, project_name, specialty, level, clause_number, 
-                                category, is_achieved, score, technical_measures, standard
-                            ) VALUES (
-                                :project_id, :project_name, :specialty, :level, :clause_number,
-                                :category, :is_achieved, :score, :technical_measures, :standard
-                            )
-                        """),
-                        {
-                            "project_id": 项目ID,
-                            "project_name": 项目名称,
-                            "specialty": 专业,
-                            "level": 评价等级,
-                            "clause_number": 条文号,
-                            "category": 分类,
-                            "is_achieved": 是否达标,
-                            "score": score_float,
-                            "technical_measures": 技术措施,
-                            "standard": 评价标准
-                        }
-                    )
-                    inserted_count += 1
-                except Exception as e:
-                    logger.error(f"插入project_scores表时出错: {str(e)}, 条文号: {条文号}")
-                    # 继续处理下一条记录
-                    
-            # 提交事务
-            db.session.commit()
-            end_time = datetime.now()
-            logger.info(f"同步完成，共插入 {inserted_count} 条记录，耗时: {(end_time - start_time).total_seconds()} 秒")
-            return True
-            
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"同步数据时出错: {str(e)}")
-            logger.error(traceback.format_exc())
-            return False
+        # 返回成功，表示处理完成
+        return True
             
     except Exception as e:
-        logger.error(f"同步得分表和project_scores表数据时出错: {str(e)}")
+        logger.error(f"处理项目数据时出错: {str(e)}")
         logger.error(traceback.format_exc())
         return False
 
@@ -2787,17 +2667,6 @@ def save_score():
                     {"project_id": project_id, "specialty": specialty, "level": level}
                 )
                 app.logger.info(f"删除项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
-                
-                # 同时删除project_scores表中的记录
-                delete_ps_query = """
-                DELETE FROM project_scores
-                WHERE project_id = :project_id AND specialty = :specialty AND level = :level
-                """
-                result = db.session.execute(
-                    text(delete_ps_query), 
-                    {"project_id": project_id, "specialty": specialty, "level": level}
-                )
-                app.logger.info(f"删除project_scores表中项目 {project_id} 的 {specialty} 专业 {level} 级别的评分记录: {result.rowcount} 条")
             
             # 如果提供了项目名称但没有项目ID，先删除该项目名称该专业该级别的所有评分记录
             elif project_name:
@@ -2856,37 +2725,6 @@ def save_score():
                             "standard": standard
                         }
                     )
-                    
-                    # 同时插入到project_scores表
-                    if project_id:
-                        # 尝试将得分转换为浮点数
-                        try:
-                            if score and score.strip():
-                                score_float = float(score)
-                            else:
-                                score_float = 0
-                        except (ValueError, TypeError):
-                            score_float = 0
-                        
-                        insert_ps_query = """
-                        INSERT INTO project_scores (
-                            project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures
-                        ) VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
-                        """
-                        
-                        db.session.execute(
-                            text(insert_ps_query),
-                            {
-                                "project_id": project_id,
-                                "level": level,
-                                "specialty": specialty,
-                                "clause_number": clause_number,
-                                "category": category,
-                                "is_achieved": is_achieved,
-                                "score_float": score_float,
-                                "technical_measures": technical_measures
-                            }
-                        )
                     
                     insert_count += 1
                 except Exception as insert_error:
