@@ -115,7 +115,7 @@
                 {% elif current_level == '提高级' %}
                 <td class="px-6 py-4 whitespace-nowrap text-base text-gray-700">
                     {% if standard.分值 == '—' %}
-                    <span class="text-gray-500">—</span>
+                    <input type="text" name="score" data-clause="{{ standard.条文号 }}" data-maxscore="0" value="—" class="w-full rounded bg-gray-100 text-gray-500 cursor-not-allowed" disabled readonly>
                     {% else %}
                     <input type="number" name="score" data-clause="{{ standard.条文号 }}" data-maxscore="{{ standard.分值 }}" 
                            class="w-full rounded focus:border-primary score-input" 
@@ -333,6 +333,35 @@
     });
     
     /**
+     * 获取条文的分类
+     * @param {HTMLElement} element - 与条文相关的DOM元素
+     * @return {string} 条文分类
+     */
+    function getCategoryForClause(element) {
+        try {
+            // 尝试获取条文所在行
+            const row = element.closest('tr');
+            if (!row) return '';
+            
+            // 尝试获取分类单元格
+            const categoryCell = row.querySelector('td:nth-child(2)');
+            if (!categoryCell) return '';
+            
+            // 尝试获取分类标签
+            const categoryTag = categoryCell.querySelector('.category-tag');
+            if (categoryTag) {
+                return categoryTag.textContent.trim();
+            }
+            
+            // 如果没有标签，直接获取单元格内容
+            return categoryCell.textContent.trim();
+        } catch (error) {
+            console.warn('获取条文分类出错:', error);
+            return '';
+        }
+    }
+    
+    /**
      * 保存评分信息
      */
     function saveScores() {
@@ -396,9 +425,9 @@
             console.log(`找到 ${selects.length} 个基本级选择框`);
             
             selects.forEach(select => {
-                const clause = select.dataset.clause;
+                const clause = select.dataset.clause.trim(); // 修剪条文号，去除多余空格
                 const isAchieved = select.value;
-                const technicalMeasures = document.querySelector(`textarea[data-clause="${clause}"]`).value;
+                const technicalMeasures = document.querySelector(`textarea[data-clause="${select.dataset.clause}"]`).value.trim();
                 
                 // 获取分类信息 - 查找该条文所在行
                 const row = select.closest('tr');
@@ -423,12 +452,26 @@
             console.log(`找到 ${scoreInputs.length} 个提高级输入框`);
             
             scoreInputs.forEach(input => {
-                const clause = input.dataset.clause;
+                const clause = input.dataset.clause.trim(); // 修剪条文号，去除多余空格
                 const maxScore = input.dataset.maxscore;
                 let score = input.value.trim();
                 
                 // 如果没有填写得分，默认为0
                 if (score === '') score = '0';
+                
+                // 如果分值为"—"，则特殊处理
+                if (score === '—') {
+                    // 对于分值为"—"的条目，我们记录特殊值
+                    scoreData.scores.push({
+                        clause_number: clause, // 使用修剪后的条文号
+                        score: '—',
+                        max_score: '—',
+                        technical_measures: '',
+                        category: getCategoryForClause(input),
+                        is_achieved: '不参评'
+                    });
+                    return; // 跳过后续处理
+                }
                 
                 // 验证得分是否超过最大值
                 if (parseFloat(score) > parseFloat(maxScore)) {
@@ -441,11 +484,11 @@
                     return;
                 }
                 
-                const textarea = document.querySelector(`textarea[data-clause="${clause}"]`);
+                const textarea = document.querySelector(`textarea[data-clause="${input.dataset.clause}"]`);
                 let technicalMeasures = '';
                 
                 if (textarea) {
-                    technicalMeasures = textarea.value;
+                    technicalMeasures = textarea.value.trim(); // 修剪技术措施文本
                 } else {
                     console.warn(`未找到条文 ${clause} 的技术措施输入框`);
                 }
