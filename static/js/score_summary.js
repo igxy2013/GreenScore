@@ -1,11 +1,6 @@
 // 项目ID缓存
 let cachedProjectId = null;
 
-/**
- * 评分辅助功能
- * 以下函数从score_helper.js整合而来，处理评分级别和专业类型的自动检测
- */
-
 // 页面加载时检查并添加必要的隐藏字段
 document.addEventListener('DOMContentLoaded', function() {
     // 检查并添加级别和专业隐藏字段
@@ -231,16 +226,16 @@ function initializeScoreSummary() {
     
     if (isStandardsPage) {
         console.log('当前是标准列表页面，加载已保存的评分数据');
-        loadSavedScores();
+        loadScores();
         
         // 绑定保存按钮事件
-        const saveButtons = document.querySelectorAll('.save-score-btn, #saveScoreBtn, button[onclick*="save"]');
+        const saveButtons = document.querySelectorAll('.save-score-btn, #saveScoresBtn, button[onclick*="save"]');
         if (saveButtons.length > 0) {
             saveButtons.forEach(btn => {
                 // 移除可能已存在的事件处理程序
-                btn.removeEventListener('click', saveScoreData);
+                btn.removeEventListener('click', saveScores);
                 // 添加新的事件处理程序
-                btn.addEventListener('click', saveScoreData);
+                btn.addEventListener('click', saveScores);
                 console.log('已为保存按钮绑定事件:', btn);
             });
         } else {
@@ -251,7 +246,7 @@ function initializeScoreSummary() {
                 saveBtn.id = 'autoAddedSaveBtn';
                 saveBtn.className = 'px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 fixed bottom-4 right-4 shadow-lg';
                 saveBtn.innerHTML = '<i class="ri-save-line mr-1"></i> 保存评分';
-                saveBtn.addEventListener('click', saveScoreData);
+                saveBtn.addEventListener('click', saveScores);
                 containerElement.appendChild(saveBtn);
                 console.log('已创建并添加保存按钮');
             }
