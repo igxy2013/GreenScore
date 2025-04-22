@@ -10,7 +10,6 @@
     <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='image/greenscore-lg.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
-        <!-- 使用Font Awesome图标库 -->
     <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
 
     <style>
@@ -105,11 +104,12 @@
     .table-container table th:nth-child(5),
     .table-container table th:nth-child(6) {
         width: 10%;  /* 其他列宽度 */
+        
     }
 
     .table-container table th:last-child {
         width: 20%;  /* 操作列宽度 */
-        min-width: 250px;
+        min-width: 100px;
     }
 
     /* 确保文本溢出时显示省略号 */
@@ -123,8 +123,8 @@
     /* 修改最后一列（操作列）的样式 */
     .table-container td:last-child {
         position: relative;
-        min-width: 250px;
-        width: 25%;
+        min-width: 100px;
+        width: 20%;
         padding-right: 1rem;
     }
 
@@ -234,11 +234,11 @@
                     </select>
                 </div>
                 
-                <div class="relative w-full overflow-x-auto max-h-[500px] overflow-y-auto table-container">
+                <div class="relative w-full overflow-x-auto max-h-[500px] overflow-y-auto table-container pl-0">
                     <table class="w-full table-auto divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">项目名称</th>
+                                <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider ">项目名称</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">目标星级</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">建筑类型</th>
                                 <th class="px-6 py-3 text-left text-sm font-bold uppercase tracking-wider">评价标准</th>
