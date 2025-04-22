@@ -557,9 +557,9 @@ function executeSQLPromise(sql) {
  * @param {string} clauseNumber - 条文编号
  * @param {number} score - 得分
  * @param {number} projectId - 项目ID，默认为当前项目
- * @param {boolean} isAchieved - 是否达标，默认为true
+ * @param {boolean} isAchieved - 是否达标，默认为达标
  */
-function updateScoreWithSQL(clauseNumber, score, projectId, isAchieved = true) {
+function updateScoreWithSQL(clauseNumber, score, projectId, isAchieved = '达标') {
     if (!clauseNumber || score === undefined) {
         alert('缺少必要参数: clauseNumber 或 score');
         return;
@@ -905,4 +905,276 @@ function getCurrentProjectStandard() {
     
     // 默认返回成都市标
     return '成都市标';
+}
+
+/**
+ * 获取当前专业
+ * @returns {string} 当前专业
+ */
+function getCurrentSpecialty() {
+    // 从URL参数获取
+    const urlParams = new URLSearchParams(window.location.search);
+    const specialty = urlParams.get('specialty');
+    if (specialty) {
+        return specialty;
+    }
+    
+    // 尝试从页面元素获取
+    const specialtyElement = document.getElementById('current-specialty');
+    if (specialtyElement) {
+        return specialtyElement.value || '建筑';
+    }
+    
+    return '建筑';
+}
+
+/**
+ * 获取当前评价等级
+ * @returns {string} 当前评价等级
+ */
+function getCurrentLevel() {
+    // 从URL参数获取
+    const urlParams = new URLSearchParams(window.location.search);
+    const level = urlParams.get('level');
+    if (level) {
+        return level;
+    }
+    
+    // 尝试从页面元素获取
+    const levelElement = document.getElementById('current-level');
+    if (levelElement) {
+        return levelElement.value || '提高级';
+    }
+    
+    return '提高级';
+}
+
+/**
+ * 处理条文之间的依赖关系
+ * @param {string} sourceClauseNumber - 源条文号（触发条件的条文）
+ * @param {string} targetClauseNumber - 目标条文号（被影响的条文）
+ * @param {string} condition - 条件（如 'score > 0'）
+ * @param {string} action - 要执行的操作（如 'set_achieved'）
+ * @param {number} projectId - 项目ID，默认为当前项目
+ * @returns {Promise} - 返回Promise对象
+ */
+function handleClauseDependency(sourceClauseNumber, targetClauseNumber, condition, action, projectId) {
+    if (!sourceClauseNumber || !targetClauseNumber || !condition || !action) {
+        console.error('处理条文依赖关系时缺少必要参数');
+        return Promise.reject(new Error('缺少必要参数'));
+    }
+    
+    // 获取当前项目ID
+    if (!projectId) {
+        projectId = getCurrentProjectId();
+    }
+    
+    // 如果仍然没有项目ID，使用默认值
+    if (!projectId) {
+        const projectIdElement = document.getElementById('project_id');
+        if (projectIdElement) {
+            projectId = projectIdElement.value;
+        } else {
+            projectId = 1;
+        }
+    }
+    
+    // 日志记录
+    console.log(`检查条文依赖: 源条文=${sourceClauseNumber}, 目标条文=${targetClauseNumber}, 条件=${condition}, 操作=${action}, 项目ID=${projectId}`);
+    
+    // 获取当前项目标准、专业和评价等级
+    const standard = getCurrentProjectStandard() || '成都市标';
+    const specialty = getCurrentSpecialty() || '建筑专业';
+    const level = getCurrentLevel() || '提高级';
+    
+    console.log(`当前项目标准: ${standard}, 专业: ${specialty}, 评价等级: ${level}`);
+    
+    // 直接使用setScore函数来更新目标条文，简化流程
+    // 首先查询源条文的得分 
+    return getScoreByClauseNumber(sourceClauseNumber, projectId)
+        .then(sourceResult => {
+            console.log(`源条文 ${sourceClauseNumber} 查询结果:`, sourceResult);
+            
+            // 获取源条文得分
+            const sourceScore = parseFloat(sourceResult.score) || 0;
+            console.log(`源条文 ${sourceClauseNumber} 得分: ${sourceScore}`);
+            
+            // 解析条件
+            let conditionMet = false;
+            if (condition === 'score > 0' && sourceScore > 0) {
+                conditionMet = true;
+            } else if (condition === 'score = 0' && sourceScore === 0) {
+                conditionMet = true;
+            } else if (condition.startsWith('score >= ')) {
+                const threshold = parseFloat(condition.replace('score >= ', ''));
+                conditionMet = sourceScore >= threshold;
+            }
+            
+            console.log(`条件 "${condition}" 是否满足: ${conditionMet}`);
+            
+            // 如果条件不满足，直接返回
+            if (!conditionMet) {
+                console.log(`条文 ${sourceClauseNumber} 不满足条件 ${condition}，不需更新目标条文`);
+                return false;
+            }
+            
+            // 根据操作类型执行相应的更新
+            if (action === 'set_achieved') {
+                // 使用updateDatabaseScore函数直接更新目标条文得分和达标状态
+                // 注意：我们不需要先查询目标条文，直接设置即可
+                
+                // 准备请求参数
+                const requestData = {
+                    project_id: projectId,
+                    standard: standard,
+                    clause_number: targetClauseNumber,
+                    specialty: specialty,
+                    level: level,
+                    category: '资源节约',
+                    is_achieved: 'true',
+                    score: '0',
+                    technical_measures: `由条文 ${sourceClauseNumber} 自动标记为达标 [${new Date().toLocaleString()}]`
+                };
+                
+                console.log('即将发送的更新请求数据:', requestData);
+                
+                // 直接发起请求更新
+                return fetch('/api/update_score_direct', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => {
+                    console.log(`更新请求状态码: ${response.status}`);
+                    
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('更新失败响应内容:', text);
+                            throw new Error(`更新目标条文失败: HTTP错误 ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(updateResult => {
+                    console.log('更新结果:', updateResult);
+                    
+                    if (updateResult.success) {
+                        console.log(`目标条文 ${targetClauseNumber} 已根据条文 ${sourceClauseNumber} 更新成功`);
+                        return true;
+                    } else {
+                        console.error(`更新目标条文失败: ${updateResult.message}`);
+                        throw new Error(`更新目标条文失败: ${updateResult.message}`);
+                    }
+                });
+            } else if (action.startsWith('set_score_')) {
+                // 设置目标条文的得分
+                const score = action.replace('set_score_', '');
+                
+                // 准备请求参数
+                const requestData = {
+                    project_id: projectId,
+                    standard: standard,
+                    clause_number: targetClauseNumber,
+                    specialty: specialty,
+                    level: level,
+                    category: '资源节约',
+                    is_achieved: 'true',
+                    score: score,
+                    technical_measures: `由条文 ${sourceClauseNumber} 自动设置得分 [${new Date().toLocaleString()}]`
+                };
+                
+                console.log('即将发送的更新请求数据:', requestData);
+                
+                // 直接发起请求更新
+                return fetch('/api/update_score_direct', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => {
+                    console.log(`更新请求状态码: ${response.status}`);
+                    
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('更新失败响应内容:', text);
+                            throw new Error(`更新目标条文失败: HTTP错误 ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(updateResult => {
+                    console.log('更新结果:', updateResult);
+                    
+                    if (updateResult.success) {
+                        console.log(`目标条文 ${targetClauseNumber} 已根据条文 ${sourceClauseNumber} 更新成功`);
+                        return true;
+                    } else {
+                        console.error(`更新目标条文失败: ${updateResult.message}`);
+                        throw new Error(`更新目标条文失败: ${updateResult.message}`);
+                    }
+                });
+            } else {
+                console.warn(`未定义操作 ${action} 的处理逻辑`);
+                return false;
+            }
+        })
+        .catch(error => {
+            // 如果源条文不存在，这是正常的，不需要抛出错误
+            if (error.message && error.message.includes('未找到')) {
+                console.log(`源条文 ${sourceClauseNumber} 不存在，跳过处理`);
+                return false;
+            }
+            
+            console.error('处理条文依赖关系时出错:', error);
+            throw error;
+        });
+}
+
+/**
+ * 3.5.1条文与3.1.4条文的关联处理
+ * @param {number} projectId - 项目ID，默认为当前项目
+ * @returns {Promise} - 返回Promise对象
+ */
+function handleClause_3_5_1_to_3_1_4(projectId) {
+    return handleClauseDependency('3.5.1', '3.1.4', 'score > 0', 'set_achieved', projectId);
+}
+
+/**
+ * 处理所有已知的条文依赖关系
+ * @param {number} projectId - 项目ID，默认为当前项目
+ * @returns {Promise} - 返回Promise对象
+ */
+function handleAllClauseDependencies(projectId) {
+    // 获取当前项目ID
+    if (!projectId) {
+        projectId = getCurrentProjectId();
+    }
+    
+    // 声明一个包含所有依赖关系的数组
+    const dependencies = [
+        {
+            source: '3.5.1',
+            target: '3.1.4',
+            condition: 'score > 0',
+            action: 'set_achieved'
+        }
+        // 可以在这里添加更多的依赖关系
+    ];
+    
+    // 处理所有依赖关系
+    const promises = dependencies.map(dep => {
+        return handleClauseDependency(
+            dep.source, 
+            dep.target, 
+            dep.condition, 
+            dep.action, 
+            projectId
+        );
+    });
+    
+    return Promise.all(promises);
 }

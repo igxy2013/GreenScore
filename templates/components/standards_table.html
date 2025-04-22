@@ -9,6 +9,7 @@
         margin-top: 8px;
     }
     .standard-image {
+        max-width: 50%;
         max-height: 150px;
         object-fit: contain;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -565,6 +566,20 @@
                     setTimeout(updateCategoryBadges, 1000);
                 }
                 
+                // 处理条文之间的依赖关系
+                if (typeof handleAllClauseDependencies === 'function') {
+                    console.log('开始处理条文依赖关系');
+                    handleAllClauseDependencies(projectId)
+                        .then(results => {
+                            console.log('条文依赖关系处理完成:', results);
+                        })
+                        .catch(error => {
+                            console.error('处理条文依赖关系时出错:', error);
+                        });
+                } else {
+                    console.warn('未找到条文依赖关系处理函数，跳过处理');
+                }
+                
                 // 不再重新加载评分数据，保留用户当前输入的内容
                 console.log('保留用户当前输入的内容，不重新加载');
                 
@@ -913,3 +928,6 @@
         }
     }
 </script>
+
+<!-- 引入条文依赖关系处理脚本 -->
+<script src="/static/js/db_updater.js"></script>

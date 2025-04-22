@@ -3782,6 +3782,99 @@ def user_profile():
             db.session.rollback()
             app.logger.error(f"更新用户信息时出错: {str(e)}")
             return jsonify({'success': False, 'message': f'更新失败: {str(e)}'}), 500
+# 添加新的路由用于根据条文号查询得分
+@app.route('/api/get_score_by_clause', methods=['POST'])
+def get_score_by_clause():
+    """
+    根据条文号查询得分
+    
+    请求参数:
+    {
+        "project_id": 1,                 // 项目ID
+        "clause_number": "3.1.2.14",     // 条文号
+        "standard": "成都市标"            // 评价标准
+    }
+    
+    响应:
+    {
+        "success": true,                 // 是否成功
+        "message": "查询成功",            // 消息
+        "clause_number": "3.1.2.14",     // 条文号
+        "score": 12,                     // 得分值
+        "category": "资源节约",           // 分类
+        "specialty": "建筑专业",          // 专业
+        "is_achieved": "true"            // 是否达标
+    }
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'message': '未接收到JSON数据'
+            }), 400
+        
+        # 验证必要参数
+        project_id = data.get('project_id')
+        clause_number = data.get('clause_number')
+        standard = data.get('standard', '成都市标')
+        
+        # 记录请求信息
+        app.logger.info(f"接收到查询请求: 项目ID={project_id}, 条文号={clause_number}, 标准={standard}")
+        
+        # 验证必要参数
+        if not all([project_id, clause_number]):
+            return jsonify({
+                'success': False,
+                'message': '缺少必要参数: project_id, clause_number'
+            }), 400
+        
+        try:
+            # 查询记录
+            query = """
+            SELECT `条文号`, `分类`, `专业`, `是否达标`, `得分`
+            FROM `得分表`
+            WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
+            """
+            result = db.session.execute(
+                text(query), 
+                {"project_id": project_id, "clause_number": clause_number, "standard": standard}
+            )
+            row = result.fetchone()
+            
+            if row:
+                # 返回成功响应
+                return jsonify({
+                    'success': True,
+                    'message': '查询成功',
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'specialty': row[2],
+                    'is_achieved': row[3],
+                    'score': row[4]
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': f'未找到条文 {clause_number} 的记录'
+                }), 404
+        
+        except Exception as e:
+            app.logger.error(f"数据库查询失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({
+                'success': False,
+                'message': f'数据库查询失败: {str(e)}'
+            }), 500
+    
+    except Exception as e:
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     # 初始化数据库
