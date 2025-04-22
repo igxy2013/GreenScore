@@ -2064,18 +2064,7 @@
                 reader.readAsDataURL(blob);
             }
         });
-        
-        // 4. 添加提示
-        const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) {
-            const tipText = document.createElement('div');
-            tipText.textContent = '自定义图片提示: 可以先进行地图截图（或复制图片），然后直接在页面上按Ctrl+V粘贴';
-            tipText.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px; text-align: center;';
-            
-            if (exportBtn.parentNode) {
-                exportBtn.parentNode.appendChild(tipText);
-            }
-        }
+    
     }
 
     // 全局函数，供高德地图API回调

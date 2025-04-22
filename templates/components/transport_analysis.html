@@ -1,6 +1,6 @@
-<!-- 公共交通站点分析组件 -->
-<h1 class="text-3xl font-bold text-primary mb-4 text-center">公共交通站点分析</h1>
+
 <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-primary mb-4 text-center flex justify-center">公共交通站点分析</h1>
     <!-- 添加隐藏的项目ID字段 -->
     <input type="hidden" id="transport-project-id" value="{{ project.id if project else '' }}">
     
@@ -14,8 +14,8 @@
     </div>
 
     <div class="search-box mb-6 flex">
-        <input type="text" id="address" class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-base" placeholder="请输入详细地址（如：北京市海淀区中关村）">
-        <button id="search-btn" class="px-6 py-2 bg-primary text-white rounded-r-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium">查询</button>
+        <input type="text" id="address" class="w-full flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-base" placeholder="请输入详细地址（如：北京市海淀区中关村）">
+        <button id="search-btn" class="w-32 px-6 py-2 bg-primary text-white rounded-r-lg hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium">查询</button>
     </div>
 
     <!-- 地图容器 - 确保ID和样式正确 -->
@@ -30,7 +30,7 @@
         <h2 class="text-xl font-bold text-primary mb-4">查询结果</h2>
         <div id="result-count" class="mb-4 text-gray-700"></div>
         <div class="overflow-x-auto">
-            <table id="result-table" class="min-w-full divide-y divide-gray-200 border border-gray-200">
+            <table id="result-table" class="w-full divide-y divide-gray-200 border border-gray-200">
                 <thead class="bg-primary">
                     <tr>
                         <th class="px-4 py-2 text-left text-sm font-medium text-white uppercase tracking-wider">序号</th>
@@ -71,8 +71,11 @@
     </div>
 
     <!-- 导出按钮 -->
-    <div class="text-center">
+    <div class="text-center flex justify-center">
         <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
+    </div>
+    <div class="text-center text-gray-600 text-sm mt-2 flex justify-center">
+        自定义图片提示: 可以先进行地图截图（或复制图片），然后直接在页面上按Ctrl+V粘贴
     </div>
 </div>
 
@@ -306,6 +309,5 @@
     }
 </script> 
 <!-- 引入JavaScript文件 -->
-<script src="{{ url_for('static', filename='js/score_helper.js') }}"></script>
 <script src="{{ url_for('static', filename='js/score_summary.js') }}"></script>
 <script src="{{ url_for('static', filename='js/public_transport_analytics.js') }}"></script>

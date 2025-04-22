@@ -8,26 +8,9 @@
             alert('当前标准下暂无报审表模板!');
             return;
         }
-        
-        // 确保报告导出菜单保持展开状态
-        const reportMenuContent = document.getElementById('reportMenuContent');
-        if (reportMenuContent) {
-            reportMenuContent.classList.add('expanded');
-            reportMenuContent.classList.add('keep-open');
-            reportMenuContent.style.display = 'block';
-            // 设置箭头图标为展开状态
-            const reportMenuToggle = document.getElementById('reportMenuToggle');
-            if (reportMenuToggle) {
-                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(180deg)';
-                }
-            }
-        }
-        
+
         // 找到报审表菜单项并添加active类
         const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
-        let progressInterval;
         
         if (wordMenuItem) {
             // 移除其他菜单项的激活状态
@@ -37,25 +20,8 @@
                     item.classList.remove('active');
                 }
             });
-            
-            // 添加active类和loading类
             wordMenuItem.classList.add('active');
-            wordMenuItem.classList.add('loading');
-            
-            // 保持原有样式
-            wordMenuItem.style.display = 'flex';
-            wordMenuItem.style.alignItems = 'center';
-            
-            // 创建进度条动画
-            let progress = 0;
-            progressInterval = setInterval(() => {
-                progress += 2;
-                if (progress > 90) {
-                    clearInterval(progressInterval);
-                }
-                // 使用background-image作为进度条
-                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
-            }, 100);
+
         }
         
         // 获取项目ID
@@ -64,14 +30,10 @@
         if (!projectId) {
             alert('请先选择项目');
             if (wordMenuItem) {
-                wordMenuItem.classList.remove('loading');
-                wordMenuItem.style.backgroundImage = '';
-                clearInterval(progressInterval);
                 // 确保菜单项保持可见
                 wordMenuItem.classList.add('keep-visible');
             }
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
+
             return;
         }
         
@@ -111,38 +73,17 @@
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            // 完成进度条
-            if (wordMenuItem) {
-                clearInterval(progressInterval);
-                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
-                setTimeout(() => {
-                    wordMenuItem.classList.remove('loading');
-                    wordMenuItem.style.backgroundImage = '';
-                    // 不移除active类，保持菜单高亮
-                    // 确保菜单项保持可见
-                    wordMenuItem.classList.add('keep-visible');
-                }, 500);
-            }
-            
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
         })
         .catch(error => {
             console.error('生成报审表失败:', error);
             alert(error.message || '生成报审表失败，请重试');
             
-            // 重置进度条
+            // 保持菜单可见性
             if (wordMenuItem) {
-                clearInterval(progressInterval);
-                wordMenuItem.classList.remove('loading');
-                wordMenuItem.style.backgroundImage = '';
-                // 在出错时也不移除active类
                 // 确保菜单项保持可见
                 wordMenuItem.classList.add('keep-visible');
             }
             
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
         });
     }
     
@@ -150,23 +91,6 @@
     function generateDWG() {
         // 获取项目评价标准
         const currentProjectStandard = document.getElementById('current-project-standard').value;
-        
-        // 确保报告导出菜单保持展开状态
-        const reportMenuContent = document.getElementById('reportMenuContent');
-        if (reportMenuContent) {
-            reportMenuContent.classList.add('expanded');
-            reportMenuContent.classList.add('keep-open');
-            reportMenuContent.style.display = 'block';
-            // 设置箭头图标为展开状态
-            const reportMenuToggle = document.getElementById('reportMenuToggle');
-            if (reportMenuToggle) {
-                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(180deg)';
-                }
-            }
-        }
-        
         // 找到绿色建筑设计专篇菜单项并添加active类
         const dwgMenuItem = document.querySelector('a[onclick="generateDWG()"]');
         let progressInterval;
@@ -211,8 +135,6 @@
                 // 确保菜单项保持可见
                 dwgMenuItem.classList.add('keep-visible');
             }
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
             return;
         }
         
@@ -339,8 +261,6 @@
                 }, 500);
             }
             
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
         })
         .catch(error => {
             console.error('生成绿色建筑设计专篇失败:', error);
@@ -356,8 +276,6 @@
                 dwgMenuItem.classList.add('keep-visible');
             }
             
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
         });
     }
     
@@ -371,23 +289,7 @@
             alert('只有国标项目才能生成绿建自评估报告！');
             return;
         }
-        
-        // 确保报告导出菜单保持展开状态
-        const reportMenuContent = document.getElementById('reportMenuContent');
-        if (reportMenuContent) {
-            reportMenuContent.classList.add('expanded');
-            reportMenuContent.classList.add('keep-open');
-            reportMenuContent.style.display = 'block';
-            // 设置箭头图标为展开状态
-            const reportMenuToggle = document.getElementById('reportMenuToggle');
-            if (reportMenuToggle) {
-                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(180deg)';
-                }
-            }
-        }
-        
+
         // 找到绿建自评估报告菜单项并添加active类
         const reportMenuItem = document.querySelector('a[onclick="generateSelfAssessmentReport(); return false;"]');
         let progressInterval;
@@ -434,8 +336,7 @@
                 // 确保菜单项保持可见
                 reportMenuItem.classList.add('keep-visible');
             }
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
+
             return;
         }
 
@@ -492,8 +393,7 @@
                 }, 500);
             }
             
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
+
         })
         .catch(error => {
             console.error('生成报告失败:', error);
@@ -509,38 +409,8 @@
                 reportMenuItem.classList.add('keep-visible');
             }
             
-            // 确保报告导出菜单保持展开状态
-            ensureReportMenuOpen();
+
         });
     }
 
-    // 确保报告导出菜单保持展开状态的辅助函数
-    function ensureReportMenuOpen() {
-        const reportMenuContent = document.getElementById('reportMenuContent');
-        if (reportMenuContent) {
-            reportMenuContent.classList.add('expanded');
-            reportMenuContent.classList.add('keep-open');
-            reportMenuContent.style.display = 'block';
-            // 设置箭头图标为展开状态
-            const reportMenuToggle = document.getElementById('reportMenuToggle');
-            if (reportMenuToggle) {
-                const arrow = reportMenuToggle.querySelector('.ri-arrow-down-s-line');
-                if (arrow) {
-                    arrow.style.transform = 'rotate(180deg)';
-                }
-            }
-            
-            // 确保所有子菜单项保持原有样式
-            const subMenuItems = reportMenuContent.querySelectorAll('.submenu-item');
-            subMenuItems.forEach(item => {
-                // 保持原有的类，但确保可见性
-                item.style.display = 'flex';
-                item.style.alignItems = 'center';
-                item.style.paddingLeft = '1rem';
-                item.style.paddingRight = '1rem';
-                item.style.paddingTop = '0.75rem';
-                item.style.paddingBottom = '0.75rem';
-            });
-        }
-    }
 </script> 
