@@ -1108,6 +1108,7 @@ def clear_cache():
 def save_form():
     try:
         import json
+        from sqlalchemy import text
         data = request.json
         
         if not data:
@@ -1120,70 +1121,145 @@ def save_form():
             project = Project.query.first()
             project_id = project.id if project else None
         
-        # 查找现有表单数据或创建新的
-        form_data = FormData.query.filter_by(project_id=project_id).first()
-        if not form_data:
-            form_data = FormData()
-            form_data.project_id = project_id
+        if not project_id:
+            return jsonify({'error': '无效的项目ID'}), 400
         
-        # 更新表单数据
-        form_data.project_name = data.get('projectName', '')
-        form_data.building_no = data.get('buildingNo', '')
-        form_data.project_location = data.get('projectLocation', '')
-        form_data.design_no = data.get('designNo', '')
-        form_data.construction_unit = data.get('constructionUnit', '')
-        form_data.design_unit = data.get('designUnit', '')
-        form_data.standard_selection = data.get('standardSelection', 'municipal')
+        # 记录请求信息，方便排查问题
+        app.logger.info(f"保存表单 - 项目ID: {project_id}")
         
-        # 将form_data对象转换为JSON字符串存储
-        form_data.form_data = json.dumps(data.get('formData', {}), ensure_ascii=False)
+        # 提取表单数据
+        building_no = data.get('buildingNo', '')
+        standard_selection = data.get('standardSelection', 'municipal')
+        form_data_json = json.dumps(data.get('formData', {}), ensure_ascii=False)
         
-        # 保存到数据库
-        db.session.add(form_data)
-        db.session.commit()
+        # 首先尝试检查是否已存在记录
+        existing_record = None
+        try:
+            existing_record = db.session.query(FormData).filter(FormData.project_id == project_id).order_by(FormData.updated_at.desc()).first()
+        except Exception as query_error:
+            app.logger.error(f"查询表单记录失败: {str(query_error)}")
         
-        return jsonify({'success': True, 'message': '数据保存成功'})
+        # 不使用subtransactions参数，SQLAlchemy较新版本已移除该参数
+        # db.session.begin(subtransactions=True)
+        
+        try:
+            if existing_record:
+                # 已存在记录，进行更新
+                app.logger.info(f"更新现有表单记录 - ID: {existing_record.id}")
+                
+                # 更新记录的各个字段
+                existing_record.building_no = building_no
+                existing_record.standard_selection = standard_selection
+                existing_record.form_data = form_data_json
+                
+                # 直接使用SQL更新时间戳，避免ORM可能的问题
+                update_sql = text("UPDATE form_data SET updated_at=NOW() WHERE id=:id")
+                db.session.execute(update_sql, {"id": existing_record.id})
+                
+                result_id = existing_record.id
+                is_new = False
+            else:
+                # 不存在记录，创建新的
+                app.logger.info(f"创建新表单记录 - 项目ID: {project_id}")
+                
+                # 创建新记录
+                new_record = FormData(
+                    project_id=project_id,
+                    building_no=building_no,
+                    standard_selection=standard_selection,
+                    form_data=form_data_json
+                )
+                
+                # 添加到数据库
+                db.session.add(new_record)
+                db.session.flush()  # 获取新记录的ID
+                
+                result_id = new_record.id
+                is_new = True
+            
+            # 提交事务
+            db.session.commit()
+            app.logger.info(f"表单保存成功 - 记录ID: {result_id}, 是新记录: {is_new}")
+            
+            return jsonify({
+                'success': True, 
+                'message': '数据保存成功', 
+                'is_new': is_new,
+                'form_id': result_id
+            })
+            
+        except Exception as db_error:
+            # 回滚事务
+            db.session.rollback()
+            app.logger.error(f"保存表单数据失败: {str(db_error)}")
+            
+            if hasattr(db_error, 'orig') and db_error.orig:
+                app.logger.error(f"原始数据库错误: {db_error.orig}")
+            
+            return jsonify({'error': f'数据库操作失败: {str(db_error)}'}), 500
+            
     except Exception as e:
-        db.session.rollback()
-        print(f"保存表单数据时出错: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        # 确保回滚任何打开的事务
+        try:
+            db.session.rollback()
+        except:
+            pass
+            
+        app.logger.error(f"处理表单保存请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({'error': f'保存失败: {str(e)}'}), 500
 
 @app.route('/api/load_form', methods=['GET'])
 def load_form():
+    """加载保存的表单数据"""
+    # 获取项目ID
+    project_id = request.args.get('project_id')
+    if not project_id:
+        return jsonify({"error": "缺少项目ID参数"}), 400
+        
     try:
-        import json
+        app.logger.info(f"尝试加载项目ID {project_id} 的表单数据")
         
-        # 获取项目ID参数
-        project_id = request.args.get('project_id')
+        # 从数据库查询数据 - 使用SQLAlchemy而不是直接的mysql连接
+        form_data = FormData.query.filter_by(project_id=project_id).order_by(FormData.updated_at.desc()).first()
         
-        # 根据项目ID查询表单数据
-        if project_id:
-            form_data = FormData.query.filter_by(project_id=project_id).order_by(FormData.updated_at.desc()).first()
-        else:
-            # 兼容旧版本，不传项目ID时获取最新的表单数据
-            form_data = FormData.query.order_by(FormData.updated_at.desc()).first()
-        
+        # 检查是否找到数据
         if not form_data:
-            return jsonify({'error': '没有找到保存的数据'}), 404
+            app.logger.info(f"项目ID {project_id} 没有保存的表单数据")
+            return jsonify({"error": "没有找到保存的表单数据"}), 404
             
-        result = {
-            'projectName': form_data.project_name,
-            'buildingNo': form_data.building_no,
-            'projectLocation': form_data.project_location,
-            'designNo': form_data.design_no,
-            'constructionUnit': form_data.construction_unit,
-            'designUnit': form_data.design_unit,
-            'standardSelection': form_data.standard_selection,
-            'project_id': form_data.project_id,
-            'formData': json.loads(form_data.form_data) if form_data.form_data else {}
-        }
-        
-        return jsonify(result)
+        # 提取JSON数据
+        form_data_json = form_data.form_data
+        if not form_data_json:
+            app.logger.warning(f"项目ID {project_id} 的表单数据为空")
+            return jsonify({"error": "表单数据为空"}), 404
+            
+        # 解析JSON数据
+        try:
+            # 如果存储的是JSON字符串，则解析它
+            if isinstance(form_data_json, str):
+                form_data_dict = json.loads(form_data_json)
+            else:
+                # 如果已经是字典，直接使用
+                form_data_dict = form_data_json
+                
+            # 构建完整的响应数据
+            response_data = {
+                'buildingNo': form_data.building_no,
+                'standardSelection': form_data.standard_selection,
+                'formData': form_data_dict
+            }
+            
+            app.logger.info(f"成功加载项目ID {project_id} 的表单数据")
+            return jsonify(response_data)
+        except json.JSONDecodeError as e:
+            app.logger.error(f"解析表单数据JSON失败: {str(e)}")
+            return jsonify({"error": f"解析表单数据失败: {str(e)}"}), 500
+            
     except Exception as e:
-        print(f"加载表单数据时出错: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"加载表单数据时出错: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({"error": f"加载表单数据失败: {str(e)}"}), 500
 
 @app.route('/api/project_info', methods=['GET'])
 def get_project_info():

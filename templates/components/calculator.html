@@ -1,3 +1,10 @@
+<!-- 页面主要JS -->
+<!-- 绿色建材计算器JS -->
+<script src="{{ url_for('static', filename='js/calculator.js') }}" defer></script>
+<!-- 绿色建材计算所需的外部库 -->
+<script src="{{ url_for('static', filename='js/lib/jszip.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/lib/FileSaver.min.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/lib/xlsx.full.min.js') }}" defer></script>
 <div class="container-wrapper max-w-7xl mx-auto">
     <div class="flex flex-col items-center justify-center mb-10 text-center">
         <h1 class="text-3xl font-bold text-primary mb-2">绿色建材应用比例计算</h1>
@@ -615,7 +622,7 @@
         <button onclick="exportWord()" class="px-6 py-3 bg-primary text-white rounded-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
             导出计算书
         </button>
-        <button onclick="saveForm()" class="px-6 py-3 bg-white text-primary border border-primary rounded-button hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+        <button onclick="saveForm()" class="px-6 py-3 bg-white text-primary border border-primary rounded-button hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary hidden">
             保存数据
         </button>
     </div>
@@ -628,12 +635,4 @@
 <!-- 导出加载组件 -->
 {% include 'components/export_loading_modal.html' %}
 
-<!-- 页面主要JS -->
-<!-- 绿色建材计算器JS -->
-<script src="{{ url_for('static', filename='js/calculator.js') }}" defer></script>
-<!-- 绿色建材计算所需的外部库 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js" defer></script>
-<!-- 导出功能JS文件 -->
-<script src="{{ url_for('static', filename='js/exportWord.js') }}" defer></script>
+
