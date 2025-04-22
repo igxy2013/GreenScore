@@ -829,8 +829,18 @@ def project_detail(project_id):
     
     try:
         project = Project.query.get_or_404(project_id)
-        # 获取page参数，默认为project_info
+        
+        # 获取请求参数并处理可能的URL编码问题
         page = request.args.get('page', 'project_info')
+        
+        # 处理特殊情况：如果URL中包含等号，说明可能是错误格式的参数
+        # 例如i3l2page=green_materials.js这种格式
+        for key, value in request.args.items():
+            if '=' in key:
+                parts = key.split('=', 1)
+                if parts[1] == 'green_materials':
+                    page = 'green_materials'
+                    app.logger.warning(f"检测到特殊格式的页面参数: {key}，已修正为: page={page}")
         
         # 获取用户的项目权限信息
         user_permissions = get_project_permissions(project_id)

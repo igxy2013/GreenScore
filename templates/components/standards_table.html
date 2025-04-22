@@ -718,7 +718,7 @@
                                     scoreInput.value = score;
                                     successCount++;
                                 } else {
-                                    console.warn(`未能找到条文 ${clause} 对应的得分输入框`);
+                                    // console.warn(`未能找到条文 ${clause} 对应的得分输入框`);
                                     failCount++;
                                 }
                                 
@@ -726,7 +726,7 @@
                                 if (techTextarea) {
                                     techTextarea.value = item.technical_measures || '';
                                 } else {
-                                    console.warn(`未能找到条文 ${clause} 对应的技术措施输入框`);
+                                    // console.warn(`未能找到条文 ${clause} 对应的技术措施输入框`);
                                 }
                             } catch (error) {
                                 console.error(`处理条文数据项时发生错误:`, error, item);

@@ -124,15 +124,15 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`仅保存指定菜单状态: ${specificMenuId}`);
         } else {
             // 否则保存全局菜单状态对象（用于手动点击菜单时）
-        const menuState = {
-            basicMenuExpanded: basicMenuContent?.classList.contains('expanded') || false,
-            advancedMenuExpanded: advancedMenuContent?.classList.contains('expanded') || false,
-            reportMenuExpanded: reportMenuContent?.classList.contains('expanded') || false,
-            specialCalcMenuExpanded: specialCalcMenuContent?.classList.contains('expanded') || false,
-            currentLevel: currentLevel,
-            currentPage: currentPage,
-            currentSpecialty: currentSpecialty
-        };
+            const menuState = {
+                basicMenuExpanded: basicMenuContent?.classList.contains('expanded') || false,
+                advancedMenuExpanded: advancedMenuContent?.classList.contains('expanded') || false,
+                reportMenuExpanded: reportMenuContent?.classList.contains('expanded') || false,
+                specialCalcMenuExpanded: specialCalcMenuContent?.classList.contains('expanded') || false,
+                currentLevel: currentLevel,
+                currentPage: currentPage,
+                currentSpecialty: currentSpecialty
+            };
             localStorage.setItem('menuState', JSON.stringify(menuState));
             console.log("全局菜单状态已保存:", menuState);
         }

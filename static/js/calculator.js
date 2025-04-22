@@ -16,19 +16,56 @@
         standardText: ''
     };
     
-    // 不再将reportData添加到window对象
-    // window.reportData = reportData;
+    // 使用常量存储固定值
+    const STANDARDS = {
+        CHENGDU: '成都市标',
+        SICHUAN: '四川省标',
+        NATIONAL: '通用国标'
+    };
+
+    const MIN_SCORES = {
+        '安全耐久': 30.0,
+        '健康舒适': 30.0,
+        '生活便利': 21.0,
+        '资源节约': 60.0,
+        '环境宜居': 30.0,
+        '提高与创新': 0.0
+    };
+
+    const STAR_LEVELS = {
+        THREE_STAR: { score: 450, text: '三星级', color: 'text-green-600' },
+        TWO_STAR: { score: 300, text: '二星级', color: 'text-blue-600' },
+        ONE_STAR: { score: 200, text: '一星级', color: 'text-yellow-600' },
+        NO_STAR: { text: '未达标', color: 'text-red-600' }
+    };
     
-    // 优化后的用户信息加载
+    // DOM元素缓存
+    let DOM = {};
+    
+    // 主要初始化函数
     document.addEventListener('DOMContentLoaded', function() {
-        // 延迟加载表单数据
-        setTimeout(loadForm, 300);
+        console.log('计算器页面加载完成');
+        
+        // 缓存常用DOM元素
+        DOM = {
+            specialtyScoresRow: document.getElementById('specialty-scores-row'),
+            categoryScoresRow: document.getElementById('category-scores-row'),
+            judgmentRow: document.querySelector('tbody tr:nth-child(3)'),
+            starRatingScore: document.getElementById('star-rating-score'),
+            starRatingStars: document.getElementById('star-rating-stars'),
+            starRatingTotal: document.getElementById('star-rating-total'),
+            buildingNo: document.getElementById('buildingNo'),
+            standardSelection: document.getElementById('standardSelection'),
+            projectId: document.getElementById('project_id'),
+            resultDiv: document.getElementById('result')
+        };
         
         // 初始化折叠功能
         initializeCollapsibleSections();
-        
-        // 初始化复选框事件
+        // 初始化复选框
         initializeCheckboxes();
+        // 尝试加载表单数据
+        loadForm();
     });
     
     // 折叠功能
@@ -77,25 +114,26 @@
         });
     }
     
+    // 计算得分
     function calculate() {
         try {
             // 重置数据
-            reportData.buildingNo = document.getElementById('buildingNo').value || '';
-            reportData.standard = document.getElementById('standardSelection').value || '成都市标';
+            reportData.buildingNo = DOM.buildingNo ? DOM.buildingNo.value || '' : '';
+            reportData.standard = DOM.standardSelection ? DOM.standardSelection.value || 'municipal' : 'municipal';
             
             // 根据选择的标准设置显示文本
             switch(reportData.standard) {
                 case 'municipal':
-                    reportData.standardText = '成都市标';
+                    reportData.standardText = STANDARDS.CHENGDU;
                     break;
                 case 'provincial':
-                    reportData.standardText = '四川省标';
+                    reportData.standardText = STANDARDS.SICHUAN;
                     break;
                 case 'national':
-                    reportData.standardText = '通用国标';
+                    reportData.standardText = STANDARDS.NATIONAL;
                     break;
                 default:
-                    reportData.standardText = '成都市标';
+                    reportData.standardText = STANDARDS.CHENGDU;
             }
             
             Object.values(reportData.categories).forEach(cat => {
@@ -154,45 +192,48 @@
             // 计算绿建得分
             reportData.result = calculateGreenScore(reportData.totalScore);
             //结论
-            if (reportData.totalScore > 10 && reportData.result == 0)
-            {
-              reportData.Original = "本项目绿色建材应用比例为" + reportData.totalScore.toFixed(1) + "%，满足《绿色建筑评价标准》GB/T 50378-2019（2024版）第3.2.8条要求。"
+            if (reportData.totalScore > 10 && reportData.result == 0) {
+                reportData.Original = "本项目绿色建材应用比例为" + reportData.totalScore.toFixed(1) + "%，满足《绿色建筑评价标准》GB/T 50378-2019（2024版）第3.2.8条要求。";
+            } else if(reportData.result > 0) {
+                reportData.Original = "本项目绿色建材应用比例为" + reportData.totalScore.toFixed(1) + "%，满足《绿色建筑评价标准》GB/T 50378-2019（2024版）第3.2.8条要求，且满足第7.2.18条要求，可得" + reportData.result + "分。";
             }
-            else if(reportData.result>0)
-            {
-              reportData.Original = "本项目绿色建材应用比例为" + reportData.totalScore.toFixed(1) + "%，满足《绿色建筑评价标准》GB/T 50378-2019（2024版）第3.2.8条要求，且满足第7.2.18条要求，可得" + reportData.result + "分。"
-            }
+            
             // 显示结果
             showResult(reportData);
+            
             // 添加200ms延时，确保滚动到底部
             setTimeout(() => {
                 window.scrollTo(0, document.body.scrollHeight);
             }, 200);
         } catch (error) {
-            alert('计算错误：' + error.message);
-            console.error('计算错误详情:', error);
+            handleError('计算错误', error);
         }
     }
 
+    // 计算绿建得分
     function calculateGreenScore(total) {
         if (total >= 70) return 12;
         if (total >= 60) return 8;
         if (total >= 40) return 4;
         return 0;
     }
+    
+    // 计算绿建星级
     function calculateGreenStar(total) {
         if (total >= 30) return '三星级绿色建筑';
         if (total >= 20) return '二星级绿色建筑';
         if (total >= 10) return '一星级绿色建筑';
         return '未达到绿建星级'; // 默认返回值
     }
-    // 更新后的结果显示函数
+    
+    // 结果显示函数
     function showResult(data) {
-        const resultDiv = document.getElementById('result');
-        resultDiv.classList.remove('hidden');
+        if (!DOM.resultDiv) return;
+        
+        DOM.resultDiv.classList.remove('hidden');
         const GreenStar = calculateGreenStar(data.totalScore);
         
-        resultDiv.innerHTML = `
+        DOM.resultDiv.innerHTML = `
             <h3 class="text-2xl font-semibold text-primary mb-6">绿色建材得分统计</h3>
             <div class="space-y-4 mb-6">
                 <p class="text-gray-700">子项名称：${data.buildingNo || '未填写'}</p>
@@ -225,20 +266,22 @@
         `;
     }
 
-    // 添加保存表单数据的函数
+    // 保存表单数据
     async function saveForm() {
         try {
             // 显示保存中的提示
             const saveBtn = document.querySelector('button[onclick="saveForm()"]');
+            if (!saveBtn) return;
+            
             const originalText = saveBtn.textContent;
             saveBtn.textContent = '保存中...';
             saveBtn.disabled = true;
             
             // 收集所有表单数据
             const formData = {
-                buildingNo: document.getElementById('buildingNo').value || '',
-                standardSelection: document.getElementById('standardSelection').value || 'municipal',
-                project_id: document.getElementById('project_id').value || '', // 获取当前项目ID
+                buildingNo: DOM.buildingNo ? DOM.buildingNo.value || '' : '',
+                standardSelection: DOM.standardSelection ? DOM.standardSelection.value || 'municipal' : 'municipal',
+                project_id: DOM.projectId ? DOM.projectId.value || '' : '', // 获取当前项目ID
                 formData: {}
             };
 
@@ -293,29 +336,28 @@
                 throw new Error(errorData.error || '保存失败');
             }
         } catch (error) {
-            console.error('保存数据失败:', error);
-            alert('保存失败: ' + error.message);
+            handleError('保存数据失败', error);
             
             // 确保按钮恢复正常状态
             const saveBtn = document.querySelector('button[onclick="saveForm()"]');
-            if (saveBtn.disabled) {
+            if (saveBtn && saveBtn.disabled) {
                 saveBtn.textContent = '保存数据';
                 saveBtn.disabled = false;
             }
         }
     }
 
-    // 添加加载表单数据的函数
+    // 加载表单数据
     async function loadForm() {
         // 添加检查，如果不存在buildingNo元素，说明不是目标计算器页面，直接返回
-        if (!document.getElementById('buildingNo')) {
+        if (!DOM.buildingNo) {
             console.log('当前页面不是绿色建材计算器页面，跳过loadForm执行');
             return;
         }
         
         try {
             // 获取当前项目ID
-            const projectId = document.getElementById('project_id').value;
+            const projectId = DOM.projectId ? DOM.projectId.value : '';
             // 构建请求URL，加入项目ID参数
             let url = '/api/load_form';
             if (projectId) {
@@ -327,9 +369,9 @@
                 const data = await response.json();
                 
                 // 填充基本信息
-                document.getElementById('buildingNo').value = data.buildingNo || '';
-                if (document.getElementById('standardSelection')) {
-                    document.getElementById('standardSelection').value = data.standardSelection || 'municipal';
+                DOM.buildingNo.value = data.buildingNo || '';
+                if (DOM.standardSelection) {
+                    DOM.standardSelection.value = data.standardSelection || 'municipal';
                 }
                 
                 // 填充表单数据
@@ -366,7 +408,7 @@
                 console.warn('加载表单数据失败:', response.statusText);
             }
         } catch (error) {
-            console.error('加载数据失败:', error);
+            handleError('加载数据失败', error);
         }
     }
 
@@ -380,13 +422,24 @@
         saveAs(blob, '绿色建材应用比例计算.doc');
     }
     
+    // 统一的错误处理函数
+    function handleError(message, error) {
+        console.error(`${message}:`, error);
+        const debugInfo = document.getElementById('debug-info');
+        if (debugInfo) {
+            debugInfo.textContent = `错误: ${error.message}`;
+        }
+        alert(`${message}: ${error.message}`);
+    }
+    
     // 将需要在外部调用的函数挂载到 window 对象
     window.calculate = calculate;
     window.saveForm = saveForm;
     window.loadForm = loadForm;
-    // 将reportData的引用也挂载到window，供导出函数使用（如果导出函数无法作为参数传递）
+    window.exportToWordSimple = exportToWordSimple;
+    // 将reportData的引用也挂载到window，供导出函数使用
     window.getCurrentReportData = function() { return reportData; }; 
-})(); // 立即执行函数结束
+})();
     
     
     
