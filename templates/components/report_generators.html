@@ -10,7 +10,8 @@
         }
 
         // 找到报审表菜单项并添加active类
-        const wordMenuItem = document.querySelector('a[onclick="generateWord()"]');
+        const wordMenuItem = document.querySelector('a[onclick="generateWord(); return false;"]');
+        let progressInterval;
         
         if (wordMenuItem) {
             // 移除其他菜单项的激活状态
@@ -21,7 +22,22 @@
                 }
             });
             wordMenuItem.classList.add('active');
-
+            wordMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            wordMenuItem.style.display = 'flex';
+            wordMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
         }
         
         // 获取项目ID
@@ -30,6 +46,10 @@
         if (!projectId) {
             alert('请先选择项目');
             if (wordMenuItem) {
+                // 重置进度条
+                clearInterval(progressInterval);
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
                 // 确保菜单项保持可见
                 wordMenuItem.classList.add('keep-visible');
             }
@@ -73,13 +93,29 @@
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
+            // 完成进度条
+            if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    wordMenuItem.classList.remove('loading');
+                    wordMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    wordMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
         })
         .catch(error => {
             console.error('生成报审表失败:', error);
             alert(error.message || '生成报审表失败，请重试');
             
-            // 保持菜单可见性
+            // 重置进度条
             if (wordMenuItem) {
+                clearInterval(progressInterval);
+                wordMenuItem.classList.remove('loading');
+                wordMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
                 // 确保菜单项保持可见
                 wordMenuItem.classList.add('keep-visible');
             }
