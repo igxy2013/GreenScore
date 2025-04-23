@@ -850,12 +850,42 @@ def project_detail(project_id):
             app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
             return render_template('dashboard.html', project=project, current_page=page, user_permissions=user_permissions)
         
+        # 如果页面类型为规范查询库，获取所有PDF文件并传递给模板
+        if page == 'standards_library':
+            pdf_files = get_pdf_standards()
+            app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}, PDF文件数量: {len(pdf_files)}")
+            return render_template('dashboard.html', project=project, current_page=page, pdf_files=pdf_files, user_permissions=user_permissions)
+        
         app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
         return render_template('dashboard.html', project=project, current_page=page, user_permissions=user_permissions)
     except Exception as e:
         app.logger.error(f"获取项目详情失败: {str(e)}")
         app.logger.error(traceback.format_exc())
         return render_template('error.html', error=f"获取项目详情失败: {str(e)}")
+
+# 获取PDF规范文件列表
+def get_pdf_standards():
+    """获取PDF规范文件列表"""
+    pdf_dir = os.path.join(app.static_folder, 'pdf')
+    pdf_files = []
+    
+    try:
+        if os.path.exists(pdf_dir):
+            for filename in os.listdir(pdf_dir):
+                if filename.lower().endswith('.pdf'):
+                    # 提取文件名作为标题，去掉扩展名
+                    title = os.path.splitext(filename)[0]
+                    
+                    # 添加文件信息
+                    pdf_files.append({
+                        'filename': filename,
+                        'title': title,
+                        'description': '绿色建筑相关规范文件',
+                    })
+    except Exception as e:
+        app.logger.error(f"获取PDF文件列表失败: {str(e)}")
+    
+    return pdf_files
 
 # 修改项目删除函数
 @app.route('/delete_project/<int:project_id>', methods=['DELETE'])
