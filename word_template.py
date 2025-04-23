@@ -16,12 +16,9 @@ def replace_placeholders(template_path, data):
         print(f"\n接收到的数据:")
         print(json.dumps(data, ensure_ascii=False, indent=2))
         
-        # 从数据中获取评价标准和当前日期
+        # 从数据中获取评价标准
         standard = data[0].get('评价标准', '成都市标') if data else '成都市标'
-        from datetime import datetime
-        current_date = datetime.now().strftime("%Y年%m月%d日")
         print(f"当前评价标准: {standard}")
-        print(f"当前日期: {current_date}")
         
         # 加载Word模板
         doc = Document(template_path)
@@ -211,30 +208,8 @@ def replace_placeholders(template_path, data):
                              print(f"处理书签: {bookmark_name} -> {current_field_value}")
 
                         try:
-                            # 获取原始格式
-                            original_props = None
-                            if bookmark_range is not None and bookmark_range.getparent() is not None:
-                                # 尝试找到书签内的格式
-                                for element in bookmark_range.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                    original_props = deepcopy(element)
-                                    break
-                            
-                            # 如果没找到格式，尝试从父元素获取
-                            if original_props is None and bookmark_range.getparent() is not None:
-                                for element in bookmark_range.getparent().xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                    original_props = deepcopy(element)
-                                    break
-                            
-                            # 创建新的文本运行
-                            if original_props is not None:
-                                # 使用原始格式创建新的文本运行
-                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:t>{current_field_value}</w:t></w:r>')
-                                # 将原始格式应用到新的运行
-                                new_run.insert(0, original_props)
-                            else:
-                                # 如果没有找到原始格式，使用默认格式
-                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:rFonts w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
-
+                            # Create new run with the determined value
+                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:rFonts w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
                             bookmark_range = bookmarks_dict[bookmark_name]
                             parent = bookmark_range.getparent()
                             if parent is not None:
@@ -253,33 +228,11 @@ def replace_placeholders(template_path, data):
             if data and isinstance(data[0], dict):
                 project_score = float(data[0].get('项目总分', '0'))
                 field_value = format((project_score + 400) / 10, '.1f')
-            
-            # 获取原始格式
-            bookmark_range = bookmarks_dict['成都项目总分']
-            original_props = None
-            if bookmark_range is not None:
-                # 尝试找到书签内的格式
-                for element in bookmark_range.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                    original_props = deepcopy(element)
-                    break
-                
-                # 如果没找到格式，尝试从父元素获取
-                if original_props is None and bookmark_range.getparent() is not None:
-                    for element in bookmark_range.getparent().xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                        original_props = deepcopy(element)
-                        break
-            
             # 创建新的文本运行
-            if original_props is not None:
-                # 使用原始格式创建新的文本运行
-                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:t>{field_value}</w:t></w:r>')
-                # 将原始格式应用到新的运行
-                new_run.insert(0, original_props)
-            else:
-                # 如果没有找到原始格式，使用默认格式
-                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{field_value}</w:t></w:r>')
             
             # 替换书签内容
+            bookmark_range = bookmarks_dict['成都项目总分']
             if bookmark_range is not None:
                 parent = bookmark_range.getparent()
                 if parent is not None:
@@ -295,33 +248,11 @@ def replace_placeholders(template_path, data):
                     if data and isinstance(data[0], dict):
                         field_value = str(data[0].get(full_name, ''))
                         print(f"处理简写书签: {bookmark_name} -> {field_value}")
-                    
-                    # 获取原始格式
-                    bookmark_range = bookmarks_dict[bookmark_name]
-                    original_props = None
-                    if bookmark_range is not None:
-                        # 尝试找到书签内的格式
-                        for element in bookmark_range.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                            original_props = deepcopy(element)
-                            break
-                        
-                        # 如果没找到格式，尝试从父元素获取
-                        if original_props is None and bookmark_range.getparent() is not None:
-                            for element in bookmark_range.getparent().xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                original_props = deepcopy(element)
-                                break
-                    
                     # 创建新的文本运行
-                    if original_props is not None:
-                        # 使用原始格式创建新的文本运行
-                        new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:t>{field_value}</w:t></w:r>')
-                        # 将原始格式应用到新的运行
-                        new_run.insert(0, original_props)
-                    else:
-                        # 如果没有找到原始格式，使用默认格式
-                        new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{field_value}</w:t></w:r>')
+                    new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{field_value}</w:t></w:r>')
                     
                     # 替换书签内容
+                    bookmark_range = bookmarks_dict[bookmark_name]
                     if bookmark_range is not None:
                         parent = bookmark_range.getparent()
                         if parent is not None:
@@ -416,72 +347,29 @@ def replace_placeholders(template_path, data):
                             # 替换占位符
                             new_text = new_text.replace(placeholder, field_value)
                 
-                # 处理{设计日期}占位符
-                if '{设计日期}' in new_text:
-                    from datetime import datetime
-                    current_date = datetime.now().strftime("%Y年%m月%d日")
-                    print(f"替换占位符 {{设计日期}} -> {current_date}")
-                    new_text = new_text.replace('{设计日期}', current_date)
-                
                 # 如果文本已更改，创建新段落内容
                 if new_text != text:
-                    # 收集原有runs的所有格式信息
-                    original_formats = []
-                    for run in paragraph.runs:
-                        if run.text.strip():  # 只考虑非空runs
-                            run_format = {
-                                'bold': run.bold,
-                                'italic': run.italic,
-                                'underline': run.underline,
-                                'font': run.font.name,
-                                'size': run.font.size,
-                                'color': run.font.color.rgb if run.font.color else None,
-                                'highlight_color': run.font.highlight_color,
-                                'element': run._element.rPr if hasattr(run, '_element') and hasattr(run._element, 'rPr') else None
-                            }
-                            original_formats.append(run_format)
-                    
-                    # 使用最常见的格式（如果有）
-                    default_format = None
-                    if original_formats:
-                        default_format = max(set([(f['font'], f['size']) for f in original_formats if f['font'] and f['size']]), key=lambda x: [(f['font'], f['size']) for f in original_formats].count(x), default=None)
-                    
                     # 清空段落
                     for run in paragraph.runs:
                         run.text = ""
                     
-                    # 添加新文本，并应用格式
+                    # 添加新文本，并应用宋体和指定字号
                     new_run = paragraph.add_run(new_text)
+                    new_run.font.name = '宋体'
+                    new_run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
                     
-                    # 如果有默认格式，应用它
-                    if default_format:
-                        new_run.font.name = default_format[0]
-                        new_run.font.size = default_format[1]
-                        # 确保为中文设置正确的字体
-                        if hasattr(new_run, '_element') and hasattr(new_run._element, 'rPr'):
-                            new_run._element.rPr.rFonts.set(qn('w:eastAsia'), default_format[0])
+                    # 检查是否包含条文号相关内容或特定的总分字段，如果是则使用小四号，否则使用四号
+                    special_fields = ['安全耐久总分', '健康舒适总分', '生活便利总分', '资源节约总分', '环境宜居总分', '创新总分']
+                    if re.search(r'\d+\.\d+\.\d+(?:措施)?', text) or any(f"{{{field}}}" in text for field in special_fields):
+                        new_run.font.size = Pt(12)  # 小四字体大小为12磅
                     else:
-                        # 应用默认格式
-                        new_run.font.name = '宋体'
-                        new_run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-                        
-                        # 检查是否包含条文号相关内容或特定的总分字段，如果是则使用小四号，否则使用四号
-                        special_fields = ['安全耐久总分', '健康舒适总分', '生活便利总分', '资源节约总分', '环境宜居总分', '创新总分']
-                        if re.search(r'\d+\.\d+\.\d+(?:措施)?', text) or any(f"{{{field}}}" in text for field in special_fields):
-                            new_run.font.size = Pt(12)  # 小四字体大小为12磅
-                        else:
-                            new_run.font.size = Pt(14)  # 四号字体大小为14磅
+                        new_run.font.size = Pt(14)  # 四号字体大小为14磅
 
         # 处理表格中的占位符
         print("\n检查表格中的占位符:")
         for i, table in enumerate(doc.tables):
             for row_idx, row in enumerate(table.rows):
                 for cell_idx, cell in enumerate(row.cells):
-                    # 专门检查单元格中是否包含设计日期占位符
-                    cell_text = ''.join([p.text for p in cell.paragraphs])
-                    if '{设计日期}' in cell_text:
-                        print(f"\n表格 {i}, 行 {row_idx}, 列 {cell_idx} 包含设计日期占位符")
-                        
                     for paragraph in cell.paragraphs:
                         text = paragraph.text
                         if '{' in text:
@@ -490,11 +378,6 @@ def replace_placeholders(template_path, data):
                             
                             # 使用简单的文本替换方法
                             new_text = text
-                            
-                            # 首先处理设计日期占位符(优先处理)
-                            if '{设计日期}' in new_text:
-                                print(f"替换占位符 {{设计日期}} -> {current_date}")
-                                new_text = new_text.replace('{设计日期}', current_date)
                             
                             # 查找条文号占位符
                             for match in re.finditer(r'\{(\d+\.\d+\.\d+(?:措施)?)\}', text):
@@ -574,52 +457,21 @@ def replace_placeholders(template_path, data):
                             
                             # 如果文本已更改，创建新段落内容
                             if new_text != text:
-                                # 收集原有runs的所有格式信息
-                                original_formats = []
-                                for run in paragraph.runs:
-                                    if run.text.strip():  # 只考虑非空runs
-                                        run_format = {
-                                            'bold': run.bold,
-                                            'italic': run.italic,
-                                            'underline': run.underline,
-                                            'font': run.font.name,
-                                            'size': run.font.size,
-                                            'color': run.font.color.rgb if run.font.color else None,
-                                            'highlight_color': run.font.highlight_color,
-                                            'element': run._element.rPr if hasattr(run, '_element') and hasattr(run._element, 'rPr') else None
-                                        }
-                                        original_formats.append(run_format)
-                                
-                                # 使用最常见的格式（如果有）
-                                default_format = None
-                                if original_formats:
-                                    default_format = max(set([(f['font'], f['size']) for f in original_formats if f['font'] and f['size']]), key=lambda x: [(f['font'], f['size']) for f in original_formats].count(x), default=None)
-                                
                                 # 清空段落
                                 for run in paragraph.runs:
                                     run.text = ""
                                 
-                                # 添加新文本，并应用格式
+                                # 添加新文本，并应用宋体和指定字号
                                 new_run = paragraph.add_run(new_text)
+                                new_run.font.name = '宋体'
+                                new_run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
                                 
-                                # 如果有默认格式，应用它
-                                if default_format:
-                                    new_run.font.name = default_format[0]
-                                    new_run.font.size = default_format[1]
-                                    # 确保为中文设置正确的字体
-                                    if hasattr(new_run, '_element') and hasattr(new_run._element, 'rPr'):
-                                        new_run._element.rPr.rFonts.set(qn('w:eastAsia'), default_format[0])
+                                # 检查是否包含条文号相关内容或特定的总分字段，如果是则使用小四号，否则使用四号
+                                special_fields = ['安全耐久总分', '健康舒适总分', '生活便利总分', '资源节约总分', '环境宜居总分', '创新总分']
+                                if re.search(r'\d+\.\d+\.\d+(?:措施)?', text) or any(f"{{{field}}}" in text for field in special_fields):
+                                    new_run.font.size = Pt(12)  # 小四字体大小为12磅
                                 else:
-                                    # 应用默认格式
-                                    new_run.font.name = '宋体'
-                                    new_run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
-                                    
-                                    # 检查是否包含条文号相关内容或特定的总分字段，如果是则使用小四号，否则使用四号
-                                    special_fields = ['安全耐久总分', '健康舒适总分', '生活便利总分', '资源节约总分', '环境宜居总分', '创新总分']
-                                    if re.search(r'\d+\.\d+\.\d+(?:措施)?', text) or any(f"{{{field}}}" in text for field in special_fields):
-                                        new_run.font.size = Pt(12)  # 小四字体大小为12磅
-                                    else:
-                                        new_run.font.size = Pt(14)  # 四号字体大小为14磅
+                                    new_run.font.size = Pt(14)  # 四号字体大小为14磅
 
 
         modify_square_chars_font(doc)
@@ -643,7 +495,6 @@ def replace_placeholders(template_path, data):
         import traceback
         print(traceback.format_exc())
         return f'处理文档时出错：{str(e)}'
-
 def modify_square_chars_font(doc):
     
     # 定义要查找的字符列表
@@ -669,6 +520,7 @@ def process_runs(runs, target_chars):
             run.font.name = "宋体"
             # 对于中文字体，还需要设置对应的字体族
             run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')    
+
 def process_template(data):
     
     try:
@@ -679,7 +531,10 @@ def process_template(data):
         standard = data[0].get('评价标准', '成都市标')  # 默认使用成都市标
         
         if standard == '国标':
-            return None  # 国标不进行任何操作
+            if "安徽" in data[0].get('项目地点') :
+                template_file = '安徽绿色建筑审查表.docx'
+            else:
+                return None  # 国标不进行任何操作
         
         # 获取星级目标
         star_rating_target = data[0].get('星级目标', '')

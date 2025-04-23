@@ -3,7 +3,7 @@ import platform
 from flask import jsonify, current_app, send_file, request
 from dotenv import load_dotenv
 from docx import Document
-from word_template import process_template, replace_placeholders, replace_placeholders_format
+from word_template import process_template, replace_placeholders
 import json
 import traceback
 from sqlalchemy import text

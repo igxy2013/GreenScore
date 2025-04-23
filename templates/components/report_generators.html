@@ -4,10 +4,10 @@
     function generateWord() {
         // 获取项目评价标准
         const currentProjectStandard = document.getElementById('current-project-standard').value;
-        if (currentProjectStandard=='国标') {
-            alert('当前标准下暂无报审表模板!');
-            return;
-        }
+        // if (currentProjectStandard=='国标') {
+        //     alert('当前标准下暂无报审表模板!');
+        //     return;
+        // }
 
         // 找到报审表菜单项并添加active类
         const wordMenuItem = document.querySelector('a[onclick="generateWord(); return false;"]');
@@ -86,12 +86,11 @@
             } else if (currentProjectStandard=='成都市标') {
                 a.download = '成都市绿色建筑报审表.docx';
             } else {
-                a.download = '报审表.docx';
+                a.download = '绿色建筑报审表.docx';
             }
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
 
             // 完成进度条
             if (wordMenuItem) {
@@ -270,7 +269,6 @@
                 document.body.appendChild(a);
                 a.click();
                 window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
             } else if (result.url) {
                 // 处理URL下载
                 const a = document.createElement('a');
@@ -453,7 +451,7 @@
         // 获取项目评价标准
         const currentProjectStandard = document.getElementById('current-project-standard')?.value || '国标';
         // 找到绿建专篇文本菜单项并添加active类
-        const reportMenuItem = document.querySelector('a[onclick="generateljzpwb(); return false;"]');
+        const reportMenuItem = document.querySelector('a[onclick*="generateljzpwb"]') || document.querySelector('.submenu-item[onclick*="generateljzpwb"]');
         let progressInterval;
         
         if (reportMenuItem) {
