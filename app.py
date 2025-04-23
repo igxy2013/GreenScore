@@ -37,7 +37,8 @@ from dotenv import load_dotenv
 from word_template import process_template, replace_placeholders
 from export import (
     generate_word, generate_dwg,
-    generate_self_assessment_report
+    generate_self_assessment_report,
+    generate_generateljzpwb
 )
 from models import (
     db, User, InvitationCode, LogRecord,
@@ -3013,6 +3014,33 @@ def handle_self_assessment_report():
         return generate_self_assessment_report(request_data)
     except Exception as e:
         app.logger.error(f"处理生成绿建自评估报告请求失败: {str(e)}")
+        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+@app.route('/api/generateljzpwb', methods=['POST'])
+def handle_generateljzpwb():
+    """
+    处理生成绿建专篇文本的请求
+    """
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "请求数据为空"}), 400
+
+        # 提取必要参数
+        project_id = data.get('project_id')
+        if not project_id:
+            return jsonify({"error": "缺少项目ID参数"}), 400
+        
+        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
+        request_data = {
+            'project_id': project_id,
+            'use_cache': False
+        }
+        
+        # 调用generate_self_assessment_report函数
+        return generate_generateljzpwb(request_data)
+    except Exception as e:
+        app.logger.error(f"处理生成绿建专篇文本请求失败: {str(e)}")
         return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
 
 # 添加路由处理公共交通报告生成请求

@@ -448,5 +448,131 @@
 
         });
     }
+    // 绿建专篇文本生成函数
+    function generateljzpwb() {
+        // 获取项目评价标准
+        const currentProjectStandard = document.getElementById('current-project-standard')?.value || '国标';
+        // 找到绿建专篇文本菜单项并添加active类
+        const reportMenuItem = document.querySelector('a[onclick="generateljzpwb(); return false;"]');
+        let progressInterval;
+        
+        if (reportMenuItem) {
+            // 移除其他菜单项的激活状态
+            const currentMenuItems = document.querySelectorAll('.submenu-item.active');
+            currentMenuItems.forEach(item => {
+                if (item !== reportMenuItem) {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // 添加active类和loading类
+            reportMenuItem.classList.add('active');
+            reportMenuItem.classList.add('loading');
+            
+            // 保持原有样式
+            reportMenuItem.style.display = 'flex';
+            reportMenuItem.style.alignItems = 'center';
+            
+            // 创建进度条动画
+            let progress = 0;
+            progressInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 90) {
+                    clearInterval(progressInterval);
+                }
+                // 使用background-image作为进度条
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) ${progress}%, transparent ${progress}%)`;
+            }, 100);
+        }
+        
+        // 获取当前项目ID
+        const projectId = document.getElementById('project_id').value;
+        console.log("项目ID:", projectId);
+        
+        if (!projectId) {
+            alert('未找到项目ID');
+            if (reportMenuItem) {
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                clearInterval(progressInterval);
+                // 确保菜单项保持可见
+                reportMenuItem.classList.add('keep-visible');
+            }
+
+            return;
+        }
+
+        console.log("正在生成绿建专篇文本，项目ID: " + projectId);
+
+        // 发送请求
+        fetch('/api/generateljzpwb', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_id: projectId
+            })
+        })
+        .then(response => {
+            console.log("收到服务器响应状态:", response.status);
+            
+            if (!response.ok) {
+                // 如果服务器返回错误，尝试获取错误信息
+                return response.json().then(data => {
+                    console.error("服务器返回错误:", data);
+                    throw new Error(data.error || '生成绿建专篇文本失败');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            console.log("收到blob数据，类型:", blob.type, "大小:", blob.size, "bytes");
+            
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            const projectName = document.getElementById('current_project_name').value || '';
+            console.log("项目名称:", projectName);
+            
+            a.href = url;
+            a.download = projectName ? `${projectName}_绿建专篇文本.docx` : '绿建专篇文本.docx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            // 完成进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.style.backgroundImage = `linear-gradient(to right, rgba(79, 209, 197, 0.3) 100%, transparent 100%)`;
+                setTimeout(() => {
+                    reportMenuItem.classList.remove('loading');
+                    reportMenuItem.style.backgroundImage = '';
+                    // 不移除active类，保持菜单高亮
+                    // 确保菜单项保持可见
+                    reportMenuItem.classList.add('keep-visible');
+                }, 500);
+            }
+            
+
+        })
+        .catch(error => {
+            console.error('生成报告失败:', error);
+            alert(error.message || '生成绿建专篇文本失败，请稍后重试');
+            
+            // 重置进度条
+            if (reportMenuItem) {
+                clearInterval(progressInterval);
+                reportMenuItem.classList.remove('loading');
+                reportMenuItem.style.backgroundImage = '';
+                // 在出错时也不移除active类
+                // 确保菜单项保持可见
+                reportMenuItem.classList.add('keep-visible');
+            }
+            
+
+        });
+    }
 
 </script> 
