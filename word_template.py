@@ -15,6 +15,10 @@ def replace_placeholders(template_path, data):
         print(f"\n接收到的数据:")
         print(json.dumps(data, ensure_ascii=False, indent=2))
         
+        # 从数据中获取评价标准
+        standard = data[0].get('评价标准', '成都市标') if data else '成都市标'
+        print(f"当前评价标准: {standard}")
+        
         # 加载Word模板
         doc = Document(template_path)
         
@@ -90,9 +94,24 @@ def replace_placeholders(template_path, data):
                     # 同时检查原始条文号格式和带f前缀的格式
                     if bookmark_format == bookmark_name or str(item.get('条文号')) == bookmark_name:
                         try:
-                            # 创建新的文本运行
-                            new_text = str(item.get('得分', ''))
-                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{new_text}</w:t></w:r>')
+                            # 获取得分值
+                            score_value = str(item.get('得分', ''))
+                            
+                            # 特殊处理：如果评价标准为四川省标，修改显示方式
+                            if standard == '四川省标':
+                                if score_value == '达标':
+                                    new_text = '√'
+                                elif score_value == '—':
+                                    new_text = '×'
+                                elif score_value == '0':
+                                    new_text = '/'
+                                else:
+                                    new_text = score_value
+                            else:
+                                new_text = score_value
+                            
+                            # 创建新的文本运行，设置Times New Roman字体
+                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="21"/></w:rPr><w:t>{new_text}</w:t></w:r>')
                             
                             # 替换书签内容
                             if bookmark_range is not None:
@@ -189,7 +208,7 @@ def replace_placeholders(template_path, data):
 
                         try:
                             # Create new run with the determined value
-                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:sz w:val="21"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
+                            new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:rFonts w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
                             bookmark_range = bookmarks_dict[bookmark_name]
                             parent = bookmark_range.getparent()
                             if parent is not None:
@@ -453,6 +472,9 @@ def replace_placeholders(template_path, data):
                                 else:
                                     new_run.font.size = Pt(14)  # 四号字体大小为14磅
 
+
+        modify_square_chars_font(doc)
+
         # 确保temp目录存在
         os.makedirs('temp', exist_ok=True)
         
@@ -472,7 +494,31 @@ def replace_placeholders(template_path, data):
         import traceback
         print(traceback.format_exc())
         return f'处理文档时出错：{str(e)}'
-
+def modify_square_chars_font(doc):
+    
+    # 定义要查找的字符列表
+    target_chars = ["■", "□"]
+    
+    # 处理文档正文中的段落
+    for paragraph in doc.paragraphs:
+        process_runs(paragraph.runs, target_chars)
+    
+    # 处理文档中的表格
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    process_runs(paragraph.runs, target_chars)
+    
+def process_runs(runs, target_chars):
+    """处理run集合，修改目标字符的字体"""
+    for run in runs:
+        # 检查run中是否包含任何一个目标字符
+        if any(char in run.text for char in target_chars):
+            # 设置字体为宋体
+            run.font.name = "宋体"
+            # 对于中文字体，还需要设置对应的字体族
+            run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')    
 def process_template(data):
     try:
         from flask import current_app

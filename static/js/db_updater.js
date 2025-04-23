@@ -989,7 +989,6 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
     
     console.log(`当前项目标准: ${standard}, 专业: ${specialty}, 评价等级: ${level}`);
     
-    // 直接使用setScore函数来更新目标条文，简化流程
     // 首先查询源条文的得分 
     return getScoreByClauseNumber(sourceClauseNumber, projectId)
         .then(sourceResult => {
@@ -1020,54 +1019,108 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
             
             // 根据操作类型执行相应的更新
             if (action === 'set_achieved') {
-                // 使用updateDatabaseScore函数直接更新目标条文得分和达标状态
-                // 注意：我们不需要先查询目标条文，直接设置即可
+                // 使用updateDatabaseScore函数直接更新目标条文达标状态
+                // 注意：我们需要先查询目标条文的当前得分，保留原有得分
                 
-                // 准备请求参数
-                const requestData = {
-                    project_id: projectId,
-                    standard: standard,
-                    clause_number: targetClauseNumber,
-                    specialty: specialty,
-                    level: level,
-                    category: '资源节约',
-                    is_achieved: 'true',
-                    score: '0',
-                    technical_measures: `由条文 ${sourceClauseNumber} 自动标记为达标 [${new Date().toLocaleString()}]`
-                };
-                
-                console.log('即将发送的更新请求数据:', requestData);
-                
-                // 直接发起请求更新
-                return fetch('/api/update_score_direct', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestData)
-                })
-                .then(response => {
-                    console.log(`更新请求状态码: ${response.status}`);
-                    
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            console.error('更新失败响应内容:', text);
-                            throw new Error(`更新目标条文失败: HTTP错误 ${response.status}`);
+                // 首先获取目标条文当前信息
+                return getScoreByClauseNumber(targetClauseNumber, projectId)
+                    .then(targetResult => {
+                        console.log(`目标条文 ${targetClauseNumber} 查询结果:`, targetResult);
+                        
+                        // 确定目标条文的得分值 - 如果条文存在，使用其当前得分；如果不存在，设为空
+                        const targetScore = targetResult.success ? targetResult.score : '';
+                        
+                        // 准备请求参数 - 只包含必要字段
+                        const requestData = {
+                            project_id: projectId,
+                            standard: standard,
+                            clause_number: targetClauseNumber,
+                            specialty: specialty,
+                            level: level,
+                            is_achieved: '是',
+                            technical_measures: `由条文 ${sourceClauseNumber} 自动标记为达标 [${new Date().toLocaleString()}]`
+                        };
+                        
+                        // 如果目标条文已存在得分，保留原有得分
+                        if (targetScore) {
+                            requestData.score = targetScore;
+                        }
+                        
+                        console.log('即将发送的更新请求数据:', requestData);
+                        
+                        // 直接发起请求更新
+                        return fetch('/api/update_score_direct', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestData)
+                        })
+                        .then(response => {
+                            console.log(`更新请求状态码: ${response.status}`);
+                            
+                            if (!response.ok) {
+                                return response.text().then(text => {
+                                    console.error('更新失败响应内容:', text);
+                                    throw new Error(`更新目标条文失败: HTTP错误 ${response.status}`);
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(updateResult => {
+                            console.log('更新结果:', updateResult);
+                            
+                            if (updateResult.success) {
+                                console.log(`目标条文 ${targetClauseNumber} 已标记为达标，原始得分保持不变`);
+                                return true;
+                            } else {
+                                console.error(`更新目标条文失败: ${updateResult.message}`);
+                                throw new Error(`更新目标条文失败: ${updateResult.message}`);
+                            }
                         });
-                    }
-                    return response.json();
-                })
-                .then(updateResult => {
-                    console.log('更新结果:', updateResult);
-                    
-                    if (updateResult.success) {
-                        console.log(`目标条文 ${targetClauseNumber} 已根据条文 ${sourceClauseNumber} 更新成功`);
-                        return true;
-                    } else {
-                        console.error(`更新目标条文失败: ${updateResult.message}`);
-                        throw new Error(`更新目标条文失败: ${updateResult.message}`);
-                    }
-                });
+                    })
+                    .catch(error => {
+                        // 如果目标条文不存在，创建一个新记录，同时标记为达标但不设定得分
+                        if (error.message && error.message.includes('未找到')) {
+                            console.log(`目标条文 ${targetClauseNumber} 不存在，创建新记录并标记为达标`);
+                            
+                            const requestData = {
+                                project_id: projectId,
+                                standard: standard,
+                                clause_number: targetClauseNumber,
+                                specialty: specialty,
+                                level: level,
+                                category: '资源节约',
+                                is_achieved: '是',
+                                technical_measures: `由条文 ${sourceClauseNumber} 自动标记为达标 [${new Date().toLocaleString()}]`
+                            };
+                            
+                            return fetch('/api/update_score_direct', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(requestData)
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`创建目标条文记录失败: HTTP错误 ${response.status}`);
+                                }
+                                return response.json();
+                            })
+                            .then(updateResult => {
+                                if (updateResult.success) {
+                                    console.log(`目标条文 ${targetClauseNumber} 已创建并标记为达标`);
+                                    return true;
+                                } else {
+                                    throw new Error(`创建目标条文记录失败: ${updateResult.message}`);
+                                }
+                            });
+                        } else {
+                            // 其他错误
+                            throw error;
+                        }
+                    });
             } else if (action.startsWith('set_score_')) {
                 // 设置目标条文的得分
                 const score = action.replace('set_score_', '');
@@ -1080,9 +1133,9 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
                     specialty: specialty,
                     level: level,
                     category: '资源节约',
-                    is_achieved: 'true',
-                    score: score,
-                    technical_measures: `由条文 ${sourceClauseNumber} 自动设置得分 [${new Date().toLocaleString()}]`
+                    is_achieved: '是',
+                    score: '达标',
+                    technical_measures: `由条文 ${sourceClauseNumber} 自动设置为达标 [${new Date().toLocaleString()}]`
                 };
                 
                 console.log('即将发送的更新请求数据:', requestData);
@@ -1135,15 +1188,6 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
 }
 
 /**
- * 3.5.1条文与3.1.4条文的关联处理
- * @param {number} projectId - 项目ID，默认为当前项目
- * @returns {Promise} - 返回Promise对象
- */
-function handleClause_3_5_1_to_3_1_4(projectId) {
-    return handleClauseDependency('3.5.1', '3.1.4', 'score > 0', 'set_achieved', projectId);
-}
-
-/**
  * 处理所有已知的条文依赖关系
  * @param {number} projectId - 项目ID，默认为当前项目
  * @returns {Promise} - 返回Promise对象
@@ -1160,7 +1204,175 @@ function handleAllClauseDependencies(projectId) {
             source: '3.5.1',
             target: '3.1.4',
             condition: 'score > 0',
-            action: 'set_achieved'
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.3.11',
+            target: '3.1.20',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.3.14',
+            target: '3.1.26',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.5.14',
+            target: '3.1.30',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.1.5',
+            target: '3.2.2',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.5.8',
+            target: '3.3.7',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.5.10',
+            target: '3.3.8',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.5.14',
+            target: '3.3.19',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },
+        {
+            source: '3.3.6',
+            target: '3.5.6',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.7.9',
+            target: '3.5.9',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.3.16',
+            target: '3.5.11',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.3.17',
+            target: '3.5.12',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.7.1',
+            target: '3.4.1',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.7.5',
+            target: '3.4.2',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.7.8',
+            target: '3.4.3',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.5.8',
+            target: '3.4.6',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.7.9',
+            target: '3.4.7',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.5.10',
+            target: '3.4.8',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.3.10',
+            target: '3.4.9',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.7.14',
+            target: '3.4.10',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.5.14',
+            target: '3.4.11',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.5.16',
+            target: '3.4.12',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.3.10',
+            target: '3.6.2',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.3.11',
+            target: '3.6.3',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.3.14',
+            target: '3.6.6',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.1.9',
+            target: '3.7.6',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.1.10',
+            target: '3.7.7',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.6.7',
+            target: '3.7.11',
+            condition: 'score > 0',
+            action: 'set_score_达标'
+        },    
+        {
+            source: '3.6.8',
+            target: '3.7.13',
+            condition: 'score > 0',
+            action: 'set_score_达标'
         }
         // 可以在这里添加更多的依赖关系
     ];
