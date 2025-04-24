@@ -1890,7 +1890,7 @@ def get_star_case_scores():
         project_name = project.name
         # 获取建筑类型
         building_type = project.building_type
-        print(f"项目ID: {project_id}, 星级目标: {star_rating_target}, 评价标准: {standard}, 建筑类型: {building_type}")
+        # print(f"项目ID: {project_id}, 星级目标: {star_rating_target}, 评价标准: {standard}, 建筑类型: {building_type}")
         # 查询符合条件的星级案例数据
         query = """
         SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级

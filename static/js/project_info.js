@@ -1,11 +1,14 @@
-
-// 省市联动功能
-// 只在全局变量未定义时才声明
 var provinceData = {};
 var cityData = {};
 // 用户权限控制状态
 var userPermissions = null;
 var isFormReadOnly = false;
+// 当前激活的标签页
+var currentTab = 'word';
+// 粘贴的图片数据
+var pastedImage = null;
+// 上次提取的数据
+var lastExtractedData = null;
 
 // 初始化省市数据
 document.addEventListener('DOMContentLoaded', function() {
@@ -602,15 +605,6 @@ function calculateAndUpdateScores() {
 }
         
 // AI提取项目信息相关函数
-// 全局变量存储粘贴的图片
-// 检查是否已经声明过
-if (typeof pastedImage === 'undefined') {
-    var pastedImage = null;
-}
-// 检查是否已经声明过
-if (typeof currentTab === 'undefined') {
-    var currentTab = 'word'; // 当前激活的标签页
-}
     
 // 切换标签页
 function switchTab(tab) {
@@ -636,6 +630,13 @@ function switchTab(tab) {
         imageUploadTab.classList.add('hidden');
         imageUploadTab.classList.remove('active');
         
+        // 如果有拖放的Word文件，显示文件名
+        if (window.droppedWordFile) {
+            showWordFileName(window.droppedWordFile);
+        } else if (document.getElementById('wordFileInput').files.length > 0) {
+            showWordFileName(document.getElementById('wordFileInput').files[0]);
+        }
+        
         console.log("Word标签页已激活");
     } else {
         imageTabBtn.classList.add('active');
@@ -651,9 +652,6 @@ function switchTab(tab) {
     }
 }
     
-// 将switchTab函数暴露到全局作用域
-window.switchTab = switchTab;
-
 // 清除图片预览
 function clearImagePreview(event) {
     // 阻止事件冒泡，防止触发文件选择
@@ -661,58 +659,105 @@ function clearImagePreview(event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    
-    // 完全清除图片状态
+
     const previewContainer = document.getElementById('previewContainer');
     const dropAreaText = document.getElementById('dropAreaText');
     const imageFileInput = document.getElementById('imageFileInput');
     const clearImageBtn = document.getElementById('clearImageBtn');
     const imagePreview = document.getElementById('imagePreview');
-    
-    // 重置图片元素
-    previewContainer.classList.add('hidden');
-    dropAreaText.classList.remove('hidden');
-    clearImageBtn.classList.add('hidden');
-    imageFileInput.value = '';
-    imagePreview.src = '';
-    
-    // 清除粘贴的图片数据
-    pastedImage = null;
-    
-    console.log('图片已清除');
-}
 
-// 将clearImagePreview函数暴露到全局作用域
-window.clearImagePreview = function(event) {
-    clearImagePreview(event);  // 调用内部函数
-};
+    if (previewContainer) previewContainer.classList.add('hidden');
+    if (dropAreaText) dropAreaText.classList.remove('hidden');
+    if (clearImageBtn) clearImageBtn.classList.add('hidden');
+    if (imageFileInput) imageFileInput.value = ''; // 清空文件输入
+    if (imagePreview) imagePreview.src = ''; // 清空预览图片
+
+    pastedImage = null; // 清除粘贴的图片数据
+    console.log('图片预览已清除');
+}
 
 // 处理图片预览
 function handleImagePreview(file) {
-    if (!file || !file.type || !file.type.match('image.*')) {
-        alert('请选择图片文件');
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+        console.warn('无效的图片文件:', file);
+        toast('请选择有效的图片文件 (JPG, PNG, BMP等)', 'warning');
+        clearImagePreview(); // 清除可能存在的无效状态
         return;
     }
-    
+
+    console.log('处理图片预览:', file.name);
     const reader = new FileReader();
+
     reader.onload = function(e) {
+        console.log('FileReader 加载完成');
         const img = document.getElementById('imagePreview');
-        img.src = e.target.result;
-        document.getElementById('previewContainer').classList.remove('hidden');
-        document.getElementById('dropAreaText').classList.add('hidden');
-        document.getElementById('clearImageBtn').classList.remove('hidden');
+        const previewContainer = document.getElementById('previewContainer');
+        const dropAreaText = document.getElementById('dropAreaText');
+        const clearImageBtn = document.getElementById('clearImageBtn');
+
+        if (img && previewContainer && dropAreaText && clearImageBtn) {
+            // --- 开始强制样式修改 ---
+            img.onload = () => {
+                // console.log(`图片已加载: ${img.naturalWidth}x${img.naturalHeight}`);
+                // 确保图片加载后容器可见
+                previewContainer.style.display = 'block'; 
+                img.style.display = 'block'; // 确保img本身也显示
+                // 可以临时设置固定大小以调试
+                // img.style.height = '160px';
+                // img.style.width = 'auto'; 
+            };
+            
+            img.src = e.target.result;
+            // console.log('设置 img.src');
+
+            // 强制设置容器和文本的显示/隐藏
+            // previewContainer.classList.remove('hidden'); // 尝试移除类
+            // previewContainer.style.display = 'block';    // 直接设置style
+            // console.log('设置 previewContainer display: block');
+
+            // dropAreaText.classList.add('hidden');      // 尝试添加类
+            // dropAreaText.style.display = 'none';       // 直接设置style
+            // console.log('设置 dropAreaText display: none');  
+
+            // clearImageBtn.classList.remove('hidden'); // 尝试移除类
+            // clearImageBtn.style.display = 'inline-block'; // 直接设置style (或 block)
+            // console.log('设置 clearImageBtn display: inline-block');
+            // --- 结束强制样式修改 ---
+
+            // console.log('图片预览尝试显示');
+        } else {
+            console.error('缺少用于预览的DOM元素');
+            toast('无法显示图片预览，页面元素缺失', 'error');
+        }
     };
+
+    reader.onerror = function(e) {
+        console.error('FileReader 读取错误:', e);
+        toast('读取图片文件时出错', 'error');
+        clearImagePreview();
+    };
+
     reader.readAsDataURL(file);
 }
     
 // 显示Word文件名
 function showWordFileName(file) {
+    console.log("显示Word文件名函数被调用:", file ? file.name : "无文件");
     const fileNameDiv = document.getElementById('wordFileName');
+    if (!fileNameDiv) {
+        console.error("未找到wordFileName元素");
+        return;
+    }
+    
     if (file) {
         fileNameDiv.textContent = `已选择: ${file.name}`;
+        fileNameDiv.style.display = 'block'; // 使用style.display确保显示
         fileNameDiv.classList.remove('hidden');
+        console.log("文件名显示已设置为:", file.name);
     } else {
         fileNameDiv.classList.add('hidden');
+        fileNameDiv.style.display = 'none';
+        console.log("文件名显示已隐藏");
     }
 }
     
@@ -748,17 +793,33 @@ window.showAiExtractModal = function() {
     if (extractLoading) extractLoading.classList.add('hidden');
     if (applyButton) applyButton.classList.add('hidden');
     if (wordFileInput) wordFileInput.value = '';
-    if (wordFileName) wordFileName.classList.add('hidden');
+    if (wordFileName) {
+        wordFileName.classList.add('hidden');
+        wordFileName.style.display = 'none';
+    }
     
-    clearImagePreview();
+    clearImagePreview(); // 重置图片预览区域
     
     // 添加ESC键监听
     document.addEventListener('keydown', handleEscKeyForModal);
-    // 添加粘贴监听
+    // 添加粘贴监听 (只在模态框打开时监听)
     document.addEventListener('paste', handlePasteImage);
     
-    // 初始化文件上传监听
-    initFileUploadListeners();
+    // 确保DOM已经完全加载再初始化文件上传监听
+    // 使用 requestAnimationFrame 确保在下一次绘制前执行
+    requestAnimationFrame(() => {
+        console.log("延迟初始化文件上传监听器 (requestAnimationFrame)");
+        initFileUploadListeners(); // 初始化所有监听器
+        
+        // 检查各元素是否已加载
+        console.log("检查关键元素:");
+        console.log("- wordFileInput:", !!document.getElementById('wordFileInput'));
+        console.log("- wordFileName:", !!document.getElementById('wordFileName'));
+        console.log("- wordDropArea:", !!document.getElementById('wordDropArea'));
+        console.log("- imageFileInput:", !!document.getElementById('imageFileInput'));
+        console.log("- imageDropArea:", !!document.getElementById('imageDropArea'));
+        console.log("- imagePreview:", !!document.getElementById('imagePreview'));
+    });
     
     console.log("模态框初始化完成，应该可见");
 };
@@ -773,17 +834,14 @@ window.closeAiExtractModal = function() {
     // 强制重置所有状态
     const resetElements = {
         'wordFileInput': el => el.value = '',
-        'wordFileName': el => el.classList.add('hidden'),
-        'imageFileInput': el => el.value = '',
-        'imagePreview': el => el.src = '',
-        'previewContainer': el => el.classList.add('hidden'),
-        'dropAreaText': el => el.classList.remove('hidden'),
-        'clearImageBtn': el => el.classList.add('hidden'),
+        'wordFileName': el => { el.classList.add('hidden'); el.textContent = '尚未选择文件'; },
         'extractResult': el => el.classList.add('hidden'),
+        'extractedInfo': el => el.innerHTML = '',
         'applyButton': el => el.classList.add('hidden')
+        // 图片相关的重置由 clearImagePreview 处理
     };
+    clearImagePreview(); // 调用清除函数来重置图片区域
     
-    // 应用所有重置
     for (const [id, resetFn] of Object.entries(resetElements)) {
         const element = document.getElementById(id);
         if (element) resetFn(element);
@@ -791,6 +849,8 @@ window.closeAiExtractModal = function() {
     
     // 清除粘贴的图片数据
     pastedImage = null;
+    // 清除拖放的Word文件
+    window.droppedWordFile = null;
     
     // 移除ESC键监听
     document.removeEventListener('keydown', handleEscKeyForModal);
@@ -843,26 +903,118 @@ function handlePasteImage(event) {
     
 // 初始化文件上传监听
 function initFileUploadListeners() {
+    console.log("[initFileUploadListeners] Function called."); // 新增日志
+
     // Word文件选择
     const wordFileInput = document.getElementById('wordFileInput');
     if (wordFileInput) {
-        wordFileInput.addEventListener('change', function() {
+        console.log("为wordFileInput添加change事件监听器");
+        wordFileInput.addEventListener('change', function(event) {
+            console.log("wordFileInput change事件触发");
+            console.log("选择的文件:", this.files);
             if (this.files && this.files.length > 0) {
+                console.log("选择了文件:", this.files[0].name);
+                // 保存到全局变量，以便后续使用
+                window.droppedWordFile = this.files[0];
                 showWordFileName(this.files[0]);
             } else {
+                console.log("未选择文件");
+                window.droppedWordFile = null;
                 showWordFileName(null);
             }
         });
+    } else {
+        console.error("未找到wordFileInput元素");
+    }
+    
+    // 添加Word拖放区域的拖放事件监听
+    const wordDropArea = document.getElementById('wordDropArea');
+    if (wordDropArea) {
+        console.log("为wordDropArea添加拖放事件监听器");
+        
+        // 拖拽文件进入区域
+        wordDropArea.addEventListener('dragenter', function(e) {
+            console.log("dragenter事件触发");
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.add('border-purple-300');
+            this.classList.add('bg-gray-700');
+        });
+        
+        // 拖拽文件在区域上方
+        wordDropArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // 添加视觉反馈但不记录日志，避免控制台刷屏
+            this.classList.add('border-purple-300');
+            this.classList.add('bg-gray-700');
+        });
+        
+        // 拖拽文件离开区域
+        wordDropArea.addEventListener('dragleave', function(e) {
+            console.log("dragleave事件触发");
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('border-purple-300');
+            this.classList.remove('bg-gray-700');
+        });
+        
+        // 拖拽文件放置到区域
+        wordDropArea.addEventListener('drop', function(e) {
+            console.log("drop事件触发");
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('border-purple-300');
+            this.classList.remove('bg-gray-700');
+            
+            try {
+                const dt = e.dataTransfer;
+                console.log("拖放的文件数量:", dt.files ? dt.files.length : 0);
+                
+                if (dt.files && dt.files.length > 0) {
+                    const file = dt.files[0];
+                    console.log("拖放的文件:", file.name, file.size, file.type);
+                    
+                    // 检查文件类型
+                    if (!file.name.endsWith('.doc') && !file.name.endsWith('.docx')) {
+                        console.error("文件类型不是Word文档:", file.type);
+                        alert('请上传Word文档（.doc或.docx格式）');
+                        return;
+                    }
+                    
+                    // 由于无法直接设置fileInput.files，我们保存文件到全局变量
+                    window.droppedWordFile = file;
+                    // 显示文件名
+                    showWordFileName(file);
+                    
+                    console.log('成功拖放Word文件:', file.name);
+                }
+            } catch (error) {
+                console.error("处理拖放文件时出错:", error);
+                alert('处理文件时出错: ' + error.message);
+            }
+        });
+    } else {
+        console.error("未找到wordDropArea元素");
     }
     
     // 图片文件选择
     const imageFileInput = document.getElementById('imageFileInput');
     if (imageFileInput) {
+        console.log("[initFileUploadListeners] Found imageFileInput element."); // 新增日志
         imageFileInput.addEventListener('change', function() {
+            console.log("[imageFileInput change event] Triggered."); // 新增日志
+            // Check if files were selected
             if (this.files && this.files.length > 0) {
+                console.log("[imageFileInput change event] File selected:", this.files[0].name); // 新增日志
                 handleImagePreview(this.files[0]);
+            } else {
+                console.log("[imageFileInput change event] No files selected."); // 新增日志
             }
         });
+        console.log("[initFileUploadListeners] Added 'change' listener to imageFileInput."); // 新增日志
+    } else {
+        console.error("[initFileUploadListeners] Could not find imageFileInput element!"); // 新增日志
     }
     
     // 清除图片按钮
@@ -876,20 +1028,29 @@ function initFileUploadListeners() {
     
 // 提取项目信息
 function extractProjectInfo() {
-    console.log("extractProjectInfo函数被调用");
+    console.log("========== 开始执行extractProjectInfo函数 ==========");
     
     // 检查是否有编辑权限
     if (isFormReadOnly) {
+        console.log("表单为只读状态，无法提取");
         toast('您没有编辑权限，无法使用AI提取功能', 'error');
         closeAiExtractModal(); // 关闭模态框
         return;
     }
     
+    // 获取相关DOM元素
     const wordFileInput = document.getElementById('wordFileInput');
     const imageFileInput = document.getElementById('imageFileInput');
     const extractResult = document.getElementById('extractResult');
     const extractLoading = document.getElementById('extractLoading');
     const applyButton = document.getElementById('applyButton');
+    
+    console.log("DOM元素检查:");
+    console.log("- wordFileInput存在:", !!wordFileInput);
+    console.log("- imageFileInput存在:", !!imageFileInput);
+    console.log("- extractResult存在:", !!extractResult);
+    console.log("- extractLoading存在:", !!extractLoading);
+    console.log("- applyButton存在:", !!applyButton);
     
     // 隐藏上一次的结果
     if (extractResult) extractResult.classList.add('hidden');
@@ -902,45 +1063,77 @@ function extractProjectInfo() {
     const formData = new FormData();
     
     console.log("当前激活的标签页:", currentTab);
-    console.log("Word标签页状态:", document.getElementById('wordUploadTab').classList.contains('active'));
-    console.log("图片标签页状态:", document.getElementById('imageUploadTab').classList.contains('active'));
     
     // 根据当前选择的标签页获取文件
     if (currentTab === 'word') {
         console.log("当前是Word标签页");
-        const wordFileInput = document.getElementById('wordFileInput');
-        if (!wordFileInput.files || wordFileInput.files.length === 0) {
+        // 优先使用拖放的文件
+        const wordFile = window.droppedWordFile || (wordFileInput.files && wordFileInput.files.length > 0 ? wordFileInput.files[0] : null);
+        
+        console.log("检查是否有Word文件:");
+        console.log("- 全局拖放文件:", window.droppedWordFile ? window.droppedWordFile.name : "无");
+        console.log("- 文件输入框:", wordFileInput.files && wordFileInput.files.length > 0 ? wordFileInput.files[0].name : "无");
+        console.log("- 最终使用:", wordFile ? wordFile.name : "无");
+        
+        if (!wordFile) {
+            console.log("未选择Word文档，显示提示并终止操作");
             alert('请选择Word文档');
-            document.getElementById('extractLoading').classList.add('hidden');
+            if (extractLoading) extractLoading.classList.add('hidden');
             return;
         }
-        formData.append('word_file', wordFileInput.files[0]);
-        console.log("已选择Word文件:", wordFileInput.files[0].name);
+        
+        try {
+            formData.append('word_file', wordFile);
+            console.log("已选择Word文件:", wordFile.name, "大小:", wordFile.size, "类型:", wordFile.type);
+        } catch (error) {
+            console.error("添加文件到FormData时出错:", error);
+            alert('处理文件时出错: ' + error.message);
+            if (extractLoading) extractLoading.classList.add('hidden');
+            return;
+        }
     } else {
-        // 直接使用else而不是检查图片标签页是否激活
+        // 图片标签页处理...
         console.log("当前是图片标签页");
         const imageFile = imageFileInput.files[0] || pastedImage;
-        console.log("提取图片信息，图片文件：", imageFile ? imageFile.name : "无");
+        console.log("图片文件状态:", 
+            imageFileInput.files && imageFileInput.files.length > 0 ? "已选择文件" : "未选择文件", 
+            pastedImage ? "有粘贴图片" : "无粘贴图片");
         
         if (!imageFile) {
+            console.log("未选择或粘贴图片，显示提示并终止操作");
             alert('请选择或粘贴图片');
-            document.getElementById('extractLoading').classList.add('hidden');
+            if (extractLoading) extractLoading.classList.add('hidden');
             return;
         }
-        formData.append('file', imageFile);
-        console.log("图片文件信息:", imageFile.name, imageFile.size, imageFile.type);
+        
+        try {
+            formData.append('file', imageFile);
+            console.log("已添加图片文件到表单:", imageFile.name, "大小:", imageFile.size, "类型:", imageFile.type);
+        } catch (error) {
+            console.error("添加图片到FormData时出错:", error);
+            alert('处理图片时出错: ' + error.message);
+            if (extractLoading) extractLoading.classList.add('hidden');
+            return;
+        }
     }
     
     // 发送请求
-    console.log("正在发送API请求到：", '/api/extract_project_info');
+    console.log("准备发送API请求到: /api/extract_project_info");
+    console.log("FormData包含的键:", Array.from(formData.keys()));
+    
     fetch('/api/extract_project_info', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log("API响应状态:", response.status);
+        return response.json();
+    })
     .then(data => {
         // 隐藏加载状态
-        document.getElementById('extractLoading').classList.add('hidden');
+        if (extractLoading) extractLoading.classList.add('hidden');
+        
+        console.log("API响应数据:", data);
         
         if (data.success) {
             // 显示提取结果
@@ -952,6 +1145,9 @@ function extractProjectInfo() {
             console.log("API返回的原始数据:", JSON.stringify(data));
             console.log("提取到的项目信息:", JSON.stringify(projectInfo));
             
+            // 清理拖放的Word文件
+            window.droppedWordFile = null;
+            
             // 遍历提取的信息并格式化显示
             for (const key in projectInfo) {
                 // 跳过原始文本字段
@@ -962,12 +1158,19 @@ function extractProjectInfo() {
                 </div>`;
             }
             
-            extractedInfo.innerHTML = infoHTML;
-            document.getElementById('extractResult').classList.remove('hidden');
-            document.getElementById('applyButton').classList.remove('hidden');
+            if (extractedInfo) {
+                extractedInfo.innerHTML = infoHTML;
+                document.getElementById('extractResult').classList.remove('hidden');
+                document.getElementById('applyButton').classList.remove('hidden');
+                
+                console.log("提取结果已显示");
+            } else {
+                console.error("未找到extractedInfo元素，无法显示结果");
+            }
             
             // 存储提取的信息以便后续应用
             window.extractedProjectInfo = projectInfo;
+            lastExtractedData = projectInfo; // 同时保存到lastExtractedData
             console.log("已保存提取信息到window.extractedProjectInfo");
             
             // 验证保存是否成功
@@ -978,20 +1181,21 @@ function extractProjectInfo() {
                 }
             }, 100);
         } else {
+            console.error("API返回失败:", data.message || '未知错误');
             alert('提取失败: ' + (data.message || '未知错误'));
         }
     })
     .catch(error => {
-        document.getElementById('extractLoading').classList.add('hidden');
+        if (extractLoading) extractLoading.classList.add('hidden');
         console.error('提取项目信息出错:', error);
         alert('提取失败: ' + error.message);
+        
+        // 清理拖放的Word文件
+        window.droppedWordFile = null;
     });
+    
+    console.log("========== extractProjectInfo函数执行完毕 ==========");
 }
-
-// 将extractProjectInfo函数暴露到全局作用域
-window.extractProjectInfo = function() {
-    extractProjectInfo();  // 调用内部函数
-};
 
 // 应用提取的信息到表单
 function applyExtractedInfo() {
@@ -1413,10 +1617,6 @@ function applyExtractedInfo() {
     }
 }
     
-// 将applyExtractedInfo函数暴露到全局作用域
-window.applyExtractedInfo = function() {
-    applyExtractedInfo();  // 调用内部函数
-};
 
 // 计算可计算的衍生字段
 function calculateDerivedFields() {

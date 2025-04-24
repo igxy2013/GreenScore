@@ -43,7 +43,7 @@
                     </div>
                 </label>
                 <input type="file" id="wordFileInput" accept=".doc,.docx" class="hidden">
-                <div id="wordFileName" class="mt-2 text-sm text-center text-gray-400 hidden"></div>
+                <div id="wordFileName" class="mt-2 text-sm text-center text-gray-400 hidden">尚未选择文件</div>
             </div>
             
             <!-- 图片上传和粘贴区域 -->
@@ -481,20 +481,3 @@
         </div>
     </div>
 
-<!-- 项目信息表单的JavaScript -->
-<script>
-    // 确保与新类名兼容的显示/隐藏模态框函数
-    function showAiExtractModal() {
-        const modal = document.getElementById('aiExtractModal');
-        if (modal) {
-            modal.classList.add('show');
-        }
-    }
-    
-    function closeAiExtractModal() {
-        const modal = document.getElementById('aiExtractModal');
-        if (modal) {
-            modal.classList.remove('show');
-        }
-    }
-</script>
