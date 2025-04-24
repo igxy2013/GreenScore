@@ -1631,10 +1631,7 @@ def update_score_direct():
         standard = data.get('standard', '成都市标')
         
         # 可选参数
-        specialty = data.get('specialty', '建筑专业')
-        level = data.get('level', '提高级')
-        category = data.get('category', '资源节约')
-        is_achieved = data.get('is_achieved', 'true')
+        is_achieved = data.get('is_achieved', '是')
         technical_measures = data.get('technical_measures', '')
         
         # 记录请求信息
@@ -1683,21 +1680,17 @@ def update_score_direct():
                         # 插入新记录
                         insert_query = """
                         INSERT INTO `得分表` (
-                            `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, 
-                            `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                            `项目ID`, `条文号`, 
+                             `是否达标`, `得分`, `技术措施`, `评价标准`
                         )
-                        VALUES (:project_id, :project_name, :specialty, :level, :clause_number, 
-                               :category, :is_achieved, :score, :technical_measures, :standard)
+                        VALUES (:project_id, :clause_number, 
+                               :is_achieved, :score, :technical_measures, :standard)
                         """
                         result = db.session.execute(
                             text(insert_query),
                             {
                                 "project_id": project_id, 
-                                "project_name": f'项目{project_id}', 
-                                "specialty": specialty, 
-                                "level": level, 
                                 "clause_number": clause_number,
-                                "category": category, 
                                 "is_achieved": is_achieved, 
                                 "score": score, 
                                 "technical_measures": technical_measures, 
@@ -1730,7 +1723,7 @@ def update_score_direct():
                     app.logger.info(f"清除评分汇总缓存: {cache_key}")
                 
                 # 清除专业得分缓存
-                specialty_cache_key = get_scores_cache_key('提高级', specialty.split('专业')[0], project_id, standard)
+                specialty_cache_key = get_scores_cache_key('提高级', '建筑专业', project_id, standard)
                 if cache.has(specialty_cache_key):
                     cache.delete(specialty_cache_key)
                     app.logger.info(f"清除专业得分缓存: {specialty_cache_key}")

@@ -1,4 +1,4 @@
-(function() {
+
 // 省市联动功能
 // 只在全局变量未定义时才声明
 var provinceData = {};
@@ -265,9 +265,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化表单字段和事件监听器
     initFormFields();
     
-    // 添加自动计算得分事件监听器
-    setupScoreCalculation();
-    
     // 添加载入星级案例按钮事件
     const loadStarCaseBtn = document.getElementById('loadStarCaseBtn');
     if (loadStarCaseBtn) {
@@ -369,15 +366,6 @@ function initFormFields() {
         greenArea.addEventListener('change', calculateGreenRatio);
     }
     
-    // 绑定建筑类型变化事件
-    const buildingType = document.getElementById('building_type');
-    if (buildingType) {
-        buildingType.addEventListener('change', function() {
-            // 计算得分并更新显示
-            calculateAndUpdateScores();
-        });
-    }
-    
     // 设置总建筑面积自动计算
     const totalBuildingArea = document.getElementById('total_building_area');
     const undergroundArea = document.getElementById('underground_area');
@@ -394,31 +382,12 @@ function initFormFields() {
     console.log("表单字段初始化完成");
 }
 
-// 设置自动计算得分的事件监听器
-function setupScoreCalculation() {
-    // 在页面加载时计算一次得分
-    calculateAndUpdateScores();
-    
-    // 为相关表单字段添加事件监听器
-    const scoreFields = [
-        'total_land_area', 'residential_units', 'avg_floors', 'building_type',
-        'underground_area', 'first_floor_underground_area', 'above_ground_area',
-        'green_area', 'construction_type', 'public_green_space', 'climate_zone',
-        'plot_ratio', 'public_building_type', 'green_ratio', 'ground_parking_spaces',
-        'has_underground_garage', 'standard_selection'
-    ];
-    
-    scoreFields.forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if (field) {
-            field.addEventListener('change', calculateAndUpdateScores);
-        }
-    });
-}
-
 // 页面加载完成后执行计算和更新
 document.addEventListener('DOMContentLoaded', function() {
-    calculateAndUpdateScores();
+    const savedToggleState = localStorage.getItem('scoreToggleState');
+    if(savedToggleState === 'true'){
+        calculateAndUpdateScores();
+    }
     
     // 监听表单字段变化，重新计算得分
     const formFields = [
@@ -431,9 +400,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     formFields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
-        if (field) {
-            field.addEventListener('change', calculateAndUpdateScores);
+        if(savedToggleState === 'true'){
+            if (field) {
+                field.addEventListener('change', calculateAndUpdateScores);
+            }
         }
+
     });
     
     // 初始化省市选择器
@@ -531,35 +503,37 @@ function calculateAndUpdateScores() {
     try {
         if (standard === '成都市标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('3.1.2.14', perCapitaLandScore, projectId);
+                updateDatabaseScore('3.1.2.14', perCapitaLandScore, projectId,null,null);
+                updateDatabaseScore('3.6.1.2', 0,projectId,null, '采用了节能玻璃和屋顶花园');
             } else if (buildingType === '公共建筑'){
-                updateDatabaseScore('3.1.2.14', plotRatioScore, projectId);
+                updateDatabaseScore('3.1.2.14', plotRatioScore, projectId,null,"hello world");
             }
-            updateDatabaseScore('3.1.2.15', undergroundScore, projectId);
-            updateDatabaseScore('3.1.2.21', greenSpaceScore, projectId);
-            updateDatabaseScore('3.1.2.16', parkingScore, projectId);
+            updateDatabaseScore('3.1.2.15', undergroundScore, projectId,null,null);
+            updateDatabaseScore('3.1.2.21', greenSpaceScore, projectId,null,null);
+            updateDatabaseScore('3.1.2.16', parkingScore, projectId,null,null);
+
         }
         else if (standard === '四川省标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('3.1.16', perCapitaLandScore, projectId);
+                updateDatabaseScore('3.1.16', perCapitaLandScore, projectId,null,null);
             }
             else if (buildingType === '公共建筑'){
-                updateDatabaseScore('3.1.16', plotRatioScore, projectId);
+                updateDatabaseScore('3.1.16', plotRatioScore, projectId,null,null);
             }
-            updateDatabaseScore('3.1.17', undergroundScore, projectId);
-            updateDatabaseScore('3.1.25', greenSpaceScore, projectId);
-            updateDatabaseScore('3.1.18', parkingScore, projectId);
+            updateDatabaseScore('3.1.17', undergroundScore, projectId,null,null);
+            updateDatabaseScore('3.1.25', greenSpaceScore, projectId,null,null);
+            updateDatabaseScore('3.1.18', parkingScore, projectId,null,null);
         }
         else if (standard === '国标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('7.2.1', perCapitaLandScore, projectId);
+                updateDatabaseScore('7.2.1', perCapitaLandScore, projectId,null,null,null);
             }
             else if (buildingType === '公共建筑'){
-                updateDatabaseScore('7.2.1', plotRatioScore, projectId);
+                updateDatabaseScore('7.2.1', plotRatioScore, projectId,null,null,null);
             }
-            updateDatabaseScore('7.2.2', undergroundScore, projectId);
-            updateDatabaseScore('8.2.3', greenSpaceScore, projectId);
-            updateDatabaseScore('7.2.3', parkingScore, projectId);
+            updateDatabaseScore('7.2.2', undergroundScore, projectId,null,null);
+            updateDatabaseScore('8.2.3', greenSpaceScore, projectId,null,null);
+            updateDatabaseScore('7.2.3', parkingScore, projectId,null,null);
         }
         console.log('得分更新完成');
     } catch (error) {
@@ -1814,4 +1788,4 @@ if (container) {
 }
 }
 
-})();
+
