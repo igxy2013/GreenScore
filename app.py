@@ -852,7 +852,7 @@ def create_default_scores(project_id, project_name, standard_selection):
                             "project_id": project_id,
                             "project_name": project_name,
                             "specialty": std.专业,
-                            "level": mapped_level,  # 使用映射后的值,
+                            "level": mapped_level,  # 使用映射后的值,   
                             "clause_number": std.条文号,
                             "category": std.分类,
                             "is_achieved": is_achieved,
@@ -861,10 +861,6 @@ def create_default_scores(project_id, project_name, standard_selection):
                             "standard": standard_selection
                         }
                     )
-                    # 每插入10条记录提交一次事务，避免事务过大
-                    if insert_count % 10 == 0:
-                        db.session.commit()
-                        app.logger.info(f"已提交 {insert_count} 条记录")
                 except Exception as insert_error:
                     app.logger.error(f"插入评分记录失败: {str(insert_error)}, 条文号: {std.条文号}")
         
@@ -1881,135 +1877,113 @@ def get_scores_cache_key(level, specialty, project_id=None, standard=None):
 @app.route('/api/star_case_scores', methods=['GET'])
 def get_star_case_scores():
     try:
-        # 获取目标项目ID
-        target_project_id = request.args.get('target_project_id')
-        if not target_project_id:
-            return jsonify({
-                'success': False,
-                'message': '请提供目标项目ID'
-            }), 400
-
+        # 获取项目ID参数
+        project_id = request.args.get('project_id')
         # 获取项目信息
-        target_project = db.session.get(Project, target_project_id)
-        if not target_project:
+        project = Project.query.filter_by(id=project_id).first()
+        # 获取星级目标
+        star_rating_target = project.star_rating_target
+        # 获取评价标准
+        standard = project.standard 
+        
+        # 获取项目名称
+        project_name = project.name
+        # 获取建筑类型
+        building_type = project.building_type
+        print(f"项目ID: {project_id}, 星级目标: {star_rating_target}, 评价标准: {standard}, 建筑类型: {building_type}")
+        # 查询符合条件的星级案例数据
+        query = """
+        SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+        FROM 星级案例
+        WHERE 评价标准 = :standard 
+          AND 星级目标 = :star_rating_target
+          AND 建筑类型 = :building_type
+        """
+        
+        app.logger.info(f"查询星级案例数据: 标准={standard}, 星级目标={star_rating_target}, 建筑类型={building_type}")
+        
+        result = db.session.execute(
+            text(query),
+            {
+                "standard": standard,
+                "star_rating_target": star_rating_target,
+                "building_type": building_type
+            }
+        )
+        
+        # 获取星级案例数据
+        star_case_data = []
+        for row in result.fetchall():
+            star_case_data.append({
+                'clause_number': row[0],
+                'category': row[1],
+                'is_achieved': row[2],
+                'score': row[3],
+                'technical_measures': row[4],
+                'specialty': row[5],
+                'level': row[6]
+            })
+        
+        app.logger.info(f"找到 {len(star_case_data)} 条匹配的星级案例数据")
+        
+        if len(star_case_data) == 0:
             return jsonify({
                 'success': False,
-                'message': f'目标项目(ID={target_project_id})不存在'
+                'message': '未找到匹配的星级案例数据'
             }), 404
-
-        # 获取项目的评价标准和星级目标
-        standard = target_project.standard or '成都市标'
-        star_rating_target = target_project.star_rating_target or '一星级'
-        building_type = target_project.building_type
-        project_location = target_project.location  # 获取项目地点
-
+        
+        # 开始事务
         try:
-            # 首先获取当前项目适用的条文号列表
-            app.logger.info(f"获取项目 {target_project_id} 适用的条文列表")
-            result = db.session.execute(text(f"""
-                SELECT 条文号 
-                FROM 评价标准 
-                WHERE 标准名称 = :standard_name
-            """), {"standard_name": standard})
-            valid_clauses = set([row[0] for row in result.fetchall()])
-            app.logger.info(f"找到 {len(valid_clauses)} 条适用的条文")
-
-            # 构建基本查询条件
-            query_conditions = ["评价标准 = :standard"]
-            query_params = {"standard": standard}
+            # 删除该项目下相同条件的之前的记录
+            delete_query = """
+            DELETE FROM 得分表
+            WHERE 项目ID = :project_id 
+            """
             
-            # 放宽匹配条件，只保留评价标准必须匹配，其他条件可选
-            # 添加星级目标和建筑类型作为可选条件，优先匹配完全相同的记录
-            query_optional_conditions = []
+            db.session.execute(
+                text(delete_query),
+                {"project_id": project_id}
+            )
             
-            try:
-                # 标准查询，优先查找完全匹配的记录
-                query = f"""
-                    SELECT DISTINCT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
-                    FROM 星级案例
-                    WHERE {' AND '.join(query_conditions)}
-                    AND 星级目标 = :star_rating_target 
-                    AND 建筑类型 = :building_type
+            app.logger.info(f"已删除项目 {project_id} 的旧得分记录")
+            
+            # 插入新的得分记录
+            insert_count = 0
+            
+            # 跟踪保存的所有条文号（调试用）
+            saved_clauses = []
+            
+            for score_data in star_case_data:
+                # 获取评分数据
+                clause_number = score_data.get('clause_number')
+                category = score_data.get('category')
+                is_achieved = score_data.get('is_achieved')
+                score = score_data.get('score', '0')
+                technical_measures = score_data.get('technical_measures', '')
+                specialty = score_data.get('specialty')
+                level = score_data.get('level')
+                
+                # 如果没有条文号，跳过
+                if not clause_number:
+                    continue
+                
+                # 记录所有保存的条文号（调试用）
+                saved_clauses.append(clause_number)
+                
+                # 插入评分记录到得分表
+                insert_query = """
+                INSERT INTO `得分表` (
+                    `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, `是否达标`, `得分`, `技术措施`, `评价标准`
+                ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number, :category, 
+                         :is_achieved, :score, :technical_measures, :standard)
                 """
                 
-                app.logger.info(f"执行精确匹配查询: {query}")
-                result = db.session.execute(text(query), {
-                    **query_params,
-                    "star_rating_target": star_rating_target,
-                    "building_type": building_type
-                })
-                case_data = result.fetchall()
-                
-                # 如果没有找到完全匹配的记录，则放宽条件只匹配评价标准
-                if not case_data:
-                    app.logger.info("未找到完全匹配的记录，尝试仅匹配评价标准")
-                    query = f"""
-                        SELECT DISTINCT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
-                        FROM 星级案例
-                        WHERE {' AND '.join(query_conditions)}
-                    """
-                    
-                    app.logger.info(f"执行宽松匹配查询: {query}")
-                    result = db.session.execute(text(query), query_params)
-                    case_data = result.fetchall()
-            except Exception as e:
-                app.logger.error(f"查询星级案例出错: {str(e)}")
-                case_data = []
-            
-            if case_data:
-                app.logger.info(f"找到 {len(case_data)} 条匹配的星级案例数据")
-                
-                # 过滤出当前标准中有效的条文
-                filtered_case_data = []
-                for record in case_data:
-                    if record[0] in valid_clauses:
-                        filtered_case_data.append(record)
-                    else:
-                        app.logger.info(f"过滤掉不适用的条文: {record[0]}")
-                
-                app.logger.info(f"过滤后剩余 {len(filtered_case_data)} 条有效的星级案例数据")
-                
-                # 如果过滤后没有数据，则使用原始数据（放宽条件）
-                if not filtered_case_data:
-                    app.logger.warning("过滤后没有有效数据，将使用所有匹配的数据")
-                    filtered_case_data = case_data
-                
-                # 先删除目标项目的所有得分数据
-                delete_query = """
-                DELETE FROM 得分表
-                WHERE 项目ID = :project_id
-                """
-                result = db.session.execute(text(delete_query), {"project_id": target_project_id})
-                deleted_count = result.rowcount
-                app.logger.info(f"删除目标项目的 {deleted_count} 条得分数据")
-
-                # 插入新的得分数据
-                inserted_count = 0
-                # 用于跟踪已插入的条文号，防止重复
-                inserted_clauses = set()
-                
-                for record in filtered_case_data:
-                    clause_number, category, is_achieved, score, technical_measures, specialty, level = record
-                    
-                    # 跳过已经插入过的条文号
-                    if clause_number in inserted_clauses:
-                        app.logger.info(f"跳过重复条文: {clause_number}")
-                        continue
-                    
-                    inserted_clauses.add(clause_number)
-
-                    insert_query = """
-                    INSERT INTO 得分表 (
-                        项目ID, 项目名称, 专业, 评价等级, 条文号, 
-                        分类, 是否达标, 得分, 技术措施, 评价标准
-                    ) VALUES (:project_id, :project_name, :specialty, :level, :clause_number,
-                            :category, :is_achieved, :score, :technical_measures, :standard)
-                    """
+                try:
                     db.session.execute(
                         text(insert_query),
                         {
-                            "project_id": target_project_id,
-                            "project_name": target_project.name,
+                            "project_id": project_id,
+                            "project_name": project_name,
                             "specialty": specialty,
                             "level": level,
                             "clause_number": clause_number,
@@ -2020,57 +1994,47 @@ def get_star_case_scores():
                             "standard": standard
                         }
                     )
-                    inserted_count += 1
-
-                    # 每100条提交一次，避免事务过大
-                    if inserted_count % 100 == 0:
-                        db.session.commit()
-                        app.logger.info(f"已提交 {inserted_count} 条记录")
-
-                # 提交事务
-                db.session.commit()
-                app.logger.info(f"事务提交成功，共导入 {inserted_count} 条记录")
-
-                # 清除目标项目的缓存
-                cache_key = f"score_summary_{target_project_id}_{standard}"
-                if cache.has(cache_key):
-                    cache.delete(cache_key)
-                    app.logger.info(f"清除目标项目的评分汇总缓存: {cache_key}")
-
-                return jsonify({
-                    'success': True,
-                    'message': f'成功导入 {inserted_count} 条星级案例数据',
-                    'data': {
-                        'standard': standard,
-                        'star_rating_target': star_rating_target,
-                        'imported_count': inserted_count,
-                        'location_matched': bool(case_data)
-                    }
-                })
-            else:
-                app.logger.warning(f"未找到匹配的星级案例数据")
-                return jsonify({
-                    'success': False,
-                    'message': f'未找到匹配的星级案例数据'
-                }), 404
-
+                    
+                    insert_count += 1
+                except Exception as insert_error:
+                    app.logger.error(f"插入评分记录失败: {str(insert_error)}, 条文号: {clause_number}")
+                    continue
+            
+            # 提交事务
+            db.session.commit()
+            app.logger.info(f"成功插入 {insert_count} 条评分记录, 条文号: {', '.join(saved_clauses[:10])}...(共{len(saved_clauses)}条)")
+            
+            # 缓存键
+            cache_key = f"score_summary_{project_id}"
+            
+            # 清除缓存
+            if cache.has(cache_key):
+                cache.delete(cache_key)
+                app.logger.info(f"清除缓存: {cache_key}")
+            
+            # 返回成功响应
+            return jsonify({
+                'success': True,
+                'message': f'成功从星级案例导入 {insert_count} 条评分记录',
+                'imported_count': insert_count,
+                'standard': standard,
+                'star_rating_target': star_rating_target
+            }), 200
+            
         except Exception as e:
             # 回滚事务
             db.session.rollback()
-            app.logger.error(f"数据库操作失败: {str(e)}")
+            app.logger.error(f"导入星级案例数据失败: {str(e)}")
             app.logger.error(traceback.format_exc())
+            
             return jsonify({
-                'success': False,
-                'message': f'数据库操作失败: {str(e)}'
+                'error': f'导入星级案例数据失败: {str(e)}'
             }), 500
-
+    
     except Exception as e:
-        app.logger.error(f"处理请求失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
-        return jsonify({
-            'success': False,
-            'message': f'处理请求失败: {str(e)}'
-        }), 500
+        app.logger.error(f"获取星级案例得分数据失败: {str(e)}")
+        return jsonify({'error': f'获取星级案例得分数据失败: {str(e)}'}), 500
+
 # 添加获取百度地图API密钥的API端点
 @app.route('/api/map_api_key', methods=['GET'])
 def get_map_api_key():

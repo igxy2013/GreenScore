@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.disabled = true;
 
                 // 调用API获取星级案例数据
-                const response = await fetch(`/api/star_case_scores?target_project_id=${projectId}`);
+                const response = await fetch(`/api/star_case_scores?project_id=${projectId}`);
                 const data = await response.json();
 
                 // 恢复按钮状态
@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.disabled = false;
 
                 if (data.success) {
-                    alert(`成功导入 ${data.data.imported_count} 条星级案例数据！\n标准: ${data.data.standard}\n星级目标: ${data.data.star_rating_target}`);
+                    alert(`成功导入 ${data.imported_count} 条星级案例数据！\n标准: ${data.standard}\n星级目标: ${data.star_rating_target}`);
                 } else {
                     alert(`载入失败: ${data.message}`);
                 }
@@ -516,6 +516,7 @@ function calculateAndUpdateScores() {
         else if (standard === '四川省标'){
             if (buildingType === '居住建筑'){
                 updateDatabaseScore('3.1.16', perCapitaLandScore, projectId,null,null);
+                updateDatabaseScore('3.1.1', 0,projectId,null, '采用了节能玻璃和屋顶花园');
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('3.1.16', plotRatioScore, projectId,null,null);
