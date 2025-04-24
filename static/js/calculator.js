@@ -721,7 +721,7 @@
             // 保存文件
             zip.file('word/document.xml', xml);
             const resultBlob = await zip.generateAsync({ type: 'blob' });
-            saveAs(resultBlob, `绿色建材应用比例计算书.docx`);
+            saveAs(resultBlob, buildingNo+`-绿色建材应用比例计算书.docx`);
         } catch (error) {
             alert(`导出失败: ${error.message}`);
             console.error('导出Word错误详情:', error);
