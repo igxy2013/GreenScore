@@ -767,6 +767,15 @@ def create_project():
             )
             db.session.add(collaborator)
             
+            # 为项目创建默认评分数据
+            try:
+                app.logger.info(f"创建项目默认评分数据: 项目ID={project_id}, 名称={project_name}, 标准={standard}")
+                create_default_scores(project_id, project_name, standard)
+            except Exception as score_error:
+                app.logger.error(f"创建默认评分数据失败: {str(score_error)}")
+                app.logger.error(traceback.format_exc())
+                # 继续执行，不影响项目创建
+            
             # 提交事务
             db.session.commit()
             return jsonify({
@@ -794,6 +803,85 @@ def create_project():
         app.logger.error(f"创建项目失败: {str(e)}")
         app.logger.error(traceback.format_exc())
         return jsonify({'error': f'创建项目失败: {str(e)}'}), 500
+
+# 在文件末尾添加create_default_scores函数
+def create_default_scores(project_id, project_name, standard_selection):
+    """
+    为项目创建默认评分记录
+    
+    参数:
+    - project_id: 项目ID
+    - project_name: 项目名称
+    - standard_selection: 评价标准
+    """
+    try:
+        app.logger.info(f"开始创建默认评分记录...")
+        
+        # 获取标准数据
+        app.logger.info(f"获取标准数据: {standard_selection}")
+        standards_data = get_standards_by_name(standard_selection)
+        if standards_data:
+
+            # 插入新的评分记录
+            insert_count = 0
+            insert_errors = 0
+            for std in standards_data:
+                # 所有条文默认达标为"是"
+                is_achieved = '是'
+                    # 映射评价等级：控制项 → 基本级，评分项 → 提高级
+                level_mapping = {
+                    '控制项': '基本级',
+                    '评分项': '提高级'
+                }
+                # 获取映射后的评价等级，如果找不到映射则保持原值
+                normalized_level = std.属性.strip()  # 去除前后空格
+                mapped_level = level_mapping.get(normalized_level, normalized_level)
+                # 插入评分记录
+                try:
+                    db.session.execute(
+                        text("""
+                        INSERT INTO `得分表` (
+                            `项目ID`, `项目名称`, `专业`, `评价等级`, `条文号`, `分类`, 
+                            `是否达标`, `得分`, `技术措施`, `评价标准`
+                        ) VALUES (
+                            :project_id, :project_name, :specialty, :level, :clause_number, 
+                            :category, :is_achieved, :score, :technical_measures, :standard
+                        )
+                        """),
+                        {
+                            "project_id": project_id,
+                            "project_name": project_name,
+                            "specialty": std.专业,
+                            "level": mapped_level,  # 使用映射后的值,
+                            "clause_number": std.条文号,
+                            "category": std.分类,
+                            "is_achieved": is_achieved,
+                            "score": '0',
+                            "technical_measures": '',
+                            "standard": standard_selection
+                        }
+                    )
+                    # 每插入10条记录提交一次事务，避免事务过大
+                    if insert_count % 10 == 0:
+                        db.session.commit()
+                        app.logger.info(f"已提交 {insert_count} 条记录")
+                except Exception as insert_error:
+                    app.logger.error(f"插入评分记录失败: {str(insert_error)}, 条文号: {std.条文号}")
+        
+        # 提交最后的事务
+        try:
+            db.session.commit()
+            app.logger.info(f"最终提交事务成功")
+        except Exception as commit_error:
+            app.logger.error(f"提交事务失败: {str(commit_error)}")
+            db.session.rollback()
+            app.logger.error(traceback.format_exc())
+        return True
+    
+    except Exception as e:
+        app.logger.error(f"生成项目评分数据失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return False
 
 # 修改项目访问权限检查
 def check_project_access(project_id):
