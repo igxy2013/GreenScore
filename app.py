@@ -11,6 +11,10 @@ import urllib.parse
 import uuid
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+import tempfile
+import pandas as pd
+import re
+import traceback # 确保导入 traceback
 
 # 导入数据库相关模块
 import pymysql
@@ -3978,6 +3982,129 @@ def get_score_by_clause():
             'success': False,
             'message': f'处理请求失败: {str(e)}'
         }), 500
+
+# 导入 AI 分类聚合函数
+try:
+    from classify_and_aggregate_materials import classify_and_aggregate
+except ImportError:
+    print("警告: 无法导入 classify_and_aggregate_materials 模块。AI提取功能将不可用。")
+    # 定义一个假的 classify_and_aggregate 函数以避免启动时出错
+    def classify_and_aggregate(file_obj):
+        print("错误：classify_and_aggregate_materials.py 未找到或导入失败。")
+        return None
+# 导入 numpy 用于处理 Pandas 可能返回的类型
+import numpy as np
+import traceback # 确保 traceback 被导入
+
+# 辅助函数：将可能存在的 numpy 类型转换为 Python 原生类型，以便 JSON 序列化
+def convert_numpy_types(data):
+    if isinstance(data, dict):
+        return {k: convert_numpy_types(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [convert_numpy_types(i) for i in data]
+    elif isinstance(data, (np.int_, np.intc, np.intp, np.int8,
+                        np.int16, np.int32, np.int64, np.uint8,
+                        np.uint16, np.uint32, np.uint64)):
+        return int(data)
+    elif isinstance(data, (np.float_, np.float16, np.float32,
+                        np.float64)):
+        # 处理 NaN 和 Infinity
+        if np.isnan(data):
+            return None  # 或者返回 'NaN' 字符串
+        elif np.isinf(data):
+             # 根据正负无穷返回不同字符串或 None
+            return 'Infinity' if data > 0 else '-Infinity' # 或者返回 None
+        return float(data)
+    elif isinstance(data, (np.ndarray,)): # 如果有数组返回
+        return data.tolist()
+    elif isinstance(data, np.bool_):
+        return bool(data)
+    elif isinstance(data, np.void):
+        return None
+    return data
+
+# --- 新增 API 端点 ---
+@app.route('/api/extract_quantities', methods=['POST'])
+@login_required # 保持与其他 API 一致，需要登录才能使用
+def extract_quantities_api():
+    """处理上传的Excel文件，提取工程量。"""
+    # 使用 'excel_file' 作为键来匹配前端 FormData
+    if 'excel_file' not in request.files:
+        app.logger.error("API /api/extract_quantities: 请求中未找到名为 'excel_file' 的文件部分")
+        return jsonify({'error': '未找到文件部分'}), 400
+
+    file = request.files['excel_file']
+
+    if file.filename == '':
+        app.logger.error("API /api/extract_quantities: 用户未选择文件")
+        return jsonify({'error': '未选择文件'}), 400
+
+    # 安全获取用户ID用于日志记录
+    user_id_for_logs = current_user.id if current_user.is_authenticated else '未登录用户'
+
+    if file and file.filename.endswith(('.xlsx', '.xls')):
+        temp_file_path = None
+        try:
+            app.logger.info(f"用户 {user_id_for_logs} 开始提取文件 '{file.filename}' 的工程量。") # 使用安全获取的ID
+
+            temp_dir = os.path.join(app.root_path, 'temp')
+            os.makedirs(temp_dir, exist_ok=True)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1], dir=temp_dir) as temp_file:
+                file.save(temp_file.name)
+                temp_file_path = temp_file.name
+
+            app.logger.info(f"临时文件已创建: {temp_file_path}")
+            aggregated_quantities = classify_and_aggregate(temp_file_path)
+
+            if aggregated_quantities is None:
+                app.logger.error(f"用户 {user_id_for_logs} 处理文件 '{file.filename}' 时 classify_and_aggregate 返回 None。")
+                return jsonify({'error': '无法处理文件或文件中缺少必要的列'}), 500
+            elif not isinstance(aggregated_quantities, pd.Series):
+                 app.logger.error(f"classify_and_aggregate 返回了非预期的类型: {type(aggregated_quantities)}")
+                 return jsonify({'error': '文件处理函数返回了非预期的结果类型'}), 500
+            elif aggregated_quantities.empty:
+                 app.logger.info(f"用户 {user_id_for_logs} 的文件 '{file.filename}' 未提取到有效工程量数据。")
+                 return jsonify({'quantities': {}, 'message': '未在文件中找到可分类的材料项或无法匹配任何二级指标。'}) # 返回 quantities 而不是 data
+
+            result_dict = aggregated_quantities.to_dict()
+            result_dict_serializable = convert_numpy_types(result_dict)
+
+            app.logger.info(f"用户 {user_id_for_logs} 成功提取文件 '{file.filename}' 的工程量。")
+            return jsonify({'quantities': result_dict_serializable})
+
+        except ImportError as ie:
+             app.logger.error(f"处理文件时发生导入错误: {ie}")
+             if "classify_and_aggregate" in str(ie): return jsonify({'error': '服务器配置错误：缺少核心处理模块'}), 500
+             else: return jsonify({'error': '服务器依赖项错误'}), 500
+        except FileNotFoundError:
+            app.logger.error(f"临时文件 {temp_file_path} 在处理期间丢失")
+            return jsonify({'error': '处理文件时发生错误：临时文件丢失'}), 500
+        except Exception as e:
+            error_trace = traceback.format_exc()
+            app.logger.error(f"API /api/extract_quantities 处理文件 {temp_file_path or '未创建'} 时发生未知错误: {e}\n{error_trace}")
+            try:
+                 # 移除 traceback 参数
+                 LogRecord.add_log(
+                     level="ERROR",
+                     message=f"API /api/extract_quantities 处理失败: {str(e)}",
+                     source="API_ENDPOINT",
+                     user_id=user_id_for_logs, # 使用安全获取的ID
+                     # traceback=error_trace # 移除这一行
+                 )
+            except Exception as log_err:
+                 app.logger.error(f"记录API错误日志时也发生错误: {log_err}")
+            return jsonify({'error': f'处理文件时发生内部错误: {str(e)}'}), 500
+        finally:
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)
+                    app.logger.info(f"临时文件已删除: {temp_file_path}")
+                except OSError as e:
+                    app.logger.error(f"删除临时文件 {temp_file_path} 时出错: {e.strerror}")
+    else:
+        app.logger.error(f"API /api/extract_quantities: 上传了不支持的文件类型: {file.filename}")
+        return jsonify({'error': '不支持的文件类型，请上传 .xlsx 或 .xls 文件'}), 400
+
 
 if __name__ == '__main__':
     # 初始化数据库

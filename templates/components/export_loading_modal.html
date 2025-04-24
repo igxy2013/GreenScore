@@ -20,17 +20,3 @@
         }
     });
 </script>
-
-<!-- 示例按钮 - 仅用于演示，实际使用时可以移除 -->
-<div class="text-center mt-4" id="demo-container" style="display: none;">
-    <button id="demo-loading-btn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 focus:outline-none">
-        显示加载窗口演示
-    </button>
-</div>
-
-<script>
-    // 仅在开发环境显示演示按钮
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        document.getElementById('demo-container').style.display = 'block';
-    }
-</script> 

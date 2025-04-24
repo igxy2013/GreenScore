@@ -57,13 +57,29 @@
             buildingNo: document.getElementById('buildingNo'),
             standardSelection: document.getElementById('standardSelection'),
             projectId: document.getElementById('project_id'),
-            resultDiv: document.getElementById('result')
+            resultDiv: document.getElementById('result'),
+            indicatorsDiv: document.getElementById('indicators'),
+            aiExtractButton: document.getElementById('aiExtractButton'),
+            excelFileInput: document.getElementById('excelFileInput'),
+            messageArea: document.getElementById('message-area')
         };
             
         // 初始化折叠功能
         initializeCollapsibleSections();
         // 初始化复选框
         initializeCheckboxes();
+        // 初始化比例输入框事件
+        initializeRatioInputs();
+        // 初始化用量自动计算
+        initializeQuantityCalculation();
+
+        // --- 重新添加: 绑定 AI 提取按钮点击事件 ---
+        if (DOM.aiExtractButton) {
+            DOM.aiExtractButton.addEventListener('click', triggerFileInput);
+        } else {
+            console.error('未能找到 AI 提取按钮 (aiExtractButton)');
+        }
+
         // 尝试加载表单数据
         // loadForm();
     });
@@ -112,6 +128,47 @@
                 checkbox.click();
             });
         });
+    }
+    
+    // --- 新增: 初始化比例输入框事件 (空实现) ---
+    function initializeRatioInputs() {
+        // 目前不需要实际操作，保留为空以避免错误
+        console.log('initializeRatioInputs called, but no action needed currently.');
+    }
+    
+    // --- 新增: 初始化用量自动计算 ---
+    function initializeQuantityCalculation() {
+        console.log('Initializing quantity calculation listeners...');
+        DOM.indicatorsDiv.querySelectorAll('.sub-item.checkbox-wrapper').forEach(itemRow => {
+            const ratioInput = itemRow.querySelector('input[type="number"]'); // 绿材应用比例
+            const totalQuantityInput = itemRow.querySelector('input[placeholder="材料总量"]'); // 材料总量
+            const greenQuantityInput = itemRow.querySelector('input[placeholder="绿材用量"]'); // 绿材应用量
+
+            if (ratioInput && totalQuantityInput && greenQuantityInput) {
+                const calculateAndUpdate = () => {
+                    const ratio = parseFloat(ratioInput.value) || 0;
+                    const totalQuantity = parseFloat(totalQuantityInput.value) || 0;
+
+                    if (!isNaN(ratio) && !isNaN(totalQuantity) && ratio >= 0 && totalQuantity >= 0) {
+                        const greenQuantity = (totalQuantity * (ratio / 100)).toFixed(2); // 保留两位小数
+                        greenQuantityInput.value = greenQuantity;
+                    } else {
+                        // 如果输入无效或为空，清空绿材用量
+                        greenQuantityInput.value = ''; 
+                    }
+                };
+
+                // 为比例和总量输入框添加事件监听器
+                ratioInput.addEventListener('input', calculateAndUpdate);
+                totalQuantityInput.addEventListener('input', calculateAndUpdate);
+
+                // // 可选：页面加载时也计算一次初始值 (如果需要)
+                // calculateAndUpdate(); 
+            } else {
+                // console.warn('Could not find all required inputs in a sub-item row for calculation.', itemRow);
+            }
+        });
+        console.log('Quantity calculation listeners initialized.');
     }
     
     // 计算得分
@@ -168,8 +225,12 @@
                     const input = itemDiv.querySelector('input[type="number"]');
                     const actualValue = parseFloat(input.value) || 0;
 
+                    // 查找指标名称
+                    const indicatorSpan = itemDiv.querySelector('.col-indicator');
+                    const itemName = indicatorSpan ? indicatorSpan.textContent.trim() : '未知指标';
+
                     category.items.push({
-                        name: itemDiv.textContent.split('≥')[0].trim(),
+                        name: itemName,
                         checked: checkbox.checked,
                         actual: actualValue
                     });
@@ -482,6 +543,11 @@
     // 统一的错误处理函数
     function handleError(message, error) {
         console.error(`${message}:`, error);
+        if (DOM.messageArea) {
+            setMessage(`${message}: ${error.message}`, 'text-red-600');
+        } else {
+            alert(`${message}: ${error.message}`);
+        }
         const debugInfo = document.getElementById('debug-info');
         if (debugInfo) {
             debugInfo.textContent = `错误: ${error.message}`;
@@ -673,12 +739,98 @@
         }
     }
     
+    // --- 重新添加: 设置消息 ---
+    function setMessage(text, cssClass = 'text-gray-600') {
+        if (DOM.messageArea) {
+            DOM.messageArea.textContent = text;
+            DOM.messageArea.className = `mt-4 text-sm ${cssClass}`; // 重置样式并添加新类
+        } else {
+            // 如果找不到消息区域，打印到控制台作为备用
+            console.log("Message:", text, `(CSS Class: ${cssClass})`);
+            // 可以考虑在这里添加一个 alert 作为更强的提示
+            // alert(text);
+        }
+    }
+
+    // --- 重新添加: 清除文件输入框的值 ---
+    function clearFileInput() {
+        if (DOM.excelFileInput) {
+            DOM.excelFileInput.value = ''; // 清除文件选择
+        }
+    }
+
+    // --- 重新添加: 触发文件选择 ---
+    function triggerFileInput() {
+        if (DOM.excelFileInput) {
+            DOM.excelFileInput.click(); // 模拟点击隐藏的文件输入框
+        } else {
+            // 如果找不到元素，使用 handleError
+            handleError('无法找到文件输入元素', new Error('DOM.excelFileInput is null or undefined. Make sure the element with id="excelFileInput" exists.'));
+        }
+    }
+
+    // --- 修改: 处理文件选择和上传 (不更新输入框) ---
+    async function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            setMessage('未选择文件。', 'text-yellow-600');
+            return;
+        }
+
+        // 文件类型检查 (可选)
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+             setMessage('请选择 Excel 文件 (.xlsx 或 .xls)。', 'text-red-600');
+             clearFileInput(); // 清除选择
+             return;
+        }
+
+        setMessage('正在处理文件...', 'text-blue-600');
+
+        const formData = new FormData();
+        formData.append('excel_file', file);
+
+        try {
+            const response = await fetch('/api/extract_quantities', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+                 throw new Error(data.error);
+            }
+
+            console.log('后端返回的工程量:', data.quantities); // 在控制台打印结果
+
+            // 更新消息，告知用户提取成功，但不更新UI输入框
+            if (data.quantities) {
+                const extractedCount = Object.keys(data.quantities).length;
+                 setMessage(`成功提取了 ${extractedCount} 个指标的工程量（详情请查看控制台）。`, 'text-green-600');
+            } else {
+                setMessage('未从文件中提取到有效数据。', 'text-yellow-600');
+            }
+
+        } catch (error) {
+            handleError('提取工程量失败', error);
+            setMessage(`提取失败: ${error.message}`, 'text-red-600');
+        } finally {
+            clearFileInput(); // 清除文件输入，以便下次可以选择同名文件
+        }
+    }
+
     // 将需要在外部调用的函数挂载到 window 对象
     window.calculate = calculate;
     window.saveForm = saveForm;
     window.loadForm = loadForm;
     window.exportToWordSimple = exportToWordSimple;
     window.exportWord = exportWord;
+    window.handleFileSelect = handleFileSelect;
     // 将reportData的引用也挂载到window，供导出函数使用
     window.getCurrentReportData = function() { return reportData; }; 
 })();
