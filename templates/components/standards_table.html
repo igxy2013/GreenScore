@@ -38,9 +38,9 @@
     {% if current_level == '提高级' %}
     <!-- 提高级分类过滤器 -->
     <div class="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
-        <div class="flex flex-wrap items-center">
+        <div class="flex flex-wrap items-center gap-2">
             <span class="mr-2 font-medium">分类过滤:</span>
-            <div class="flex flex-wrap">
+            <div class="flex flex-wrap gap-1">
                 <button id="filter-all" class="px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium category-filter active">全部</button>
                 <button id="filter-安全耐久" data-category="安全耐久" class="px-3 py-1 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm font-medium category-filter">安全耐久</button>
                 <button id="filter-健康舒适" data-category="健康舒适" class="px-3 py-1 rounded-full bg-green-100 hover:bg-green-200 text-green-800 text-sm font-medium category-filter">健康舒适</button>
@@ -49,6 +49,19 @@
                 <button id="filter-环境宜居" data-category="环境宜居" class="px-3 py-1 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-sm font-medium category-filter">环境宜居</button>
                 <button id="filter-提高与创新" data-category="提高与创新" class="px-3 py-1 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium category-filter">提高与创新</button>
             </div>
+            <!-- AI Extract Button -->
+            <button id="aiExtractBtn" class="ai-extract-btn flex items-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white px-3 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] group">
+                <i class="ri-magic-line"></i> AI提取报告得分
+            </button>
+            <!-- Hidden File Input -->
+            <input type="file" id="aiFileUploader" multiple accept=".doc,.docx,.pdf" style="display: none;">
+             <!-- Loading Indicator -->
+             <div id="aiLoadingIndicator" class="ml-2 hidden">
+                 <svg class="animate-spin h-5 w-5 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                 </svg>
+             </div>
         </div>
     </div>
     {% endif %}
@@ -157,6 +170,78 @@
     {% endif %}
 </div>
 
+<!-- AI Score Extraction Upload Modal (New) -->
+<div id="aiScoreUploadModal" class="fixed inset-0 z-[100] hidden overflow-auto bg-black bg-opacity-75 flex items-center justify-center p-4 dashboard-modal-backdrop">
+    <div class="relative bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-auto dashboard-modal-content">
+        <!-- Modal Header -->
+        <div class="p-4 flex justify-between items-center border-b border-gray-700">
+            <h3 class="text-xl font-bold text-white">AI提取报告得分</h3>
+            <button type="button" class="text-purple-300 hover:text-purple-100 p-1 rounded-full hover:bg-purple-900 transition-all" onclick="closeAiUploadModal()" title="关闭">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <!-- Modal Body -->
+        <div class="p-4">
+            <!-- Word/PDF Upload Area -->
+            <div id="fileUploadTab" class="mb-4">
+                 <p class="text-sm text-gray-400 mb-3">请上传包含评分信息的报告文件（支持 .doc, .docx, .pdf 格式）。</p>
+                <label for="aiScoreFileInput" class="block cursor-pointer">
+                    <div id="fileDropArea" class="text-center py-6 border-2 border-dashed border-purple-500 rounded-lg hover:border-purple-300 transition-all bg-gray-800 file-upload-area">
+                        <i class="ri-upload-cloud-2-line text-purple-400 text-4xl mb-2"></i>
+                        <p class="text-gray-300 mb-1">点击或拖放文件到此处</p>
+                        <p class="text-gray-400 text-sm">支持 .doc, .docx, .pdf</p>
+                    </div>
+                </label>
+                <input type="file" id="aiScoreFileInput" multiple accept=".doc,.docx,.pdf" class="hidden">
+                <div id="selectedFilesInfo" class="mt-3 text-sm text-gray-400 text-center">尚未选择文件</div>
+            </div>
+
+             <!-- Loading Indicator within Modal -->
+             <div id="aiUploadLoadingIndicator" class="mb-4 hidden">
+                 <div class="flex items-center justify-center p-4 bg-gray-800 rounded-md">
+                     <i class="ri-loader-4-line animate-spin text-purple-400 text-2xl mr-3"></i>
+                     <span class="text-gray-300">正在上传和提取，请稍候...</span>
+                 </div>
+             </div>
+        </div>
+        <!-- Modal Footer -->
+        <div class="p-4 flex justify-end items-center border-t border-gray-700 space-x-3">
+            <button type="button" id="aiUploadCancelBtn" class="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-all">取消</button>
+            <button type="button" id="startAiExtractionBtn" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-bold extract-button">
+                开始提取得分
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- AI Score Extraction Preview Modal -->
+<div id="aiScorePreviewModal" class="fixed inset-0 z-[100] hidden overflow-auto bg-black bg-opacity-75 flex items-center justify-center p-4 dashboard-modal-backdrop">
+    <div class="relative bg-gray-900 rounded-lg shadow-xl max-w-md w-full mx-auto dashboard-modal-content">
+        <!-- Modal Header -->
+        <div class="p-4 flex justify-between items-center border-b border-gray-700">
+            <h3 class="text-xl font-bold text-white">AI提取结果预览</h3>
+            <button type="button" class="text-purple-300 hover:text-purple-100 p-1 rounded-full hover:bg-purple-900 transition-all" onclick="closeAiPreviewModal()" title="关闭">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <!-- Modal Body -->
+        <div class="p-4 max-h-[60vh] overflow-y-auto">
+            <p class="text-sm text-gray-400 mb-3">请检查提取的得分，确认无误后点击"应用到项目"。</p>
+            <div id="aiScorePreviewContent">
+                <p class="text-gray-500">正在加载预览...</p>
+            </div>
+        </div>
+        <!-- Modal Footer -->
+        <div class="p-4 flex justify-end items-center border-t border-gray-700 space-x-3">
+             <span id="aiPreviewSummary" class="text-sm text-gray-400 mr-auto"></span>
+            <button type="button" class="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-all" onclick="closeAiPreviewModal()">取消</button>
+            <button type="button" id="applyAiScoresBtn" class="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg hover:from-green-700 hover:to-teal-700 transition-all font-bold">
+                应用到项目
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- 图片模态框 -->
 <div id="imageModal" class="fixed inset-0 z-50 hidden overflow-auto bg-black bg-opacity-75 flex items-center justify-center p-4">
     <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-auto">
@@ -177,7 +262,274 @@
     // 定义权限控制变量
     let hasEditPermission = true; // 默认为可编辑
     let userPermissions = null;
-    
+    let selectedAiFiles = null; // Variable to store selected files from the new modal
+
+    // --- Moved Functions Outside DOMContentLoaded ---
+    function showAiUploadModal() {
+        const modal = document.getElementById('aiScoreUploadModal');
+        if (modal) {
+            // Reset file input and selection info
+            const fileInput = document.getElementById('aiScoreFileInput');
+            if(fileInput) fileInput.value = null;
+            selectedAiFiles = null;
+            updateSelectedFilesInfo();
+            // Hide loading indicator if it was somehow visible
+            const loadingIndicator = document.getElementById('aiUploadLoadingIndicator');
+            if(loadingIndicator) loadingIndicator.classList.add('hidden');
+
+            modal.classList.remove('hidden');
+            modal.classList.add('show'); // Add .show class
+            document.body.classList.add('overflow-hidden');
+            // Add ESC key listener for upload modal
+            document.addEventListener('keydown', handleEscKeyForUploadModal);
+        }
+    }
+
+    function closeAiUploadModal() {
+        //--> 添加日志确认函数被调用 <--
+        console.log('closeAiUploadModal function called');
+        const modal = document.getElementById('aiScoreUploadModal');
+        if (modal) {
+            console.log('Modal found, adding hidden class and removing show class'); // <-- 确认找到模态框
+            modal.classList.add('hidden');
+            modal.classList.remove('show'); // Remove .show class
+        } else {
+           console.error('Upload modal not found!'); // <-- 如果没找到模态框
+        }
+        document.body.classList.remove('overflow-hidden');
+         // Ensure loading indicators are hidden on close
+         const uploadLoading = document.getElementById('aiUploadLoadingIndicator');
+         if(uploadLoading) uploadLoading.classList.add('hidden');
+         const globalLoading = document.getElementById('aiLoadingIndicator'); // Also hide the global one
+         if(globalLoading) globalLoading.classList.add('hidden');
+         const extractBtn = document.getElementById('aiExtractBtn'); // Re-enable main button
+         if(extractBtn) extractBtn.disabled = false;
+         // Remove ESC key listener for upload modal
+         document.removeEventListener('keydown', handleEscKeyForUploadModal);
+    }
+
+    // Function to handle ESC key for the upload modal
+    function handleEscKeyForUploadModal(event) {
+        if (event.key === 'Escape') {
+            closeAiUploadModal();
+        }
+    }
+
+    function updateSelectedFilesInfo() {
+        const infoDiv = document.getElementById('selectedFilesInfo');
+        if (!infoDiv) return;
+        if (selectedAiFiles && selectedAiFiles.length > 0) {
+            let fileNames = Array.from(selectedAiFiles).map(f => f.name).join(', ');
+             if (fileNames.length > 100) { // Truncate if too long
+                 fileNames = fileNames.substring(0, 97) + '...';
+             }
+            infoDiv.textContent = `已选择 ${selectedAiFiles.length} 个文件: ${fileNames}`;
+            infoDiv.classList.remove('text-red-500');
+        } else {
+            infoDiv.textContent = '尚未选择文件。';
+        }
+    }
+
+     function handleFileSelection(files) {
+         // Check file types
+         const allowedTypes = ['.doc', '.docx', '.pdf'];
+         const invalidFiles = [];
+         for (let file of files) {
+             const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+             if (!allowedTypes.includes(extension)) {
+                 invalidFiles.push(file.name);
+             }
+         }
+
+         if (invalidFiles.length > 0) {
+             const msg = `包含不支持的文件类型: ${invalidFiles.join(', ')}. 只允许 ${allowedTypes.join(', ')}`;
+             if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
+             selectedAiFiles = null; // Reject the selection
+              // Clear the file input visually if possible (might not work reliably cross-browser)
+              const fileInput = document.getElementById('aiScoreFileInput');
+              if(fileInput) fileInput.value = null;
+         } else {
+            selectedAiFiles = files; // Accept the selection
+         }
+          updateSelectedFilesInfo();
+     }
+
+    // Function to close the AI preview modal
+    window.closeAiPreviewModal = function() {
+        const modal = document.getElementById('aiScorePreviewModal'); // Find the preview modal
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('show'); // Remove .show class
+        }
+        document.body.classList.remove('overflow-hidden');
+        // Remove ESC key listener for preview modal
+        document.removeEventListener('keydown', handleEscKeyForPreviewModal);
+    }
+
+    // Function to handle ESC key for the preview modal (Keep global for now or move if needed)
+    function handleEscKeyForPreviewModal(event) {
+        if (event.key === 'Escape') {
+            closeAiPreviewModal();
+        }
+    }
+
+    // Refactored function to handle the actual extraction API call
+    async function triggerAiScoreExtraction(files) {
+        console.log('triggerAiScoreExtraction function called'); // Added log
+        // --- Add Permission Check ---
+        if (!hasEditPermission) {
+            if (typeof toast === 'function') {
+                toast('您没有编辑权限，无法执行此操作', 'error');
+            }
+            closeAiUploadModal(); // Close the modal if no permission
+            return;
+        }
+        // --- End Permission Check ---
+
+        if (!files || files.length === 0) {
+            return; // Should be checked before calling, but double-check
+        }
+
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]); // Backend expects 'files' key
+        }
+
+        // Show loading indicator (inside the upload modal) & Disable button
+        const uploadLoadingIndicator = document.getElementById('aiUploadLoadingIndicator');
+        const startExtractionBtn = document.getElementById('startAiExtractionBtn'); // Need this reference here too
+        const aiExtractBtn = document.getElementById('aiExtractBtn'); // And this one
+
+        if(uploadLoadingIndicator) uploadLoadingIndicator.classList.remove('hidden');
+        if(startExtractionBtn) startExtractionBtn.disabled = true;
+        if(aiExtractBtn) aiExtractBtn.disabled = true;
+
+
+        try {
+            const response = await fetch('/api/extract_scores_from_files', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            // Close the upload modal BEFORE showing results/errors
+            closeAiUploadModal();
+
+            if (data.success && data.scores) {
+                extractedScoresData = data.scores; // Store data
+                displayAiScorePreview(extractedScoresData);
+                const aiScorePreviewModal = document.getElementById('aiScorePreviewModal'); // Need reference
+                if (aiScorePreviewModal) {
+                    aiScorePreviewModal.classList.remove('hidden');
+                    aiScorePreviewModal.classList.add('show'); // Add .show class
+                }
+                document.body.classList.add('overflow-hidden'); // Add overflow hidden for preview modal
+                // Add ESC key listener for preview modal
+                document.addEventListener('keydown', handleEscKeyForPreviewModal);
+                if (typeof toast === 'function') {
+                    toast(`成功提取 ${extractedScoresData.length} 条得分记录`, 'success');
+                }
+
+            } else {
+                console.error('AI提取失败:', data.error);
+                const msg = `AI提取失败: ${data.error || '未知错误'}`;
+                if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
+                extractedScoresData = []; // Clear previous data on failure
+            }
+
+        } catch (error) {
+            console.error('请求AI提取接口失败:', error);
+            const msg = `请求失败: ${error.message}`;
+             // Ensure upload modal is closed even on fetch error
+             closeAiUploadModal();
+            if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
+            extractedScoresData = []; // Clear previous data on failure
+        } finally {
+            // Hide loading indicator (upload modal one is hidden by closeAiUploadModal)
+            // Re-enable buttons
+            if(startExtractionBtn) startExtractionBtn.disabled = false;
+            if(aiExtractBtn) aiExtractBtn.disabled = false; // Re-enable main button
+        }
+    }
+
+    // Display the extracted scores in the preview modal (Adjusted table styles)
+    function displayAiScorePreview(scores) {
+        const aiScorePreviewContent = document.getElementById('aiScorePreviewContent'); // Need reference
+        const applyAiScoresBtn = document.getElementById('applyAiScoresBtn'); // Need reference
+        const aiPreviewSummary = document.getElementById('aiPreviewSummary'); // Need reference
+
+        if (!aiScorePreviewContent) return;
+
+        if (!scores || scores.length === 0) {
+            aiScorePreviewContent.innerHTML = '<p class="text-center text-gray-500">未能从文件中提取到任何得分信息。</p>';
+            if (applyAiScoresBtn) applyAiScoresBtn.disabled = true;
+            if (aiPreviewSummary) aiPreviewSummary.textContent = '共 0 条记录';
+            return;
+        }
+
+        let tableHTML = `
+            <div class="bg-gray-800 rounded-md text-sm max-h-56 overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-700 text-sm">
+                    <thead class="sticky top-0 bg-gray-800 z-10">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-bold text-purple-300 tracking-wider">条文号</th>
+                            <th class="px-3 py-2 text-left font-bold text-purple-300 tracking-wider">提取得分</th>
+                            <th class="px-3 py-2 text-left font-bold text-purple-300 tracking-wider">来源文件</th>
+                            <th class="px-3 py-2 text-left font-bold text-purple-300 tracking-wider">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+        `;
+
+        let applicableCount = 0;
+        scores.forEach(item => {
+            // Check if a corresponding input exists in the main table
+            const targetInput = document.querySelector(`input[name="score"][data-clause="${item.clause}"]`);
+            let statusIcon = '';
+            let statusText = '';
+            if (targetInput) {
+                const maxScore = parseFloat(targetInput.dataset.maxscore);
+                 const currentScore = parseFloat(item.score);
+                 if (isNaN(maxScore)) { // Handle non-scoreable items like "—"
+                     statusIcon = '<i class="ri-prohibited-line text-gray-500" title="此项不可评分"></i>';
+                     statusText = '<span class="text-gray-500">不可评分</span>';
+                 } else if (isNaN(currentScore)) {
+                      statusIcon = '<i class="ri-error-warning-line text-yellow-500" title="提取值非数字"></i>';
+                     statusText = '<span class="text-yellow-500">非数字</span>';
+                 }
+                 else if (currentScore > maxScore) {
+                     statusIcon = '<i class="ri-error-warning-fill text-orange-500" title="提取分数超过最大值"></i>';
+                     statusText = `<span class="text-orange-500">超限(${maxScore})</span>`;
+                     applicableCount++; // Still applicable, but needs clamping
+                 } else {
+                    statusIcon = '<i class="ri-check-fill text-green-500" title="可应用"></i>';
+                    statusText = '<span class="text-green-400">可应用</span>';
+                    applicableCount++;
+                }
+            } else {
+                statusIcon = '<i class="ri-question-fill text-gray-500" title="项目中未找到对应条文"></i>';
+                statusText = '<span class="text-gray-500">无匹配</span>';
+            }
+
+            tableHTML += `
+                <tr>
+                    <td class="px-3 py-2 whitespace-nowrap font-medium text-gray-300">${item.clause || 'N/A'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-300">${item.score !== undefined ? item.score : 'N/A'}</td>
+                    <td class="px-3 py-2 whitespace-nowrap text-gray-400 truncate" title="${item.filename || ''}">${item.filename || 'N/A'}</td>
+                     <td class="px-3 py-2 whitespace-nowrap text-gray-400 flex items-center gap-1">${statusIcon} ${statusText}</td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `</tbody></table></div>`;
+        aiScorePreviewContent.innerHTML = tableHTML;
+        if(applyAiScoresBtn) applyAiScoresBtn.disabled = applicableCount === 0;
+        if(aiPreviewSummary) aiPreviewSummary.textContent = `共 ${scores.length} 条记录，${applicableCount} 条可应用`;
+    }
+
+    // --- End Moved Functions ---
+
     // 图片模态框相关函数
     function showImageModal(imageSrc) {
         const modal = document.getElementById('imageModal');
@@ -202,6 +554,7 @@
     
     document.addEventListener('DOMContentLoaded', function() {
         console.log('=== 初始化提高级页面 ===');
+        console.log('DOMContentLoaded event fired.');
         
         // 加载用户权限
         loadUserPermissionsForStandards();
@@ -331,8 +684,203 @@
                 validateScore(this);
             });
         });
-    });
-    
+
+        // --- Setup Event Listeners --- Moved from outside ---
+        console.log('Attempting to find modal elements...'); // Added log
+        const fileInput = document.getElementById('aiScoreFileInput');
+        const dropArea = document.getElementById('fileDropArea');
+        const startExtractionBtn = document.getElementById('startAiExtractionBtn');
+        const cancelUploadBtn = document.getElementById('aiUploadCancelBtn'); // Added selector for cancel button
+        const aiExtractBtn = document.getElementById('aiExtractBtn'); // Main AI Button
+        const aiScorePreviewModal = document.getElementById('aiScorePreviewModal'); // Preview Modal
+        const applyAiScoresBtn = document.getElementById('applyAiScoresBtn'); // Apply Button in Preview
+
+        console.log(`File input found: ${!!fileInput}`);
+        console.log(`Drop area found: ${!!dropArea}`);
+        console.log(`Start Extraction button found: ${!!startExtractionBtn}`); // Added log
+        console.log(`Cancel button found: ${!!cancelUploadBtn}`); // Added log
+        console.log(`Main AI Extract button found: ${!!aiExtractBtn}`);
+        console.log(`Preview Modal found: ${!!aiScorePreviewModal}`);
+        console.log(`Apply Scores button found: ${!!applyAiScoresBtn}`);
+
+
+        if (fileInput) {
+            console.log('Adding change listener to file input.');
+            fileInput.addEventListener('change', (event) => {
+                console.log('File input change event fired'); // Added log
+                if (event.target.files) {
+                   handleFileSelection(event.target.files);
+               }
+           });
+        }
+
+        if (dropArea) {
+            console.log('Adding drag/drop listeners to drop area.');
+             // Prevent default drag behaviors
+             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                 dropArea.addEventListener(eventName, preventDefaults, false);
+                 document.body.addEventListener(eventName, preventDefaults, false); // Prevent browser opening file
+             });
+
+             // Highlight drop area when item is dragged over it
+             ['dragenter', 'dragover'].forEach(eventName => {
+                 dropArea.addEventListener(eventName, () => dropArea.classList.add('highlight-drop'), false);
+             });
+
+             ['dragleave', 'drop'].forEach(eventName => {
+                 dropArea.addEventListener(eventName, () => dropArea.classList.remove('highlight-drop'), false);
+             });
+
+             // Handle dropped files
+             dropArea.addEventListener('drop', (event) => {
+                console.log('File drop event fired'); // Added log
+                 const dt = event.dataTransfer;
+                 const files = dt.files;
+                  if (files && files.length > 0) {
+                      handleFileSelection(files);
+                      // Optional: Update the file input's files list for consistency, though not strictly necessary
+                      // if we use the selectedAiFiles variable directly.
+                      // try { fileInput.files = files; } catch (e) { console.warn("Could not set file input files property."); }
+                  }
+             }, false);
+        }
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Add event listener for Cancel button (instead of inline onclick)
+        if (cancelUploadBtn) {
+            console.log('Attempting to add event listener to Cancel button.'); // Added log
+            // Ensure previous listeners are removed if any (though unlikely needed here)
+            // cancelUploadBtn.removeEventListener('click', closeAiUploadModal);
+            cancelUploadBtn.addEventListener('click', closeAiUploadModal);
+        } else {
+            console.error('Failed to find Cancel button to attach listener.');
+        }
+
+        if (startExtractionBtn) {
+            console.log('Attempting to add event listener to Start Extraction button.'); // Added log
+            startExtractionBtn.addEventListener('click', () => {
+                console.log('Start Extraction button clicked'); // Added log
+                if (!selectedAiFiles || selectedAiFiles.length === 0) {
+                     const msg = "请先选择要上传的文件。";
+                     if (typeof toast === 'function') { toast(msg, 'warning'); } else { alert(msg); }
+                     return;
+                }
+                 // Start the extraction process using the selected files
+                 triggerAiScoreExtraction(selectedAiFiles);
+            });
+        } else {
+            console.error('Failed to find Start Extraction button to attach listener.');
+        }
+         // Close upload modal on background click
+         const aiUploadModal = document.getElementById('aiScoreUploadModal');
+         if (aiUploadModal) {
+             console.log('Adding background click listener to Upload Modal.');
+             aiUploadModal.addEventListener('click', function(e) {
+                 // Check if the click target is the backdrop itself
+                 if (e.target === this) {
+                     console.log('Upload modal background clicked.');
+                     closeAiUploadModal();
+                 }
+             });
+         }
+        // --- End Setup for New Upload Modal ---
+
+        // Modify AI Extract Button: Open the new upload modal instead of triggering file input
+        if (aiExtractBtn) {
+            console.log('Adding click listener to main AI Extract button.');
+            aiExtractBtn.addEventListener('click', () => {
+                console.log('Main AI Extract button clicked.');
+                showAiUploadModal(); // New behavior: open the upload modal
+            });
+        } else {
+            console.error('Failed to find main AI Extract button.');
+        }
+
+
+        // Handle applying the scores (Apply button in Preview Modal)
+        if (applyAiScoresBtn) {
+            console.log('Adding click listener to Apply Scores button.');
+            applyAiScoresBtn.addEventListener('click', () => {
+                console.log('Apply Scores button clicked.');
+                if (!extractedScoresData || extractedScoresData.length === 0) {
+                    if (typeof toast === 'function') { toast('没有可应用的得分', 'info'); }
+                    return;
+                }
+
+                 // 检查是否有编辑权限
+                 if (!hasEditPermission) {
+                     if (typeof toast === 'function') { toast('您没有编辑权限，无法应用得分', 'error'); }
+                     return;
+                 }
+
+                let appliedCount = 0;
+                extractedScoresData.forEach(item => {
+                     if (!item || typeof item.clause === 'undefined') return; // Skip invalid items
+
+                    const targetInput = document.querySelector(`input[name="score"][data-clause="${item.clause}"]`);
+                    if (targetInput) {
+                        const maxScoreText = targetInput.dataset.maxscore;
+                         // Skip if target is not scoreable (maxscore is not a number like "—")
+                         if (isNaN(parseFloat(maxScoreText))) {
+                            console.warn(`条文 ${item.clause}: 目标输入框不可评分，跳过.`);
+                            return;
+                         }
+
+                        const maxScore = parseFloat(maxScoreText);
+                        let scoreToApply = parseFloat(item.score);
+
+                        // Ensure score is a number and clamp to maxScore
+                        if (!isNaN(scoreToApply)) {
+                             if (scoreToApply > maxScore) {
+                                console.warn(`条文 ${item.clause}: 提取得分 ${scoreToApply} 超过最大值 ${maxScore}. 将应用最大值.`);
+                                scoreToApply = maxScore;
+                             } else if (scoreToApply < 0) { // Ensure score is not negative
+                                  console.warn(`条文 ${item.clause}: 提取得分 ${scoreToApply} 小于0. 将应用 0.`);
+                                 scoreToApply = 0;
+                             }
+                            targetInput.value = scoreToApply;
+                            appliedCount++;
+                        } else {
+                             console.warn(`条文 ${item.clause}: 提取的得分 "${item.score}" 不是有效数字，跳过应用.`);
+                        }
+                    }
+                });
+
+                closeAiPreviewModal(); // Close the preview modal after applying
+                 if (typeof toast === 'function') {
+                    toast(`成功应用 ${appliedCount} 条得分`, 'success');
+                }
+
+                // Optionally update summary/badges after applying
+                if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
+                    scoreUtils.fetchScoreSummary();
+                }
+                 if ('{{ current_level }}' === '提高级' && typeof updateCategoryBadges === 'function') {
+                    setTimeout(updateCategoryBadges, 500);
+                 }
+            });
+        } else {
+             console.error('Failed to find Apply Scores button.');
+        }
+
+         // Close preview modal on background click (Existing logic)
+         if (aiScorePreviewModal) {
+            console.log('Adding background click listener to Preview Modal.');
+             aiScorePreviewModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    console.log('Preview modal background clicked.');
+                    closeAiPreviewModal();
+                 }
+            });
+        }
+        // --- End AI Score Extraction Logic / Event Listeners ---
+
+    }); // <-- Final closing bracket for DOMContentLoaded
+
     /**
      * 获取条文的分类
      * @param {HTMLElement} element - 与条文相关的DOM元素
@@ -926,28 +1474,6 @@
                 <span>编辑模式 (角色: ${role}, 权限: ${permissions})</span>
             `;
         }
-    }
-
-    /**
-     * 根据输入的条文号过滤表格行
-     * @param {string} filterValue - 用户输入的过滤文本
-     */
-    function filterTableByClause(filterValue) {
-        const filterText = filterValue.trim().toLowerCase();
-        const rows = document.querySelectorAll('tbody tr'); // 获取表格的所有行
-
-        rows.forEach(row => {
-            const clauseCell = row.querySelector('td:first-child'); // 获取每行的第一个单元格（条文号）
-            if (clauseCell) {
-                const cellText = clauseCell.textContent.trim().toLowerCase();
-                // 检查单元格文本是否包含过滤文本
-                if (cellText.includes(filterText)) {
-                    row.style.display = ''; // 包含则显示该行
-                } else {
-                    row.style.display = 'none'; // 不包含则隐藏该行
-                }
-            }
-        });
     }
 </script>
 

@@ -9,6 +9,7 @@ import time
 import traceback
 import urllib.parse
 import uuid
+import shutil # Added import
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 import tempfile
@@ -35,6 +36,7 @@ from flask_login import (
     LoginManager, UserMixin, current_user,
     login_required, login_user, logout_user
 )
+from werkzeug.utils import secure_filename # Added import
 
 # 导入项目内部模块
 from dotenv import load_dotenv
@@ -51,6 +53,7 @@ from models import (
 )
 from admin import admin_app
 from utils.extract_word_info import extract_project_info
+from utils.document_parser import convert_doc_to_docx, parse_report_scores # 添加 parse_report_scores
 from map_helper import init_routes
 # 导入公共交通分析报告生成函数
 from generate_transport_report import generate_transport_report
@@ -66,6 +69,7 @@ except ImportError:
 # 导入日志模块
 import logging
 from logging.handlers import RotatingFileHandler
+import loguru # Add this line
 
 # 导入异常处理
 import werkzeug.exceptions
@@ -91,7 +95,7 @@ app.add_url_rule('/api/google_elevation', view_func=map_routes['get_google_eleva
 # 设置配置
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['EXPORT_FOLDER'] = 'static/exports'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 最大上传文件限制为16MB
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 最大上传文件限制增加到100MB
 
 # 配置日志
 logging.basicConfig(level=logging.WARNING)  # 将日志级别从INFO改为WARNING
@@ -4105,6 +4109,142 @@ def extract_quantities_api():
         app.logger.error(f"API /api/extract_quantities: 上传了不支持的文件类型: {file.filename}")
         return jsonify({'error': '不支持的文件类型，请上传 .xlsx 或 .xls 文件'}), 400
 
+@app.route('/api/extract_scores_from_files', methods=['POST'])
+def extract_scores_from_files():
+    """API endpoint to extract scores from uploaded report files."""
+    if 'files' not in request.files:
+        return jsonify({'success': False, 'error': 'No file part in the request'}), 400
+
+    files = request.files.getlist('files')
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({'success': False, 'error': 'No selected files'}), 400
+
+    # 确保上传目录存在
+    upload_folder = app.config.get('UPLOAD_FOLDER', 'temp/uploads') # 使用配置或默认值
+    if not os.path.exists(upload_folder):
+        try:
+            os.makedirs(upload_folder, exist_ok=True)
+        except OSError as e:
+             loguru.logger.error(f"创建上传目录失败: {upload_folder}, Error: {e}")
+             return jsonify({'success': False, 'error': f'无法创建上传目录: {e}'}), 500
+
+    # 为本次请求创建一个唯一的临时子目录，避免文件名冲突和方便清理
+    session_temp_dir = tempfile.mkdtemp(dir=upload_folder)
+    loguru.logger.info(f"为AI提取创建临时目录: {session_temp_dir}")
+
+    aggregated_scores = []
+    errors_occurred = []
+
+    try:
+        for file in files:
+            if file.filename == '':
+                continue
+
+            original_filename = file.filename
+            loguru.logger.info(f"开始处理文件: {original_filename}")
+
+            # 1. Get the original extension reliably
+            original_base, original_ext = os.path.splitext(original_filename)
+            original_ext = original_ext.lower() # Ensure lowercase for comparison
+
+            # 2. Create a secure base name from the original base name
+            secure_base_name = secure_filename(original_base)
+
+            # 3. Handle cases where secure_base_name becomes empty or too short
+            if not secure_base_name or len(secure_base_name) < 1:
+                import uuid # Import uuid here
+                secure_base_name = f"file_{uuid.uuid4().hex[:8]}"
+                loguru.logger.warning(f"原始文件名 '{original_base}' 生成的安全名称无效，使用 '{secure_base_name}' 代替。")
+
+            # 4. Combine secure base name and original extension
+            secure_name_with_ext = f"{secure_base_name}{original_ext}"
+            temp_file_path = os.path.join(session_temp_dir, secure_name_with_ext)
+
+            converted_docx_path = None # 用于存储转换后的docx路径
+            file_to_parse = None
+
+            try:
+                # 5. Save the file
+                file.save(temp_file_path)
+                loguru.logger.info(f"文件已保存到临时路径: {temp_file_path}")
+
+                # 6. Use the original extension for file type checks
+                file_ext = original_ext # Use the reliably extracted original extension
+
+                # --- The existing if/elif/else block follows ---
+                if file_ext == '.doc':
+                    loguru.logger.info(f"检测到 .doc 文件，尝试转换: {temp_file_path}")
+                    # 让转换函数在同一临时目录下生成 .docx 文件
+                    converted_docx_path = convert_doc_to_docx(temp_file_path)
+                    if converted_docx_path and os.path.exists(converted_docx_path):
+                        loguru.logger.info(f"文件转换成功: {converted_docx_path}")
+                        file_to_parse = converted_docx_path
+                    else:
+                        loguru.logger.warning(f"文件转换失败: {original_filename}")
+                        errors_occurred.append(f"{original_filename}: 文件转换失败")
+                        continue # 跳过这个文件
+                elif file_ext == '.docx':
+                    file_to_parse = temp_file_path
+                elif file_ext == '.pdf':
+                     loguru.logger.warning(f"暂不支持 PDF 文件处理: {original_filename}")
+                     errors_occurred.append(f"{original_filename}: 暂不支持 PDF 文件")
+                     continue # 跳过 PDF
+                else:
+                    loguru.logger.warning(f"不支持的文件类型: {original_filename}")
+                    errors_occurred.append(f"{original_filename}: 不支持的文件类型 ({file_ext})")
+                    continue # 跳过不支持的类型
+
+                if file_to_parse:
+                    loguru.logger.info(f"开始解析文件: {file_to_parse}")
+                    # 调用核心解析函数
+                    extracted_data = parse_report_scores(file_to_parse)
+                    loguru.logger.info(f"文件解析完成: {original_filename}, 结果: {extracted_data}")
+
+                    if extracted_data:
+                        for clause, score in extracted_data.items():
+                            aggregated_scores.append({
+                                'clause': clause,
+                                'score': score,
+                                'filename': original_filename # 记录原始文件名
+                            })
+                    else:
+                         loguru.logger.info(f"文件未提取到有效分数: {original_filename}")
+                         # 可选：如果希望在预览中显示未提取到内容的文件，可以添加一条记录
+                         # aggregated_scores.append({'clause': 'N/A', 'score': 'N/A', 'filename': original_filename})
+
+            except Exception as e:
+                loguru.logger.error(f"处理文件时出错 {original_filename}: {e}", exc_info=True)
+                errors_occurred.append(f"{original_filename}: 处理时发生错误 - {e}")
+            finally:
+                # 解析完成后不再需要转换后的docx文件（如果存在）
+                # 原始上传文件将在最后统一清理
+                # if converted_docx_path and converted_docx_path != temp_file_path and os.path.exists(converted_docx_path):
+                #     try:
+                #         os.remove(converted_docx_path)
+                #         loguru.logger.info(f"清理转换后的临时文件: {converted_docx_path}")
+                #     except OSError as e:
+                #         loguru.logger.warning(f"无法清理转换后的临时文件 {converted_docx_path}: {e}")
+                pass # 清理将在整个请求结束后进行
+
+        loguru.logger.info(f"所有文件处理完成。提取结果数: {len(aggregated_scores)}, 错误数: {len(errors_occurred)}")
+        # 如果有错误，可以选择在响应中包含它们
+        response_data = {'success': True, 'scores': aggregated_scores}
+        if errors_occurred:
+             response_data['warnings'] = errors_occurred # 将错误作为警告返回
+             # 如果希望任何错误都导致整体失败，则修改 success 状态
+             # response_data['success'] = False
+             # response_data['error'] = "处理部分文件时发生错误"
+
+        return jsonify(response_data)
+
+    finally:
+        # 清理为本次请求创建的整个临时目录及其内容
+        if os.path.exists(session_temp_dir):
+            try:
+                shutil.rmtree(session_temp_dir)
+                loguru.logger.info(f"已清理临时目录: {session_temp_dir}")
+            except Exception as e:
+                loguru.logger.error(f"无法清理临时目录 {session_temp_dir}: {e}")
 
 if __name__ == '__main__':
     # 初始化数据库
