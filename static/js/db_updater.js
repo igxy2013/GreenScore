@@ -185,7 +185,7 @@ function updateDatabaseScore(clauseNumber, score, isAchieved = '是', technicalM
         };
     })
     .catch(error => {
-        alert(`修改分值出错: ${error.message}`);
+        // alert(`修改分值出错: ${error.message}`);
         throw error;
     });
 }

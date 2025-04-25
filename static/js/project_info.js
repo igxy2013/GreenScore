@@ -159,7 +159,7 @@ function initializeProvinceCitySelectors() {
             .then(response => response.json())
             .then(data => {
                 provinceData = data['86']; // 所有省份
-                cityData = data; // 所有城市数据
+                cityData = data; // <--- 存储完整数据，包含所有省份及其城市
                 
                 // 添加省份选项
                 let provinceOptions = '<option value="">请选择省份</option>';
@@ -387,33 +387,6 @@ function initFormFields() {
 
 // 页面加载完成后执行计算和更新
 document.addEventListener('DOMContentLoaded', function() {
-    const scoreToggle = document.getElementById('scoreToggle');
-    const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
-
-    if(isChecked){
-        console.log("isChecked：",isChecked);
-        calculateAndUpdateScores();
-    }
-    
-    // 监听表单字段变化，重新计算得分
-    const formFields = [
-        'total_land_area', 'residential_units', 'avg_floors', 'building_type',
-        'underground_area', 'first_floor_underground_area', 'above_ground_area',
-        'green_area', 'construction_type', 'public_green_space', 'climate_zone',
-        'plot_ratio', 'public_building_type', 'green_ratio', 'ground_parking_spaces',
-        'has_underground_garage'
-    ];
-    
-    formFields.forEach(fieldId => {
-        const field = document.getElementById(fieldId);
-        if(isChecked){
-            if (field) {
-                field.addEventListener('change', calculateAndUpdateScores());
-            }
-        }
-
-    });
-    
     // 初始化省市选择器
     initProvinceCity();
     
@@ -630,17 +603,35 @@ function calculateAndUpdateScores() {
                     if (data.project_id) {
                         document.getElementById('project_id').value = data.project_id;
                     }
+                    
+                    // 更新项目地点字段 (假设API在data.project_data中返回更新后的信息)
+                    if (data.project_data && data.project_data.project_location !== undefined) {
+                        const locationInput = document.getElementById('project_location');
+                        if (locationInput) {
+                            const newLocation = data.project_data.project_location;
+                            locationInput.value = newLocation;
+                            // 更新完输入框后，立即解析并更新省市下拉框
+                            parseLocationForProvinceCity(newLocation); 
+                            console.log('项目地点已更新为:', newLocation);
+                        }
+                    } else {
+                        // 如果API没有返回地点，可能需要从现有输入框获取或保持不变
+                        console.log('API响应中未包含更新的项目地点信息');
+                    }
+
                     const scoreToggle = document.getElementById('scoreToggle');
                     const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
-                    if (isChecked) { // 直接检查 isChecked 是否为 true，更简洁
-                        console.log("自动计算功能开启");
-                        calculateAndUpdateScores();
+                    if (isChecked) { 
+                        console.log("自动计算功能开启，将异步执行");
+                        // calculateAndUpdateScores(); // 移除或保持注释之前的直接调用
+                        // 将耗时操作放入setTimeout异步执行
+                        setTimeout(calculateAndUpdateScores, 0);
                     }
-                    // 使用直接跳转方式强制从服务器重新加载整个页面
-                    setTimeout(() => {
-                        const projectId = document.getElementById('project_id').value || data.project_id;
-                        window.location.href = `/project/${projectId}`;
-                    }, 1000); // 延迟1秒后跳转，让用户看到成功提示
+                    // 移除强制页面刷新
+                    // setTimeout(() => {
+                    //     const projectId = document.getElementById('project_id').value || data.project_id;
+                    //     window.location.href = `/project/${projectId}`;
+                    // }, 1000); 
                 } else {
                     // 检查是否是权限错误
                     if (data.error && (data.error.includes('权限') || data.error.includes('permission'))) {
@@ -1788,13 +1779,27 @@ function initProvinceCity() {
             // 省份变化时更新城市
             provinceSelect.addEventListener('change', function() {
                 const provinceCode = this.value;
+                const provinceName = this.options[this.selectedIndex]?.text || '';
                 updateCityOptions(provinceCode, data);
-                updateProvinceCity();
+                updateProvinceCity(); // 更新隐藏字段
+                // 在用户更改省份后尝试自动检测气候区划
+                const citySelect = document.getElementById('city');
+                const cityName = citySelect.options[citySelect.selectedIndex]?.text || '';
+                if (provinceName && cityName && provinceName !== '请选择省份' && cityName !== '请选择城市') {
+                    autoDetectClimateZone(provinceName, cityName);
+                }
             });
             
             // 城市变化时更新隐藏字段
             citySelect.addEventListener('change', function() {
-                updateProvinceCity();
+                updateProvinceCity(); // 更新隐藏字段
+                // 在用户更改城市后尝试自动检测气候区划
+                const provinceSelect = document.getElementById('province');
+                const provinceName = provinceSelect.options[provinceSelect.selectedIndex]?.text || '';
+                const cityName = this.options[this.selectedIndex]?.text || '';
+                 if (provinceName && cityName && provinceName !== '请选择省份' && cityName !== '请选择城市') {
+                    autoDetectClimateZone(provinceName, cityName);
+                }
             });
         })
         .catch(error => {
@@ -1852,94 +1857,87 @@ function parseLocationForProvinceCity(location) {
         return;
     }
     
-    console.log(`开始解析地址: "${location}"`);
+    console.log(`开始解析地址: "${location}" (使用缓存数据)`);
     
-    fetch('/static/json/province_city.json')
-        .then(response => response.json())
-        .then(data => {
-            // 先获取省份列表
-            const provinces = data['86'] || {};
-            console.log(`加载了${Object.keys(provinces).length}个省份数据`);
+    // 使用已加载的全局数据，不再 fetch
+    const provinces = provinceData || {}; 
+    const allCityData = cityData || {}; // 使用包含所有层级的数据
+    
+    console.log(`缓存中有${Object.keys(provinces).length}个省份数据`);
+    
+    let foundProvinceCode = '';
+    let foundCityCode = '';
+    
+    // 尝试匹配省份
+    for (const provinceCode in provinces) {
+        const provinceName = provinces[provinceCode];
+        if (location.includes(provinceName)) {
+            foundProvinceCode = provinceCode;
+            console.log(`找到匹配的省份: ${provinceName} (${provinceCode})`);
             
-            let foundProvinceCode = '';
-            let foundCityCode = '';
+            // 如果找到省份，尝试匹配该省的城市
+            const cities = allCityData[provinceCode] || {}; // 从完整数据中获取该省的城市
+            console.log(`${provinceName}有${Object.keys(cities).length}个城市数据`);
             
-            // 尝试匹配省份
-            for (const provinceCode in provinces) {
-                const provinceName = provinces[provinceCode];
-                if (location.includes(provinceName)) {
-                    foundProvinceCode = provinceCode;
-                    console.log(`找到匹配的省份: ${provinceName} (${provinceCode})`);
-                    
-                    // 如果找到省份，尝试匹配该省的城市
-                    const cities = data[provinceCode] || {};
-                    console.log(`${provinceName}有${Object.keys(cities).length}个城市数据`);
-                    
-                    for (const cityCode in cities) {
-                        const cityName = cities[cityCode];
-                        if (location.includes(cityName)) {
-                            foundCityCode = cityCode;
-                            console.log(`找到匹配的城市: ${cityName} (${cityCode})`);
-                            break;
-                        }
-                    }
+            for (const cityCode in cities) {
+                const cityName = cities[cityCode];
+                if (location.includes(cityName)) {
+                    foundCityCode = cityCode;
+                    console.log(`找到匹配的城市: ${cityName} (${cityCode})`);
                     break;
                 }
             }
-            
-            // 设置省份和城市
-            if (foundProvinceCode) {
-                const provinceSelect = document.getElementById('province');
-                
-                // 检查省份选择器是否已加载选项
-                if (provinceSelect.options.length <= 1) {
-                    console.log('省份选择器尚未加载选项，先添加省份选项');
-                    // 手动添加省份选项
-                    provinceSelect.innerHTML = '<option value="">请选择省份</option>';
-                    for (const code in provinces) {
-                        const option = document.createElement('option');
-                        option.value = code;
-                        option.textContent = provinces[code];
-                        provinceSelect.appendChild(option);
-                    }
-                }
-                
-                // 设置省份值
-                provinceSelect.value = foundProvinceCode;
-                console.log(`已设置省份选择器值: ${foundProvinceCode}`);
-                
-                // 更新城市选项
-                updateCityOptions(foundProvinceCode, data);
-                console.log(`已更新城市选择器选项`);
-                
-                // 等待城市选项加载完成
-                setTimeout(() => {
-                    // 设置城市
-                    if (foundCityCode) {
-                        const citySelect = document.getElementById('city');
-                        citySelect.value = foundCityCode;
-                        console.log(`已设置城市选择器值: ${foundCityCode}`);
-                    }
-                    
-                    // 触发更新事件
-                    updateProvinceCity();
-                    console.log('触发了省市更新事件');
-                    
-                    // 检查最终结果
-                    const locationField = document.getElementById('project_location');
-                    console.log(`最终地址字段值: ${locationField.value}`);
-                }, 200);
-            } else {
-                console.log(`未找到匹配的省份，使用原始地址: ${location}`);
-                // 直接设置地址字段
-                document.getElementById('project_location').value = location;
-            }
-        })
-        .catch(error => {
-            console.error('解析省市数据出错:', error);
-            // 出错时直接使用原始地址
-            document.getElementById('project_location').value = location;
-        });
+            break;
+        }
+    }
+    
+    // 设置省份和城市
+    if (foundProvinceCode) {
+        const provinceSelect = document.getElementById('province');
+        const citySelect = document.getElementById('city');
+        
+        // 检查省份选择器是否已加载选项
+        if (provinceSelect.options.length <= 1 && Object.keys(provinces).length > 0) {
+             console.log('省份选择器尚未加载选项，先添加省份选项');
+             // 手动添加省份选项
+             provinceSelect.innerHTML = '<option value="">请选择省份</option>';
+             for (const code in provinces) {
+                 const option = document.createElement('option');
+                 option.value = code;
+                 option.textContent = provinces[code];
+                 provinceSelect.appendChild(option);
+             }
+        }
+        
+        // 设置省份值
+        provinceSelect.value = foundProvinceCode;
+        console.log(`已设置省份选择器值: ${foundProvinceCode}`);
+        
+        // 更新城市选项 (使用完整数据)
+        updateCityOptions(foundProvinceCode, allCityData); 
+        console.log(`已更新城市选择器选项`);
+        
+        // 移除 setTimeout，直接设置城市并更新
+        if (foundCityCode) {
+            citySelect.value = foundCityCode;
+            console.log(`已设置城市选择器值: ${foundCityCode}`);
+        }
+        
+        // 触发更新事件 (这会根据下拉框更新 project_location 输入框)
+        updateProvinceCity(); 
+        console.log('触发了省市更新事件');
+        
+        // 检查最终结果
+        const locationField = document.getElementById('project_location');
+        console.log(`解析后地址字段值: ${locationField.value}`);
+
+    } else {
+        console.log(`未找到匹配的省份，使用原始地址: ${location}`);
+        // 直接设置地址字段 (或者保持不变，因为之前可能已经设置过了)
+        // document.getElementById('project_location').value = location; 
+    }
+
+    // 移除 fetch 和 catch
 }
     
 // 自动判断气候区划

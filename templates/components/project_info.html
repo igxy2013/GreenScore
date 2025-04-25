@@ -277,7 +277,6 @@
                             <label for="ac_type" class="block text-sm font-medium text-gray-700 mb-1">空调形式</label>
                             <div class="relative">
                                 <select id="ac_type" name="ac_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="分体式空调" {% if project and project.air_conditioning_type == '分体式空调' %}selected{% endif %}>分体式空调</option>
                                     <option value="多联式空调" {% if project and project.air_conditioning_type == '多联式空调' %}selected{% endif %}>多联式空调</option>
                                     <option value="集中空调" {% if project and project.air_conditioning_type == '集中空调' %}selected{% endif %}>集中空调</option>
@@ -290,7 +289,6 @@
                             <label for="avg_floors" class="block text-sm font-medium text-gray-700 mb-1">住宅平均层数</label>
                             <div class="relative">
                                 <select id="avg_floors" name="avg_floors" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="平均3层及以下" {% if project and project.average_floors == '平均3层及以下' %}selected{% endif %}>平均3层及以下</option>
                                     <option value="平均4-6层" {% if project and project.average_floors == '平均4-6层' %}selected{% endif %}>平均4-6层</option>
                                     <option value="平均7-9层" {% if project and project.average_floors == '平均7-9层' %}selected{% endif %}>平均7-9层</option>
@@ -303,9 +301,8 @@
                             <label for="has_garbage_room" class="block text-sm font-medium text-gray-700 mb-1">有无垃圾用房</label>
                             <div class="relative">
                                 <select id="has_garbage_room" name="has_garbage_room" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="有" {% if project and project.has_garbage_room == '有' %}selected{% endif %}>有</option>
-                                    <option value="无" {% if project and project.has_garbage_room == '无' %}selected{% endif %}>无</option>
+                                    <option value="无" {% if not project or project.has_garbage_room != '有' %}selected{% endif %}>无</option>
                                 </select>
                             </div>
                         </td>
@@ -313,7 +310,6 @@
                             <label for="has_elevator" class="block text-sm font-medium text-gray-700 mb-1">有无电梯或扶梯</label>
                             <div class="relative">
                                 <select id="has_elevator" name="has_elevator" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="有" {% if project and project.has_elevator == '有' %}selected{% endif %}>有</option>
                                     <option value="无" {% if project and project.has_elevator == '无' %}selected{% endif %}>无</option>
                                 </select>
@@ -326,9 +322,8 @@
                             <label for="has_underground_garage" class="block text-sm font-medium text-gray-700 mb-1">有无地下车库</label>
                             <div class="relative">
                                 <select id="has_underground_garage" name="has_underground_garage" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="有" {% if project and project.has_underground_garage == '有' %}selected{% endif %}>有</option>
-                                    <option value="无" {% if project and project.has_underground_garage == '无' %}selected{% endif %}>无</option>
+                                    <option value="无" {% if not project or project.has_underground_garage != '有' %}selected{% endif %}>无</option>
                                 </select>
                             </div>
                         </td>
@@ -336,7 +331,6 @@
                             <label for="construction_type" class="block text-sm font-medium text-gray-700 mb-1">项目建设情况</label>
                             <div class="relative">
                                 <select id="construction_type" name="construction_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="新区建设" {% if project and project.construction_type == '新区建设' %}selected{% endif %}>新区建设</option>
                                     <option value="旧区改建" {% if project and project.construction_type == '旧区改建' %}selected{% endif %}>旧区改建</option>
                                 </select>
@@ -346,9 +340,8 @@
                             <label for="has_water_landscape" class="block text-sm font-medium text-gray-700 mb-1">有无景观水体</label>
                             <div class="relative">
                                 <select id="has_water_landscape" name="has_water_landscape" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="有" {% if project and project.has_water_landscape == '有' %}selected{% endif %}>有</option>
-                                    <option value="无" {% if project and project.has_water_landscape == '无' %}selected{% endif %}>无</option>
+                                    <option value="无" {% if not project or project.has_water_landscape != '有' %}selected{% endif %}>无</option>
                                 </select>
                             </div>
                         </td>
@@ -356,9 +349,8 @@
                             <label for="is_fully_decorated" class="block text-sm font-medium text-gray-700 mb-1">是否为全装修项目</label>
                             <div class="relative">
                                 <select id="is_fully_decorated" name="is_fully_decorated" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="是" {% if project and project.is_fully_decorated == '是' %}selected{% endif %}>是</option>
-                                    <option value="否" {% if project and project.is_fully_decorated == '否' %}selected{% endif %}>否</option>
+                                    <option value="否" {% if not project or project.is_fully_decorated != '是' %}selected{% endif %}>否</option>
                                 </select>
                             </div>
                         </td>
@@ -366,7 +358,6 @@
                             <label for="public_building_type" class="block text-sm font-medium text-gray-700 mb-1">公建类型</label>
                             <div class="relative">
                                 <select id="public_building_type" name="public_building_type" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="办公" {% if project and project.public_building_type == '办公' %}selected{% endif %}>办公</option>
                                     <option value="商业" {% if project and project.public_building_type == '商业' %}selected{% endif %}>商业</option>
                                     <option value="金融" {% if project and project.public_building_type == '金融' %}selected{% endif %}>金融</option>
@@ -386,9 +377,8 @@
                             <label for="public_green_space" class="block text-sm font-medium text-gray-700 mb-1">绿地向公众开放</label>
                             <div class="relative">
                                 <select id="public_green_space" name="public_green_space" class="w-full px-2 py-1 border border-gray-300 rounded-md appearance-none pr-8">
-                                    <option value="">请选择</option>
                                     <option value="是" {% if project and project.public_green_space == '是' %}selected{% endif %}>是</option>
-                                    <option value="否" {% if project and project.public_green_space == '否' %}selected{% endif %}>否</option>
+                                    <option value="否" {% if not project or project.public_green_space != '是' %}selected{% endif %}>否</option>
                                 </select>
 
                             </div>
