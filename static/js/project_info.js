@@ -387,8 +387,9 @@ function initFormFields() {
 
 // 页面加载完成后执行计算和更新
 document.addEventListener('DOMContentLoaded', function() {
-    const savedToggleState = localStorage.getItem('scoreToggleState');
-    if(savedToggleState === 'true'){
+    const scoreToggle = document.getElementById('scoreToggle');
+    const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
+    if(isChecked === 'true'){
         calculateAndUpdateScores();
     }
     
@@ -403,7 +404,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     formFields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
-        if(savedToggleState === 'true'){
+        if(isChecked === 'true'){
             if (field) {
                 field.addEventListener('change', calculateAndUpdateScores);
             }
@@ -506,38 +507,38 @@ function calculateAndUpdateScores() {
     try {
         if (standard === '成都市标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('3.1.2.14', perCapitaLandScore, projectId,null,null);
-                updateDatabaseScore('3.6.1.2', 0,projectId,null, '采用了节能玻璃和屋顶花园');
+                updateDatabaseScore('3.1.2.14', perCapitaLandScore,null,null);
+                updateDatabaseScore('3.6.1.2', 0,null, '采用了节能玻璃和屋顶花园');
             } else if (buildingType === '公共建筑'){
-                updateDatabaseScore('3.1.2.14', plotRatioScore, projectId,null,"hello world");
+                updateDatabaseScore('3.1.2.14', plotRatioScore,null,"hello world");
             }
-            updateDatabaseScore('3.1.2.15', undergroundScore, projectId,null,null);
-            updateDatabaseScore('3.1.2.21', greenSpaceScore, projectId,null,null);
-            updateDatabaseScore('3.1.2.16', parkingScore, projectId,null,null);
+            updateDatabaseScore('3.1.2.15', undergroundScore,null,null);
+            updateDatabaseScore('3.1.2.21', greenSpaceScore,null,null);
+            updateDatabaseScore('3.1.2.16', parkingScore,null,null);
 
         }
         else if (standard === '四川省标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('3.1.16', perCapitaLandScore, projectId,null,null);
-                updateDatabaseScore('3.1.1', 0,projectId,null, '采用了节能玻璃和屋顶花园');
+                updateDatabaseScore('3.1.16', perCapitaLandScore,null,null);
+                updateDatabaseScore('3.1.1', 8,null, '采用了节能玻璃和屋顶花园');
             }
             else if (buildingType === '公共建筑'){
-                updateDatabaseScore('3.1.16', plotRatioScore, projectId,null,null);
+                updateDatabaseScore('3.1.16', plotRatioScore,null,null);
             }
-            updateDatabaseScore('3.1.17', undergroundScore, projectId,null,null);
-            updateDatabaseScore('3.1.25', greenSpaceScore, projectId,null,null);
-            updateDatabaseScore('3.1.18', parkingScore, projectId,null,null);
+            updateDatabaseScore('3.1.17', undergroundScore,null,null);
+            updateDatabaseScore('3.1.25', greenSpaceScore,null,null);
+            updateDatabaseScore('3.1.18', parkingScore,null,null);
         }
         else if (standard === '国标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('7.2.1', perCapitaLandScore, projectId,null,null,null);
+                updateDatabaseScore('7.2.1', perCapitaLandScore,null,null);
             }
             else if (buildingType === '公共建筑'){
-                updateDatabaseScore('7.2.1', plotRatioScore, projectId,null,null,null);
+                updateDatabaseScore('7.2.1', plotRatioScore,null,null);
             }
-            updateDatabaseScore('7.2.2', undergroundScore, projectId,null,null);
-            updateDatabaseScore('8.2.3', greenSpaceScore, projectId,null,null);
-            updateDatabaseScore('7.2.3', parkingScore, projectId,null,null);
+            updateDatabaseScore('7.2.2', undergroundScore,null,null);
+            updateDatabaseScore('8.2.3', greenSpaceScore,null,null);
+            updateDatabaseScore('7.2.3', parkingScore,null,null);
         }
         console.log('得分更新完成');
     } catch (error) {
@@ -579,7 +580,11 @@ function calculateAndUpdateScores() {
                     if (data.project_id) {
                         document.getElementById('project_id').value = data.project_id;
                     }
-                    
+                    const scoreToggle = document.getElementById('scoreToggle');
+                    const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
+                    if(isChecked === 'true'){
+                        calculateAndUpdateScores();
+                    }
                     // 使用直接跳转方式强制从服务器重新加载整个页面
                     setTimeout(() => {
                         const projectId = document.getElementById('project_id').value || data.project_id;

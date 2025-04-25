@@ -107,7 +107,7 @@ function queryScore(clauseNumber, projectId) {
  * @param {string} [technicalMeasures] - 可选：技术措施内容
  * @returns {Promise} - 返回Promise对象，包含更新结果
  */
-function updateDatabaseScore(clauseNumber, score, projectId, isAchieved = '是', technicalMeasures = '') {
+function updateDatabaseScore(clauseNumber, score, isAchieved = '是', technicalMeasures = '') {
     // 验证参数
     if (!clauseNumber) {
         alert('缺少必要参数：条文号');
@@ -123,12 +123,7 @@ function updateDatabaseScore(clauseNumber, score, projectId, isAchieved = '是',
     if (!projectId) {
         projectId = getCurrentProjectId();
     }
-    
-    // 如果仍然没有项目ID，使用默认值1
-    if (!projectId) {
-        projectId = 1;
-    }
-    
+    console.log("项目ID：",projectId);
     // 获取当前项目标准
     const standard = getCurrentProjectStandard() || '成都市标';
     
@@ -978,8 +973,8 @@ function getCurrentLevel() {
  * @param {number} projectId - 项目ID，默认为当前项目
  * @returns {Promise} - 返回Promise对象
  */
-function handleClauseDependency(sourceClauseNumber, targetClauseNumber, condition, action, projectId) {
-    if (!sourceClauseNumber || !targetClauseNumber || !condition || !action) {
+function handleClauseDependency(sourceClauseNumber, targetClauseNumber, condition, projectId) {
+    if (!sourceClauseNumber || !targetClauseNumber || !condition) {
         console.error('处理条文依赖关系时缺少必要参数');
         return Promise.reject(new Error('缺少必要参数'));
     }
@@ -1000,7 +995,7 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
     }
     
     // 日志记录
-    console.log(`检查条文依赖: 源条文=${sourceClauseNumber}, 目标条文=${targetClauseNumber}, 条件=${condition}, 操作=${action}, 项目ID=${projectId}`);
+    console.log(`检查条文依赖: 源条文=${sourceClauseNumber}, 目标条文=${targetClauseNumber}, 条件=${condition}, 项目ID=${projectId}`);
     
     // 获取当前项目标准、专业和评价等级
     const standard = getCurrentProjectStandard() || '成都市标';
@@ -1257,7 +1252,6 @@ function handleAllClauseDependencies(projectId) {
             dep.source, 
             dep.target, 
             dep.condition, 
-            dep.action, 
             projectId
         );
     });

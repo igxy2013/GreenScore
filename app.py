@@ -833,6 +833,7 @@ def create_default_scores(project_id, project_name, standard_selection):
             # 插入新的评分记录
             insert_count = 0
             insert_errors = 0
+            score = "0"
             for std in standards_data:
                 # 所有条文默认达标为"是"
                 is_achieved = '是'
@@ -844,6 +845,12 @@ def create_default_scores(project_id, project_name, standard_selection):
                 # 获取映射后的评价等级，如果找不到映射则保持原值
                 normalized_level = std.属性.strip()  # 去除前后空格
                 mapped_level = level_mapping.get(normalized_level, normalized_level)
+                
+                # 如果分值为"—"，则设置为"—"
+                if std.分值 == "—":
+                    score = "—"
+                else:
+                    score = "0"
                 # 插入评分记录
                 try:
                     db.session.execute(
@@ -864,7 +871,7 @@ def create_default_scores(project_id, project_name, standard_selection):
                             "clause_number": std.条文号,
                             "category": std.分类,
                             "is_achieved": is_achieved,
-                            "score": '0',
+                            "score": score,
                             "technical_measures": '',
                             "standard": standard_selection
                         }
