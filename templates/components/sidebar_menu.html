@@ -41,13 +41,13 @@
     <nav class="p-2">
         <div class="space-y-2">
             <a href="{{ url_for('project_detail', project_id=project.id) }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'project_info' %}active{% endif %}">
-                <i class="ri-dashboard-line mr-3"></i>
+                <i class="ri-information-line mr-3"></i>
                 <span>项目信息</span>
             </a>
             <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="basicMenuToggle">
-                <i class="ri-shield-star-line mr-3"></i>
+                <i class="ri-shield-check-line mr-3"></i>
                 <span>基本级</span>
-                <i class="ri-arrow-down-line ml-auto"></i>
+                <i class="ri-arrow-right-s-line ml-auto"></i>
             </div>
             <div id="basicMenuContent" class="menu-content">
                 <a href="{{ url_for('filter_standards', level='基本级', specialty='建筑', project_id=project.id if project else None) }}" 
@@ -90,7 +90,7 @@
             <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="advancedMenuToggle">
                 <i class="ri-star-line mr-3"></i>
                 <span>提高级</span>
-                <i class="ri-arrow-down-line ml-auto"></i>
+                <i class="ri-arrow-right-s-line ml-auto"></i>
             </div>
             <div id="advancedMenuContent" class="menu-content">
                 <a href="{{ url_for('filter_standards', level='提高级', specialty='建筑', project_id=project.id if project else None) }}" 
@@ -142,9 +142,9 @@
             {% endif %}
             
             <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="reportMenuToggle">
-                <i class="ri-file-paper-2-line mr-3"></i>
+                <i class="ri-file-download-line mr-3"></i>
                 <span>报告导出</span>
-                <i class="ri-arrow-down-line ml-auto"></i>
+                <i class="ri-arrow-right-s-line ml-auto"></i>
             </div>
             <div id="reportMenuContent" class="menu-content">
                 <a href="javascript:void(0)" onclick="generateWord(); return false;" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'report_table' %}active{% endif %}">
@@ -170,9 +170,9 @@
             </div>
             
             <div class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50" id="specialCalcMenuToggle">
-                <i class="ri-tools-line mr-3"></i>
+                <i class="ri-calculator-line mr-3"></i>
                 <span>专项计算</span>
-                <i class="ri-arrow-down-line ml-auto"></i>
+                <i class="ri-arrow-right-s-line ml-auto"></i>
             </div>
             <div id="specialCalcMenuContent" class="menu-content">
                 <a href="{{ url_for('project_detail', project_id=project.id, page='solar_calculator') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'solar_calculator' %}active{% endif %}">
@@ -193,7 +193,7 @@
                 </a>
             </div>
             <a href="{{ url_for('project_detail', project_id=project.id, page='standards_library') }}" class="menu-item flex items-center p-4 text-gray-600 rounded-lg hover:bg-gray-50 {% if current_page == 'standards_library' %}active{% endif %}">
-                <i class="ri-book-read-line mr-3"></i>
+                <i class="ri-search-line mr-3"></i>
                 <span>规范查阅</span>
             </a>
         </div>

@@ -27,7 +27,7 @@
 <!-- 在页面添加悬浮保存按钮 -->
 <div class="fixed bottom-8 right-8 z-50" id="floatingSaveBtn">
     <button class="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg hover:bg-primary-dark transition-colors" title="保存评分信息">
-        <i class="ri-save-line text-xl"></i>
+        <i class="ri-save-3-line text-xl"></i>
     </button>
 </div>
 
@@ -926,6 +926,28 @@
                 <span>编辑模式 (角色: ${role}, 权限: ${permissions})</span>
             `;
         }
+    }
+
+    /**
+     * 根据输入的条文号过滤表格行
+     * @param {string} filterValue - 用户输入的过滤文本
+     */
+    function filterTableByClause(filterValue) {
+        const filterText = filterValue.trim().toLowerCase();
+        const rows = document.querySelectorAll('tbody tr'); // 获取表格的所有行
+
+        rows.forEach(row => {
+            const clauseCell = row.querySelector('td:first-child'); // 获取每行的第一个单元格（条文号）
+            if (clauseCell) {
+                const cellText = clauseCell.textContent.trim().toLowerCase();
+                // 检查单元格文本是否包含过滤文本
+                if (cellText.includes(filterText)) {
+                    row.style.display = ''; // 包含则显示该行
+                } else {
+                    row.style.display = 'none'; // 不包含则隐藏该行
+                }
+            }
+        });
     }
 </script>
 

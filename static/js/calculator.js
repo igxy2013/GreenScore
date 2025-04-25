@@ -143,12 +143,14 @@
             const ratioInput = itemRow.querySelector('input[type="number"]'); // 绿材应用比例
             const totalQuantityInput = itemRow.querySelector('input[placeholder="材料总量"]'); // 材料总量
             const greenQuantityInput = itemRow.querySelector('input[placeholder="绿材用量"]'); // 绿材应用量
+            const checkbox = itemRow.querySelector('input[type="checkbox"]'); // 获取同一行的复选框
 
-            if (ratioInput && totalQuantityInput && greenQuantityInput) {
+            if (ratioInput && totalQuantityInput && greenQuantityInput && checkbox) {
                 const calculateAndUpdate = () => {
                     const ratio = parseFloat(ratioInput.value) || 0;
                     const totalQuantity = parseFloat(totalQuantityInput.value) || 0;
 
+                    // 计算绿材用量
                     if (!isNaN(ratio) && !isNaN(totalQuantity) && ratio >= 0 && totalQuantity >= 0) {
                         const greenQuantity = (totalQuantity * (ratio / 100)).toFixed(2); // 保留两位小数
                         greenQuantityInput.value = greenQuantity;
@@ -156,6 +158,14 @@
                         // 如果输入无效或为空，清空绿材用量
                         greenQuantityInput.value = ''; 
                     }
+
+                    // --- 新增逻辑: 如果材料总量 > 0，则勾选复选框 ---
+                    if (totalQuantity > 0 && !checkbox.checked) {
+                        checkbox.checked = true;
+                        // 触发 change 事件以更新自定义复选框的样式
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    // ----------------------------------------------
                 };
 
                 // 为比例和总量输入框添加事件监听器
@@ -165,7 +175,7 @@
                 // // 可选：页面加载时也计算一次初始值 (如果需要)
                 // calculateAndUpdate(); 
             } else {
-                // console.warn('Could not find all required inputs in a sub-item row for calculation.', itemRow);
+                // console.warn('Could not find all required inputs or checkbox in a sub-item row for calculation.', itemRow);
             }
         });
         console.log('Quantity calculation listeners initialized.');
