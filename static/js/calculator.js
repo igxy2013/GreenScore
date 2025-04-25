@@ -808,13 +808,58 @@
 
             console.log('后端返回的工程量:', data.quantities); // 在控制台打印结果
 
-            // 更新消息，告知用户提取成功，但不更新UI输入框
-            if (data.quantities) {
-                const extractedCount = Object.keys(data.quantities).length;
-                 setMessage(`成功提取了 ${extractedCount} 个指标的工程量（详情请查看控制台）。`, 'text-green-600');
+            // --- 开始: 更新前端输入框 ---
+            let updatedCount = 0;
+            const notFoundIndicators = [];
+            const successfullyUpdated = []; // 跟踪成功更新的指标
+
+            if (data.quantities && typeof data.quantities === 'object') {
+                Object.entries(data.quantities).forEach(([backendIndicatorName, quantity]) => {
+                    let foundMatch = false;
+                    // 尝试精确匹配指标名称
+                    document.querySelectorAll('.sub-item.checkbox-wrapper').forEach(itemRow => {
+                        const indicatorSpan = itemRow.querySelector('.col-indicator');
+                        const rowIndicatorName = indicatorSpan ? indicatorSpan.textContent.trim() : null;
+
+                        if (rowIndicatorName && rowIndicatorName === backendIndicatorName) {
+                            const totalQuantityInput = itemRow.querySelector('input[placeholder="材料总量"]');
+                            if (totalQuantityInput) {
+                                console.log(`匹配成功: ${rowIndicatorName} -> 填入值: ${quantity}`);
+                                totalQuantityInput.value = quantity;
+                                // 触发 input 事件以更新"绿材用量"
+                                totalQuantityInput.dispatchEvent(new Event('input', { bubbles: true })); 
+                                updatedCount++;
+                                successfullyUpdated.push(rowIndicatorName);
+                                foundMatch = true;
+                                // 如果假设指标名称唯一，可以在这里停止内部循环，但为安全起见，继续检查所有行
+                            } else {
+                                console.warn(`在指标 "${rowIndicatorName}" 的行中未找到 "材料总量" 输入框。`);
+                            }
+                        }
+                    });
+
+                    if (!foundMatch) {
+                        notFoundIndicators.push(backendIndicatorName);
+                    }
+                });
+
+                 // 更新消息反馈
+                let message = `成功更新了 ${updatedCount} 个指标的工程量。`;
+                if (successfullyUpdated.length > 0) {
+                    // 可以选择性地列出部分更新的指标
+                    // message += ` 更新的指标包括: ${successfullyUpdated.slice(0, 5).join(', ')}${successfullyUpdated.length > 5 ? ' 等' : ''}.`;
+                }
+                 if (notFoundIndicators.length > 0) {
+                    message += ` ${notFoundIndicators.length} 个指标未在页面上找到匹配项: ${notFoundIndicators.join(', ')}。请检查Excel表头或页面指标名称。`;
+                    setMessage(message, 'text-yellow-600');
+                } else {
+                    setMessage(message, 'text-green-600');
+                }
+
             } else {
-                setMessage('未从文件中提取到有效数据。', 'text-yellow-600');
+                 setMessage('未从文件中提取到有效数据或数据格式不正确。', 'text-yellow-600');
             }
+            // --- 结束: 更新前端输入框 ---
 
         } catch (error) {
             handleError('提取工程量失败', error);
