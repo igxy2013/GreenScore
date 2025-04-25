@@ -389,7 +389,9 @@ function initFormFields() {
 document.addEventListener('DOMContentLoaded', function() {
     const scoreToggle = document.getElementById('scoreToggle');
     const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
-    if(isChecked === 'true'){
+
+    if(isChecked){
+        console.log("isChecked：",isChecked);
         calculateAndUpdateScores();
     }
     
@@ -404,9 +406,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     formFields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
-        if(isChecked === 'true'){
+        if(isChecked){
             if (field) {
-                field.addEventListener('change', calculateAndUpdateScores);
+                field.addEventListener('change', calculateAndUpdateScores());
             }
         }
 
@@ -498,7 +500,9 @@ function calculateAndUpdateScores() {
     // 修改多个条文的得分   
     let standard = document.getElementById('current-project-standard')?.value || '成都市标';
     let projectId = document.getElementById('current-project-id')?.value || document.getElementById('project_id')?.value;
-    
+    let has_underground_garage = document.getElementById('has_underground_garage')?.value || '无';
+    let has_elevator = document.getElementById('has_elevator')?.value || '无';
+    let ac_type = document.getElementById('ac_type')?.value || '无';
     if (!projectId) {
         console.log('未找到项目ID，无法更新得分');
         return;
@@ -507,20 +511,64 @@ function calculateAndUpdateScores() {
     try {
         if (standard === '成都市标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('3.1.2.14', perCapitaLandScore,null,null);
-                updateDatabaseScore('3.6.1.2', 0,null, '采用了节能玻璃和屋顶花园');
+                let jscs=""
+                if(perCapitaLandScore>0){
+                    jscs="满足要求,详见建筑施工图及总图经济技术指标";
+                }
+                else{
+                    jscs="";
+                }
+                updateDatabaseScore('3.1.2.14', perCapitaLandScore,null,jscs);
+                updateDatabaseScore('3.1.1.26', 0,null, '满足要求，详见室外热环境分析报告');
+                updateDatabaseScore('3.6.1.2', 0,null, '满足要求，详见室外热环境分析报告');
             } else if (buildingType === '公共建筑'){
-                updateDatabaseScore('3.1.2.14', plotRatioScore,null,"hello world");
+                updateDatabaseScore('3.1.2.14', plotRatioScore,null,null);
             }
             updateDatabaseScore('3.1.2.15', undergroundScore,null,null);
             updateDatabaseScore('3.1.2.21', greenSpaceScore,null,null);
             updateDatabaseScore('3.1.2.16', parkingScore,null,null);
+            if (has_underground_garage === '有'){
+                updateDatabaseScore('3.4.1.5', 0,null, '满足要求，详见暖通设计图纸');
+                updateDatabaseScore('3.5.1.2', 0,null, '满足要求，详见电气设计图纸');
+            }
+            else{
+                updateDatabaseScore('3.4.1.5', 0,"不参评", '本项目无地下车库，本条不参评');
+                updateDatabaseScore('3.5.1.2', 0,"不参评", '本项目无地下车库，本条不参评');
+            }   
+            if (has_elevator === '有'){
+                updateDatabaseScore('3.5.1.8', 0,null, '满足要求，详见电气设计图纸');
+            }
+            else{
+                updateDatabaseScore('3.5.1.8', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
+            }
+            if (ac_type === '无'){
+                updateDatabaseScore('3.4.1.3', 0,"不参评", '本项目无空调，本条不参评');
+                updateDatabaseScore('3.4.1.4', 0,"不参评", '本项目无空调，本条不参评');
+            }
+            else if (ac_type === '分体式空调'){
+                updateDatabaseScore('3.4.1.3', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('3.4.1.4', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('3.4.2.4', 5,null, '本项目设置分体空调，设计能效等级为二级');
+                updateDatabaseScore('3.4.2.5', 5,null, '本项目设置分体空调，满足要求');
+            }
+            else if (ac_type === '多联式空调'){
+                updateDatabaseScore('3.4.1.3', 0,null, '本项目设置多联式空调，直接满足要求');
+                updateDatabaseScore('3.4.1.4', 0,null, '本项目设置多联式空调，直接满足要求');
+            }   
+            else if (ac_type === '集中空调'){
+                updateDatabaseScore('3.4.1.3', 0,null, '满足要求，详见暖通设计图纸');
+            }
+            else if (ac_type === '组合形式'){
+                updateDatabaseScore('3.4.1.3', 0,null, '满足要求，详见暖通设计图纸');
+            }
 
         }
         else if (standard === '四川省标'){
             if (buildingType === '居住建筑'){
                 updateDatabaseScore('3.1.16', perCapitaLandScore,null,null);
-                updateDatabaseScore('3.1.1', 8,null, '采用了节能玻璃和屋顶花园');
+                updateDatabaseScore('2.6.2', 0,null, '满足要求，详见室外热环境分析报告');
+                updateDatabaseScore('2.7.7', 0,null, '满足要求，详见室外热环境分析报告');
+
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('3.1.16', plotRatioScore,null,null);
@@ -532,6 +580,8 @@ function calculateAndUpdateScores() {
         else if (standard === '国标'){
             if (buildingType === '居住建筑'){
                 updateDatabaseScore('7.2.1', perCapitaLandScore,null,null);
+                updateDatabaseScore('8.1.2', 0,null, '满足要求，详见室外热环境分析报告');
+
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('7.2.1', plotRatioScore,null,null);
@@ -582,7 +632,8 @@ function calculateAndUpdateScores() {
                     }
                     const scoreToggle = document.getElementById('scoreToggle');
                     const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
-                    if(isChecked === 'true'){
+                    if (isChecked) { // 直接检查 isChecked 是否为 true，更简洁
+                        console.log("自动计算功能开启");
                         calculateAndUpdateScores();
                     }
                     // 使用直接跳转方式强制从服务器重新加载整个页面

@@ -1764,15 +1764,24 @@ def update_score_direct():
                     count = result.fetchone()[0]
                     
                     if count > 0:
-                        # 更新现有记录，只修改得分字段
+                        # 更新现有记录，同时更新得分、是否达标和技术措施
                         update_query = """
                         UPDATE `得分表`
-                        SET `得分` = :score
+                        SET `得分` = :score,
+                            `是否达标` = :is_achieved,
+                            `技术措施` = :technical_measures  -- 添加这一行
                         WHERE `项目ID` = :project_id AND `条文号` = :clause_number AND `评价标准` = :standard
                         """
                         result = db.session.execute(
                             text(update_query),
-                            {"score": score, "project_id": project_id, "clause_number": clause_number, "standard": standard}
+                            {
+                                "score": score,
+                                "is_achieved": is_achieved,
+                                "technical_measures": technical_measures, # 添加这个参数
+                                "project_id": project_id,
+                                "clause_number": clause_number,
+                                "standard": standard
+                            }
                         )
                         app.logger.info(f"更新记录: 影响行数={result.rowcount}")
                     else:
@@ -1835,7 +1844,9 @@ def update_score_direct():
                         'project_id': project_id,
                         'clause_number': clause_number,
                         'score': actual_score,
-                        'standard': standard
+                        'standard': standard,
+                        'is_achieved': is_achieved,
+                        'technical_measures': technical_measures
                     }
                 })
                 
@@ -2049,6 +2060,164 @@ def get_star_case_scores():
     except Exception as e:
         app.logger.error(f"获取星级案例得分数据失败: {str(e)}")
         return jsonify({'error': f'获取星级案例得分数据失败: {str(e)}'}), 500
+@app.route('/api/save_star_case', methods=['POST'])
+def save_star_case():
+    """保存项目数据到星级案例表"""
+    try:
+        # 从URL参数或请求体中获取项目ID
+        data = request.get_json() or {}
+        project_id = request.args.get('project_id') or data.get('project_id')
+        
+        if not project_id:
+            return jsonify({
+                'success': False,
+                'message': '请提供项目ID'
+            }), 400
+
+        # 获取项目信息
+        project = Project.query.get(project_id)
+        if not project:
+            return jsonify({
+                'success': False,
+                'message': f'项目(ID={project_id})不存在'
+            }), 404
+
+        try:
+            # 获取项目的得分数据
+            query = """
+                SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+                FROM 得分表
+                WHERE 项目ID = :project_id
+            """
+            result = db.session.execute(text(query), {"project_id": project_id})
+            score_data = result.fetchall()
+
+            if not score_data:
+                return jsonify({
+                    'success': False,
+                    'message': '未找到项目得分数据'
+                }), 404
+
+            # 获取当前最大序号
+            result = db.session.execute(text("SELECT MAX(序号) FROM 星级案例"))
+            max_seq = result.scalar() or 0
+
+            # 插入数据到星级案例表
+            inserted_count = 0
+            for record in score_data:
+                clause_number, category, is_achieved, score, technical_measures, specialty, level = record
+
+                # 检查记录是否已存在
+                check_query = """
+                SELECT COUNT(*) FROM 星级案例
+                WHERE 条文号 = :clause_number AND 评价标准 = :standard AND 星级目标 = :star_rating_target AND 建筑类型 = :building_type
+                """
+                result = db.session.execute(
+                    text(check_query), 
+                    {
+                        "clause_number": clause_number,
+                        "standard": project.standard,
+                        "star_rating_target": project.star_rating_target,
+                        "building_type": project.building_type
+                    }
+                )
+                count = result.scalar()
+
+                if count > 0:
+                    # 更新现有记录
+                    update_query = """
+                    UPDATE 星级案例
+                    SET 分类 = :category, 是否达标 = :is_achieved, 得分 = :score, 
+                        技术措施 = :technical_measures, 专业 = :specialty, 评价等级 = :level, 
+                        项目地点 = :location
+                    WHERE 条文号 = :clause_number AND 评价标准 = :standard 
+                        AND 星级目标 = :star_rating_target AND 建筑类型 = :building_type
+                    """
+                    db.session.execute(
+                        text(update_query),
+                        {
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "specialty": specialty,
+                            "level": level,
+                            "location": project.location,
+                            "clause_number": clause_number,
+                            "standard": project.standard,
+                            "star_rating_target": project.star_rating_target,
+                            "building_type": project.building_type
+                        }
+                    )
+                else:
+                    # 插入新记录，使用自增序号
+                    max_seq += 1
+                    insert_query = """
+                    INSERT INTO 星级案例 (
+                        序号, 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级,
+                        评价标准, 星级目标, 建筑类型, 项目地点
+                    ) VALUES (:seq, :clause_number, :category, :is_achieved, :score, 
+                            :technical_measures, :specialty, :level, :standard, 
+                            :star_rating_target, :building_type, :location)
+                    """
+                    db.session.execute(
+                        text(insert_query),
+                        {
+                            "seq": max_seq,
+                            "clause_number": clause_number,
+                            "category": category,
+                            "is_achieved": is_achieved,
+                            "score": score,
+                            "technical_measures": technical_measures,
+                            "specialty": specialty,
+                            "level": level,
+                            "standard": project.standard,
+                            "star_rating_target": project.star_rating_target,
+                            "building_type": project.building_type,
+                            "location": project.location
+                        }
+                    )
+
+                inserted_count += 1
+
+                # 每100条提交一次，避免事务过大
+                if inserted_count % 100 == 0:
+                    db.session.commit()
+                    app.logger.info(f"已提交 {inserted_count} 条记录")
+
+            # 提交事务
+            db.session.commit()
+            app.logger.info(f"事务提交成功，共处理 {inserted_count} 条记录")
+
+            return jsonify({
+                'success': True,
+                'message': f'成功保存 {inserted_count} 条星级案例数据',
+                'data': {
+                    'standard': project.standard,
+                    'star_rating_target': project.star_rating_target,
+                    'building_type': project.building_type,
+                    'location': project.location,
+                    'processed_count': inserted_count
+                }
+            })
+
+        except Exception as e:
+            # 回滚事务
+            db.session.rollback()
+            app.logger.error(f"数据库操作失败: {str(e)}")
+            app.logger.error(traceback.format_exc())
+            return jsonify({
+                'success': False,
+                'message': f'数据库操作失败: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        app.logger.error(f"处理请求失败: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'处理请求失败: {str(e)}'
+        }), 500
 
 # 添加获取百度地图API密钥的API端点
 @app.route('/api/map_api_key', methods=['GET'])

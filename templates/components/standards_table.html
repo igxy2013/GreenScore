@@ -665,7 +665,7 @@
             const currentScore = parseFloat(input.value);
             
             if (isNaN(currentScore)) {
-                input.value = '0';
+                input.value = '';
                 return;
             }
             
@@ -673,6 +673,15 @@
                 input.value = maxScore;
                 if (typeof toast === 'function') {
                     toast(`得分不能超过最大分值${maxScore}`, 'warning');
+                }
+            }
+            // 如果分数在 0 和 maxScore 之间，则保持不变
+            // Normalize display for valid numbers (e.g., "09" -> "9")
+            // We do this *after* range checks to ensure the final value is correct
+            if (!isNaN(currentScore) && currentScore >= 0 && currentScore <= maxScore) {
+                // Check if the displayed value differs from the normalized numeric value's string representation
+                if (input.value !== currentScore.toString()) {
+                    input.value = currentScore.toString(); // Update display
                 }
             }
         };
@@ -1005,9 +1014,6 @@
                 const maxScore = input.dataset.maxscore;
                 let score = input.value.trim();
                 
-                // 如果没有填写得分，默认为0
-                if (score === '') score = '0';
-                
                 // 如果分值为"—"，则特殊处理
                 if (score === '—') {
                     // 对于分值为"—"的条目，我们记录特殊值
@@ -1023,37 +1029,29 @@
                 }
                 
                 // 验证得分是否超过最大值
-                if (parseFloat(score) > parseFloat(maxScore)) {
+                if (score !== '' && parseFloat(score) > parseFloat(maxScore)) {
                     if (typeof toast === 'function') {
                         toast(`条文${clause}的得分不能超过最大分值${maxScore}`, 'warning');
                     } else {
                         alert(`条文${clause}的得分不能超过最大分值${maxScore}`);
                     }
                     input.focus();
-                    return;
                 }
                 
                 const textarea = document.querySelector(`textarea[data-clause="${input.dataset.clause}"]`);
                 let technicalMeasures = '';
                 
                 if (textarea) {
-                    technicalMeasures = textarea.value.trim(); // 修剪技术措施文本
+                    technicalMeasures = textarea.value.trim();
                 } else {
                     console.warn(`未找到条文 ${clause} 的技术措施输入框`);
                 }
                 
-                // 获取分类信息 - 查找该条文所在行
-                const row = input.closest('tr');
-                let category = '';
-                
-                // 尝试获取分类单元格
-                const categoryCell = row.querySelector('td:nth-child(2)');
-                if (categoryCell && categoryCell.querySelector('.category-tag')) {
-                    category = categoryCell.querySelector('.category-tag').textContent.trim();
-                }
-                
-                // 判断是否达标 - 提高级默认为"是"
-                const isAchieved = parseFloat(score) > 0 ? "是" : "否";
+                // 获取分类
+                const category = getCategoryForClause(input);
+
+                // 判断是否达标 - 根据得分判断
+                const isAchieved = (score !== '' && parseFloat(score) > 0) ? "是" : "否";
                 
                 scoreData.scores.push({
                     clause_number: clause,
@@ -1064,7 +1062,7 @@
                     is_achieved: isAchieved
                 });
                 
-                console.log(`添加评分数据: 条文=${clause}, 得分=${score}, 最大分值=${maxScore}, 分类=${category}, 是否达标=${isAchieved}`);
+                console.log(`添加评分数据: 条文=${clause}, 得分='${score}', 最大分值=${maxScore}, 分类=${category}, 是否达标=${isAchieved}`);
             });
         }
         
@@ -1277,8 +1275,30 @@
                                 
                                 // 填充得分
                                 if (scoreInput) {
-                                    const score = item.score !== undefined && item.score !== null ? item.score : '0';
-                                    scoreInput.value = score;
+                                    // Original line: const score = item.score !== undefined && item.score !== null ? item.score : '0';
+                                    // Let's default to empty string '' instead of '0' if score is null/undefined from DB
+                                    const scoreValue = (item.score !== undefined && item.score !== null) ? String(item.score).trim() : '';
+                                    let processedScore = scoreValue; // Start with the loaded value (as string)
+
+                                    // Keep '—' as is
+                                    if (scoreValue !== '—') {
+                                        // If it's not '—' and not an empty string, try to parse and normalize
+                                        if (scoreValue !== '') {
+                                            const num = parseFloat(scoreValue);
+                                            if (!isNaN(num)) {
+                                                // Convert valid number back to string to remove leading zeros/normalize format
+                                                processedScore = num.toString();
+                                            } else {
+                                                // Handle case where loaded value is neither '—' nor a valid number
+                                                console.warn(`Loaded invalid score value "${scoreValue}" for clause ${clause}. Resetting to empty.`);
+                                                processedScore = ''; // Reset invalid non-'—' values to empty
+                                            }
+                                        }
+                                        // If scoreValue was '', processedScore remains ''
+                                    }
+                                    // Now, processedScore is either '—', '', or a normalized number string ("9", "10.5", etc.)
+
+                                    scoreInput.value = processedScore; // Set the normalized value
                                     successCount++;
                                 } else {
                                     // console.warn(`未能找到条文 ${clause} 对应的得分输入框`);

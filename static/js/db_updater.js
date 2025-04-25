@@ -107,7 +107,7 @@ function queryScore(clauseNumber, projectId) {
  * @param {string} [technicalMeasures] - 可选：技术措施内容
  * @returns {Promise} - 返回Promise对象，包含更新结果
  */
-function updateDatabaseScore(clauseNumber, score, isAchieved = '是', technicalMeasures = '') {
+function updateDatabaseScore(clauseNumber, score, isAchieved = '是', technicalMeasures) {
     // 验证参数
     if (!clauseNumber) {
         alert('缺少必要参数：条文号');
@@ -120,13 +120,9 @@ function updateDatabaseScore(clauseNumber, score, isAchieved = '是', technicalM
     }
     
     // 获取当前项目ID
-    if (!projectId) {
-        projectId = getCurrentProjectId();
-    }
-    console.log("项目ID：",projectId);
+    const projectId = getCurrentProjectId();
     // 获取当前项目标准
-    const standard = getCurrentProjectStandard() || '成都市标';
-    
+    const standard = getCurrentProjectStandard();
     // 准备请求数据 - 只包含必要的字段
     const requestData = {
         project_id: projectId,
@@ -136,12 +132,7 @@ function updateDatabaseScore(clauseNumber, score, isAchieved = '是', technicalM
         is_achieved: isAchieved,
         technical_measures: technicalMeasures
     };
-    
-    // 如果提供了技术措施，则添加到请求数据中
-    if (technicalMeasures) {
-        requestData.technical_measures = technicalMeasures;
-    }
-    
+     
     // 发送AJAX请求到后端API
     return fetch('/api/update_score_direct', {
         method: 'POST',
