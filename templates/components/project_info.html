@@ -409,43 +409,10 @@
             </div>
             <h3 class="text-lg font-medium text-primary">绿建得分自动计算</h3>
             <div class="inline-block ml-2 align-middle">
-                <input type="checkbox" id="scoreToggle" class="js-switch" title="开启或关闭绿建得分自动计算" aria-label="开启或关闭绿建得分自动计算">
+                <input type="checkbox" id="scoreToggle" class="js-switch" 
+                       {% if project and project.auto_calculate_score %}checked{% endif %} 
+                       title="开启或关闭绿建得分自动计算" aria-label="开启或关闭绿建得分自动计算">
             </div>
-            <script>
-                // 添加toggle开关的事件监听
-                document.addEventListener('DOMContentLoaded', function() {
-                    const scoreToggle = document.getElementById('scoreToggle');
-                    
-                    // 从localStorage获取之前保存的开关状态
-                    const savedToggleState = localStorage.getItem('scoreToggleState');
-                    if (savedToggleState !== null) {
-                        // 设置复选框状态为之前保存的状态
-                        scoreToggle.checked = savedToggleState === 'true';
-                    }
-                    
-                    // 初始化Switchery开关
-                    var switchery = new Switchery(scoreToggle, { 
-                        color: '#34C759',  // 打开时的颜色（Apple风格）
-                        secondaryColor: '#e9e9ea',  // 关闭时的颜色
-                        jackColor: '#ffffff',  // 圆形按钮的颜色
-                        jackSecondaryColor: '#ffffff', // 关闭时按钮的颜色
-                        size: 'small'  // 开关大小
-                    });
-                    
-                    if (scoreToggle) {
-
-                        // 监听toggle状态变化
-                        scoreToggle.addEventListener('change', function() {
-                            console.log("得分计算开关状态:", this.checked ? "开启" : "关闭");
-                            // 将开关状态保存到localStorage
-                            localStorage.setItem('scoreToggleState', this.checked);
-                            
-                            // 刷新页面
-                            // location.reload();
-                        });
-                    }
-                });
-            </script>
         </div>
         <div class="flex flex-row gap-4 w-full">
             <div class="bg-green-50 rounded-md p-3 flex-1 flex flex-col justify-between">

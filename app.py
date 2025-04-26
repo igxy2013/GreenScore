@@ -625,6 +625,11 @@ def save_project_info(form_data):
         project.public_building_type = form_data.get('public_building_type', '')
         project.public_green_space = form_data.get('public_green_space', '')
         
+        # 新增：处理自动计算得分开关状态
+        auto_calc_enabled_str = form_data.get('auto_calculate_score', 'false') # 从表单获取字符串值
+        project.auto_calculate_score = auto_calc_enabled_str.lower() == 'true' # 转换为布尔值
+        print(f"处理自动计算得分开关状态: {auto_calc_enabled_str} -> {project.auto_calculate_score}")
+        
         # 记录将要保存的数据内容
         print(f"正在保存项目信息，详细字段包括：总用地面积={project.total_land_area}, 总建筑面积={project.total_building_area}, 地上建筑面积={project.above_ground_area}, 地下建筑面积={project.underground_area}")
         
@@ -948,6 +953,11 @@ def project_detail(project_id):
         # 如果页面类型为公共交通分析，使用iframe加载页面
         if page == 'public_transport_analysis':
             app.logger.info(f"访问项目 ID: {project_id}, 名称: {project.name}, 页面: {page}")
+
+            # --- 添加这行日志 ---
+            print(f"DEBUG: 渲染模板前, project.id={project.id}, project.auto_calculate_score={project.auto_calculate_score}, 类型={type(project.auto_calculate_score)}") 
+            # --- 添加结束 ---
+
             return render_template('dashboard.html', project=project, current_page=page, user_permissions=user_permissions)
         
         # 如果页面类型为规范查询库，获取所有PDF文件并传递给模板
@@ -1458,6 +1468,7 @@ def get_project_info():
                 '容积率': project.plot_ratio,
                 '建筑密度': project.building_density,
                 '建筑基底面积': project.building_base_area,
+                'auto_calculate_score': project.auto_calculate_score # 添加此字段
             }   
             
             # 如果有表单数据，添加到结果中
@@ -2516,6 +2527,13 @@ def get_score_summary(project_id, force_refresh=False):
                     is_achieved = row[2]
                     score = row[3]
                     level = row[4]
+                    
+                    # --- 添加检查 --- 
+                    if specialty is None:
+                        # if app.debug:
+                        #     app.logger.warning(f"跳过处理: 项目ID={project_id}, 条文评分记录的专业字段为None")
+                        continue # 跳过这条记录
+                    # --- 检查结束 ---
                     
                     # 减少日志记录，提高性能
                     # 映射专业名称

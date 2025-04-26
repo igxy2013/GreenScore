@@ -13,9 +13,85 @@ var lastExtractedData = null;
 // 初始化省市数据
 document.addEventListener('DOMContentLoaded', function() {
     initializeProvinceCitySelectors();
-    
-    // 加载用户权限并初始化表单状态
     loadUserPermissions();
+
+    // --- 修改：整合 Switchery 初始化和状态更新 --- 
+    const scoreToggle = document.getElementById('scoreToggle');
+    let switcheryInstance = null; // 将实例变量提升作用域，初始为 null
+
+    // 1. 初始化 Switchery (如果元素存在)
+    if (scoreToggle) {
+        try {
+            switcheryInstance = new Switchery(scoreToggle, { 
+                color: '#34C759', 
+                secondaryColor: '#e9e9ea',
+                jackColor: '#ffffff', 
+                jackSecondaryColor: '#ffffff',
+                size: 'small'
+            });
+            console.log("Switchery 已成功初始化");
+
+            // 监听开关的人工交互变化 (用于保存到 localStorage)
+            scoreToggle.addEventListener('change', function() {
+                console.log("用户手动切换开关状态:", this.checked ? "开启" : "关闭");
+                localStorage.setItem('scoreToggleState', this.checked);
+            });
+        } catch (e) {
+            console.error("Switchery 初始化失败:", e);
+            // 即使初始化失败，也尝试继续执行后续逻辑
+        }
+    } else {
+        console.error('未能找到 ID 为 scoreToggle 的开关元素进行初始化');
+    }
+
+    // 2. 页面加载后获取项目信息并更新开关状态
+    const projectIdInput = document.getElementById('project_id');
+    const currentProjectId = projectIdInput ? projectIdInput.value : null;
+    
+    if (currentProjectId && scoreToggle) { // 确保项目ID和开关元素都存在
+        console.log("页面加载，获取项目信息以更新开关状态...");
+        fetch('/api/project_info?project_id=' + currentProjectId)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('获取项目信息失败: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("API /api/project_info 返回数据:", data);
+                if (data && typeof data.auto_calculate_score !== 'undefined') {
+                    const newState = data.auto_calculate_score; // 从API获取的布尔值
+                    const currentState = scoreToggle.checked;
+                    
+                    console.log(`开关更新: API值=${newState}, 当前DOM状态=${currentState}`);
+                    
+                    // 只有当API状态与当前DOM状态不同时才更新
+                    if (newState !== currentState) {
+                        scoreToggle.checked = newState;
+                        console.log(`已设置 scoreToggle.checked = ${newState}`);
+                        
+                        // 更新 Switchery 的视觉状态 (使用上面初始化的实例)
+                        if (switcheryInstance) {
+                            // 先销毁旧的Switchery实例（如果存在并且需要重建）
+                            // 但通常setPosition足够了
+                            switcheryInstance.setPosition(true); // true表示立即更新，无动画
+                            console.log("已调用 switchery.setPosition() 更新视觉状态");
+                        } else {
+                            // 如果 Switchery 初始化失败，我们无法更新视觉效果
+                            console.error("无法更新视觉状态：Switchery实例未初始化或初始化失败!"); 
+                        }
+                    } else {
+                        console.log("API状态与DOM状态一致，无需更新");
+                    }
+                } else {
+                    console.warn('API /api/project_info 未返回有效的 auto_calculate_score 字段');
+                }
+            })
+            .catch(error => {
+                console.error('页面加载时获取项目信息失败:', error);
+            });
+    }
+    // --- 修改结束 ---
 });
 
 // 加载用户权限
@@ -679,6 +755,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const form = this.closest('form');
             const formData = new FormData(form);
             
+            // 获取得分计算开关的当前状态并添加到表单数据
+            const scoreToggleInput = document.getElementById('scoreToggle');
+            const autoCalcEnabled = scoreToggleInput ? scoreToggleInput.checked : false;
+            formData.append('auto_calculate_score', autoCalcEnabled);
+            console.log('Sending auto_calculate_score:', autoCalcEnabled);
+            
             // 发送AJAX请求保存数据
             fetch(form.action, {
                 method: 'POST',
@@ -697,9 +779,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     const scoreToggle = document.getElementById('scoreToggle');
-                    // 直接从 localStorage 读取状态，而不是从 checkbox 的 .checked 属性
-                    const isChecked = localStorage.getItem('scoreToggleState') === 'true';
-                    console.log("isChecked (from localStorage)", isChecked);
+                    // 读取 input 的当前 checked 状态来决定是否计算
+                    const isChecked = scoreToggle ? scoreToggle.checked : false; 
+                    console.log("isChecked (from input element)", isChecked);
                     if (isChecked) { 
                         console.log("自动计算功能开启，将异步执行");
                         // calculateAndUpdateScores(); // 移除或保持注释之前的直接调用

@@ -47,7 +47,7 @@ class Project(db.Model):
     has_water_landscape = db.Column(db.String(10))  # 有无景观水体
     is_fully_decorated = db.Column(db.String(10))  # 是否为全装修项目
     public_building_type = db.Column(db.String(50))  # 公建类型
-    public_green_space = db.Column(db.String(10))  # 绿地向公众开放
+    public_green_space = db.Column(db.String(50), nullable=True) # 绿地是否向公众开放
     status = db.Column(db.String(20), default='规划中')  # 项目状态：规划中、进行中、已完成、已暂停等
     
     # 新增评分字段（使用英文字段名）
@@ -71,6 +71,9 @@ class Project(db.Model):
     improvement_innovation_score = db.Column(db.Float)  # 提高与创新总分
     total_score = db.Column(db.Float)  # 项目总分
     evaluation_result = db.Column(db.String(20))  # 评定结果
+
+    # 新增：存储绿建得分自动计算开关状态的字段
+    auto_calculate_score = db.Column(db.Boolean, default=True, nullable=False)
 
     def to_dict(self):
         # 辅助函数：格式化浮点数，保留2位小数
@@ -139,6 +142,7 @@ class Project(db.Model):
             '提高与创新总分': format_float(self.improvement_innovation_score),
             '项目总分': format_float(self.total_score),
             '评定结果': self.evaluation_result,
+            'auto_calculate_score': self.auto_calculate_score,
         }
 
 class User(UserMixin, db.Model):
