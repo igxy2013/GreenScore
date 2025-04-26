@@ -552,9 +552,6 @@ function calculateAndUpdateScores() {
     // 修改多个条文的得分   
     let standard = document.getElementById('current-project-standard')?.value || '成都市标';
     let projectId = document.getElementById('current-project-id')?.value || document.getElementById('project_id')?.value;
-    let has_underground_garage = document.getElementById('has_underground_garage')?.value || '无';
-    let has_elevator = document.getElementById('has_elevator')?.value || '无';
-    let ac_type = document.getElementById('ac_type')?.value || '无';
     let jscs="";//人均用地指标技术措施
     if (!projectId) {
         console.log('未找到项目ID，无法更新得分');
@@ -571,50 +568,14 @@ function calculateAndUpdateScores() {
                     jscs="";
                 }
                 updateDatabaseScore('3.1.2.14', perCapitaLandScore,null,jscs);
-                updateDatabaseScore('3.1.1.26', 0,null, '满足要求，详见室外热环境分析报告');
-                updateDatabaseScore('3.6.1.2', 0,null, '满足要求，详见室外热环境分析报告');
+
             } else if (buildingType === '公共建筑'){
                 updateDatabaseScore('3.1.2.14', plotRatioScore,null,null);
-                updateDatabaseScore('3.1.1.26', 0,null, '本项目为非居住区，满足要求');
-                updateDatabaseScore('3.6.1.2', 0,null, '本项目为非居住区，满足要求');
+
             }
             updateDatabaseScore('3.1.2.15', undergroundScore,null,null);
             updateDatabaseScore('3.1.2.21', greenSpaceScore,null,null);
             updateDatabaseScore('3.1.2.16', parkingScore,null,null);
-            if (has_underground_garage === '有'){
-                updateDatabaseScore('3.4.1.5', 0,null, '满足要求，详见暖通设计图纸');
-                updateDatabaseScore('3.5.1.2', 0,null, '满足要求，详见电气设计图纸');
-            }
-            else{
-                updateDatabaseScore('3.4.1.5', 0,"不参评", '本项目无地下车库，本条不参评');
-                updateDatabaseScore('3.5.1.2', 0,"不参评", '本项目无地下车库，本条不参评');
-            }   
-            if (has_elevator === '有'){
-                updateDatabaseScore('3.5.1.8', 0,null, '满足要求，详见电气设计图纸');
-            }
-            else{
-                updateDatabaseScore('3.5.1.8', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
-            }
-            if (ac_type === '无'){
-                updateDatabaseScore('3.4.1.3', 0,"不参评", '本项目无空调，本条不参评');
-                updateDatabaseScore('3.4.1.4', 0,"不参评", '本项目无空调，本条不参评');
-            }
-            else if (ac_type === '分体式空调'){
-                updateDatabaseScore('3.4.1.3', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('3.4.1.4', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('3.4.2.4', 5,null, '本项目设置分体空调，设计能效等级为二级');
-                updateDatabaseScore('3.4.2.5', 5,null, '本项目设置分体空调，满足要求');
-            }
-            else if (ac_type === '多联式空调'){
-                updateDatabaseScore('3.4.1.3', 0,null, '本项目设置多联式空调，直接满足要求');
-                updateDatabaseScore('3.4.1.4', 0,null, '本项目设置多联式空调，直接满足要求');
-            }   
-            else if (ac_type === '集中空调'){
-                updateDatabaseScore('3.4.1.3', 0,null, '满足要求，详见暖通设计图纸');
-            }
-            else if (ac_type === '组合形式'){
-                updateDatabaseScore('3.4.1.3', 0,null, '满足要求，详见暖通设计图纸');
-            }
 
         }
         else if (standard === '四川省标'){
@@ -626,53 +587,16 @@ function calculateAndUpdateScores() {
                     jscs="";
                 }
                 updateDatabaseScore('3.1.16', perCapitaLandScore,null,jscs);
-                updateDatabaseScore('2.6.2', 0,null, '满足要求，详见室外热环境分析报告');
-                updateDatabaseScore('2.7.7', 0,null, '满足要求，详见室外热环境分析报告');
+
 
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('3.1.16', plotRatioScore,null,null);
-                updateDatabaseScore('2.6.2', 0,null, '本项目为非居住区，满足要求');
-                updateDatabaseScore('2.7.7', 0,null, '本项目为非居住区，满足要求');
+
             }
             updateDatabaseScore('3.1.17', undergroundScore,null,null);
             updateDatabaseScore('3.1.25', greenSpaceScore,null,null);
             updateDatabaseScore('3.1.18', parkingScore,null,null);
-            if (has_underground_garage === '有'){
-                updateDatabaseScore('2.4.5', 0,null, '满足要求，详见暖通设计图纸');
-                updateDatabaseScore('2.5.2', 0,null, '满足要求，详见电气设计图纸');
-            }
-            else{
-                updateDatabaseScore('3.4.1.5', 0,"不参评", '本项目无地下车库，本条不参评');
-                updateDatabaseScore('3.5.1.2', 0,"不参评", '本项目无地下车库，本条不参评');
-            }   
-            if (has_elevator === '有'){
-                updateDatabaseScore('2.5.8', 0,null, '满足要求，详见电气设计图纸');
-            }
-            else{
-                updateDatabaseScore('2.5.8', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
-            }
-            if (ac_type === '无'){
-                updateDatabaseScore('2.4.3', 0,"不参评", '本项目无空调，本条不参评');
-                updateDatabaseScore('2.4.4', 0,"不参评", '本项目无空调，本条不参评');
-            }
-            else if (ac_type === '分体式空调'){
-                updateDatabaseScore('2.4.3', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('2.4.4', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('2.4.6', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('3.4.4', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
-                updateDatabaseScore('3.4.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
-            }
-            else if (ac_type === '多联式空调'){
-                updateDatabaseScore('2.4.3', 0,null, '本项目设置多联式空调，满足要求');
-                updateDatabaseScore('3.4.5', 0,null, '本项目设置多联式空调，满足要求');
-            }   
-            else if (ac_type === '集中空调'){
-                updateDatabaseScore('2.4.3', 0,null, '满足要求，详见暖通设计图纸');
-            }
-            else if (ac_type === '组合形式'){
-                updateDatabaseScore('2.4.3', 0,null, '满足要求，详见暖通设计图纸');
-            }
 
         }
         else if (standard === '国标'){
@@ -684,60 +608,171 @@ function calculateAndUpdateScores() {
                     jscs="";
                 }
                 updateDatabaseScore('7.2.1', perCapitaLandScore,null,jscs);
-                updateDatabaseScore('8.1.2', 0,null, '满足要求，详见室外热环境分析报告');
 
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('7.2.1', plotRatioScore,null,null);
-                updateDatabaseScore('8.1.2', 0,null, '本项目为非居住区，满足要求');
             }
             updateDatabaseScore('7.2.2', undergroundScore,null,null);
             updateDatabaseScore('8.2.3', greenSpaceScore,null,null);
             updateDatabaseScore('7.2.3', parkingScore,null,null);
-            if (has_underground_garage === '有'){
-                updateDatabaseScore('5.1.9', 0,null, '满足要求，详见暖通设计图纸');
-            }
-            else{
-                updateDatabaseScore('5.1.9', 0,"不参评", '本项目无地下车库，本条不参评');
-            } 
-            if (has_elevator === '有'){
-                updateDatabaseScore('7.1.6', 0,null, '满足要求，详见电气设计图纸');
-            }
-            else{
-                updateDatabaseScore('7.1.6', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
-            }
-            if (ac_type === '无'){
-                updateDatabaseScore('5.1.6', 0,"不参评", '本项目无空调，本条不参评');
-                updateDatabaseScore('5.1.8', 0,"不参评", '本项目无空调，本条不参评');
-                updateDatabaseScore('7.1.2', 0,"不参评", '本项目无空调，本条不参评');
-            }
-            else if (ac_type === '分体式空调'){
-                updateDatabaseScore('5.1.6', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('5.1.8', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('7.1.2', 0,null, '本项目设置分体空调，直接满足要求');
-                updateDatabaseScore('7.2.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
-                updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
-            }
-            else if (ac_type === '多联式空调'){
-                updateDatabaseScore('5.1.6', 0,null, '本项目设置多联式空调，满足要求');
-                updateDatabaseScore('7.1.2', 0,null, '本项目设置多联式空调，满足要求');
-                updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
-            }   
-            else if (ac_type === '集中空调'){
-                updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
-                updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
-            }
-            else if (ac_type === '组合形式'){
-                updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
-                updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
-            }
         }
         console.log('得分更新完成');
     } catch (error) {
         console.error('更新得分时出错:', error);
     }
 }
-        
+//自动更新技术措施
+function auto_update_jscs(){
+        const buildingType = document.getElementById('building_type').value;   
+        let standard = document.getElementById('current-project-standard')?.value || '成都市标';
+        let has_underground_garage = document.getElementById('has_underground_garage')?.value || '无';
+        let has_elevator = document.getElementById('has_elevator')?.value || '无';
+        let ac_type = document.getElementById('ac_type')?.value || '无';
+
+        try {
+            if (standard === '成都市标'){
+                if (buildingType === '居住建筑'){
+                    updateDatabaseScore('3.1.1.26', 0,null, '满足要求，详见室外热环境分析报告');
+                    updateDatabaseScore('3.6.1.2', 0,null, '满足要求，详见室外热环境分析报告');
+                } else if (buildingType === '公共建筑'){
+                    updateDatabaseScore('3.1.1.26', 0,null, '本项目为非居住区，满足要求');
+                    updateDatabaseScore('3.6.1.2', 0,null, '本项目为非居住区，满足要求');
+                }
+                if (has_underground_garage === '有'){
+                    updateDatabaseScore('3.4.1.5', 0,null, '满足要求，详见暖通设计图纸');
+                    updateDatabaseScore('3.5.1.2', 0,null, '满足要求，详见电气设计图纸');
+                }
+                else{
+                    updateDatabaseScore('3.4.1.5', 0,"不参评", '本项目无地下车库，本条不参评');
+                    updateDatabaseScore('3.5.1.2', 0,"不参评", '本项目无地下车库，本条不参评');
+                }   
+                if (has_elevator === '有'){
+                    updateDatabaseScore('3.5.1.8', 0,null, '满足要求，详见电气设计图纸');
+                }
+                else{
+                    updateDatabaseScore('3.5.1.8', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
+                }
+                if (ac_type === '无'){
+                    updateDatabaseScore('3.4.1.3', 0,"不参评", '本项目无空调，本条不参评');
+                    updateDatabaseScore('3.4.1.4', 0,"不参评", '本项目无空调，本条不参评');
+                }
+                else if (ac_type === '分体式空调'){
+                    updateDatabaseScore('3.4.1.3', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('3.4.1.4', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('3.4.2.4', 5,null, '本项目设置分体空调，设计能效等级为二级');
+                    updateDatabaseScore('3.4.2.5', 5,null, '本项目设置分体空调，满足要求');
+                }
+                else if (ac_type === '多联式空调'){
+                    updateDatabaseScore('3.4.1.3', 0,null, '本项目设置多联式空调，直接满足要求');
+                    updateDatabaseScore('3.4.1.4', 0,null, '本项目设置多联式空调，直接满足要求');
+                }   
+                else if (ac_type === '集中空调'){
+                    updateDatabaseScore('3.4.1.3', 0,null, '满足要求，详见暖通设计图纸');
+                }
+                else if (ac_type === '组合形式'){
+                    updateDatabaseScore('3.4.1.3', 0,null, '满足要求，详见暖通设计图纸');
+                }
+    
+            }
+            else if (standard === '四川省标'){
+                if (buildingType === '居住建筑'){
+                    updateDatabaseScore('2.6.2', 0,null, '满足要求，详见室外热环境分析报告');
+                    updateDatabaseScore('2.7.7', 0,null, '满足要求，详见室外热环境分析报告');
+                }
+                else if (buildingType === '公共建筑'){
+                    updateDatabaseScore('2.6.2', 0,null, '本项目为非居住区，满足要求');
+                    updateDatabaseScore('2.7.7', 0,null, '本项目为非居住区，满足要求');
+                }
+                if (has_underground_garage === '有'){
+                    updateDatabaseScore('2.4.5', 0,null, '满足要求，详见暖通设计图纸');
+                    updateDatabaseScore('2.5.2', 0,null, '满足要求，详见电气设计图纸');
+                }
+                else{
+                    updateDatabaseScore('3.4.1.5', 0,"不参评", '本项目无地下车库，本条不参评');
+                    updateDatabaseScore('3.5.1.2', 0,"不参评", '本项目无地下车库，本条不参评');
+                }   
+                if (has_elevator === '有'){
+                    updateDatabaseScore('2.5.8', 0,null, '满足要求，详见电气设计图纸');
+                }
+                else{
+                    updateDatabaseScore('2.5.8', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
+                }
+                if (ac_type === '无'){
+                    updateDatabaseScore('2.4.3', 0,"不参评", '本项目无空调，本条不参评');
+                    updateDatabaseScore('2.4.4', 0,"不参评", '本项目无空调，本条不参评');
+                }
+                else if (ac_type === '分体式空调'){
+                    updateDatabaseScore('2.4.3', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('2.4.4', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('2.4.6', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('3.4.4', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                    updateDatabaseScore('3.4.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                }
+                else if (ac_type === '多联式空调'){
+                    updateDatabaseScore('2.4.3', 0,null, '本项目设置多联式空调，满足要求');
+                    updateDatabaseScore('3.4.5', 0,null, '本项目设置多联式空调，满足要求');
+                }   
+                else if (ac_type === '集中空调'){
+                    updateDatabaseScore('2.4.3', 0,null, '满足要求，详见暖通设计图纸');
+                }
+                else if (ac_type === '组合形式'){
+                    updateDatabaseScore('2.4.3', 0,null, '满足要求，详见暖通设计图纸');
+                }
+    
+            }
+            else if (standard === '国标'){
+                if (buildingType === '居住建筑'){
+                    updateDatabaseScore('8.1.2', 0,null, '满足要求，详见室外热环境分析报告');
+    
+                }
+                else if (buildingType === '公共建筑'){
+                    updateDatabaseScore('8.1.2', 0,null, '本项目为非居住区，满足要求');
+                }
+
+                if (has_underground_garage === '有'){
+                    updateDatabaseScore('5.1.9', 0,null, '满足要求，详见暖通设计图纸');
+                }
+                else{
+                    updateDatabaseScore('5.1.9', 0,"不参评", '本项目无地下车库，本条不参评');
+                } 
+                if (has_elevator === '有'){
+                    updateDatabaseScore('7.1.6', 0,null, '满足要求，详见电气设计图纸');
+                }
+                else{
+                    updateDatabaseScore('7.1.6', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
+                }
+                if (ac_type === '无'){
+                    updateDatabaseScore('5.1.6', 0,"不参评", '本项目无空调，本条不参评');
+                    updateDatabaseScore('5.1.8', 0,"不参评", '本项目无空调，本条不参评');
+                    updateDatabaseScore('7.1.2', 0,"不参评", '本项目无空调，本条不参评');
+                }
+                else if (ac_type === '分体式空调'){
+                    updateDatabaseScore('5.1.6', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('5.1.8', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('7.1.2', 0,null, '本项目设置分体空调，直接满足要求');
+                    updateDatabaseScore('7.2.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                    updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                }
+                else if (ac_type === '多联式空调'){
+                    updateDatabaseScore('5.1.6', 0,null, '本项目设置多联式空调，满足要求');
+                    updateDatabaseScore('7.1.2', 0,null, '本项目设置多联式空调，满足要求');
+                    updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                }   
+                else if (ac_type === '集中空调'){
+                    updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
+                    updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
+                }
+                else if (ac_type === '组合形式'){
+                    updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
+                    updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
+                }
+            }
+            console.log('技术措施更新完成');
+        } catch (error) {
+            console.error('更新技术措施时出错:', error);
+        }
+}
 document.addEventListener('DOMContentLoaded', function() {
     // 查找保存按钮并添加事件监听器
     const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
@@ -788,6 +823,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // 将耗时操作放入setTimeout异步执行
                         setTimeout(calculateAndUpdateScores, 0);
                     }
+                    auto_update_jscs();
 
                 } else {
                     // 检查是否是权限错误
