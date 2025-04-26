@@ -61,8 +61,6 @@ function updateCategoryBadges() {
                 });
             }
 
-            console.log('更新后的分类得分:', categoryScores);
-
             // 更新徽章状态
             const badges = document.querySelectorAll('.category-badge');
             badges.forEach(badge => {
@@ -70,7 +68,7 @@ function updateCategoryBadges() {
                 const score = categoryScores[category] || 0;
                 const minScore = minScores[category] || 0;
                 
-                console.log(`${category} - 得分: ${score}, 最低要求: ${minScore}`);
+                // console.log(`${category} - 得分: ${score}, 最低要求: ${minScore}`);
                 
                 if (score >= minScore) {
                     badge.classList.remove('not-achieved');

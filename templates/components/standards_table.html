@@ -262,53 +262,53 @@
     // 定义权限控制变量
     let hasEditPermission = true; // 默认为可编辑
     let userPermissions = null;
-    let selectedAiFiles = null; // Variable to store selected files from the new modal
+    let selectedAiFiles = null; // 存储从新模态框选择的文件
 
-    // --- Moved Functions Outside DOMContentLoaded ---
+    // --- Moved Functions Outside DOMContentLoaded --- // --- 将函数移至 DOMContentLoaded 外部 ---
     function showAiUploadModal() {
         const modal = document.getElementById('aiScoreUploadModal');
         if (modal) {
-            // Reset file input and selection info
+            // Reset file input and selection info // 重置文件输入和选择信息
             const fileInput = document.getElementById('aiScoreFileInput');
             if(fileInput) fileInput.value = null;
             selectedAiFiles = null;
             updateSelectedFilesInfo();
-            // Hide loading indicator if it was somehow visible
+            // Hide loading indicator if it was somehow visible // 隐藏加载指示器（如果它不知何故可见）
             const loadingIndicator = document.getElementById('aiUploadLoadingIndicator');
             if(loadingIndicator) loadingIndicator.classList.add('hidden');
 
             modal.classList.remove('hidden');
-            modal.classList.add('show'); // Add .show class
+            modal.classList.add('show'); // 添加 .show 类
             document.body.classList.add('overflow-hidden');
-            // Add ESC key listener for upload modal
+            // Add ESC key listener for upload modal // 为上传模态框添加 ESC 键监听器
             document.addEventListener('keydown', handleEscKeyForUploadModal);
         }
     }
 
     function closeAiUploadModal() {
         //--> 添加日志确认函数被调用 <--
-        console.log('closeAiUploadModal function called');
+        // console.log('closeAiUploadModal 函数被调用');
         const modal = document.getElementById('aiScoreUploadModal');
         if (modal) {
-            console.log('Modal found, adding hidden class and removing show class'); // <-- 确认找到模态框
+            // console.log('找到模态框，添加 hidden 类并移除 show 类'); // <-- 确认找到模态框
             modal.classList.add('hidden');
-            modal.classList.remove('show'); // Remove .show class
+            modal.classList.remove('show'); // 移除 .show 类
         } else {
-           console.error('Upload modal not found!'); // <-- 如果没找到模态框
+           console.error('未找到上传模态框！'); // <-- 如果没找到模态框
         }
         document.body.classList.remove('overflow-hidden');
-         // Ensure loading indicators are hidden on close
+         // Ensure loading indicators are hidden on close // 确保关闭时隐藏加载指示器
          const uploadLoading = document.getElementById('aiUploadLoadingIndicator');
          if(uploadLoading) uploadLoading.classList.add('hidden');
-         const globalLoading = document.getElementById('aiLoadingIndicator'); // Also hide the global one
+         const globalLoading = document.getElementById('aiLoadingIndicator'); // Also hide the global one // 同时隐藏全局的那个
          if(globalLoading) globalLoading.classList.add('hidden');
-         const extractBtn = document.getElementById('aiExtractBtn'); // Re-enable main button
+         const extractBtn = document.getElementById('aiExtractBtn'); // Re-enable main button // 重新启用主按钮
          if(extractBtn) extractBtn.disabled = false;
-         // Remove ESC key listener for upload modal
+         // Remove ESC key listener for upload modal // 移除上传模态框的 ESC 键监听器
          document.removeEventListener('keydown', handleEscKeyForUploadModal);
     }
 
-    // Function to handle ESC key for the upload modal
+    // Function to handle ESC key for the upload modal // 处理上传模态框 ESC 键的函数
     function handleEscKeyForUploadModal(event) {
         if (event.key === 'Escape') {
             closeAiUploadModal();
@@ -320,7 +320,7 @@
         if (!infoDiv) return;
         if (selectedAiFiles && selectedAiFiles.length > 0) {
             let fileNames = Array.from(selectedAiFiles).map(f => f.name).join(', ');
-             if (fileNames.length > 100) { // Truncate if too long
+             if (fileNames.length > 100) { // Truncate if too long // 如果太长则截断
                  fileNames = fileNames.substring(0, 97) + '...';
              }
             infoDiv.textContent = `已选择 ${selectedAiFiles.length} 个文件: ${fileNames}`;
@@ -331,7 +331,7 @@
     }
 
      function handleFileSelection(files) {
-         // Check file types
+         // Check file types // 检查文件类型
          const allowedTypes = ['.doc', '.docx', '.pdf'];
          const invalidFiles = [];
          for (let file of files) {
@@ -344,61 +344,61 @@
          if (invalidFiles.length > 0) {
              const msg = `包含不支持的文件类型: ${invalidFiles.join(', ')}. 只允许 ${allowedTypes.join(', ')}`;
              if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
-             selectedAiFiles = null; // Reject the selection
-              // Clear the file input visually if possible (might not work reliably cross-browser)
+             selectedAiFiles = null; // Reject the selection // 拒绝选择
+              // Clear the file input visually if possible (might not work reliably cross-browser) // 尝试在视觉上清除文件输入（可能无法跨浏览器可靠工作）
               const fileInput = document.getElementById('aiScoreFileInput');
               if(fileInput) fileInput.value = null;
          } else {
-            selectedAiFiles = files; // Accept the selection
+            selectedAiFiles = files; // Accept the selection // 接受选择
          }
           updateSelectedFilesInfo();
      }
 
-    // Function to close the AI preview modal
+    // Function to close the AI preview modal // 关闭 AI 预览模态框的函数
     window.closeAiPreviewModal = function() {
-        const modal = document.getElementById('aiScorePreviewModal'); // Find the preview modal
+        const modal = document.getElementById('aiScorePreviewModal'); // Find the preview modal // 查找预览模态框
         if (modal) {
             modal.classList.add('hidden');
-            modal.classList.remove('show'); // Remove .show class
+            modal.classList.remove('show'); // Remove .show class // 移除 .show 类
         }
         document.body.classList.remove('overflow-hidden');
-        // Remove ESC key listener for preview modal
+        // Remove ESC key listener for preview modal // 移除预览模态框的 ESC 键监听器
         document.removeEventListener('keydown', handleEscKeyForPreviewModal);
     }
 
-    // Function to handle ESC key for the preview modal (Keep global for now or move if needed)
+    // Function to handle ESC key for the preview modal (Keep global for now or move if needed) // 处理预览模态框 ESC 键的函数（暂时保持全局或根据需要移动）
     function handleEscKeyForPreviewModal(event) {
         if (event.key === 'Escape') {
             closeAiPreviewModal();
         }
     }
 
-    // Refactored function to handle the actual extraction API call
+    // Refactored function to handle the actual extraction API call // 重构的函数，用于处理实际的提取 API 调用
     async function triggerAiScoreExtraction(files) {
-        console.log('triggerAiScoreExtraction function called'); // Added log
-        // --- Add Permission Check ---
+        // console.log('triggerAiScoreExtraction 函数被调用'); // 添加日志
+        // --- Add Permission Check --- // --- 添加权限检查 ---
         if (!hasEditPermission) {
             if (typeof toast === 'function') {
                 toast('您没有编辑权限，无法执行此操作', 'error');
             }
-            closeAiUploadModal(); // Close the modal if no permission
+            closeAiUploadModal(); // Close the modal if no permission // 如果没有权限则关闭模态框
             return;
         }
-        // --- End Permission Check ---
+        // --- End Permission Check --- // --- 结束权限检查 ---
 
         if (!files || files.length === 0) {
-            return; // Should be checked before calling, but double-check
+            return; // Should be checked before calling, but double-check // 调用前应检查，但再次确认
         }
 
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
-            formData.append('files', files[i]); // Backend expects 'files' key
+            formData.append('files', files[i]); // Backend expects 'files' key // 后端期望 'files' 键
         }
 
-        // Show loading indicator (inside the upload modal) & Disable button
+        // Show loading indicator (inside the upload modal) & Disable button // 显示加载指示器（上传模态框内）并禁用按钮
         const uploadLoadingIndicator = document.getElementById('aiUploadLoadingIndicator');
-        const startExtractionBtn = document.getElementById('startAiExtractionBtn'); // Need this reference here too
-        const aiExtractBtn = document.getElementById('aiExtractBtn'); // And this one
+        const startExtractionBtn = document.getElementById('startAiExtractionBtn'); // Need this reference here too // 这里也需要这个引用
+        const aiExtractBtn = document.getElementById('aiExtractBtn'); // And this one // 还有这个
 
         if(uploadLoadingIndicator) uploadLoadingIndicator.classList.remove('hidden');
         if(startExtractionBtn) startExtractionBtn.disabled = true;
@@ -413,19 +413,19 @@
 
             const data = await response.json();
 
-            // Close the upload modal BEFORE showing results/errors
+            // Close the upload modal BEFORE showing results/errors // 在显示结果/错误之前关闭上传模态框
             closeAiUploadModal();
 
             if (data.success && data.scores) {
-                extractedScoresData = data.scores; // Store data
+                extractedScoresData = data.scores; // Store data // 存储数据
                 displayAiScorePreview(extractedScoresData);
-                const aiScorePreviewModal = document.getElementById('aiScorePreviewModal'); // Need reference
+                const aiScorePreviewModal = document.getElementById('aiScorePreviewModal'); // Need reference // 需要引用
                 if (aiScorePreviewModal) {
                     aiScorePreviewModal.classList.remove('hidden');
-                    aiScorePreviewModal.classList.add('show'); // Add .show class
+                    aiScorePreviewModal.classList.add('show'); // Add .show class // 添加 .show 类
                 }
-                document.body.classList.add('overflow-hidden'); // Add overflow hidden for preview modal
-                // Add ESC key listener for preview modal
+                document.body.classList.add('overflow-hidden'); // Add overflow hidden for preview modal // 为预览模态框添加 overflow hidden
+                // Add ESC key listener for preview modal // 为预览模态框添加 ESC 键监听器
                 document.addEventListener('keydown', handleEscKeyForPreviewModal);
                 if (typeof toast === 'function') {
                     toast(`成功提取 ${extractedScoresData.length} 条得分记录`, 'success');
@@ -435,29 +435,29 @@
                 console.error('AI提取失败:', data.error);
                 const msg = `AI提取失败: ${data.error || '未知错误'}`;
                 if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
-                extractedScoresData = []; // Clear previous data on failure
+                extractedScoresData = []; // Clear previous data on failure // 失败时清除先前的数据
             }
 
         } catch (error) {
             console.error('请求AI提取接口失败:', error);
             const msg = `请求失败: ${error.message}`;
-             // Ensure upload modal is closed even on fetch error
+             // Ensure upload modal is closed even on fetch error // 确保即使在 fetch 错误时也关闭上传模态框
              closeAiUploadModal();
             if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
-            extractedScoresData = []; // Clear previous data on failure
+            extractedScoresData = []; // Clear previous data on failure // 失败时清除先前的数据
         } finally {
-            // Hide loading indicator (upload modal one is hidden by closeAiUploadModal)
-            // Re-enable buttons
+            // Hide loading indicator (upload modal one is hidden by closeAiUploadModal) // 隐藏加载指示器（上传模态框的那个由 closeAiUploadModal 隐藏）
+            // Re-enable buttons // 重新启用按钮
             if(startExtractionBtn) startExtractionBtn.disabled = false;
-            if(aiExtractBtn) aiExtractBtn.disabled = false; // Re-enable main button
+            if(aiExtractBtn) aiExtractBtn.disabled = false; // Re-enable main button // 重新启用主按钮
         }
     }
 
-    // Display the extracted scores in the preview modal (Adjusted table styles)
+    // Display the extracted scores in the preview modal (Adjusted table styles) // 在预览模态框中显示提取的分数（调整了表格样式）
     function displayAiScorePreview(scores) {
-        const aiScorePreviewContent = document.getElementById('aiScorePreviewContent'); // Need reference
-        const applyAiScoresBtn = document.getElementById('applyAiScoresBtn'); // Need reference
-        const aiPreviewSummary = document.getElementById('aiPreviewSummary'); // Need reference
+        const aiScorePreviewContent = document.getElementById('aiScorePreviewContent'); // Need reference // 需要引用
+        const applyAiScoresBtn = document.getElementById('applyAiScoresBtn'); // Need reference // 需要引用
+        const aiPreviewSummary = document.getElementById('aiPreviewSummary'); // Need reference // 需要引用
 
         if (!aiScorePreviewContent) return;
 
@@ -484,14 +484,14 @@
 
         let applicableCount = 0;
         scores.forEach(item => {
-            // Check if a corresponding input exists in the main table
+            // Check if a corresponding input exists in the main table // 检查主表格中是否存在对应的输入框
             const targetInput = document.querySelector(`input[name="score"][data-clause="${item.clause}"]`);
             let statusIcon = '';
             let statusText = '';
             if (targetInput) {
                 const maxScore = parseFloat(targetInput.dataset.maxscore);
                  const currentScore = parseFloat(item.score);
-                 if (isNaN(maxScore)) { // Handle non-scoreable items like "—"
+                 if (isNaN(maxScore)) { // Handle non-scoreable items like "—" // 处理像 "—" 这样的不可评分项
                      statusIcon = '<i class="ri-prohibited-line text-gray-500" title="此项不可评分"></i>';
                      statusText = '<span class="text-gray-500">不可评分</span>';
                  } else if (isNaN(currentScore)) {
@@ -501,7 +501,7 @@
                  else if (currentScore > maxScore) {
                      statusIcon = '<i class="ri-error-warning-fill text-orange-500" title="提取分数超过最大值"></i>';
                      statusText = `<span class="text-orange-500">超限(${maxScore})</span>`;
-                     applicableCount++; // Still applicable, but needs clamping
+                     applicableCount++; // Still applicable, but needs clamping // 仍然适用，但需要限制范围
                  } else {
                     statusIcon = '<i class="ri-check-fill text-green-500" title="可应用"></i>';
                     statusText = '<span class="text-green-400">可应用</span>';
@@ -528,7 +528,7 @@
         if(aiPreviewSummary) aiPreviewSummary.textContent = `共 ${scores.length} 条记录，${applicableCount} 条可应用`;
     }
 
-    // --- End Moved Functions ---
+    // --- End Moved Functions --- // --- 结束移动的函数 ---
 
     // 图片模态框相关函数
     function showImageModal(imageSrc) {
@@ -554,28 +554,10 @@
     
     document.addEventListener('DOMContentLoaded', function() {
         console.log('=== 初始化提高级页面 ===');
-        console.log('DOMContentLoaded event fired.');
+        // console.log('DOMContentLoaded 事件触发。');
         
         // 加载用户权限
         loadUserPermissionsForStandards();
-        
-        // 检查是否为给排水专业
-        const isWaterSpecialty = '{{ current_specialty }}' === '给排水' || 
-                                 '{{ current_specialty }}'.includes('给') || 
-                                 '{{ current_specialty }}'.includes('排') || 
-                                 '{{ current_specialty }}'.includes('水');
-        if (isWaterSpecialty) {
-            console.log("检测到给排水专业页面，启用特殊处理");
-            // 检查表格中是否存在给排水的条文
-            const rows = document.querySelectorAll('tbody tr');
-            console.log(`页面中共有 ${rows.length} 行条文数据`);
-            let sampleRows = [];
-            for (let i = 0; i < Math.min(5, rows.length); i++) {
-                const clauseCell = rows[i].querySelector('td:first-child');
-                sampleRows.push(clauseCell.textContent.trim());
-            }
-            console.log("页面中的前几个条文号样本:", sampleRows);
-        }
         
         // 获取保存按钮并绑定事件
         const saveButton = document.getElementById('saveScoreBtn');
@@ -694,29 +676,30 @@
             });
         });
 
-        // --- Setup Event Listeners --- Moved from outside ---
-        console.log('Attempting to find modal elements...'); // Added log
+        // --- Setup Event Listeners --- Moved from outside --- // --- 设置事件监听器 --- 从外部移入 ---
+        // console.log('尝试查找模态框元素...'); // Added log
         const fileInput = document.getElementById('aiScoreFileInput');
         const dropArea = document.getElementById('fileDropArea');
         const startExtractionBtn = document.getElementById('startAiExtractionBtn');
         const cancelUploadBtn = document.getElementById('aiUploadCancelBtn'); // Added selector for cancel button
         const aiExtractBtn = document.getElementById('aiExtractBtn'); // Main AI Button
         const aiScorePreviewModal = document.getElementById('aiScorePreviewModal'); // Preview Modal
-        const applyAiScoresBtn = document.getElementById('applyAiScoresBtn'); // Apply Button in Preview
+        const applyAiScoresBtn = document.getElementById('applyAiScoresBtn'); // Apply Button in Preview // 应用按钮（预览模态框中）
 
-        console.log(`File input found: ${!!fileInput}`);
-        console.log(`Drop area found: ${!!dropArea}`);
-        console.log(`Start Extraction button found: ${!!startExtractionBtn}`); // Added log
-        console.log(`Cancel button found: ${!!cancelUploadBtn}`); // Added log
-        console.log(`Main AI Extract button found: ${!!aiExtractBtn}`);
-        console.log(`Preview Modal found: ${!!aiScorePreviewModal}`);
-        console.log(`Apply Scores button found: ${!!applyAiScoresBtn}`);
-
+        /* // 移除元素存在性检查日志
+        console.log(`文件输入框找到: ${!!fileInput}`);
+        console.log(`拖放区域找到: ${!!dropArea}`);
+        console.log(`开始提取按钮找到: ${!!startExtractionBtn}`);
+        console.log(`取消按钮找到: ${!!cancelUploadBtn}`);
+        console.log(`主 AI 提取按钮找到: ${!!aiExtractBtn}`);
+        console.log(`预览模态框找到: ${!!aiScorePreviewModal}`);
+        console.log(`应用得分按钮找到: ${!!applyAiScoresBtn}`);
+        */
 
         if (fileInput) {
-            console.log('Adding change listener to file input.');
+            // console.log('为文件输入框添加 change 监听器。');
             fileInput.addEventListener('change', (event) => {
-                console.log('File input change event fired'); // Added log
+                // console.log('文件输入框 change 事件触发'); // Added log
                 if (event.target.files) {
                    handleFileSelection(event.target.files);
                }
@@ -724,14 +707,14 @@
         }
 
         if (dropArea) {
-            console.log('Adding drag/drop listeners to drop area.');
-             // Prevent default drag behaviors
+            // console.log('为拖放区域添加 drag/drop 监听器。');
+             // 阻止默认拖拽行为
              ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                  dropArea.addEventListener(eventName, preventDefaults, false);
-                 document.body.addEventListener(eventName, preventDefaults, false); // Prevent browser opening file
+                 document.body.addEventListener(eventName, preventDefaults, false); // Prevent browser opening file // 阻止浏览器打开文件
              });
 
-             // Highlight drop area when item is dragged over it
+             // Highlight drop area when item is dragged over it // 当项目拖拽到其上时高亮拖放区域
              ['dragenter', 'dragover'].forEach(eventName => {
                  dropArea.addEventListener(eventName, () => dropArea.classList.add('highlight-drop'), false);
              });
@@ -740,9 +723,9 @@
                  dropArea.addEventListener(eventName, () => dropArea.classList.remove('highlight-drop'), false);
              });
 
-             // Handle dropped files
+             // Handle dropped files // 处理拖放的文件
              dropArea.addEventListener('drop', (event) => {
-                console.log('File drop event fired'); // Added log
+                // console.log('文件 drop 事件触发'); // Added log
                  const dt = event.dataTransfer;
                  const files = dt.files;
                   if (files && files.length > 0) {
@@ -759,20 +742,20 @@
             e.stopPropagation();
         }
 
-        // Add event listener for Cancel button (instead of inline onclick)
+        // Add event listener for Cancel button (instead of inline onclick) // 为取消按钮添加事件监听器（而不是内联 onclick）
         if (cancelUploadBtn) {
-            console.log('Attempting to add event listener to Cancel button.'); // Added log
-            // Ensure previous listeners are removed if any (though unlikely needed here)
+            // console.log('尝试为取消按钮添加事件监听器。'); // Added log
+            // Ensure previous listeners are removed if any (though unlikely needed here) // 确保移除之前的监听器（如果存在）（虽然这里不太可能需要）
             // cancelUploadBtn.removeEventListener('click', closeAiUploadModal);
             cancelUploadBtn.addEventListener('click', closeAiUploadModal);
         } else {
-            console.error('Failed to find Cancel button to attach listener.');
+            console.error('未能找到取消按钮以附加监听器。');
         }
 
         if (startExtractionBtn) {
-            console.log('Attempting to add event listener to Start Extraction button.'); // Added log
+            // console.log('尝试为开始提取按钮添加事件监听器。'); // Added log
             startExtractionBtn.addEventListener('click', () => {
-                console.log('Start Extraction button clicked'); // Added log
+                // console.log('开始提取按钮被点击'); // Added log
                 if (!selectedAiFiles || selectedAiFiles.length === 0) {
                      const msg = "请先选择要上传的文件。";
                      if (typeof toast === 'function') { toast(msg, 'warning'); } else { alert(msg); }
@@ -782,39 +765,36 @@
                  triggerAiScoreExtraction(selectedAiFiles);
             });
         } else {
-            console.error('Failed to find Start Extraction button to attach listener.');
+            console.error('未能找到开始提取按钮以附加监听器。');
         }
-         // Close upload modal on background click
+         // Close upload modal on background click // 点击背景关闭上传模态框
          const aiUploadModal = document.getElementById('aiScoreUploadModal');
          if (aiUploadModal) {
-             console.log('Adding background click listener to Upload Modal.');
+            // console.log('为上传模态框添加背景点击监听器。');
              aiUploadModal.addEventListener('click', function(e) {
-                 // Check if the click target is the backdrop itself
+                 // 检查点击目标是否是背景本身
                  if (e.target === this) {
-                     console.log('Upload modal background clicked.');
+                    // console.log('上传模态框背景被点击。');
                      closeAiUploadModal();
                  }
              });
          }
-        // --- End Setup for New Upload Modal ---
+        // --- End Setup for New Upload Modal --- // --- 结束新上传模态框的设置 ---
 
-        // Modify AI Extract Button: Open the new upload modal instead of triggering file input
+        // Modify AI Extract Button: Open the new upload modal instead of triggering file input // 修改 AI 提取按钮：打开新的上传模态框而不是触文件输入
         if (aiExtractBtn) {
-            console.log('Adding click listener to main AI Extract button.');
+            // console.log('为主 AI 提取按钮添加 click 监听器。');
             aiExtractBtn.addEventListener('click', () => {
-                console.log('Main AI Extract button clicked.');
-                showAiUploadModal(); // New behavior: open the upload modal
+                // console.log('主 AI 提取按钮被点击。');
+                showAiUploadModal(); // 新行为：打开上传模态框
             });
-        } else {
-            console.error('Failed to find main AI Extract button.');
         }
 
-
-        // Handle applying the scores (Apply button in Preview Modal)
+        // Handle applying the scores (Apply button in Preview Modal) // 处理应用得分（预览模态框中的应用按钮）
         if (applyAiScoresBtn) {
-            console.log('Adding click listener to Apply Scores button.');
+            // console.log('为应用得分按钮添加 click 监听器。');
             applyAiScoresBtn.addEventListener('click', () => {
-                console.log('Apply Scores button clicked.');
+                // console.log('应用得分按钮被点击。');
                 if (!extractedScoresData || extractedScoresData.length === 0) {
                     if (typeof toast === 'function') { toast('没有可应用的得分', 'info'); }
                     return;
@@ -833,7 +813,7 @@
                     const targetInput = document.querySelector(`input[name="score"][data-clause="${item.clause}"]`);
                     if (targetInput) {
                         const maxScoreText = targetInput.dataset.maxscore;
-                         // Skip if target is not scoreable (maxscore is not a number like "—")
+                         // Skip if target is not scoreable (maxscore is not a number like "—") // 如果目标不可评分（maxscore 不是数字，例如 "—"），则跳过
                          if (isNaN(parseFloat(maxScoreText))) {
                             console.warn(`条文 ${item.clause}: 目标输入框不可评分，跳过.`);
                             return;
@@ -842,12 +822,12 @@
                         const maxScore = parseFloat(maxScoreText);
                         let scoreToApply = parseFloat(item.score);
 
-                        // Ensure score is a number and clamp to maxScore
+                        // Ensure score is a number and clamp to maxScore // 确保得分是数字并限制在 maxScore 内
                         if (!isNaN(scoreToApply)) {
                              if (scoreToApply > maxScore) {
                                 console.warn(`条文 ${item.clause}: 提取得分 ${scoreToApply} 超过最大值 ${maxScore}. 将应用最大值.`);
                                 scoreToApply = maxScore;
-                             } else if (scoreToApply < 0) { // Ensure score is not negative
+                             } else if (scoreToApply < 0) { // Ensure score is not negative // 确保得分不是负数
                                   console.warn(`条文 ${item.clause}: 提取得分 ${scoreToApply} 小于0. 将应用 0.`);
                                  scoreToApply = 0;
                              }
@@ -864,7 +844,7 @@
                     toast(`成功应用 ${appliedCount} 条得分`, 'success');
                 }
 
-                // Optionally update summary/badges after applying
+                // Optionally update summary/badges after applying // 应用后可选择更新汇总/徽章
                 if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
                     scoreUtils.fetchScoreSummary();
                 }
@@ -873,22 +853,22 @@
                  }
             });
         } else {
-             console.error('Failed to find Apply Scores button.');
+             console.error('未能找到应用得分按钮。');
         }
 
-         // Close preview modal on background click (Existing logic)
+         // Close preview modal on background click (Existing logic) // 点击背景关闭预览模态框（现有逻辑）
          if (aiScorePreviewModal) {
-            console.log('Adding background click listener to Preview Modal.');
+            // console.log('为预览模态框添加背景点击监听器。');
              aiScorePreviewModal.addEventListener('click', function(e) {
                 if (e.target === this) {
-                    console.log('Preview modal background clicked.');
+                    // console.log('预览模态框背景被点击。');
                     closeAiPreviewModal();
                  }
             });
         }
         // --- End AI Score Extraction Logic / Event Listeners ---
 
-    }); // <-- Final closing bracket for DOMContentLoaded
+    }); // <-- Final closing bracket for DOMContentLoaded // <-- DOMContentLoaded 的最终结束括号
 
     /**
      * 获取条文的分类
@@ -923,7 +903,7 @@
      * 保存评分信息
      */
     function saveScores() {
-        console.log('开始保存评分信息');
+        // console.log('开始保存评分信息');
         
         // 检查是否有编辑权限
         if (!hasEditPermission) {
@@ -950,7 +930,7 @@
                     projectId = decodeURIComponent(projectId);
                 }
                 
-                console.log('从URL参数中获取项目ID:', projectId);
+                // console.log('从URL参数中获取项目ID:', projectId);
             } catch(e) {
                 console.error('解析URL参数错误:', e);
             }
@@ -974,13 +954,13 @@
             scores: []
         };
         
-        console.log('准备保存评分数据:', scoreData);
+        // console.log('准备保存评分数据:', scoreData);
         
         // 根据评价等级获取不同的评分数据
         if ('{{ current_level }}' === '基本级') {
             // 获取所有基本级的数据
             const selects = document.querySelectorAll('.is-achieved-select');
-            console.log(`找到 ${selects.length} 个基本级选择框`);
+            // console.log(`找到 ${selects.length} 个基本级选择框`);
             
             selects.forEach(select => {
                 const clause = select.dataset.clause.trim(); // 修剪条文号，去除多余空格
@@ -1007,7 +987,7 @@
         } else if ('{{ current_level }}' === '提高级') {
             // 获取所有提高级的数据
             const scoreInputs = document.querySelectorAll('input[name="score"]');
-            console.log(`找到 ${scoreInputs.length} 个提高级输入框`);
+            // console.log(`找到 ${scoreInputs.length} 个提高级输入框`);
             
             scoreInputs.forEach(input => {
                 const clause = input.dataset.clause.trim(); // 修剪条文号，去除多余空格
@@ -1062,11 +1042,11 @@
                     is_achieved: isAchieved
                 });
                 
-                console.log(`添加评分数据: 条文=${clause}, 得分='${score}', 最大分值=${maxScore}, 分类=${category}, 是否达标=${isAchieved}`);
+                // console.log(`添加评分数据: 条文=${clause}, 得分='${score}', 最大分值=${maxScore}, 分类=${category}, 是否达标=${isAchieved}`);
             });
         }
         
-        console.log(`即将发送的评分数据: ${scoreData.scores.length}条记录`);
+        // console.log(`即将发送的评分数据: ${scoreData.scores.length}条记录`);
         
         // 发送数据到服务器
         fetch('/api/save_score', {
@@ -1077,7 +1057,7 @@
             body: JSON.stringify(scoreData)
         })
         .then(response => {
-            console.log('服务器响应状态:', response.status);
+            // console.log('服务器响应状态:', response.status);
             
             if (!response.ok) {
                 throw new Error('保存失败: ' + response.status);
@@ -1085,7 +1065,7 @@
             return response.json();
         })
         .then(data => {
-            console.log('服务器响应数据:', data);
+            // console.log('服务器响应数据:', data);
             
             if (data.success) {
                 // 提示保存成功，但不使用阻塞性的alert，改用非阻塞通知
@@ -1102,22 +1082,22 @@
                 
                 // 刷新评分汇总
                 if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
-                    console.log('刷新评分汇总');
+                    // console.log('刷新评分汇总');
                     scoreUtils.fetchScoreSummary();
                 }
                 
                 // 更新分类达标徽章状态
                 if ('{{ current_level }}' === '提高级' && typeof updateCategoryBadges === 'function') {
-                    console.log('更新分类达标徽章');
+                    // console.log('更新分类达标徽章');
                     setTimeout(updateCategoryBadges, 1000);
                 }
                 
                 // 处理条文之间的依赖关系
                 if (typeof handleAllClauseDependencies === 'function') {
-                    console.log('开始处理条文依赖关系');
+                    // console.log('开始处理条文依赖关系');
                     handleAllClauseDependencies(projectId)
                         .then(results => {
-                            console.log('条文依赖关系处理完成:', results);
+                            // console.log('条文依赖关系处理完成:', results);
                         })
                         .catch(error => {
                             console.error('处理条文依赖关系时出错:', error);
@@ -1127,7 +1107,7 @@
                 }
                 
                 // 不再重新加载评分数据，保留用户当前输入的内容
-                console.log('保留用户当前输入的内容，不重新加载');
+                // console.log('保留用户当前输入的内容，不重新加载');
                 
                 // 如果用户刷新页面，确保能正确加载数据
                 // 添加记忆保存成功的标记
@@ -1173,7 +1153,7 @@
                     projectId = decodeURIComponent(projectId);
                 }
                 
-                console.log('从URL参数中获取项目ID:', projectId);
+                // console.log('从URL参数中获取项目ID:', projectId);
             } catch(e) {
                 console.error('解析URL参数错误:', e);
             }
@@ -1185,14 +1165,14 @@
             return;
         }
         
-        console.log('开始加载评分数据，项目ID:', projectId, '强制刷新:', forceRefresh);
+        // console.log('开始加载评分数据，项目ID:', projectId, '强制刷新:', forceRefresh);
         
         try {
-            console.log('使用/api/project_scores端点');
+            // console.log('使用/api/project_scores端点');
             
             const url = `/api/project_scores?project_id=${projectId}&level={{ current_level }}&specialty={{ current_specialty }}&force_refresh=${forceRefresh}`;
             
-            console.log('请求URL:', url);
+            // console.log('请求URL:', url);
             
             fetch(url)
                 .then(response => {
@@ -1203,14 +1183,14 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('加载的评分数据:', data);
+                    // console.log('加载的评分数据:', data);
                     // 修改解析数据的方式，以匹配新API的返回格式
                     if (data.success && data.sample_scores && Array.isArray(data.sample_scores)) {
                         // 获取页面上所有的输入元素
                         const allInputs = document.querySelectorAll('input[name="score"]');
                         const allTextareas = document.querySelectorAll('textarea[name="technical_measures"]');
                         
-                        console.log(`页面上共有 ${allInputs.length} 个得分输入框和 ${allTextareas.length} 个技术措施输入框`);
+                        // console.log(`页面上共有 ${allInputs.length} 个得分输入框和 ${allTextareas.length} 个技术措施输入框`);
                         
                         // 用于统计处理结果
                         let successCount = 0;
@@ -1277,28 +1257,29 @@
                                 if (scoreInput) {
                                     // Original line: const score = item.score !== undefined && item.score !== null ? item.score : '0';
                                     // Let's default to empty string '' instead of '0' if score is null/undefined from DB
+                                    // 如果数据库中的 score 是 null/undefined，则默认为空字符串 '' 而不是 '0'
                                     const scoreValue = (item.score !== undefined && item.score !== null) ? String(item.score).trim() : '';
-                                    let processedScore = scoreValue; // Start with the loaded value (as string)
+                                    let processedScore = scoreValue; // Start with the loaded value (as string) // 从加载的值开始（作为字符串）
 
-                                    // Keep '—' as is
-                                    if (scoreValue !== '—') {
-                                        // If it's not '—' and not an empty string, try to parse and normalize
+                                    // Keep '—' as is, and also allow "达标" and "不达标" // 保留 '—'，并允许 "达标" 和 "不达标"
+                                    if (scoreValue !== '—' && scoreValue !== '达标' && scoreValue !== '不达标') {
+                                        // If it's not one of the allowed strings and not empty, try to parse and normalize // 如果它不是允许的字符串之一且不为空，则尝试解析和规范化
                                         if (scoreValue !== '') {
                                             const num = parseFloat(scoreValue);
                                             if (!isNaN(num)) {
-                                                // Convert valid number back to string to remove leading zeros/normalize format
+                                                // Convert valid number back to string to remove leading zeros/normalize format // 将有效数字转换回字符串以删除前导零/规范化格式
                                                 processedScore = num.toString();
                                             } else {
-                                                // Handle case where loaded value is neither '—' nor a valid number
+                                                // Handle case where loaded value is neither '—' nor a valid number/allowed string // 处理加载值既不是 '—' 也不是有效数字/允许字符串的情况
                                                 console.warn(`Loaded invalid score value "${scoreValue}" for clause ${clause}. Resetting to empty.`);
-                                                processedScore = ''; // Reset invalid non-'—' values to empty
+                                                processedScore = ''; // Reset invalid values to empty // 将无效值重置为空
                                             }
                                         }
-                                        // If scoreValue was '', processedScore remains ''
+                                        // If scoreValue was '', processedScore remains '' // 如果 scoreValue 是空字符串，processedScore 保持为空字符串
                                     }
-                                    // Now, processedScore is either '—', '', or a normalized number string ("9", "10.5", etc.)
+                                    // Now, processedScore is '—', '达标', '不达标', '', or a normalized number string // 现在，processedScore 是 '—', '达标', '不达标', 空字符串, 或规范化的数字字符串
 
-                                    scoreInput.value = processedScore; // Set the normalized value
+                                    scoreInput.value = processedScore; // Set the processed value // 设置处理后的值
                                     successCount++;
                                 } else {
                                     // console.warn(`未能找到条文 ${clause} 对应的得分输入框`);
@@ -1317,7 +1298,7 @@
                             }
                         });
                         
-                        console.log(`评分数据加载完成: 成功 ${successCount} 项, 失败 ${failCount} 项`);
+                        // console.log(`评分数据加载完成: 成功 ${successCount} 项, 失败 ${failCount} 项`);
                     } else {
                         console.warn('没有找到保存的评分数据:', data.message || '未知错误');
                         // 添加更详细的调试信息
@@ -1359,14 +1340,14 @@
             return;
         }
         
-        console.log('正在加载项目权限，项目ID:', projectId);
+        // console.log('正在加载项目权限，项目ID:', projectId);
         
         fetch(`/api/projects/${projectId}/permissions`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     userPermissions = data.permissions;
-                    console.log('获取到用户权限:', userPermissions);
+                    // console.log('获取到用户权限:', userPermissions);
                     
                     // 检查是否有编辑权限
                     const role = userPermissions.role;

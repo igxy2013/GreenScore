@@ -986,7 +986,7 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
     }
     
     // 日志记录
-    console.log(`检查条文依赖: 源条文=${sourceClauseNumber}, 目标条文=${targetClauseNumber}, 条件=${condition}, 项目ID=${projectId}`);
+    // console.log(`检查条文依赖: 源条文=${sourceClauseNumber}, 目标条文=${targetClauseNumber}, 条件=${condition}, 项目ID=${projectId}`);
     
     // 获取当前项目标准、专业和评价等级
     const standard = getCurrentProjectStandard() || '成都市标';
@@ -998,11 +998,11 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
     // 首先查询源条文的得分 
     return getScoreByClauseNumber(sourceClauseNumber, projectId)
         .then(sourceResult => {
-            console.log(`源条文 ${sourceClauseNumber} 查询结果:`, sourceResult);
+            // console.log(`源条文 ${sourceClauseNumber} 查询结果:`, sourceResult);
             
             // 获取源条文得分
             const sourceScore = parseFloat(sourceResult.score) || 0;
-            console.log(`源条文 ${sourceClauseNumber} 得分: ${sourceScore}`);
+            // console.log(`源条文 ${sourceClauseNumber} 得分: ${sourceScore}`);
             
             // 解析条件
             let conditionMet = false;
@@ -1015,7 +1015,7 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
                 conditionMet = sourceScore >= threshold;
             }
             
-            console.log(`条件 "${condition}" 是否满足: ${conditionMet}`);
+            // console.log(`条件 "${condition}" 是否满足: ${conditionMet}`);
             
             // 如果条件不满足，直接返回
             if (!conditionMet) 
@@ -1029,7 +1029,7 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
                     level: level,
                     is_achieved: '是',
                     score: '—',
-                    technical_measures: `由条文 ${sourceClauseNumber} 自动设置为达标 [${new Date().toLocaleString()}]`
+                    technical_measures: ``
                 };
                 // 直接发起请求更新
                 return fetch('/api/update_score_direct', {
@@ -1052,6 +1052,8 @@ function handleClauseDependency(sourceClauseNumber, targetClauseNumber, conditio
                     level: level,
                     is_achieved: '是',
                     score: '达标',
+                    technical_measures: `满足要求，详见 ${sourceClauseNumber}条 `
+
                 };
                 // 直接发起请求更新
                 return fetch('/api/update_score_direct', {

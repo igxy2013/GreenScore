@@ -389,13 +389,16 @@ function initFormFields() {
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化省市选择器
     initProvinceCity();
-    
-    // 确保绿建得分计算区域可见
-    const scoreSection = document.querySelector('.mt-6.bg-white.rounded-lg.shadow-sm.border.border-gray-200.p-4');
-    if (scoreSection) {
-        scoreSection.style.display = 'block';
+    const scoreToggle = document.getElementById('scoreToggle');
+    // 直接从 localStorage 读取状态，而不是从 checkbox 的 .checked 属性
+    const isChecked = localStorage.getItem('scoreToggleState') === 'true';
+    console.log("isChecked (from localStorage)", isChecked);
+    if (isChecked) { 
+        console.log("自动计算功能开启，将异步执行");
+        // 将耗时操作放入setTimeout异步执行
+        setTimeout(calculateAndUpdateScores, 0);
     }
-    
+
 });
 
 // 计算得分并更新数据库
@@ -476,6 +479,7 @@ function calculateAndUpdateScores() {
     let has_underground_garage = document.getElementById('has_underground_garage')?.value || '无';
     let has_elevator = document.getElementById('has_elevator')?.value || '无';
     let ac_type = document.getElementById('ac_type')?.value || '无';
+    let jscs="";//人均用地指标技术措施
     if (!projectId) {
         console.log('未找到项目ID，无法更新得分');
         return;
@@ -484,7 +488,6 @@ function calculateAndUpdateScores() {
     try {
         if (standard === '成都市标'){
             if (buildingType === '居住建筑'){
-                let jscs=""
                 if(perCapitaLandScore>0){
                     jscs="满足要求,详见建筑施工图及总图经济技术指标";
                 }
@@ -496,6 +499,8 @@ function calculateAndUpdateScores() {
                 updateDatabaseScore('3.6.1.2', 0,null, '满足要求，详见室外热环境分析报告');
             } else if (buildingType === '公共建筑'){
                 updateDatabaseScore('3.1.2.14', plotRatioScore,null,null);
+                updateDatabaseScore('3.1.1.26', 0,null, '本项目为非居住区，满足要求');
+                updateDatabaseScore('3.6.1.2', 0,null, '本项目为非居住区，满足要求');
             }
             updateDatabaseScore('3.1.2.15', undergroundScore,null,null);
             updateDatabaseScore('3.1.2.21', greenSpaceScore,null,null);
@@ -538,30 +543,118 @@ function calculateAndUpdateScores() {
         }
         else if (standard === '四川省标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('3.1.16', perCapitaLandScore,null,null);
+                if(perCapitaLandScore>0){
+                    jscs="满足要求,详见建筑施工图及总图经济技术指标";
+                }
+                else{
+                    jscs="";
+                }
+                updateDatabaseScore('3.1.16', perCapitaLandScore,null,jscs);
                 updateDatabaseScore('2.6.2', 0,null, '满足要求，详见室外热环境分析报告');
                 updateDatabaseScore('2.7.7', 0,null, '满足要求，详见室外热环境分析报告');
 
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('3.1.16', plotRatioScore,null,null);
+                updateDatabaseScore('2.6.2', 0,null, '本项目为非居住区，满足要求');
+                updateDatabaseScore('2.7.7', 0,null, '本项目为非居住区，满足要求');
             }
             updateDatabaseScore('3.1.17', undergroundScore,null,null);
             updateDatabaseScore('3.1.25', greenSpaceScore,null,null);
             updateDatabaseScore('3.1.18', parkingScore,null,null);
+            if (has_underground_garage === '有'){
+                updateDatabaseScore('2.4.5', 0,null, '满足要求，详见暖通设计图纸');
+                updateDatabaseScore('2.5.2', 0,null, '满足要求，详见电气设计图纸');
+            }
+            else{
+                updateDatabaseScore('3.4.1.5', 0,"不参评", '本项目无地下车库，本条不参评');
+                updateDatabaseScore('3.5.1.2', 0,"不参评", '本项目无地下车库，本条不参评');
+            }   
+            if (has_elevator === '有'){
+                updateDatabaseScore('2.5.8', 0,null, '满足要求，详见电气设计图纸');
+            }
+            else{
+                updateDatabaseScore('2.5.8', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
+            }
+            if (ac_type === '无'){
+                updateDatabaseScore('2.4.3', 0,"不参评", '本项目无空调，本条不参评');
+                updateDatabaseScore('2.4.4', 0,"不参评", '本项目无空调，本条不参评');
+            }
+            else if (ac_type === '分体式空调'){
+                updateDatabaseScore('2.4.3', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('2.4.4', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('2.4.6', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('3.4.4', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                updateDatabaseScore('3.4.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+            }
+            else if (ac_type === '多联式空调'){
+                updateDatabaseScore('2.4.3', 0,null, '本项目设置多联式空调，满足要求');
+                updateDatabaseScore('3.4.5', 0,null, '本项目设置多联式空调，满足要求');
+            }   
+            else if (ac_type === '集中空调'){
+                updateDatabaseScore('2.4.3', 0,null, '满足要求，详见暖通设计图纸');
+            }
+            else if (ac_type === '组合形式'){
+                updateDatabaseScore('2.4.3', 0,null, '满足要求，详见暖通设计图纸');
+            }
+
         }
         else if (standard === '国标'){
             if (buildingType === '居住建筑'){
-                updateDatabaseScore('7.2.1', perCapitaLandScore,null,null);
+                if(perCapitaLandScore>0){
+                    jscs="满足要求,详见建筑施工图及总图经济技术指标";
+                }
+                else{
+                    jscs="";
+                }
+                updateDatabaseScore('7.2.1', perCapitaLandScore,null,jscs);
                 updateDatabaseScore('8.1.2', 0,null, '满足要求，详见室外热环境分析报告');
 
             }
             else if (buildingType === '公共建筑'){
                 updateDatabaseScore('7.2.1', plotRatioScore,null,null);
+                updateDatabaseScore('8.1.2', 0,null, '本项目为非居住区，满足要求');
             }
             updateDatabaseScore('7.2.2', undergroundScore,null,null);
             updateDatabaseScore('8.2.3', greenSpaceScore,null,null);
             updateDatabaseScore('7.2.3', parkingScore,null,null);
+            if (has_underground_garage === '有'){
+                updateDatabaseScore('5.1.9', 0,null, '满足要求，详见暖通设计图纸');
+            }
+            else{
+                updateDatabaseScore('5.1.9', 0,"不参评", '本项目无地下车库，本条不参评');
+            } 
+            if (has_elevator === '有'){
+                updateDatabaseScore('7.1.6', 0,null, '满足要求，详见电气设计图纸');
+            }
+            else{
+                updateDatabaseScore('7.1.6', 0,"不参评", '本项目无电梯或扶梯，本条不参评');
+            }
+            if (ac_type === '无'){
+                updateDatabaseScore('5.1.6', 0,"不参评", '本项目无空调，本条不参评');
+                updateDatabaseScore('5.1.8', 0,"不参评", '本项目无空调，本条不参评');
+                updateDatabaseScore('7.1.2', 0,"不参评", '本项目无空调，本条不参评');
+            }
+            else if (ac_type === '分体式空调'){
+                updateDatabaseScore('5.1.6', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('5.1.8', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('7.1.2', 0,null, '本项目设置分体空调，直接满足要求');
+                updateDatabaseScore('7.2.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+            }
+            else if (ac_type === '多联式空调'){
+                updateDatabaseScore('5.1.6', 0,null, '本项目设置多联式空调，满足要求');
+                updateDatabaseScore('7.1.2', 0,null, '本项目设置多联式空调，满足要求');
+                updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+            }   
+            else if (ac_type === '集中空调'){
+                updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
+                updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
+            }
+            else if (ac_type === '组合形式'){
+                updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
+                updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
+            }
         }
         console.log('得分更新完成');
     } catch (error) {
@@ -569,9 +662,8 @@ function calculateAndUpdateScores() {
     }
 }
         
-// 为保存按钮添加点击事件
-// 检查是否已绑定事件处理程序
-{
+document.addEventListener('DOMContentLoaded', function() {
+    // 查找保存按钮并添加事件监听器
     const saveProjectInfoBtn = document.getElementById('saveProjectInfoBtn');
     if (saveProjectInfoBtn) {
         saveProjectInfoBtn.addEventListener('click', function(e) {
@@ -604,34 +696,17 @@ function calculateAndUpdateScores() {
                         document.getElementById('project_id').value = data.project_id;
                     }
                     
-                    // 更新项目地点字段 (假设API在data.project_data中返回更新后的信息)
-                    if (data.project_data && data.project_data.project_location !== undefined) {
-                        const locationInput = document.getElementById('project_location');
-                        if (locationInput) {
-                            const newLocation = data.project_data.project_location;
-                            locationInput.value = newLocation;
-                            // 更新完输入框后，立即解析并更新省市下拉框
-                            parseLocationForProvinceCity(newLocation); 
-                            console.log('项目地点已更新为:', newLocation);
-                        }
-                    } else {
-                        // 如果API没有返回地点，可能需要从现有输入框获取或保持不变
-                        console.log('API响应中未包含更新的项目地点信息');
-                    }
-
                     const scoreToggle = document.getElementById('scoreToggle');
-                    const isChecked = scoreToggle ? scoreToggle.checked : false; // Default to false if element not found
+                    // 直接从 localStorage 读取状态，而不是从 checkbox 的 .checked 属性
+                    const isChecked = localStorage.getItem('scoreToggleState') === 'true';
+                    console.log("isChecked (from localStorage)", isChecked);
                     if (isChecked) { 
                         console.log("自动计算功能开启，将异步执行");
                         // calculateAndUpdateScores(); // 移除或保持注释之前的直接调用
                         // 将耗时操作放入setTimeout异步执行
                         setTimeout(calculateAndUpdateScores, 0);
                     }
-                    // 移除强制页面刷新
-                    // setTimeout(() => {
-                    //     const projectId = document.getElementById('project_id').value || data.project_id;
-                    //     window.location.href = `/project/${projectId}`;
-                    // }, 1000); 
+
                 } else {
                     // 检查是否是权限错误
                     if (data.error && (data.error.includes('权限') || data.error.includes('permission'))) {
@@ -648,8 +723,10 @@ function calculateAndUpdateScores() {
                 toast('保存失败: ' + error.message, 'error');
             });
         });
+    } else {
+        console.error('未能找到保存项目信息按钮 (saveProjectInfoBtn)!'); // 如果找不到按钮，输出错误
     }
-}
+});
         
 // AI提取项目信息相关函数
     
@@ -1997,50 +2074,52 @@ function autoDetectClimateZone(province, city) {
 
 // 全局Toast函数实现
 function toast(message, type = 'info') {
-// 显示Toast
-const container = document.getElementById('custom-toast-container');
-if (container) {
-    // 确保container有足够高的z-index
-    container.style.zIndex = '9999';
-    
-    const toastElement = document.createElement('div');
-    toastElement.className = `custom-toast ${type}`;
-    
-    // 根据类型设置图标
-    let icon = '';
-    switch(type) {
-        case 'success':
-            icon = '<i class="fas fa-check-circle custom-toast-icon"></i>';
-            break;
-        case 'error':
-            icon = '<i class="fas fa-exclamation-circle custom-toast-icon"></i>';
-            break;
-        case 'warning':
-            icon = '<i class="fas fa-exclamation-triangle custom-toast-icon"></i>';
-            break;
-        case 'info':
-        default:
-            icon = '<i class="fas fa-info-circle custom-toast-icon"></i>';
-            break;
-    }
-    
-    toastElement.innerHTML = `
-        ${icon}
-        <div class="custom-toast-message">${message}</div>
-    `;
-    
-    container.appendChild(toastElement);
-    
-    // 3秒后自动移除
-    setTimeout(() => {
-        toastElement.style.animation = 'toast-out 0.3s ease-in forwards';
+    console.log('Toast function called with message:', message, 'and type:', type); // 添加日志：记录 toast 函数调用
+    // 显示Toast
+    const container = document.getElementById('custom-toast-container');
+    if (container) {
+        console.log('Appending toast element to container:', container); // 添加日志：记录元素添加
+        // 确保container有足够高的z-index
+        container.style.zIndex = '9999';
+        
+        const toastElement = document.createElement('div');
+        toastElement.className = `custom-toast ${type}`;
+        
+        // 根据类型设置图标
+        let icon = '';
+        switch(type) {
+            case 'success':
+                icon = '<i class="fas fa-check-circle custom-toast-icon"></i>';
+                break;
+            case 'error':
+                icon = '<i class="fas fa-exclamation-circle custom-toast-icon"></i>';
+                break;
+            case 'warning':
+                icon = '<i class="fas fa-exclamation-triangle custom-toast-icon"></i>';
+                break;
+            case 'info':
+            default:
+                icon = '<i class="fas fa-info-circle custom-toast-icon"></i>';
+                break;
+        }
+        
+        toastElement.innerHTML = `
+            ${icon}
+            <div class="custom-toast-message">${message}</div>
+        `;
+        
+        container.appendChild(toastElement);
+        
+        // 3秒后自动移除
         setTimeout(() => {
-            if (container.contains(toastElement)) {
-                container.removeChild(toastElement);
-            }
-        }, 300);
-    }, 3000);
-}
+            toastElement.style.animation = 'toast-out 0.3s ease-in forwards';
+            setTimeout(() => {
+                if (container.contains(toastElement)) {
+                    container.removeChild(toastElement);
+                }
+            }, 300);
+        }, 3000);
+    }
 }
 
 

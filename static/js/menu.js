@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 页面加载时，根据之前保存的状态恢复菜单
     function restoreMenusOnPageLoad() {
-        console.log("恢复菜单状态...");
+        // console.log("恢复菜单状态...");
         
         // 检查是否有菜单展开状态
         let hasExpandedMenu = false;

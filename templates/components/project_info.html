@@ -409,7 +409,7 @@
             </div>
             <h3 class="text-lg font-medium text-primary">绿建得分自动计算</h3>
             <div class="inline-block ml-2 align-middle">
-                <input type="checkbox" id="scoreToggle" class="js-switch" checked title="开启或关闭绿建得分自动计算" aria-label="开启或关闭绿建得分自动计算">
+                <input type="checkbox" id="scoreToggle" class="js-switch" title="开启或关闭绿建得分自动计算" aria-label="开启或关闭绿建得分自动计算">
             </div>
             <script>
                 // 添加toggle开关的事件监听
@@ -441,7 +441,7 @@
                             localStorage.setItem('scoreToggleState', this.checked);
                             
                             // 刷新页面
-                            location.reload();
+                            // location.reload();
                         });
                     }
                 });
