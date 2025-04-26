@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import login_required, current_user, login_user, logout_user
-from models import User, InvitationCode, LogRecord, db
+from models import User, InvitationCode, db
 from functools import wraps
 import random
 import string
@@ -219,7 +219,7 @@ def delete_invite_code(code_id):
         db.session.rollback()
         
 # 项目管理API路由
-@admin_app.route('/admin/api/projects', methods=['GET'])
+@admin_app.route('/api/projects', methods=['GET'])
 @login_required
 @admin_required
 def get_all_projects():
@@ -260,7 +260,7 @@ def get_all_projects():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@admin_app.route('/admin/api/projects/<int:project_id>', methods=['GET'])
+@admin_app.route('/api/projects/<int:project_id>', methods=['GET'])
 @login_required
 @admin_required
 def get_project(project_id):
@@ -293,7 +293,7 @@ def get_project(project_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@admin_app.route('/admin/api/projects', methods=['POST'])
+@admin_app.route('/api/projects', methods=['POST'])
 @login_required
 @admin_required
 def create_project():
@@ -330,7 +330,7 @@ def create_project():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@admin_app.route('/admin/api/projects/<int:project_id>', methods=['PUT'])
+@admin_app.route('/api/projects/<int:project_id>', methods=['PUT'])
 @login_required
 @admin_required
 def update_project(project_id):
@@ -355,7 +355,7 @@ def update_project(project_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@admin_app.route('/admin/api/projects/<int:project_id>', methods=['DELETE'])
+@admin_app.route('/api/projects/<int:project_id>', methods=['DELETE'])
 @login_required
 @admin_required
 def delete_project(project_id):
@@ -373,278 +373,6 @@ def delete_project(project_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': '删除项目失败: ' + str(e)}), 500
-
-# 日志管理API路由
-@admin_app.route('/admin/api/logs', methods=['GET'])
-@login_required
-@admin_required
-def get_all_logs():
-    try:
-        # 获取分页参数
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        
-        # 获取筛选参数
-        level = request.args.get('level')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        user_id = request.args.get('user_id')
-        source = request.args.get('source')
-        keyword = request.args.get('keyword')
-        
-        # 构建查询
-        query = LogRecord.query
-        
-        # 应用筛选条件
-        if level:
-            query = query.filter(LogRecord.level == level)
-        if start_date:
-            query = query.filter(LogRecord.timestamp >= start_date)
-        if end_date:
-            query = query.filter(LogRecord.timestamp <= end_date)
-        if user_id:
-            query = query.filter(LogRecord.user_id == user_id)
-        if source:
-            query = query.filter(LogRecord.source == source)
-        if keyword:
-            query = query.filter(LogRecord.message.like(f'%{keyword}%'))
-        
-        # 按时间倒序排序并分页
-        logs_pagination = query.order_by(LogRecord.timestamp.desc()).paginate(page=page, per_page=per_page)
-        
-        # 获取关联的用户信息
-        user_dict = {}
-        user_ids = set(log.user_id for log in logs_pagination.items if log.user_id)
-        if user_ids:
-            users = User.query.filter(User.id.in_(user_ids)).all()
-            user_dict = {user.id: user.email for user in users}
-        
-        # 准备返回数据
-        logs_data = []
-        for log in logs_pagination.items:
-            log_data = {
-                'id': log.id,
-                'level': log.level,
-                'message': log.message,
-                'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                'source': log.source,
-                'user_id': log.user_id,
-                'user_email': user_dict.get(log.user_id, '未知用户') if log.user_id else None,
-                'ip_address': log.ip_address,
-                'path': log.path,
-                'method': log.method,
-                'user_agent': log.user_agent
-            }
-            logs_data.append(log_data)
-        
-        return jsonify({
-            'success': True,
-            'logs': logs_data,
-            'total': logs_pagination.total,
-            'pages': logs_pagination.pages,
-            'current_page': page
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin_app.route('/admin/api/logs/levels', methods=['GET'])
-@login_required
-@admin_required
-def get_log_levels():
-    try:
-        # 获取所有不同的日志级别
-        levels = db.session.query(LogRecord.level).distinct().all()
-        levels = [level[0] for level in levels]
-        
-        return jsonify({
-            'success': True,
-            'levels': levels
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin_app.route('/admin/api/logs/sources', methods=['GET'])
-@login_required
-@admin_required
-def get_log_sources():
-    try:
-        # 获取所有不同的日志来源
-        sources = db.session.query(LogRecord.source).distinct().all()
-        sources = [source[0] for source in sources if source[0]]
-        
-        return jsonify({
-            'success': True,
-            'sources': sources
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin_app.route('/admin/api/logs/stats', methods=['GET'])
-@login_required
-@admin_required
-def get_log_stats():
-    try:
-        # 获取总日志数
-        total_logs = LogRecord.query.count()
-        
-        # 获取各级别日志数量
-        level_stats = db.session.query(
-            LogRecord.level, 
-            db.func.count(LogRecord.id)
-        ).group_by(LogRecord.level).all()
-        level_stats = {level: count for level, count in level_stats}
-        
-        # 获取今日日志数量
-        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_logs = LogRecord.query.filter(LogRecord.timestamp >= today).count()
-        
-        # 获取最近一周的日志趋势
-        from datetime import timedelta
-        week_stats = []
-        for i in range(7):
-            day = today - timedelta(days=i)
-            next_day = day + timedelta(days=1)
-            count = LogRecord.query.filter(
-                LogRecord.timestamp >= day,
-                LogRecord.timestamp < next_day
-            ).count()
-            week_stats.append({
-                'date': day.strftime('%Y-%m-%d'),
-                'count': count
-            })
-        
-        return jsonify({
-            'success': True,
-            'total_logs': total_logs,
-            'level_stats': level_stats,
-            'today_logs': today_logs,
-            'week_stats': week_stats
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin_app.route('/admin/api/logs/export', methods=['GET'])
-@login_required
-@admin_required
-def export_logs():
-    import csv
-    from io import StringIO
-    from flask import Response
-    
-    try:
-        # 获取筛选参数
-        level = request.args.get('level')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        user_id = request.args.get('user_id')
-        source = request.args.get('source')
-        keyword = request.args.get('keyword')
-        
-        # 构建查询
-        query = LogRecord.query
-        
-        # 应用筛选条件
-        if level:
-            query = query.filter(LogRecord.level == level)
-        if start_date:
-            query = query.filter(LogRecord.timestamp >= start_date)
-        if end_date:
-            query = query.filter(LogRecord.timestamp <= end_date)
-        if user_id:
-            query = query.filter(LogRecord.user_id == user_id)
-        if source:
-            query = query.filter(LogRecord.source == source)
-        if keyword:
-            query = query.filter(LogRecord.message.like(f'%{keyword}%'))
-        
-        # 按时间倒序排序
-        logs = query.order_by(LogRecord.timestamp.desc()).all()
-        
-        # 获取关联的用户信息
-        user_dict = {}
-        user_ids = set(log.user_id for log in logs if log.user_id)
-        if user_ids:
-            users = User.query.filter(User.id.in_(user_ids)).all()
-            user_dict = {user.id: user.email for user in users}
-        
-        # 创建CSV文件
-        si = StringIO()
-        writer = csv.writer(si)
-        
-        # 写入表头
-        writer.writerow(['ID', '级别', '消息', '时间', '来源', '用户ID', '用户邮箱', 'IP地址', '请求路径', '请求方法', '用户代理'])
-        
-        # 写入数据
-        for log in logs:
-            writer.writerow([
-                log.id,
-                log.level,
-                log.message,
-                log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                log.source or '',
-                log.user_id or '',
-                user_dict.get(log.user_id, '') if log.user_id else '',
-                log.ip_address or '',
-                log.path or '',
-                log.method or '',
-                log.user_agent or ''
-            ])
-        
-        # 返回CSV文件
-        output = si.getvalue()
-        return Response(
-            output,
-            mimetype="text/csv",
-            headers={"Content-disposition": "attachment; filename=logs.csv"}
-        )
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin_app.route('/admin/api/logs/clear', methods=['DELETE'])
-@login_required
-@admin_required
-def clear_logs():
-    try:
-        # 获取筛选参数
-        level = request.args.get('level')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        user_id = request.args.get('user_id')
-        source = request.args.get('source')
-        keyword = request.args.get('keyword')
-        
-        # 构建查询
-        query = LogRecord.query
-        
-        # 应用筛选条件
-        if level:
-            query = query.filter(LogRecord.level == level)
-        if start_date:
-            query = query.filter(LogRecord.timestamp >= start_date)
-        if end_date:
-            query = query.filter(LogRecord.timestamp <= end_date)
-        if user_id:
-            query = query.filter(LogRecord.user_id == user_id)
-        if source:
-            query = query.filter(LogRecord.source == source)
-        if keyword:
-            query = query.filter(LogRecord.message.like(f'%{keyword}%'))
-        
-        # 记录删除的日志数量
-        count = query.count()
-        
-        # 执行删除
-        query.delete()
-        db.session.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': f'成功清除 {count} 条日志记录',
-            'count': count
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
 
 # 评价标准管理API路由
 @admin_app.route('/api/standards', methods=['GET'])

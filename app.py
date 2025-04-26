@@ -47,7 +47,7 @@ from export import (
     generate_generateljzpwb
 )
 from models import (
-    db, User, InvitationCode, LogRecord,
+    db, User, InvitationCode,
     Project, review_standard, FormData,
     ProjectCollaborator, ProjectInvitation
 )
@@ -204,16 +204,7 @@ def log_request_info():
             # 记录请求信息，但排除静态文件和某些特定路径
             path = request.path
             if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
-                LogRecord.add_log(
-                    level="INFO",
-                    message=f"请求: {request.method} {path}",
-                    source="HTTP_REQUEST",
-                    user_id=user_id,
-                    ip_address=request.remote_addr,
-                    path=path,
-                    method=request.method,
-                    user_agent=request.user_agent.string
-                )
+                app.logger.info(f"请求: {request.method} {path}, User: {user_id}")
         except Exception as e:
             app.logger.error(f"记录请求日志时出错: {str(e)}")
 
@@ -226,17 +217,9 @@ def log_response_info(response):
             path = request.path
             if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
                 user_id = current_user.id if current_user.is_authenticated else None
-                
-                LogRecord.add_log(
-                    level="ERROR" if response.status_code >= 500 else "WARNING",
-                    message=f"响应错误: {request.method} {path} 状态码: {response.status_code}",
-                    source="HTTP_RESPONSE",
-                    user_id=user_id,
-                    ip_address=request.remote_addr,
-                    path=path,
-                    method=request.method,
-                    user_agent=request.user_agent.string
-                )
+                level = "ERROR" if response.status_code >= 500 else "WARNING"
+                app.logger.log(logging.ERROR if level == "ERROR" else logging.WARNING, 
+                               f"响应错误: {request.method} {path} 状态码: {response.status_code}, User: {user_id}")
     except Exception as e:
         app.logger.error(f"记录响应日志时出错: {str(e)}")
     
@@ -253,30 +236,16 @@ def log_exception(e):
         
         # 对静态文件的404错误进行特殊处理，减少日志记录
         if isinstance(e, werkzeug.exceptions.NotFound) and (path.startswith('/static/') or path == '/favicon.ico'):
-            # 静态文件404不记录详细日志，只在DEBUG模式下记录
             if app.debug:
                 app.logger.debug(f"静态文件未找到: {path}")
             return render_template('error.html', error="文件未找到"), 404
         
         # 记录异常信息
-        LogRecord.add_log(
-            level="ERROR",
-            message=f"系统异常: {str(e)}",
-            source="EXCEPTION",
-            user_id=user_id,
-            ip_address=request.remote_addr if request else None,
-            path=path,
-            method=method,
-            user_agent=request.user_agent.string if request else None
-        )
-        
-        # 记录详细的异常堆栈到应用日志
-        app.logger.error(f"系统异常: {str(e)}", exc_info=True)
+        app.logger.error(f"系统异常: {str(e)}, Path: {path}, Method: {method}, User: {user_id}", exc_info=True)
         
     except Exception as log_err:
         app.logger.error(f"记录异常日志时出错: {str(log_err)}")
     
-    # 返回通用的错误页面
     return render_template('error.html', error=str(e)), 500
 
 # 添加专门的404错误处理器
@@ -3765,16 +3734,7 @@ def login():
                     redirect_url = url_for('project_detail', project_id=invitation.project_id)
         
         # 记录登录成功日志
-        LogRecord.add_log(
-            level="INFO",
-            message=f"用户 {email} 登录成功",
-            source="login",
-            user_id=user.id,
-            ip_address=request.remote_addr,
-            path=request.path,
-            method=request.method,
-            user_agent=request.user_agent.string
-        )
+        app.logger.info(f"用户 {email} 登录成功, UserID: {user.id}")
         
         return jsonify({
             'success': True, 
@@ -3783,15 +3743,7 @@ def login():
         })
     else:
         # 记录登录失败日志
-        LogRecord.add_log(
-            level="WARNING",
-            message=f"用户 {email} 登录失败",
-            source="login",
-            ip_address=request.remote_addr,
-            path=request.path,
-            method=request.method,
-            user_agent=request.user_agent.string
-        )
+        app.logger.warning(f"用户 {email} 登录失败")
         
         return jsonify({'error': '邮箱或密码错误'}), 401
 
@@ -4282,13 +4234,7 @@ def extract_quantities_api():
             app.logger.error(f"API /api/extract_quantities 处理文件 {temp_file_path or '未创建'} 时发生未知错误: {e}\n{error_trace}")
             try:
                  # 移除 traceback 参数
-                 LogRecord.add_log(
-                     level="ERROR",
-                     message=f"API /api/extract_quantities 处理失败: {str(e)}",
-                     source="API_ENDPOINT",
-                     user_id=user_id_for_logs, # 使用安全获取的ID
-                     # traceback=error_trace # 移除这一行
-                 )
+                 app.logger.error(f"API /api/extract_quantities 处理失败: {str(e)}", exc_info=True)
             except Exception as log_err:
                  app.logger.error(f"记录API错误日志时也发生错误: {log_err}")
             return jsonify({'error': f'处理文件时发生内部错误: {str(e)}'}), 500

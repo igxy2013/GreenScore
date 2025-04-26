@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能绿建管理后台</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/tailwind-full-3.4.16.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/all.min.css') }}" rel="stylesheet">
+    <!-- 添加 SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='image/greenscore-sm.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='image/greenscore-32.png') }}">
     <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', filename='image/greenscore.png') }}">
@@ -62,302 +64,306 @@
     <!-- 主要内容区域 -->
     <div class="ml-64 flex-1 p-6 transition-all duration-300" id="mainContent">
         <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <!-- 项目管理卡片 -->
-            <div id="project-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
-                <!-- 项目统计面板 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                    <!-- 总项目数 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                                <i class="fas fa-project-diagram text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">总项目数</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.total_projects }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 进行中项目 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-green-100 text-green-600">
-                                <i class="fas fa-tasks text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">进行中项目</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.active_projects }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 已完成项目 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                                <i class="fas fa-check-circle text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">已完成项目</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.completed_projects }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 平均项目分数 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                                <i class="fas fa-star text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">平均分数</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.avg_project_score }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 搜索和操作栏 -->
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex justify-between items-center">
-                        <div class="flex-1 max-w-sm">
-                            <div class="relative">
-                                <input type="text" id="projectSearchInput" 
-                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                       placeholder="搜索项目名称...">
-                                <div class="absolute left-3 top-2.5 text-gray-400">
-                                    <i class="fas fa-search"></i>
+            <!-- 添加 Flex 容器 -->
+            <div class="flex space-x-6">
+                <!-- 项目管理卡片 -->
+                <div id="project-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden flex-1"> <!-- 添加 flex-1 使卡片宽度自适应 -->
+                    <!-- 项目统计面板 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                        <!-- 总项目数 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                    <i class="fas fa-project-diagram text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">总项目数</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_projects }}</p>
                                 </div>
                             </div>
                         </div>
-                        <button id="addProjectBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                            <i class="fas fa-plus mr-2"></i>添加项目
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 项目列表表格 -->
-                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">项目名称</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">所属用户</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分数</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="projectTableBody">
-                                {% for project in projects %}
-                                <tr class="project-row">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 project-name">{{ project.name }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                            {% if project.total_score is not none and project.total_score >= 80 %}
-                                                bg-green-100 text-green-800
-                                            {% elif project.total_score is not none and project.total_score >= 60 %}
-                                                bg-yellow-100 text-yellow-800
-                                            {% else %}
-                                                bg-red-100 text-red-800
-                                            {% endif %}">
-                                            {{ project.total_score|default('尚未评分', true) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- 分页控件 -->
-                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-700">
-                                显示 <span id="projectStartIndex">1</span> 到 <span id="projectEndIndex">15</span> 条，共 <span id="projectTotalCount">{{ projects|length }}</span> 条
-                                <span class="ml-4">
-                                    第 <span id="projectCurrentPage">1</span> / <span id="projectTotalPages">1</span> 页
-                                </span>
-                            </div>
-                            <div class="flex space-x-2">
-                                <button id="projectPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    上一页
-                                </button>
-                                <button id="projectNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    下一页
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 用户管理卡片 -->
-            <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden">
-                <!-- 用户统计面板 -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                    <!-- 总用户数 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
-                                <i class="fas fa-users text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">总用户数</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 在线用户 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-green-100 text-green-600">
-                                <i class="fas fa-user-clock text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">在线用户</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.online_users }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 离线用户 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-gray-100 text-gray-600">
-                                <i class="fas fa-user-slash text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">离线用户</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.offline_users }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 管理员数量 -->
-                    <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                        <div class="flex items-center">
-                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                                <i class="fas fa-user-shield text-xl"></i>
-                            </div>
-                            <div class="ml-4">
-                                <p class="text-sm font-medium text-gray-500">管理员数量</p>
-                                <p class="text-2xl font-semibold text-gray-900">{{ stats.admin_users }}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 搜索和操作栏 -->
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex justify-between items-center">
-                        <div class="flex-1 max-w-sm">
-                            <div class="relative">
-                                <input type="text" id="userSearchInput" 
-                                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                                       placeholder="搜索用户邮箱...">
-                                <div class="absolute left-3 top-2.5 text-gray-400">
-                                    <i class="fas fa-search"></i>
+                        
+                        <!-- 进行中项目 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                    <i class="fas fa-tasks text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">进行中项目</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.active_projects }}</p>
                                 </div>
                             </div>
                         </div>
-                        <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                            <i class="fas fa-plus mr-2"></i>添加用户
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 用户列表表格 -->
-                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邮箱</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">角色</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="userTableBody">
-                                {% for user in users %}
-                                <tr class="user-row">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 user-email">{{ user.email }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                            {% if user.role == 'admin' %}
-                                                bg-green-100 text-green-800
-                                            {% else %}
-                                                bg-blue-100 text-blue-800
-                                            {% endif %}">
-                                            {{ user.role }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                        <span class="px-2 py-1 rounded-full text-xs font-medium 
-                                            {% if user.is_online() %}
-                                                bg-green-100 text-green-800
-                                            {% else %}
-                                                bg-red-100 text-red-800
-                                            {% endif %}">
-                                            {{ '在线' if user.is_online() else '离线' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                        <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}" title="编辑用户">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}" title="删除用户">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- 分页控件 -->
-                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm text-gray-700">
-                                显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
-                                <span class="ml-4">
-                                    第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页
-                                </span>
+                        
+                        <!-- 已完成项目 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <i class="fas fa-check-circle text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">已完成项目</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.completed_projects }}</p>
+                                </div>
                             </div>
-                            <div class="flex space-x-2">
-                                <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    上一页
-                                </button>
-                                <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    下一页
-                                </button>
+                        </div>
+                        
+                        <!-- 平均项目分数 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                    <i class="fas fa-star text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">平均分数</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.avg_project_score }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和操作栏 -->
+                    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1 max-w-sm">
+                                <div class="relative">
+                                    <input type="text" id="projectSearchInput" 
+                                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="搜索项目名称...">
+                                    <div class="absolute left-3 top-2.5 text-gray-400">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <button id="addProjectBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>添加项目
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 项目列表表格 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">项目名称</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">所属用户</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">分数</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="projectTableBody">
+                                    {% for project in projects %}
+                                    <tr class="project-row">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.id }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 project-name">{{ project.name }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ users|selectattr('id', 'eq', project.user_id)|map(attribute='email')|first|default('未知用户') }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                                {% if project.total_score is not none and project.total_score >= 80 %}
+                                                    bg-green-100 text-green-800
+                                                {% elif project.total_score is not none and project.total_score >= 60 %}
+                                                    bg-yellow-100 text-yellow-800
+                                                {% else %}
+                                                    bg-red-100 text-red-800
+                                                {% endif %}">
+                                                {{ project.total_score|default('尚未评分', true) }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ project.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <button class="text-green-600 hover:text-green-900 edit-project-btn" data-project-id="{{ project.id }}" title="编辑项目">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="text-red-600 hover:text-red-900 delete-project-btn" data-project-id="{{ project.id }}" title="删除项目">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 分页控件 -->
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-700">
+                                    显示 <span id="projectStartIndex">1</span> 到 <span id="projectEndIndex">15</span> 条，共 <span id="projectTotalCount">{{ projects|length }}</span> 条
+                                    <span class="ml-4">
+                                        第 <span id="projectCurrentPage">1</span> / <span id="projectTotalPages">1</span> 页
+                                    </span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button id="projectPrevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        上一页
+                                    </button>
+                                    <button id="projectNextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        下一页
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+                
+                <!-- 用户管理卡片 -->
+                <div id="user-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden flex-1"> <!-- 添加 flex-1 使卡片宽度自适应 -->
+                    <!-- 用户统计面板 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                        <!-- 总用户数 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                    <i class="fas fa-users text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">总用户数</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 在线用户 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                    <i class="fas fa-user-clock text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">在线用户</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.online_users }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 离线用户 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-gray-100 text-gray-600">
+                                    <i class="fas fa-user-slash text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">离线用户</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.offline_users }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 管理员数量 -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <i class="fas fa-user-shield text-xl"></i>
+                                </div>
+                                <div class="ml-4">
+                                    <p class="text-sm font-medium text-gray-500">管理员数量</p>
+                                    <p class="text-2xl font-semibold text-gray-900">{{ stats.admin_users }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 搜索和操作栏 -->
+                    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                        <div class="flex justify-between items-center">
+                            <div class="flex-1 max-w-sm">
+                                <div class="relative">
+                                    <input type="text" id="userSearchInput" 
+                                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="搜索用户邮箱...">
+                                    <div class="absolute left-3 top-2.5 text-gray-400">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <button id="addUserBtn" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>添加用户
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 用户列表表格 -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">ID</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">邮箱</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">角色</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">状态</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">创建时间</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-lg font-medium uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200" id="userTableBody">
+                                    {% for user in users %}
+                                    <tr class="user-row">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.id }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 user-email">{{ user.email }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                                {% if user.role == 'admin' %}
+                                                    bg-green-100 text-green-800
+                                                {% else %}
+                                                    bg-blue-100 text-blue-800
+                                                {% endif %}">
+                                                {{ user.role }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 py-1 rounded-full text-xs font-medium 
+                                                {% if user.is_online() %}
+                                                    bg-green-100 text-green-800
+                                                {% else %}
+                                                    bg-red-100 text-red-800
+                                                {% endif %}">
+                                                {{ '在线' if user.is_online() else '离线' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <button class="text-blue-600 hover:text-blue-900 edit-user-btn" data-user-id="{{ user.id }}" title="编辑用户">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="text-red-600 hover:text-red-900 delete-user-btn" data-user-id="{{ user.id }}" title="删除用户">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- 分页控件 -->
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-700">
+                                    显示 <span id="startIndex">1</span> 到 <span id="endIndex">15</span> 条，共 <span id="totalCount">{{ users|length }}</span> 条
+                                    <span class="ml-4">
+                                        第 <span id="currentPage">1</span> / <span id="totalPages">1</span> 页
+                                    </span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        上一页
+                                    </button>
+                                    <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        下一页
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- 结束 Flex 容器 -->
+
             <!-- 邀请码管理卡片 -->
             <div id="invite-code-management-section" class="content-section hidden bg-white rounded-lg shadow-sm overflow-hidden mt-6">
                 <!-- 搜索和操作栏 -->
@@ -818,9 +824,15 @@
         // 删除用户按钮点击事件
         document.querySelectorAll('.delete-user-btn').forEach(btn => {
             btn.addEventListener('click', function() {
-                const userId = this.dataset.userId;
-                if (confirm('确定要删除此用户吗？')) {
+                const userIdRaw = this.dataset.userId;
+                // 移除 confirm 对话框，直接删除
+                // 清理并转换 userId 为整数
+                const userId = parseInt(userIdRaw, 10);
+                if (!isNaN(userId)) {
                     deleteUser(userId);
+                } else {
+                    console.error('无效的用户 ID:', userIdRaw);
+                    alert('无法删除用户：无效的用户 ID。');
                 }
             });
         });
@@ -1096,6 +1108,8 @@
 
     // 删除用户
     function deleteUser(userId) {
+        // userId 参数现在应该是清理过的整数
+        console.log('开始删除用户:', userId);
         fetch(`/admin/api/users/${userId}`, {
             method: 'DELETE',
             headers: {
@@ -1484,62 +1498,41 @@
 
     // 删除项目
     function deleteProject(projectId) {
-        // 使用 SweetAlert2 显示单个确认对话框
-        Swal.fire({
-            title: '确定要删除吗？',
-            text: '此操作不可恢复！',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: '确定删除',
-            cancelButtonText: '取消'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                console.log('开始删除项目:', projectId);
-                
-                // 显示加载状态
-                Swal.fire({
-                    title: '删除中...',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-                
-                fetch(`/api/projects/${projectId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => {
-                    console.log('服务器响应状态:', response.status);
-                    if (!response.ok) {
-                        return response.text().then(text => {
-                            console.log('错误响应内容:', text);
-                            throw new Error(`删除失败: ${response.status} - ${text}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('删除响应数据:', data);
-                    if (data.success) {
-                        Swal.fire('成功', '项目删除成功', 'success').then(() => {
-                            location.reload();
-                        });
-                    } else {
-                        Swal.fire('错误', data.message || '删除失败', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('删除项目时出错:', error);
-                    Swal.fire('错误', '删除失败: ' + error.message, 'error');
+        console.log('开始删除项目:', projectId);
+        
+        // 直接执行删除，移除 Swal 确认
+        fetch(`/admin/api/projects/${projectId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                console.log('错误响应状态:', response.status);
+                return response.text().then(text => {
+                    console.log('错误响应内容:', text);
+                    throw new Error(`删除失败: ${response.status} - ${text}`);
                 });
             }
+            return response.json();
+        })
+        .then(data => {
+            console.log('删除响应数据:', data);
+            if (data.success) {
+                // 移除成功提示，直接重新加载
+                location.reload();
+            } else {
+                // 移除错误提示，错误会显示在控制台
+                alert(data.message || '删除失败'); // 使用简单的 alert 替代
+            }
+        })
+        .catch(error => {
+            console.error('删除项目时出错:', error);
+            // 移除错误提示，错误会显示在控制台
+            alert('删除失败: ' + error.message); // 使用简单的 alert 替代
         });
     }
 
