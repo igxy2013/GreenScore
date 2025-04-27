@@ -9,11 +9,21 @@ var currentTab = 'word';
 var pastedImage = null;
 // 上次提取的数据
 var lastExtractedData = null;
+// 评价标准初始值
+let initialStandardValue = '';
 
 // 初始化省市数据
 document.addEventListener('DOMContentLoaded', function() {
     initializeProvinceCitySelectors();
     loadUserPermissions();
+
+    // --- 新增：存储评价标准初始值 ---
+    const standardSelect = document.getElementById('standard_selection');
+    if (standardSelect) {
+        initialStandardValue = standardSelect.value;
+        console.log('Initial standard value stored:', initialStandardValue);
+    }
+    // --- 新增结束 ---
 
     // --- 修改：整合 Switchery 初始化和状态更新 --- 
     const scoreToggle = document.getElementById('scoreToggle');
@@ -789,6 +799,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // 获取表单数据
             const form = this.closest('form');
             const formData = new FormData(form);
+
+            // --- 新增：检查评价标准是否更改 ---
+            const standardSelect = document.getElementById('standard_selection');
+            let currentStandardValue = '';
+            let standardHasChanged = false;
+            if (standardSelect) {
+                currentStandardValue = standardSelect.value;
+                standardHasChanged = currentStandardValue !== initialStandardValue;
+                console.log('Checking standard change:', { initial: initialStandardValue, current: currentStandardValue, changed: standardHasChanged });
+            }
+            // --- 新增结束 ---
             
             // 获取得分计算开关的当前状态并添加到表单数据
             const scoreToggleInput = document.getElementById('scoreToggle');
@@ -807,24 +828,35 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    toast('项目信息保存成功', 'success');
-                    // 更新页面显示的项目ID
-                    if (data.project_id) {
-                        document.getElementById('project_id').value = data.project_id;
+                    // --- 修改：根据评价标准是否更改决定刷新或继续 ---
+                    if (standardHasChanged) {
+                        toast('项目信息保存成功', 'success');
+                        // 更新初始值，防止重复刷新
+                        initialStandardValue = currentStandardValue;
+                        // 短暂延迟后刷新页面
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500); // 延迟1.5秒以便用户看到提示
+                    } else {
+                        toast('项目信息保存成功', 'success');
+                        // 更新页面显示的项目ID
+                        if (data.project_id) {
+                            document.getElementById('project_id').value = data.project_id;
+                        }
+                        
+                        const scoreToggle = document.getElementById('scoreToggle');
+                        // 读取 input 的当前 checked 状态来决定是否计算
+                        const isChecked = scoreToggle ? scoreToggle.checked : false; 
+                        console.log("isChecked (from input element)", isChecked);
+                        if (isChecked) { 
+                            console.log("自动计算功能开启，将异步执行");
+                            // calculateAndUpdateScores(); // 移除或保持注释之前的直接调用
+                            // 将耗时操作放入setTimeout异步执行
+                            setTimeout(calculateAndUpdateScores, 0);
+                        }
+                        auto_update_jscs();
                     }
-                    
-                    const scoreToggle = document.getElementById('scoreToggle');
-                    // 读取 input 的当前 checked 状态来决定是否计算
-                    const isChecked = scoreToggle ? scoreToggle.checked : false; 
-                    console.log("isChecked (from input element)", isChecked);
-                    if (isChecked) { 
-                        console.log("自动计算功能开启，将异步执行");
-                        // calculateAndUpdateScores(); // 移除或保持注释之前的直接调用
-                        // 将耗时操作放入setTimeout异步执行
-                        setTimeout(calculateAndUpdateScores, 0);
-                    }
-                    auto_update_jscs();
-
+                    // --- 修改结束 ---
                 } else {
                     // 检查是否是权限错误
                     if (data.error && (data.error.includes('权限') || data.error.includes('permission'))) {
