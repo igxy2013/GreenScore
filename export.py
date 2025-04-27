@@ -10,10 +10,13 @@ from sqlalchemy import text
 import pymysql
 from models import db
 from datetime import datetime
+from update_dwg_attribute import update_attribute_text # 导入本地DWG处理函数
 
 # 加载环境变量
 load_dotenv()
 
+IS_WINDOWS = os.name == 'nt'
+IS_WSL = 'microsoft-standard' in os.uname().release if hasattr(os, 'uname') else False
 
 # 数据库连接配置
 def get_db_connection():
@@ -1056,76 +1059,7 @@ def generate_dwg(request_data):
             print(f"CAD模板文件不存在: {template_path}")
             return jsonify({"error": f"CAD模板文件不存在，请确保templates目录下有{template_filename}文件"}), 404
 
-        # 同步得分表和project_scores表的数据
-        print(f"同步项目 {project_id} 的得分表和project_scores表数据")
-        try:
-            # 检查得分表中是否有该项目的数据
-            result = db.session.execute(
-                text("SELECT COUNT(*) FROM 得分表 WHERE 项目ID = :project_id"),
-                {"project_id": project_id}
-            )
-            score_count = result.scalar()
-            print(f"得分表中项目ID={project_id}的记录有 {score_count} 条")
-            
-            # 清空project_scores表中该项目的数据
-            result = db.session.execute(
-                text("DELETE FROM project_scores WHERE project_id = :project_id"),
-                {"project_id": project_id}
-            )
-            deleted_count = result.rowcount
-            print(f"从project_scores表中删除项目ID={project_id}的 {deleted_count} 条记录")
-            
-            # 从得分表导入数据到project_scores表
-            result = db.session.execute(
-                text("""
-                    SELECT 项目ID, 评价等级, 专业, 条文号, 分类, 是否达标, 得分, 技术措施
-                    FROM 得分表
-                    WHERE 项目ID = :project_id
-                """),
-                {"project_id": project_id}
-            )
-            scores = result.fetchall()
-            
-            # 导入数据到project_scores表
-            imported_count = 0
-            for score in scores:
-                project_id, level, specialty, clause_number, category, is_achieved, score_value, technical_measures = score
-                
-                # 尝试将得分转换为浮点数
-                try:
-                    if score_value and score_value.strip():
-                        score_float = float(score_value)
-                    else:
-                        score_float = 0
-                except (ValueError, TypeError):
-                    score_float = 0
-                
-                # 插入数据
-                db.session.execute(
-                    text("""
-                        INSERT INTO project_scores (project_id, level, specialty, clause_number, category, is_achieved, score, technical_measures)
-                        VALUES (:project_id, :level, :specialty, :clause_number, :category, :is_achieved, :score_float, :technical_measures)
-                    """),
-                    {
-                        "project_id": project_id,
-                        "level": level,
-                        "specialty": specialty,
-                        "clause_number": clause_number,
-                        "category": category,
-                        "is_achieved": is_achieved,
-                        "score_float": score_float,
-                        "technical_measures": technical_measures
-                    }
-                )
-                imported_count += 1
-            
-            # 提交事务
-            db.session.commit()
-            print(f"成功从得分表导入 {imported_count} 条记录到project_scores表")
-        except Exception as e:
-            print(f"同步得分表和project_scores表数据时出错: {str(e)}")
-            print(traceback.format_exc())
-            # 继续执行，不影响后续操作
+        # 移除 project_scores 同步逻辑
 
         # 尝试从缓存获取数据
         cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
@@ -1364,141 +1298,56 @@ def generate_dwg(request_data):
         os.makedirs(temp_dir, exist_ok=True)
         output_path = os.path.join(temp_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
         
-        # 根据环境选择处理方式
-        if IS_WINDOWS and update_attribute_text:
-            print("使用Windows本地AutoCAD处理DWG文件")
-            try:
-                print(f"使用本地函数更新CAD文件，使用模板: {template_path}...")
-                print(f"更新的属性数量: {len(attributes)}")
-                
-                # 调用update_attribute_text函数
-                update_attribute_text(template_path, output_path, attributes)
-                
-                # 检查文件是否存在
-                if os.path.exists(output_path):
-                    file_size = os.path.getsize(output_path)
-                    print(f"文件已成功生成: {output_path}, 大小: {file_size} 字节")
-                    
-                    print(f"准备下载CAD文件: {download_name}")
-                    try:
-                        # 直接发送文件给用户下载
-                        return send_file(
-                            output_path,
-                            as_attachment=True,
-                            download_name=download_name,
-                            mimetype='application/acad'
-                        )
-                    except Exception as send_error:
-                        print(f"直接发送文件失败: {str(send_error)}")
-                        print(traceback.format_exc())
-                        
-                        # 发送失败时回退到旧方式 - 通过保存到static/exports目录
-                        target_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
-                        import shutil
-                        shutil.copy2(output_path, target_path)
-                        
-                        # 构建文件URL
-                        file_url = f'/static/exports/绿建设计专篇_{project_name}_{timestamp}.dwg'
-                        
-                        print(f"使用备用方式发送文件，URL: {file_url}")
-                        
-                        # 返回文件URL以兼容旧的前端逻辑
-                        return jsonify({
-                            'success': True,
-                            'file_url': file_url,
-                            'message': '绿色建筑设计专篇生成成功(使用URL方式)'
-                        })
-                else:
-                    print(f"文件生成失败: {output_path}")
-                    return jsonify({"error": "文件生成失败"}), 500
-            except Exception as e:
-                print(f"本地处理DWG文件失败: {str(e)}")
-                print(traceback.format_exc())
-                return jsonify({"error": f"生成失败: {str(e)}"}), 500
-        elif IS_WSL and dwg_client:
-            print("使用WSL环境下的DWG远程服务处理DWG文件")
-            # 将字典转换为列表格式，以适应DWG服务的API
-            attribute_list = []
-            for key, value in attributes.items():
-                attribute_list.append({
-                    'field': key,
-                    'value': value
-                })
-            
-            # 调用DWG服务客户端
-            print(f"开始更新CAD文件，使用模板: {template_filename}...")
+        # 移除环境判断，始终使用本地处理
+        print("使用Windows本地AutoCAD处理DWG文件")
+        try:
+            print(f"使用本地函数更新CAD文件，使用模板: {template_path}...")
             print(f"更新的属性数量: {len(attributes)}")
-            success, result = dwg_client.update_dwg_attributes(template_path, attribute_list)
             
-            if success:
+            # 调用update_attribute_text函数
+            update_attribute_text(template_path, output_path, attributes)
+            
+            # 检查文件是否存在
+            if os.path.exists(output_path):
+                file_size = os.path.getsize(output_path)
+                print(f"文件已成功生成: {output_path}, 大小: {file_size} 字节")
+                
+                print(f"准备下载CAD文件: {download_name}")
                 try:
-                    # 检查result中是否包含file_data
-                    if 'file_data' not in result:
-                        print(f"DWG服务返回的结果中缺少file_data字段: {result}")
-                        return jsonify({"error": "DWG服务未返回文件数据"}), 500
-                    
-                    # 检查file_data是否为空
-                    file_data = result['file_data']
-                    if not file_data or len(file_data) == 0:
-                        print("DWG服务返回的文件数据为空")
-                        return jsonify({"error": "DWG服务返回的文件数据为空"}), 500
-                    
-                    print(f"收到DWG服务返回的文件数据，大小: {len(file_data)} 字节")
-                    
-                    try:
-                        # 保存到临时文件
-                        with open(output_path, 'wb') as f:
-                            f.write(file_data)
-                        
-                        file_size = os.path.getsize(output_path)
-                        print(f"文件已成功保存到: {output_path}, 大小: {file_size} 字节")
-                        
-                        print(f"准备下载CAD文件: {download_name}")
-                        try:
-                            # 直接发送文件给用户下载
-                            return send_file(
-                                output_path,
-                                as_attachment=True,
-                                download_name=download_name,
-                                mimetype='application/acad'
-                            )
-                        except Exception as send_error:
-                            print(f"直接发送文件失败: {str(send_error)}")
-                            print(traceback.format_exc())
-                            
-                            # 发送失败时回退到旧方式 - 通过保存到static/exports目录
-                            target_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
-                            import shutil
-                            shutil.copy2(output_path, target_path)
-                            
-                            # 构建文件URL
-                            file_url = f'/static/exports/绿建设计专篇_{project_name}_{timestamp}.dwg'
-                            
-                            print(f"使用备用方式发送文件，URL: {file_url}")
-                            
-                            # 返回文件URL以兼容旧的前端逻辑
-                            return jsonify({
-                                'success': True,
-                                'file_url': file_url,
-                                'message': '绿色建筑设计专篇生成成功(使用URL方式)'
-                            })
-                    except Exception as file_write_error:
-                        print(f"写入文件时出错: {str(file_write_error)}")
-                        print(traceback.format_exc())
-                        return jsonify({"error": f"写入文件时出错: {str(file_write_error)}"}), 500
-                except Exception as e:
-                    print(f"处理DWG服务返回数据时出错: {str(e)}")
+                    # 直接发送文件给用户下载
+                    return send_file(
+                        output_path,
+                        as_attachment=True,
+                        download_name=download_name,
+                        mimetype='application/acad'
+                    )
+                except Exception as send_error:
+                    print(f"直接发送文件失败: {str(send_error)}")
                     print(traceback.format_exc())
-                    return jsonify({"error": f"处理DWG服务返回数据时出错: {str(e)}"}), 500
+                    
+                    # 发送失败时回退到旧方式 - 通过保存到static/exports目录
+                    target_path = os.path.join(output_dir, f"绿建设计专篇_{project_name}_{timestamp}.dwg")
+                    import shutil
+                    shutil.copy2(output_path, target_path)
+                    
+                    # 构建文件URL
+                    file_url = f'/static/exports/绿建设计专篇_{project_name}_{timestamp}.dwg'
+                    
+                    print(f"使用备用方式发送文件，URL: {file_url}")
+                    
+                    # 返回文件URL以兼容旧的前端逻辑
+                    return jsonify({
+                        'success': True,
+                        'file_url': file_url,
+                        'message': '绿色建筑设计专篇生成成功(使用URL方式)'
+                    })
             else:
-                error_message = result.get('message', '未知错误')
-                print(f"DWG服务返回错误: {error_message}")
-                return jsonify({"error": f"生成失败: {error_message}"}), 500
-        else:
-            # 环境不支持处理DWG
-            return jsonify({
-                "error": "当前环境不支持DWG处理。Windows需要安装pywin32，WSL需要配置dwg_client。"
-            }), 500
+                print(f"文件生成失败: {output_path}")
+                return jsonify({"error": "文件生成失败"}), 500
+        except Exception as e:
+            print(f"本地处理DWG文件失败: {str(e)}")
+            print(traceback.format_exc())
+            return jsonify({"error": f"生成失败: {str(e)}"}), 500
 
     except Exception as e:
         print(f"生成CAD文件失败: {str(e)}")

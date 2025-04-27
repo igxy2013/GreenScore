@@ -281,30 +281,23 @@ def replace_placeholders(template_path, data):
 
                         try:
                             # 获取原始格式
+                            bookmark_range = bookmarks_dict[bookmark_name]
                             original_props = None
-                            original_run = None
-                            
-                            # 首先尝试获取书签范围内的完整运行对象
-                            if bookmark_range is not None:
-                                if bookmark_range.tag.endswith('}r'):
-                                    original_run = bookmark_range
-                                else:
-                                    # 如果书签范围不是运行，查找第一个运行
-                                    runs = bookmark_range.xpath('.//w:r', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
-                                    if runs:
-                                        original_run = runs[0]
-                            
-                            # 如果找到了原始运行，复制其所有格式属性
-                            if original_run is not None:
-                                rPr = original_run.find('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
-                                if rPr is not None:
-                                    original_props = deepcopy(rPr)
-                            
-                            # 如果没有在运行中找到格式，尝试从父元素获取
-                            if original_props is None and bookmark_range is not None and bookmark_range.getparent() is not None:
-                                parent_rPr = bookmark_range.getparent().find('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}rPr')
-                                if parent_rPr is not None:
-                                    original_props = deepcopy(parent_rPr)
+                            if bookmark_range is not None and hasattr(bookmark_range, '_element'):
+                                # 尝试找到书签内的格式
+                                bookmark_element = bookmark_range._element # Get the lxml element
+                                for element in bookmark_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
+                                    original_props = deepcopy(element)
+                                    break
+                                
+                                # 如果没找到格式，尝试从父元素获取
+                                if original_props is None:
+                                   parent_element = bookmark_range.getparent()
+                                   if parent_element is not None and hasattr(parent_element, '_element'): # Check if parent has _element
+                                       parent_lxml_element = parent_element._element
+                                       for element in parent_lxml_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
+                                           original_props = deepcopy(element)
+                                           break
                             
                             # 创建新的文本运行并应用格式
                             if original_props is not None:
@@ -742,17 +735,21 @@ def replace_placeholders(template_path, data):
                     # 获取原始格式
                     bookmark_range = bookmarks_dict[bookmark_name]
                     original_props = None
-                    if bookmark_range is not None:
+                    if bookmark_range is not None and hasattr(bookmark_range, '_element'):
                         # 尝试找到书签内的格式
-                        for element in bookmark_range.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
+                        bookmark_element = bookmark_range._element # Get the lxml element
+                        for element in bookmark_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
                             original_props = deepcopy(element)
                             break
                         
                         # 如果没找到格式，尝试从父元素获取
-                        if original_props is None and bookmark_range.getparent() is not None:
-                            for element in bookmark_range.getparent().xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                original_props = deepcopy(element)
-                                break
+                        if original_props is None:
+                           parent_element = bookmark_range.getparent()
+                           if parent_element is not None and hasattr(parent_element, '_element'): # Check if parent has _element
+                               parent_lxml_element = parent_element._element
+                               for element in parent_lxml_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
+                                   original_props = deepcopy(element)
+                                   break
                     
                     # 创建新的文本运行
                     if original_props is not None:
