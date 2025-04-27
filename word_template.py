@@ -9,6 +9,7 @@ from docx.oxml.ns import qn, nsmap
 from docx.shared import Pt
 from copy import deepcopy
 from datetime import datetime
+import lxml.etree
 
 def modify_square_chars_font(doc):
     
@@ -46,48 +47,113 @@ def process_template(data):
         standard = data[0].get('评价标准', '') 
         # 获取星级目标
         star_rating_target = data[0].get('星级目标', '')
+        output_paths = [] # 用于存储生成的文档路径
+
         if standard == '国标':
             if "安徽" in data[0].get('项目地点', '') :
                 template_file = '安徽绿色建筑审查表.docx'
+                template_path = os.path.join(current_app.static_folder, 'templates', template_file)
+                print(f"处理模板文件: {template_path}, 评价标准: {standard}")
+                if not os.path.exists(template_path):
+                    raise Exception(f"模板文件不存在: {template_path}")
+                output_path = replace_placeholders(template_path, data)
+                if not isinstance(output_path, str) or not output_path.endswith('.docx'):
+                    raise Exception(f"模板处理失败：{output_path}")
+                output_paths.append(output_path)
             else:
-                return None  # 国标不进行任何操作    
-        elif standard == '四川省标' and star_rating_target == '基本级':
-                template_file = 'sichuan_template-basic.docx'
+                return None  # 国标（非安徽）不进行任何操作
         elif standard == '四川省标':
-                template_file = 'sichuan_template.docx'
+            if star_rating_target == '基本级':
+                # 处理第一个模板
+                template1_file = '四川省绿建审查表-基本级.docx'
+            else:
+                template1_file = '四川省绿建审查表-提高级.docx' 
+            template1_path = os.path.join(current_app.static_folder, 'templates', template1_file)
+            print(f"处理第一个模板文件 (四川省标): {template1_path}")
+            if not os.path.exists(template1_path):
+                raise Exception(f"模板文件不存在: {template1_path}")
+            output1_path = replace_placeholders(template1_path, data)
+            # 检查第一个模板是否处理成功
+            if output1_path is None:
+                print(f"警告: 处理第一个模板 {template1_file} 失败，跳过添加。")
+            elif not isinstance(output1_path, str) or not output1_path.endswith('.docx'):
+                 print(f"警告: 处理第一个模板 {template1_file} 返回无效路径 '{output1_path}'，跳过添加。")
+            else:
+                output_paths.append(output1_path)
+            
+            # 处理第二个模板
+            template2_file = '水系统规划设计评审表.docx'
+            template2_path = os.path.join(current_app.static_folder, 'templates', template2_file)
+            print(f"处理第二个模板文件 (四川省标): {template2_path}")
+            if not os.path.exists(template2_path):
+                raise Exception(f"模板文件不存在: {template2_path}")
+            output2_path = replace_placeholders(template2_path, data)
+            # 检查第二个模板是否处理成功
+            if output2_path is None:
+                print(f"警告: 处理第二个模板 {template2_file} 失败，跳过添加。")
+            elif not isinstance(output2_path, str) or not output2_path.endswith('.docx'):
+                 print(f"警告: 处理第二个模板 {template2_file} 返回无效路径 '{output2_path}'，跳过添加。")
+            else:
+                output_paths.append(output2_path)
+
         elif standard == '成都市标':
-                template_file = 'chengdu_template.docx'    
-        else:
-            return None  # 不进行任何操作
-        # 获取模板文件的完整路径
-        template_path = os.path.join(current_app.static_folder, 'templates', template_file)
-        print(f"处理模板文件: {template_path}, 评价标准: {standard}, 星级目标: {star_rating_target}")
-        
-        # 检查模板文件是否存在
-        if not os.path.exists(template_path):
-            raise Exception(f"模板文件不存在: {template_path}")
+            # 定义成都市标需要处理的模板文件列表
+            template_files = [
+                '成都市绿色建筑审查表.docx',
+                '水系统规划设计申报表.docx',
+                '专项报告申报一览表.docx'
+            ]
+
+            for idx, template_file in enumerate(template_files):
+                template_path = os.path.join(current_app.static_folder, 'templates', template_file)
+                print(f"处理第 {idx+1} 个模板文件 (成都市标): {template_path}")
                 
-        # 处理模板
-        output_path = replace_placeholders(template_path, data)
-        if not isinstance(output_path, str) or not output_path.endswith('.docx'):
-            raise Exception(f"模板处理失败：{output_path}")
-        
-        # 返回生成的文档路径
-        return output_path
+                if not os.path.exists(template_path):
+                    # 如果任何一个模板文件不存在，可以选择是跳过还是报错
+                    # 这里选择打印警告并跳过该文件
+                    print(f"警告: 模板文件不存在: {template_path}, 将跳过此文件。")
+                    continue # 跳过当前文件，继续处理下一个
+                    # 或者可以选择报错: raise Exception(f"模板文件不存在: {template_path}")
+                
+                # 调用 replace_placeholders 处理模板
+                output_path = replace_placeholders(template_path, data)
+                
+                # 检查模板是否处理成功
+                if output_path is None:
+                    print(f"错误: 调用 replace_placeholders 处理模板 {template_file} 时返回 None，表示内部处理失败。请检查之前的日志查找具体错误。跳过添加。")
+                elif not isinstance(output_path, str) or not output_path.endswith('.docx'):
+                    print(f"警告: 处理模板 {template_file} 返回无效路径 '{output_path}'，跳过添加。")
+                else:
+                    # 将成功生成的文档路径添加到列表
+                    output_paths.append(output_path)
+                    print(f"已成功处理并添加: {output_path}")
+
+        else:
+            # 对于其他未知的标准，或者不需要处理的情况
+             print(f"未知的评价标准或无需处理: {standard}")
+             return None # 或返回空列表 []，取决于后续逻辑
+
+        # --- 添加最终返回日志 ---
+        final_return_value = output_paths if output_paths else None
+        print(f"[word_template.py] process_template 即将返回: {final_return_value}")
+        print(f"[word_template.py] process_template 即将返回类型: {type(final_return_value)}")
+        # --- 结束日志 ---
+        # 返回生成的文档路径列表
+        return final_return_value
         
     except Exception as e:
-        print(f"处理模板失败: {str(e)}")
+        print(f"处理模板整体过程失败: {str(e)}") # 修改日志信息
         import traceback
         print(traceback.format_exc())
-        raise Exception(f'生成Word文档失败：{str(e)}')
+        return None # 返回 None 表示处理失败
 
 
 def replace_placeholders(template_path, data):
     try:
         print(f"\n=== 开始处理文档 ===")
         print(f"模板文件路径: {template_path}")
-        print(f"\n接收到的数据:")
-        print(json.dumps(data, ensure_ascii=False, indent=2))
+        # print(f"\n接收到的数据:") # 注释掉打印完整数据
+        # print(json.dumps(data, ensure_ascii=False, indent=2))
         
         # 从数据中获取评价标准
         standard = data[0].get('评价标准', '成都市标') if data else '成都市标'
@@ -111,9 +177,9 @@ def replace_placeholders(template_path, data):
             '详细地址', '地址', '项目地址', '公共交通地址', 'address', '结论', '交通分析结论', '分析结论', '评价结论'
         ]
         
-        print("\n可用字段列表:")
-        for field in project_fields:
-            print(f"- {field}")
+        # print("\n可用字段列表:") # 注释掉打印字段列表
+        # for field in project_fields:
+        #     print(f"- {field}")
         
         # 添加占位符映射关系
         placeholder_mapping = {
@@ -134,7 +200,7 @@ def replace_placeholders(template_path, data):
         }
         
         # 获取文档中的所有书签
-        print("\n处理文档书签:")
+        # print("\n处理文档书签:") # 注释掉开始处理书签的日志
         bookmarks_dict = {}
         for bookmark_start in doc.element.xpath('//w:bookmarkStart'):
             bookmark_name = bookmark_start.get(qn('w:name'))
@@ -154,7 +220,7 @@ def replace_placeholders(template_path, data):
             
             if bookmark_range is not None:
                 bookmarks_dict[bookmark_name] = bookmark_range
-                print(f"找到书签: {bookmark_name}")
+                # print(f"找到书签: {bookmark_name}") # 注释掉找到书签的日志
             else:
                 print(f"跳过无效书签: {bookmark_name}")
         
@@ -192,7 +258,7 @@ def replace_placeholders(template_path, data):
                                 parent = bookmark_range.getparent()
                                 if parent is not None:
                                     parent.replace(bookmark_range, new_run)
-                                    print(f"替换书签 {bookmark_name} 的值为: {new_text}")
+                                    # print(f"替换书签 {bookmark_name} 的值为: {new_text}") # 注释掉替换书签值的日志
                         except Exception as e:
                             print(f"替换书签 {bookmark_name} 时出错: {str(e)}")
                         break
@@ -212,7 +278,7 @@ def replace_placeholders(template_path, data):
                     parent = bookmark_range.getparent()
                     if parent is not None:
                         parent.replace(bookmark_range, new_run)
-                        print(f"处理设计日期书签: {bookmark_name} -> {current_date}")
+                        # print(f"处理设计日期书签: {bookmark_name} -> {current_date}") # 注释掉处理设计日期书签的日志
 
         # 处理标准字段书签（包括带数字后缀的书签）
         for field in project_fields:
@@ -256,13 +322,12 @@ def replace_placeholders(template_path, data):
 
             # If field_value is determined (special cases) or it's a general field, look for matching bookmarks
             if field_value is not None or field not in ['星级目标', '绿色星级', '建筑类型']:
-                processed_field = False
                 for bookmark_name in list(bookmarks_dict.keys()):
                     # Check if the bookmark name matches the current field or its pattern
                     if bookmark_name == field or field_pattern.match(bookmark_name):
                         # Ensure the bookmark still exists in the dictionary before accessing
                         if bookmark_name not in bookmarks_dict:
-                            print(f"警告: 尝试处理书签 {bookmark_name} 但它不在字典中 (可能已被处理?)")
+                            print(f"警告: 尝试访问已处理或无效的书签 {bookmark_name}")
                             continue
 
                         current_field_value = field_value # Use pre-calculated value for special fields
@@ -274,52 +339,36 @@ def replace_placeholders(template_path, data):
                                 current_field_value = str(data[0].get(field, ''))
                             else:
                                 current_field_value = '' # Default to empty if no data
-                            print(f"处理书签: {bookmark_name} (数据字段: {field}) -> {current_field_value}")
-                        else:
+                            # print(f"处理书签: {bookmark_name} (数据字段: {field}) -> {current_field_value}") # Keep commented
+                        # else:
                             # For special fields, value was already calculated
-                             print(f"处理书签: {bookmark_name} -> {current_field_value}")
+                             # print(f"处理书签: {bookmark_name} -> {current_field_value}") # Keep commented
 
-                        try:
-                            # 获取原始格式
-                            bookmark_range = bookmarks_dict[bookmark_name]
-                            original_props = None
-                            if bookmark_range is not None and hasattr(bookmark_range, '_element'):
-                                # 尝试找到书签内的格式
-                                bookmark_element = bookmark_range._element # Get the lxml element
-                                for element in bookmark_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                    original_props = deepcopy(element)
-                                    break
-                                
-                                # 如果没找到格式，尝试从父元素获取
-                                if original_props is None:
-                                   parent_element = bookmark_range.getparent()
-                                   if parent_element is not None and hasattr(parent_element, '_element'): # Check if parent has _element
-                                       parent_lxml_element = parent_element._element
-                                       for element in parent_lxml_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                           original_props = deepcopy(element)
-                                           break
-                            
-                            # 创建新的文本运行并应用格式
-                            if original_props is not None:
-                                # 使用原始格式创建新的文本运行
-                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:t>{current_field_value}</w:t></w:r>')
-                                # 将原始格式应用到新的运行
-                                new_run.insert(0, original_props)
+                        # try: # Keep commented if specific error handling here isn't needed
+                        # 获取原始格式
+                        bookmark_range = bookmarks_dict[bookmark_name]
+                        original_props = None
+                        bookmark_element = None # Initialize bookmark_element
+                        if bookmark_range is not None:
+                            if hasattr(bookmark_range, '_element'):
+                                bookmark_element = bookmark_range._element # 是 python-docx 对象
+                            elif isinstance(bookmark_range, lxml.etree._Element):
+                                bookmark_element = bookmark_range # 本身就是 lxml 对象
                             else:
-                                # 如果没有找到原始格式，使用默认格式
-                                new_run = parse_xml(f'<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:rPr><w:rFonts w:eastAsia="宋体"/><w:sz w:val="21"/></w:rPr><w:t>{current_field_value}</w:t></w:r>')
+                                print(f"警告: 书签 {bookmark_name} 对象类型未知 ({type(bookmark_range)})，跳过格式处理。")
 
-                            bookmark_range = bookmarks_dict[bookmark_name]
-                            parent = bookmark_range.getparent()
-                            if parent is not None:
-                                parent.replace(bookmark_range, new_run)
-                                processed_field = True
-                        except Exception as e:
-                            print(f"处理书签 {bookmark_name} 时出错: {e}")
+                        if bookmark_element is not None:
+                            # 尝试找到书签内的格式
+                            # bookmark_element = bookmark_range._element # Get the lxml element (已在上面获取)
+                            for child in bookmark_element.iterchildren():
+                                if child.tag.endswith('}rPr'): # Check tag using Clark notation {namespace}localname
+                                    original_props = deepcopy(child)
+                        # except Exception as e:
+                           # print(f"处理书签 {bookmark_name} 时出错: {e}")
 
                 # Optional: Print message if a special field bookmark was expected but not found
-                if field in ['星级目标', '绿色星级', '建筑类型'] and not processed_field:
-                     print(f"未在文档中找到 '{field}' 或其变体书签。")
+                # if field in ['星级目标', '绿色星级', '建筑类型'] and not processed_field:
+                     # print(f"未在文档中找到 '{field}' 或其变体书签。") # Keep commented
         
         # 计算标准项目总分，用于整个文档中的替换
         standard_project_score = ""
@@ -380,8 +429,8 @@ def replace_placeholders(template_path, data):
                         new_run.font.size = Pt(12)  # 小四字体大小
                 
         # 处理段落中的占位符
-        print("\n=== 检查文档中的占位符 ===")
-        print("检查段落中的占位符:")
+        # print("\n=== 检查文档中的占位符 ===") # 注释掉
+        # print("检查段落中的占位符:") # 注释掉
         for i, paragraph in enumerate(doc.paragraphs):
             text = paragraph.text
             # 获取当前日期（格式：YYYY年MM月DD日）
@@ -398,8 +447,8 @@ def replace_placeholders(template_path, data):
                 
             # 处理其他占位符
             if '{' in new_text:
-                print(f"\n段落 {i}:")
-                print(f"原始文本: {text}")
+                # print(f"\n段落 {i}:") # 注释掉
+                # print(f"原始文本: {text}") # 注释掉
                 
                 # 查找条文号占位符
                 for match in re.finditer(r'\{(\d+\.\d+\.\d+(?:措施)?)\}', new_text):
@@ -426,10 +475,10 @@ def replace_placeholders(template_path, data):
                     else:
                         field_value = str(field_value)
                     
-                    if is_measure:
-                        print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
-                    else:
-                        print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
+                    # if is_measure:
+                        # print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}") # 注释掉
+                    # else:
+                        # print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}") # 注释掉
                     
                     # 替换占位符
                     new_text = new_text.replace(placeholder_with_braces, field_value)
@@ -452,7 +501,7 @@ def replace_placeholders(template_path, data):
                             else:
                                 field_value = str(field_value)
                             
-                            print(f"替换占位符 {placeholder} -> {field_value}")
+                            # print(f"替换占位符 {placeholder} -> {field_value}") # 注释掉
                             # 替换占位符
                             new_text = new_text.replace(placeholder, field_value)
                             text_changed = True
@@ -475,7 +524,7 @@ def replace_placeholders(template_path, data):
                             else:
                                 field_value = str(field_value)
                             
-                            print(f"替换简写占位符 {placeholder} -> {field_value}")
+                            # print(f"替换简写占位符 {placeholder} -> {field_value}") # 注释掉
                             # 替换占位符
                             new_text = new_text.replace(placeholder, field_value)
                             text_changed = True
@@ -530,7 +579,7 @@ def replace_placeholders(template_path, data):
                         new_run.font.size = Pt(14)  # 四号字体大小为14磅
 
         # 处理表格中的占位符
-        print("\n检查表格中的占位符:")
+        # print("\n检查表格中的占位符:") # 注释掉
         for i, table in enumerate(doc.tables):
             for row_idx, row in enumerate(table.rows):
                 for cell_idx, cell in enumerate(row.cells):
@@ -541,8 +590,8 @@ def replace_placeholders(template_path, data):
                     for paragraph in cell.paragraphs:
                         text = paragraph.text
                         if '{' in text:
-                            print(f"\n表格 {i}, 行 {row_idx}, 列 {cell_idx}:")
-                            print(f"原始文本: {text}")
+                            # print(f"\n表格 {i}, 行 {row_idx}, 列 {cell_idx}:") # 注释掉
+                            # print(f"原始文本: {text}") # 注释掉
                             
                             # 使用简单的文本替换方法
                             new_text = text
@@ -551,13 +600,13 @@ def replace_placeholders(template_path, data):
                             # 处理设计日期占位符
                             if "{设计日期}" in new_text:
                                 new_text = new_text.replace("{设计日期}", current_date)
-                                print(f"替换占位符 {{设计日期}} -> {current_date}")
+                                # print(f"替换占位符 {{设计日期}} -> {current_date}") # 注释掉
                                 text_changed = True
                                 
                             # 处理标准项目总分占位符
                             if "{标准项目总分}" in new_text:
                                 new_text = new_text.replace("{标准项目总分}", standard_project_score)
-                                print(f"替换占位符 {{标准项目总分}} -> {standard_project_score}")
+                                # print(f"替换占位符 {{标准项目总分}} -> {standard_project_score}") # 注释掉
                                 text_changed = True
                             
                             # 查找条文号占位符
@@ -585,10 +634,10 @@ def replace_placeholders(template_path, data):
                                 else:
                                     field_value = str(field_value)
                                 
-                                if is_measure:
-                                    print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}")
-                                else:
-                                    print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}")
+                                # if is_measure:
+                                    # print(f"替换条文措施占位符 {{{placeholder}}} -> {field_value}") # 注释掉
+                                # else:
+                                    # print(f"替换条文得分占位符 {{{placeholder}}} -> {field_value}") # 注释掉
                                 
                                 # 替换占位符
                                 new_text = new_text.replace(placeholder_with_braces, field_value)
@@ -611,7 +660,7 @@ def replace_placeholders(template_path, data):
                                         else:
                                             field_value = str(field_value)
                                         
-                                        print(f"替换占位符 {placeholder} -> {field_value}")
+                                        # print(f"替换占位符 {placeholder} -> {field_value}") # 注释掉
                                         # 替换占位符
                                         new_text = new_text.replace(placeholder, field_value)
                                         text_changed = True
@@ -634,7 +683,7 @@ def replace_placeholders(template_path, data):
                                         else:
                                             field_value = str(field_value)
                                         
-                                        print(f"替换简写占位符 {placeholder} -> {field_value}")
+                                        # print(f"替换简写占位符 {placeholder} -> {field_value}") # 注释掉
                                         # 替换占位符
                                         new_text = new_text.replace(placeholder, field_value)
                                         text_changed = True
@@ -692,18 +741,20 @@ def replace_placeholders(template_path, data):
         if '标准项目总分' in bookmarks_dict:
             bookmark_range = bookmarks_dict['标准项目总分']
             original_props = None
+            bookmark_element = None # Initialize
             if bookmark_range is not None:
-                # 尝试找到书签内的格式
-                for element in bookmark_range.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                    original_props = deepcopy(element)
-                    break
-                
-                # 如果没找到格式，尝试从父元素获取
-                if original_props is None and bookmark_range.getparent() is not None:
-                    for element in bookmark_range.getparent().xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                        original_props = deepcopy(element)
-                        break
-            
+                if hasattr(bookmark_range, '_element'):
+                     bookmark_element = bookmark_range._element
+                elif isinstance(bookmark_range, lxml.etree._Element):
+                     bookmark_element = bookmark_range
+                else:
+                     print(f"警告: 书签 {'标准项目总分'} 对象类型未知 ({type(bookmark_range)})，跳过格式处理。")
+
+                if bookmark_element is not None:
+                     for child in bookmark_element.iterchildren():
+                         if child.tag.endswith('}rPr'):
+                            original_props = deepcopy(child)
+
             # 创建新的文本运行
             if original_props is not None:
                 # 使用原始格式创建新的文本运行
@@ -719,7 +770,7 @@ def replace_placeholders(template_path, data):
                 parent = bookmark_range.getparent()
                 if parent is not None:
                     parent.replace(bookmark_range, new_run)
-                    print(f"替换书签 标准项目总分 -> {standard_project_score}")
+                    # print(f"替换书签 标准项目总分 -> {standard_project_score}") # 注释掉
 
         # 处理映射的简写书签（包括带数字后缀的）
         for short_name, full_name in placeholder_mapping.items():
@@ -730,26 +781,25 @@ def replace_placeholders(template_path, data):
                     field_value = ''
                     if data and isinstance(data[0], dict):
                         field_value = str(data[0].get(full_name, ''))
-                        print(f"处理简写书签: {bookmark_name} -> {field_value}")
+                        # print(f"处理简写书签: {bookmark_name} -> {field_value}") # 注释掉
                     
                     # 获取原始格式
                     bookmark_range = bookmarks_dict[bookmark_name]
                     original_props = None
-                    if bookmark_range is not None and hasattr(bookmark_range, '_element'):
+                    bookmark_element = None # Initialize bookmark_element
+                    if bookmark_range is not None:
+                        if hasattr(bookmark_range, '_element'):
+                            bookmark_element = bookmark_range._element # 是 python-docx 对象
+                        elif isinstance(bookmark_range, lxml.etree._Element):
+                            bookmark_element = bookmark_range # 本身就是 lxml 对象
+                        else:
+                            print(f"警告: 书签 {bookmark_name} 对象类型未知 ({type(bookmark_range)})，跳过格式处理。")
+                            
+                    if bookmark_element is not None:
                         # 尝试找到书签内的格式
-                        bookmark_element = bookmark_range._element # Get the lxml element
-                        for element in bookmark_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                            original_props = deepcopy(element)
-                            break
-                        
-                        # 如果没找到格式，尝试从父元素获取
-                        if original_props is None:
-                           parent_element = bookmark_range.getparent()
-                           if parent_element is not None and hasattr(parent_element, '_element'): # Check if parent has _element
-                               parent_lxml_element = parent_element._element
-                               for element in parent_lxml_element.xpath('.//w:rPr', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}):
-                                   original_props = deepcopy(element)
-                                   break
+                        for child in bookmark_element.iterchildren():
+                            if child.tag.endswith('}rPr'):
+                                original_props = deepcopy(child)
                     
                     # 创建新的文本运行
                     if original_props is not None:
@@ -766,14 +816,16 @@ def replace_placeholders(template_path, data):
                         parent = bookmark_range.getparent()
                         if parent is not None:
                             parent.replace(bookmark_range, new_run)
-                            print(f"替换简写书签: {bookmark_name} -> {field_value}")
+                            # print(f"替换简写书签: {bookmark_name} -> {field_value}") # 注释掉
 
         modify_square_chars_font(doc)
 
         # 确保temp目录存在
         os.makedirs('temp', exist_ok=True)
         
-        output_path = os.path.join('temp', '公共交通站点分析报告.docx')
+        # 从模板路径获取文件名
+        output_filename = os.path.basename(template_path)
+        output_path = os.path.join('temp', output_filename)
         
         # 保存修改后的文档
         doc.save(output_path)
@@ -785,7 +837,10 @@ def replace_placeholders(template_path, data):
             
         return output_path
     except Exception as e:
-        print(f"处理文档时出错：{str(e)}")
+        print(f"错误: 处理文档 {template_path} 时发生异常：{str(e)}") # 加入模板路径
         import traceback
-        print(traceback.format_exc())
-        return f'处理文档时出错：{str(e)}'
+        print("--- DETAILED TRACEBACK START ---")
+        print(traceback.format_exc()) # 确保打印完整 Traceback
+        print("--- DETAILED TRACEBACK END ---")
+        # return f'处理文档时出错：{str(e)}' # 不再返回错误字符串
+        return None # 返回 None 表示失败

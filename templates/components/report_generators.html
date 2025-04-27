@@ -70,26 +70,57 @@
         })
         .then(response => {
             if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || '生成报审表失败');
-                });
+                // Log the error status immediately
+                console.error(`服务器返回错误状态: ${response.status} ${response.statusText}`);
+                // Attempt to parse the error response as JSON
+                return response.json()
+                    .then(data => {
+                        // Successfully parsed JSON error from backend
+                        console.error("后端错误详情:", data);
+                        // Throw an error using the backend's message
+                        throw new Error(data.error || `服务器错误 ${response.status}`);
+                    })
+                    .catch(jsonError => {
+                        // Failed to parse the error response as JSON (e.g., HTML error page)
+                        console.error("无法将错误响应解析为JSON:", jsonError);
+                        // Attempt to read the response as text for more context
+                        return response.text().then(textData => {
+                           console.error("原始错误响应文本:", textData);
+                           throw new Error(`服务器错误 ${response.status}，无法解析错误详情`);
+                        });
+                    });
             }
-            return response.blob();
+            // If response is OK, proceed to get the blob
+            console.log("响应成功 (OK), 尝试获取 blob.");
+            return response.blob(); // Pass the blob to the next .then()
         })
         .then(blob => {
+            // This block should ONLY run if response.ok was true and blob was returned
+            console.log("成功接收到 blob, 创建下载链接.");
             // 创建下载链接
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            if (currentProjectStandard=='四川省标') {
-                a.download = '四川省绿色建筑报审表.docx';
-            } else if (currentProjectStandard=='成都市标') {
-                a.download = '成都市绿色建筑报审表.docx';
+
+            // Determine download filename based on standard
+            let downloadFilename = '绿色建筑报审表';
+            const projectName = document.getElementById('current_project_name')?.value || '项目';
+
+            if (currentProjectStandard === '四川省标' || currentProjectStandard === '成都市标') {
+                 // For Sichuan and Chengdu standards, backend sends a ZIP file
+                 downloadFilename = `${projectName}_绿建报审表.zip`;
             } else {
-                a.download = '绿色建筑报审表.docx';
+                 // For other standards (like potentially 국标/安徽, if it returns a single file)
+                 // or as a fallback if standard is unknown
+                 downloadFilename = `${projectName}_绿色建筑报审表.docx`;
             }
+             // Clean filename (remove potentially invalid characters) - basic example
+            downloadFilename = downloadFilename.replace(/[<>:"/\\|?*]+/g, '_');
+
+            a.download = downloadFilename;
             document.body.appendChild(a);
             a.click();
+            a.remove(); // Clean up the link element
             window.URL.revokeObjectURL(url);
 
             // 完成进度条
@@ -99,26 +130,23 @@
                 setTimeout(() => {
                     wordMenuItem.classList.remove('loading');
                     wordMenuItem.style.backgroundImage = '';
-                    // 不移除active类，保持菜单高亮
-                    // 确保菜单项保持可见
                     wordMenuItem.classList.add('keep-visible');
                 }, 500);
             }
         })
         .catch(error => {
-            console.error('生成报审表失败:', error);
-            alert(error.message || '生成报审表失败，请重试');
-            
-            // 重置进度条
+            // This block catches errors from ANY previous step in the fetch chain
+            console.error('生成报审表时捕获到错误:', error); // Log the actual error object
+            // Display the error message to the user
+            alert(error.message || '生成报审表时发生未知错误，请查看控制台了解详情');
+
+            // 重置进度条和UI状态
             if (wordMenuItem) {
                 clearInterval(progressInterval);
                 wordMenuItem.classList.remove('loading');
                 wordMenuItem.style.backgroundImage = '';
-                // 在出错时也不移除active类
-                // 确保菜单项保持可见
                 wordMenuItem.classList.add('keep-visible');
             }
-            
         });
     }
     
