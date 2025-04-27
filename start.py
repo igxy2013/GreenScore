@@ -16,14 +16,6 @@ if not os.path.exists('logs'):
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
-def is_wsl():
-    """检查是否在WSL环境中运行"""
-    if sys.platform == 'linux':
-        with open('/proc/version', 'r') as f:
-            if 'microsoft' in f.read().lower():
-                return True
-    return False
-
 def init_database():
     """初始化数据库并创建管理员用户（如果不存在）"""
     from app import app
@@ -81,13 +73,9 @@ def start_server():
             url_scheme='http'         # 设置URL方案
         )
     else:
-        # WSL或其他Linux环境使用gunicorn
-        if is_wsl():
-            logger.info("在WSL环境下使用Gunicorn服务器启动...")
-            print("在WSL环境下使用Gunicorn服务器启动...")
-        else:
-            logger.info("在Linux环境下使用Gunicorn服务器启动...")
-            print("在Linux环境下使用Gunicorn服务器启动...")
+        # Linux环境使用gunicorn
+        logger.info("在Linux环境下使用Gunicorn服务器启动...")
+        print("在Linux环境下使用Gunicorn服务器启动...")
         
         # 确保logs目录存在
         if not os.path.exists('logs'):
