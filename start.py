@@ -2,6 +2,10 @@ import os
 import platform
 import sys
 import logging
+from dotenv import load_dotenv
+
+# 加载 .env 文件中的环境变量
+load_dotenv()
 
 # 配置日志
 # 确保logs文件夹存在
@@ -51,6 +55,11 @@ def start_server():
     # 先初始化数据库
     init_database()
     
+    # 从环境变量获取端口号，默认为 5050
+    port = int(os.getenv('SERVER_PORT', '5050'))
+    logger.info(f"服务器将在端口 {port} 上启动...")
+    print(f"服务器将在端口 {port} 上启动...")
+
     if platform.system() == 'Windows':
         # Windows环境使用waitress
         from waitress import serve
@@ -61,7 +70,7 @@ def start_server():
         serve(
             app, 
             host='0.0.0.0', 
-            port=5050,
+            port=port,              # 使用从环境变量获取的端口
             threads=32,               # 增加线程数量，处理更多并发请求
             connection_limit=1000,    # 增加连接限制
             channel_timeout=300,      # 设置通道超时时间
@@ -105,7 +114,7 @@ def start_server():
         from app import app
         
         options = {
-            'bind': '0.0.0.0:5050',
+            'bind': f'0.0.0.0:{port}', # 使用从环境变量获取的端口
             'workers': 3,
             'worker_class': 'sync',
             'threads': 4,
