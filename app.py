@@ -1897,29 +1897,64 @@ def get_star_case_scores():
         # 获取建筑类型
         building_type = project.building_type
         # print(f"项目ID: {project_id}, 星级目标: {star_rating_target}, 评价标准: {standard}, 建筑类型: {building_type}")
-        # 查询符合条件的星级案例数据
-        query = """
+        
+        # --- 获取该评价标准的最大条文数 --- 
+        max_clause_count = 0
+        try:
+            # --- 修改：动态获取表名 --- 
+            table_name = review_standard.__tablename__ # 从模型获取实际表名
+            count_sql = f"SELECT COUNT(DISTINCT `条文号`) FROM `{table_name}` WHERE `标准名称` = :standard"
+            count_query = text(count_sql)
+            # --- 修改结束 ---
+            count_result = db.session.execute(count_query, {"standard": standard})
+            max_clause_count = count_result.scalar() or 0 # 获取标量结果，如果为None则设为0
+            if max_clause_count > 0:
+                app.logger.info(f"标准 '{standard}' 共有 {max_clause_count} 条不同的条文。将限制查询结果数量。")
+            else:
+                app.logger.warning(f"标准 '{standard}' 未找到条文或条文数为0，将不限制星级案例查询数量。")
+        except Exception as count_err:
+            app.logger.error(f"查询标准 '{standard}' 的条文总数失败: {count_err}，将不限制星级案例查询数量。")
+            max_clause_count = 0 # 保证出错时不限制
+
+        # --- 第一步：尝试使用所有三个条件查询，确保每个条文号只取一条，并添加 LIMIT ---
+        query1 = """
+        WITH RankedCases AS (
+            SELECT
+                条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级,
+                ROW_NUMBER() OVER(PARTITION BY `条文号` ORDER BY `序号` ASC) as rn
+            FROM 星级案例
+            WHERE 评价标准 = :standard
+              AND 星级目标 = :star_rating_target
+              AND 建筑类型 = :building_type
+        )
         SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
-        FROM 星级案例
-        WHERE 评价标准 = :standard 
-          AND 星级目标 = :star_rating_target
-          AND 建筑类型 = :building_type
+        FROM RankedCases
+        WHERE rn = 1
+        ORDER BY `条文号` ASC -- 按条文号排序最终结果
         """
-        
-        app.logger.info(f"查询星级案例数据: 标准={standard}, 星级目标={star_rating_target}, 建筑类型={building_type}")
-        
-        result = db.session.execute(
-            text(query),
-            {
+        # 只有在获取到有效最大条文数时才添加LIMIT
+        if max_clause_count > 0:
+            query1 += " LIMIT :limit_count"
+            query_params1 = {
+                "standard": standard,
+                "star_rating_target": star_rating_target,
+                "building_type": building_type,
+                "limit_count": max_clause_count
+            }
+            app.logger.info(f"[尝试 1] 查询星级案例数据 (限制 {max_clause_count} 条): 标准={standard}, 星级目标={star_rating_target}, 建筑类型={building_type}")
+        else:
+             query_params1 = {
                 "standard": standard,
                 "star_rating_target": star_rating_target,
                 "building_type": building_type
             }
-        )
+             app.logger.info(f"[尝试 1] 查询星级案例数据 (无限制): 标准={standard}, 星级目标={star_rating_target}, 建筑类型={building_type}")
+        
+        result1 = db.session.execute(text(query1), query_params1)
         
         # 获取星级案例数据
         star_case_data = []
-        for row in result.fetchall():
+        for row in result1.fetchall():
             star_case_data.append({
                 'clause_number': row[0],
                 'category': row[1],
@@ -1930,12 +1965,62 @@ def get_star_case_scores():
                 'level': row[6]
             })
         
-        app.logger.info(f"找到 {len(star_case_data)} 条匹配的星级案例数据")
-        
+        app.logger.info(f"[尝试 1] 找到 {len(star_case_data)} 条匹配的星级案例数据")
+
+        # --- 第二步：如果第一次查询无结果，则尝试只使用两个条件查询，同样确保唯一性并添加 LIMIT ---
         if len(star_case_data) == 0:
+            app.logger.warning(f"[尝试 1] 未找到数据，尝试使用备选条件查询。")
+            query2 = """
+            WITH RankedCases AS (
+                SELECT
+                    条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级,
+                    ROW_NUMBER() OVER(PARTITION BY `条文号` ORDER BY `序号` ASC) as rn
+                FROM 星级案例
+                WHERE 评价标准 = :standard 
+                  AND 星级目标 = :star_rating_target
+            )
+            SELECT 条文号, 分类, 是否达标, 得分, 技术措施, 专业, 评价等级
+            FROM RankedCases
+            WHERE rn = 1
+            ORDER BY `条文号` ASC -- 按条文号排序最终结果
+            """
+            # 同样添加 LIMIT
+            if max_clause_count > 0:
+                query2 += " LIMIT :limit_count"
+                query_params2 = {
+                    "standard": standard,
+                    "star_rating_target": star_rating_target,
+                    "limit_count": max_clause_count
+                }
+                app.logger.info(f"[尝试 2] 查询星级案例数据 (限制 {max_clause_count} 条): 标准={standard}, 星级目标={star_rating_target} (忽略建筑类型)")
+            else:
+                 query_params2 = {
+                    "standard": standard,
+                    "star_rating_target": star_rating_target
+                }
+                 app.logger.info(f"[尝试 2] 查询星级案例数据 (无限制): 标准={standard}, 星级目标={star_rating_target} (忽略建筑类型)")
+
+            result2 = db.session.execute(text(query2), query_params2)
+            # 重新获取星级案例数据
+            star_case_data = []
+            for row in result2.fetchall():
+                star_case_data.append({
+                    'clause_number': row[0],
+                    'category': row[1],
+                    'is_achieved': row[2],
+                    'score': row[3],
+                    'technical_measures': row[4],
+                    'specialty': row[5],
+                    'level': row[6]
+                })
+            app.logger.info(f"[尝试 2] 找到 {len(star_case_data)} 条匹配的星级案例数据")
+
+        # --- 后续处理：检查最终是否有数据 ---
+        if len(star_case_data) == 0:
+            app.logger.error(f"[尝试 1 和 2 均失败] 未找到标准={standard}, 星级目标={star_rating_target} (及建筑类型={building_type}) 的任何星级案例数据")
             return jsonify({
                 'success': False,
-                'message': '未找到匹配的星级案例数据'
+                'message': '未找到匹配的星级案例数据 (包括备选条件)'
             }), 404
         
         # 开始事务
