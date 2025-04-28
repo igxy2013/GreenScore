@@ -884,3 +884,17 @@ th {
 .menu-content.expanded {
     display: block !important;
 }
+
+/* 手动添加的样式 */
+.max-h-24 {
+  max-height: 6rem; /* 24 * 0.25rem = 6rem */
+}
+.max-h-48 {
+    max-height: 12rem; /* 48 * 0.25rem = 12rem */
+  }
+.max-h-96 {
+    max-height: 24rem; /* 96 * 0.25rem = 24rem */
+  }
+.min-h-\[100px\] {
+  min-height: 100px;
+}

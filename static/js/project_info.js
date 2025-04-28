@@ -11,6 +11,8 @@ var pastedImage = null;
 var lastExtractedData = null;
 // 评价标准初始值
 let initialStandardValue = '';
+// 项目地点初始值
+let initialProjectLocation = '';
 
 // 初始化省市数据
 document.addEventListener('DOMContentLoaded', function() {
@@ -22,6 +24,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (standardSelect) {
         initialStandardValue = standardSelect.value;
         console.log('Initial standard value stored:', initialStandardValue);
+    }
+    // --- 新增结束 ---
+
+    // --- 新增：存储项目地点初始值 ---
+    const locationInput = document.getElementById('project_location');
+    if (locationInput) {
+        initialProjectLocation = locationInput.value;
+        console.log('Initial project location stored:', initialProjectLocation);
     }
     // --- 新增结束 ---
 
@@ -810,6 +820,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Checking standard change:', { initial: initialStandardValue, current: currentStandardValue, changed: standardHasChanged });
             }
             // --- 新增结束 ---
+
+            // --- 新增：检查项目地点是否更改 ---
+            const locationInput = document.getElementById('project_location');
+            let currentLocationValue = '';
+            let locationHasChanged = false;
+            if (locationInput) {
+                currentLocationValue = locationInput.value;
+                locationHasChanged = currentLocationValue !== initialProjectLocation;
+                console.log('Checking location change:', { initial: initialProjectLocation, current: currentLocationValue, changed: locationHasChanged });
+            }
+            // --- 新增结束 ---
             
             // 获取得分计算开关的当前状态并添加到表单数据
             const scoreToggleInput = document.getElementById('scoreToggle');
@@ -828,15 +849,16 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // --- 修改：根据评价标准是否更改决定刷新或继续 ---
-                    if (standardHasChanged) {
+                    // --- 修改：根据评价标准或项目地点是否更改决定刷新或继续 ---
+                    if (standardHasChanged || locationHasChanged) {
                         toast('项目信息保存成功', 'success');
                         // 更新初始值，防止重复刷新
                         initialStandardValue = currentStandardValue;
+                        initialProjectLocation = currentLocationValue; // 更新地点初始值
                         // 短暂延迟后刷新页面
                         setTimeout(() => {
                             window.location.reload();
-                        }, 1500); // 延迟1.5秒以便用户看到提示
+                        }, 1000); // 延迟1秒以便用户看到提示
                     } else {
                         toast('项目信息保存成功', 'success');
                         // 更新页面显示的项目ID

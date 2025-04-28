@@ -11,6 +11,13 @@ from copy import deepcopy
 from datetime import datetime
 import lxml.etree
 import traceback
+import platform # 用于检查操作系统
+import sys # 用于检查平台
+try:
+    import pythoncom # 导入 pythoncom 用于 CoInitialize
+except ImportError:
+    # 在非 Windows 平台上，pythoncom 可能不存在，但这没关系，因为我们会在后面检查平台
+    pythoncom = None 
 
 def modify_square_chars_font(doc):
     
@@ -373,11 +380,139 @@ def replace_bookmarks_in_doc(doc, project_info, score_data, standard):
          print(f"  信息: 以下 {len(unprocessed_bookmarks)} 个在文档中找到的书签未被替换 (可能无需替换或数据缺失): {list(unprocessed_bookmarks)[:20]}...")
 
 
+def update_toc_with_com(doc_path):
+    """
+    使用 COM 接口更新 Word 文档的目录。
+    仅在 Windows 且安装了 pywin32 和 Microsoft Word 时有效。
+    """
+    print("--- 尝试使用 COM 更新 Word 目录 ---")
+    if platform.system() != "Windows":
+        print("  非 Windows 系统，跳过 COM 目录更新。")
+        return False
+    
+    # 检查 pythoncom 是否可用 (理论上 Windows + pywin32 应该有)
+    if pythoncom is None:
+         print("  错误：pythoncom 模块无法导入，无法初始化 COM。")
+         return False
+
+    try:
+        import win32com.client as win32
+        print("  成功导入 win32com.client。")
+    except ImportError:
+        print("  错误：未找到 pywin32 库，无法使用 COM 更新目录。请确保已安装 pywin32。")
+        return False
+
+    word = None
+    doc = None
+    updated = False
+    coinitialized = False # 标记是否成功初始化 COM
+    try:
+        # --- 初始化 COM --- 
+        try:
+            pythoncom.CoInitialize()
+            coinitialized = True
+            print("  COM 已初始化。")
+        except pythoncom.com_error as init_err:
+            # 有时 COM 可能已被当前线程初始化 (例如嵌套调用)
+            # 检查错误码，如果是 S_FALSE (0x1)，表示已初始化，可以继续
+            # 其他错误则是有问题的
+            if init_err.hresult == 0x1: # S_FALSE
+                print("  COM 已被当前线程初始化，继续操作。")
+                coinitialized = True # 视为已初始化，以便稍后反初始化
+            else:
+                print(f"  COM 初始化失败: {init_err}")
+                return False # 初始化失败，无法继续
+
+        print(f"  尝试启动 Word 并打开文档: {doc_path}")
+        # 尝试连接到已运行的 Word 实例，如果失败则启动新实例
+        try:
+             word = win32.GetActiveObject("Word.Application")
+             print("  已连接到活动的 Word 实例。")
+        except pythoncom.com_error:
+             # GetActiveObject 失败通常是因为没有活动实例
+             print("  未找到活动的 Word 实例，尝试启动新的实例。")
+             try:
+                 word = win32.Dispatch("Word.Application")
+                 print("  已启动新的 Word 实例。")
+             except pythoncom.com_error as dispatch_err:
+                 print(f"  启动新的 Word 实例失败: {dispatch_err}")
+                 return False # 无法获取 Word 实例
+
+        # 设置 Word 可见性 (False 为后台运行)
+        word.Visible = False 
+        word.DisplayAlerts = False # 禁止显示警告信息
+
+        doc = word.Documents.Open(doc_path)
+        print(f"  文档已打开。")
+
+        if doc.TablesOfContents.Count >= 1:
+            print(f"  找到 {doc.TablesOfContents.Count} 个目录。开始更新...")
+            for i, toc in enumerate(doc.TablesOfContents):
+                 try:
+                     toc.Update()
+                     print(f"    目录 {i+1} 更新成功。")
+                     updated = True # 标记至少有一个目录成功更新
+                 except Exception as toc_update_err:
+                     print(f"    错误：更新目录 {i+1} 失败: {toc_update_err}")
+            if updated:
+                 print("  所有找到的目录已尝试更新。")
+            else:
+                 print("  未成功更新任何目录 (可能更新过程中出错)。")
+        else:
+            print("  文档中未找到目录 (TablesOfContents)。")
+
+        if updated: # 只有在成功更新了至少一个目录后才保存
+            print("  正在保存文档...")
+            doc.Save()
+            print("  文档保存成功。")
+        else:
+            print("  由于没有目录被成功更新，文档未重新保存。")
+
+        return updated # 返回是否至少有一个目录被更新
+
+    except Exception as e:
+        print(f"  COM 操作过程中发生错误: {e}")
+        print(traceback.format_exc())
+        return False # 出错则返回 False
+    finally:
+        # --- 确保 Word 被关闭和释放 ---
+        try:
+            if doc is not None:
+                doc.Close(SaveChanges=0) # 0 表示不保存更改（因为前面已经Save了或无需保存）
+                print("  Word 文档已关闭。")
+        except Exception as close_err:
+            print(f"  关闭 Word 文档时出错: {close_err}")
+        
+        try:
+            if word is not None:
+                 # 尝试让 Word 退出，即使失败也要继续反初始化 COM
+                 word.Quit()
+                 print("  Word 应用已退出。")
+        except Exception as quit_err:
+            print(f"  退出 Word 应用时出错: {quit_err}")
+        
+        # 释放 COM 对象 (可选但推荐)
+        word = None
+        doc = None
+
+        # --- 反初始化 COM --- 
+        if coinitialized:
+            try:
+                pythoncom.CoUninitialize()
+                print("  COM 已反初始化。")
+            except Exception as uninit_err:
+                 print(f"  COM 反初始化时出错: {uninit_err}")
+        
+        print("--- COM 目录更新尝试结束 ---")
+
+
 def replace_placeholders(template_path, data):
     """
     替换 Word 文档中的占位符或书签。
     根据评价标准选择不同的处理方式。
+    完成后尝试更新目录。
     """
+    output_path = None # 初始化为 None
     try:
         print(f"\n=== 开始处理文档模板 ===")
         print(f"模板文件路径: {template_path}")
@@ -428,15 +563,31 @@ def replace_placeholders(template_path, data):
                             if start_run_idx != -1 and end_run_idx != -1:
                                 # (此处省略未改变的插入图片、清理run、处理剩余文本的细节)
                                 try:
-                                   target_run = inline[start_run_idx]
-                                   original_text = target_run.text
-                                   target_run.text = original_text[:start_offset]
-                                   if hasattr(target_run, 'add_picture'):
-                                       target_run.add_picture(absolute_image_path, width=Inches(5.0))
-                                       # (Clean runs in between, handle remaining text in end_run)
-                                       image_replaced = True
-                                       break
-                                except Exception as img_err: print(f"段落图片插入出错: {img_err}")
+                                    # --- 修正和改进的清理与插入逻辑 ---
+                                    # 1. 处理结束 Run (保留占位符之后的部分)
+                                    if start_run_idx != end_run_idx:
+                                        if end_run_idx < len(inline): # 检查索引是否有效
+                                            end_run = inline[end_run_idx]
+                                            end_run.text = end_run.text[end_offset:] # 保留占位符结束位置之后的部分
+
+                                    # 2. 清理中间 Runs (完全清空)
+                                    # 从后往前清，理论上更安全，虽然在这里影响不大
+                                    for i in range(end_run_idx - 1, start_run_idx, -1):
+                                        if i < len(inline): # 检查索引是否有效
+                                            inline[i].text = ""
+
+                                    # 3. 处理开始 Run (保留占位符之前的部分，并插入图片)
+                                    start_run = inline[start_run_idx]
+                                    start_run.text = start_run.text[:start_offset] # 保留占位符开始位置之前的部分
+
+                                    # 4. 在开始 Run 的末尾插入图片
+                                    start_run.add_picture(absolute_image_path, width=Inches(5.0))
+                                    
+                                    image_replaced = True
+                                    print(f"  成功替换并插入图片于段落。")
+                                    break # 成功替换后，跳出当前段落的处理
+                                    # --- 修正逻辑结束 ---
+                                except Exception as img_err: print(f"段落图片插入/清理出错: {img_err}")
                         if image_replaced: break
                 if not image_replaced:
                     for table in doc.tables: # Check tables
@@ -445,13 +596,49 @@ def replace_placeholders(template_path, data):
                              for cell in row.cells:
                                  for paragraph in cell.paragraphs:
                                       if image_placeholder in paragraph.text:
-                                           # (与段落图片替换类似的逻辑)
-                                           inline = paragraph.runs
-                                           # ... (定位, 插入, 清理, 处理剩余文本) ...
-                                           if image_replaced: break
-                                 if image_replaced: break
-                             if image_replaced: break
-                         if image_replaced: break
+                                            inline = paragraph.runs
+                                            full_text = "".join(run.text for run in inline)
+                                            if image_placeholder in full_text:
+                                                start_index = full_text.find(image_placeholder)
+                                                end_index = start_index + len(image_placeholder)
+                                                start_run_idx, start_offset, end_run_idx, end_offset = -1,-1,-1,-1 #简化表示
+                                                current_pos = 0
+                                                for i, run in enumerate(inline): # Find start/end run/offset
+                                                    run_len = len(run.text)
+                                                    if start_run_idx == -1 and start_index < current_pos + run_len: start_run_idx=i; start_offset=start_index-current_pos
+                                                    if end_run_idx == -1 and end_index <= current_pos + run_len: end_run_idx=i; end_offset=end_index-current_pos; break
+                                                    current_pos += run_len
+
+                                                if start_run_idx != -1 and end_run_idx != -1:
+                                                    try:
+                                                        # --- 修正和改进的清理与插入逻辑 (表格内) ---
+                                                        # 1. 处理结束 Run
+                                                        if start_run_idx != end_run_idx:
+                                                            if end_run_idx < len(inline):
+                                                                end_run = inline[end_run_idx]
+                                                                end_run.text = end_run.text[end_offset:]
+
+                                                        # 2. 清理中间 Runs
+                                                        for i in range(end_run_idx - 1, start_run_idx, -1):
+                                                            if i < len(inline):
+                                                                inline[i].text = ""
+
+                                                        # 3. 处理开始 Run (清空并插入)
+                                                        start_run = inline[start_run_idx]
+                                                        start_run.text = start_run.text[:start_offset]
+
+                                                        # 4. 插入图片
+                                                        start_run.add_picture(absolute_image_path, width=Inches(5.0))
+
+                                                        image_replaced = True
+                                                        print(f"  成功替换并插入图片于表格单元格。")
+                                                        break # 成功替换后，跳出当前单元格内段落的处理
+                                                        # --- 修正逻辑结束 ---
+                                                    except Exception as img_err: print(f"表格图片插入/清理出错: {img_err}")
+                                      if image_replaced: break # 跳出单元格循环
+                                 if image_replaced: break # 跳出表格行循环
+                             if image_replaced: break # 跳出表格循环
+                         if image_replaced: break # 跳出最外层表格循环 (以防万一)
 
             elif birdview_image_relative_path:
                  print(f"警告: 提供的鸟瞰图路径检查失败或文件不存在: {birdview_image_relative_path} (绝对路径: {absolute_image_path})")
@@ -559,7 +746,6 @@ def replace_placeholders(template_path, data):
         print("方框符号字体处理完成。")
 
         # 保存处理后的文档 (保持不变)
-        # ... (此处省略未改变的保存代码) ...
         output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
         os.makedirs(output_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -569,14 +755,24 @@ def replace_placeholders(template_path, data):
         output_filename = f"{safe_project_name}_{base_template_name}_{timestamp}.docx"
         output_path = os.path.join(output_dir, output_filename)
         try:
+            print(f"正在保存初次替换后的文档: {output_path}")
             doc.save(output_path)
-            print(f"文档已保存: {output_path}")
+            print(f"文档已初步保存: {output_path}")
+            
+            # --- 更新目录 ---
+            # 需要绝对路径来传递给 COM
+            absolute_output_path = os.path.abspath(output_path) 
+            update_toc_with_com(absolute_output_path)
+            # --- 目录更新结束 ---
+
             print(f"=== 完成处理文档模板 ===")
-            return output_path
+            return output_path # 返回最终路径
+
         except Exception as save_err:
             print(f"保存文档时出错: {save_err}")
             print(traceback.format_exc())
             print(f"=== 处理文档失败 (保存阶段) ===")
+            output_path = None # 保存失败，重置为 None
             return None
 
     except Exception as e:
