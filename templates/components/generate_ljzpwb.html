@@ -1,0 +1,182 @@
+<div class="bg-white p-8 rounded-lg shadow-md">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">绿建专篇文本</h2>
+
+    <form action="{{ url_for('handle_generateljzpwb') }}" method="post" enctype="multipart/form-data" id="ljzpwbForm">
+        <input type="hidden" name="project_id" value="{{ project.id }}">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div>
+                <label for="land_use_nature" class="block text-sm font-medium text-gray-700 mb-1">用地性质</label>
+                <select id="land_use_nature" name="land_use_nature" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white">
+                    <option value="" disabled selected>请选择用地性质</option>
+                    <option value="居住用地">居住用地</option>
+                    <option value="商业用地">商业用地</option>
+                    <option value="工业用地">工业用地</option>
+                    <option value="其他用地">其他用地</option>
+                </select>
+            </div>
+            <div>
+                <label for="renewable_energy_use" class="block text-sm font-medium text-gray-700 mb-1">可再生能源利用</label>
+                <select id="renewable_energy_use" name="renewable_energy_use" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white">
+                    <option value="" disabled selected>请选择可再生能源利用方式</option>
+                    <option value="太阳能光伏发电">太阳能光伏发电</option>
+                    <option value="太阳能热水">太阳能热水</option>
+                </select>
+            </div>
+            <div>
+                <label for="structure_form" class="block text-sm font-medium text-gray-700 mb-1">结构形式</label>
+                <select id="structure_form" name="structure_form" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-white">
+                    <option value="" disabled selected>请选择结构形式</option>
+                    <option value="框架结构">框架结构</option>
+                    <option value="剪力墙结构">剪力墙结构</option>
+                    <option value="框架-剪力墙结构">框架-剪力墙结构</option>
+                    <option value="钢结构">钢结构</option>
+                    <option value="砌体结构">砌体结构</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-1">效果图</label>
+            <div class="flex items-center space-x-4">
+                <label for="effect_image" class="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                    <i class="ri-upload-2-line -ml-1 mr-2 h-5 w-5" aria-hidden="true"></i>
+                    浏览
+                </label>
+                <input type="file" id="effect_image" name="effect_image" class="hidden" accept="image/*" onchange="previewImage(event)">
+                <span id="image_filename" class="text-sm text-gray-500">未选择文件</span>
+            </div>
+        </div>
+
+        <div class="mb-6 border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[200px] flex justify-center items-center">
+            <img id="image_preview" src="#" alt="效果图预览" class="max-w-full max-h-48 hidden object-contain"/>
+            <span id="preview_placeholder" class="text-gray-400">图片预览区域</span>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="button" id="generateLjzpwbBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="ri-file-download-line -ml-1 mr-2 h-5 w-5" aria-hidden="true"></i>
+                <span class="button-text">导出绿建专篇文本</span>
+                <i class="ri-loader-4-line animate-spin ml-2 h-5 w-5 hidden button-loading-spinner" aria-hidden="true"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function previewImage(event) {
+    const reader = new FileReader();
+    const preview = document.getElementById('image_preview');
+    const placeholder = document.getElementById('preview_placeholder');
+    const filenameSpan = document.getElementById('image_filename');
+    const file = event.target.files[0];
+
+    reader.onload = function(){
+        preview.src = reader.result;
+        preview.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+    }
+
+    if (file) {
+        reader.readAsDataURL(file);
+        filenameSpan.textContent = file.name; // 显示文件名
+    } else {
+        preview.src = "#";
+        preview.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        filenameSpan.textContent = '未选择文件'; // 重置文件名显示
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ljzpwbForm');
+    const submitButton = document.getElementById('generateLjzpwbBtn');
+    const buttonText = submitButton.querySelector('.button-text');
+    const loadingSpinner = submitButton.querySelector('.button-loading-spinner');
+
+    if (submitButton) {
+        submitButton.addEventListener('click', function(event) {
+            event.preventDefault(); // 阻止按钮的默认行为（如果它是submit类型）
+
+            // 检查表单是否存在
+            if (!form) {
+                console.error("未找到表单元素 #ljzpwbForm");
+                alert('无法提交表单，请联系管理员。');
+                return;
+            }
+            
+            // 进入加载状态
+            submitButton.disabled = true;
+            buttonText.textContent = '正在生成...';
+            loadingSpinner.classList.remove('hidden');
+
+            const formData = new FormData(form);
+            const actionUrl = form.action; // 获取表单的 action URL
+            const projectName = document.getElementById('current_project_name')?.value || '项目';
+            const filename = `${projectName}_绿建专篇文本.docx`.replace(/[<>:"/\\|?*]+/g, '_'); // 清理文件名
+
+            fetch(actionUrl, {
+                method: 'POST',
+                body: formData, // 直接发送 FormData
+                // 不需要设置 Content-Type，浏览器会自动为 FormData 设置（包括 boundary）
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // 如果响应不成功，尝试解析错误信息
+                    return response.json().then(err => {
+                        throw new Error(err.error || `服务器错误: ${response.status}`);
+                    }).catch(() => {
+                        // 如果无法解析JSON，则抛出通用错误
+                        throw new Error(`服务器错误: ${response.status}`);
+                    });
+                }
+                 // 检查响应头，确认是文件下载
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+                    return response.blob();
+                } else {
+                    // 如果不是预期的文件类型，可能后端逻辑有变或出错
+                    throw new Error('服务器未返回预期的Word文档');
+                }
+            })
+            .then(blob => {
+                // 创建下载链接
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast('绿建专篇文本生成成功！', 'success');
+            })
+            .catch(error => {
+                console.error('生成绿建专篇文本失败:', error);
+                showToast(`生成失败: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                submitButton.disabled = false;
+                buttonText.textContent = '导出绿建专篇文本';
+                loadingSpinner.classList.add('hidden');
+            });
+        });
+    }
+});
+
+// 修改 showToast 函数以调用项目内部的 toast 函数，并移除 alert 回退
+function showToast(message, type = 'info') {
+    console.log(`Calling internal toast [${type}]: ${message}`);
+    // 检查全局的 toast 函数是否存在
+    if (typeof window.toast === 'function') {
+        window.toast(message, type); // 调用 project_info.js 中定义的 toast 函数
+    } else {
+        // 如果内部函数不存在，只在控制台打印警告
+        console.warn('内部 toast 函数未找到，无法显示提示消息。');
+        // alert(`[${type.toUpperCase()}] ${message}`); // 已移除 alert 调用
+    }
+}
+
+</script> 

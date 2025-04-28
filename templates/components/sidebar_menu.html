@@ -161,8 +161,8 @@
                     <span>绿建自评估报告</span>
                 </a>
                 {% endif %}
-                {% if project and project.location and '安徽' in project.location %}
-                <a href="javascript:void(0)" onclick="generateljzpwb()" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                {% if project and project.location and '安徽' in project.location and project.standard == '国标' %}
+                <a href="{{ url_for('project_detail', project_id=project.id, page='generate_ljzpwb') }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_page == 'generate_ljzpwb' %}active{% endif %}">
                     <i class="ri-draft-line mr-3"></i>
                     <span>绿建专篇文本</span>
                 </a>

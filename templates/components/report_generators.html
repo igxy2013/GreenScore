@@ -70,27 +70,43 @@
         })
         .then(response => {
             if (!response.ok) {
-                // Log the error status immediately
                 console.error(`服务器返回错误状态: ${response.status} ${response.statusText}`);
-                // Attempt to parse the error response as JSON
-                return response.json()
-                    .then(data => {
-                        // Successfully parsed JSON error from backend
-                        console.error("后端错误详情:", data);
-                        // Throw an error using the backend's message
-                        throw new Error(data.error || `服务器错误 ${response.status}`);
-                    })
-                    .catch(jsonError => {
-                        // Failed to parse the error response as JSON (e.g., HTML error page)
-                        console.error("无法将错误响应解析为JSON:", jsonError);
-                        // Attempt to read the response as text for more context
-                        return response.text().then(textData => {
-                           console.error("原始错误响应文本:", textData);
-                           throw new Error(`服务器错误 ${response.status}，无法解析错误详情`);
+                // Check for the specific 400 error first
+                if (response.status === 400) {
+                    return response.json()
+                        .then(data => {
+                            // Check if it's the specific error message we expect
+                            if (data && data.error === "当前地区暂无报审表模板文件！") {
+                                // Throw an error with the specific user-friendly message
+                                throw new Error(data.error); // Use the exact message from backend
+                            } else {
+                                // Other 400 error, use backend message if available, or generic
+                                console.error("后端错误详情 (400):", data);
+                                throw new Error(data.error || `服务器请求错误 (400)`);
+                            }
+                        })
+                        .catch(jsonError => {
+                            // Failed to parse JSON for the 400 error
+                            console.error("无法将 400 错误响应解析为JSON:", jsonError);
+                            throw new Error(`当前地区暂无报审表模板文件！`);
                         });
-                    });
+                } else {
+                     // Handle other non-OK statuses (like 500 Internal Server Error)
+                     return response.json() // Try to parse JSON
+                        .then(data => {
+                            console.error(`后端错误详情 (${response.status}):`, data);
+                            throw new Error(data.error || `服务器错误 ${response.status}`);
+                        })
+                        .catch(jsonError => { // Failed to parse JSON
+                            console.error(`无法将 ${response.status} 错误响应解析为JSON:`, jsonError);
+                            return response.text().then(textData => {
+                               console.error(`原始错误响应文本 (${response.status}):`, textData);
+                               throw new Error(`服务器错误 ${response.status}，无法解析错误详情`);
+                            });
+                        });
+                }
             }
-            // If response is OK, proceed to get the blob
+            // If response is OK
             console.log("响应成功 (OK), 尝试获取 blob.");
             return response.blob(); // Pass the blob to the next .then()
         })

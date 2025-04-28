@@ -3234,30 +3234,81 @@ def handle_self_assessment_report():
 @app.route('/api/generateljzpwb', methods=['POST'])
 def handle_generateljzpwb():
     """
-    处理生成绿建专篇文本的请求
+    处理生成绿建专篇文本的请求 (multipart/form-data)
     """
+    image_path = None # 初始化 image_path
     try:
-        # 获取请求数据
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "请求数据为空"}), 400
+        # 检查请求类型
+        if not request.content_type.startswith('multipart/form-data'):
+            app.logger.warning(f"收到非 multipart/form-data 请求: {request.content_type}")
+            # 可以选择返回错误，或者尝试按旧方式处理（如果需要兼容）
+            # return jsonify({"error": "请求必须是 multipart/form-data 类型"}), 415
 
-        # 提取必要参数
-        project_id = data.get('project_id')
+        # 从表单获取数据
+        project_id = request.form.get('project_id')
+        land_use_nature = request.form.get('land_use_nature')
+        renewable_energy_use = request.form.get('renewable_energy_use')
+        structure_form = request.form.get('structure_form') # <<< 获取结构形式的值
+
         if not project_id:
-            return jsonify({"error": "缺少项目ID参数"}), 400
-        
-        # 添加use_cache参数，默认为False，强制从数据库获取最新数据
-        request_data = {
+            return jsonify({"error": "缺少项目ID参数 (project_id)"}), 400
+
+        app.logger.info(f"开始处理绿建专篇文本生成请求，项目ID: {project_id}")
+        app.logger.info(f"用地性质: {land_use_nature}, 可再生能源: {renewable_energy_use}, 结构形式: {structure_form}") # <<< 添加日志
+
+        # 处理上传的效果图文件
+        effect_image_file = request.files.get('effect_image')
+        if effect_image_file and effect_image_file.filename:
+            try:
+                # 创建临时文件保存目录（如果需要）
+                temp_dir = os.path.join('uploads', 'tmp' + werkzeug.utils.secure_filename(str(project_id))) # 示例临时目录
+                os.makedirs(temp_dir, exist_ok=True)
+
+                # 安全地处理文件名并保存
+                filename = werkzeug.utils.secure_filename(effect_image_file.filename)
+                image_path = os.path.join(temp_dir, filename)
+                effect_image_file.save(image_path)
+                app.logger.info(f"效果图已保存到临时路径: {image_path}")
+            except Exception as e:
+                app.logger.error(f"保存效果图失败: {str(e)}")
+                # 即使图片保存失败，也可能继续生成报告（不带图片）或返回错误
+                # return jsonify({"error": f"处理上传的图片失败: {str(e)}"}), 500
+        else:
+            app.logger.info("未上传效果图或文件无效")
+
+        # 准备传递给报告生成函数的数据
+        # 注意：export.generate_generateljzpwb 目前只使用 project_id
+        report_data = {
             'project_id': project_id,
-            'use_cache': False
+            'land_use_nature': land_use_nature, # 传递用地性质
+            'renewable_energy_use': renewable_energy_use, # 传递可再生能源利用情况
+            'structure_form': structure_form, # <<< 传递结构形式
+            'effect_image_path': image_path, # 传递图片路径
+            'use_cache': False # 强制从数据库获取最新数据
         }
-        
-        # 调用generate_self_assessment_report函数
-        return generate_generateljzpwb(request_data)
+
+        # 调用 export.py 中的实际报告生成函数
+        # 它会处理数据获取、模板填充和文件发送
+        return generate_generateljzpwb(report_data)
+
     except Exception as e:
-        app.logger.error(f"处理生成绿建专篇文本请求失败: {str(e)}")
-        return jsonify({"error": f"处理请求失败: {str(e)}"}), 500
+        error_msg = f"处理生成绿建专篇文本请求失败: {str(e)}"
+        app.logger.error(error_msg)
+        app.logger.error(traceback.format_exc())
+        return jsonify({"error": error_msg}), 500
+    finally:
+        # 清理临时保存的图片（如果已保存）
+        if image_path and os.path.exists(image_path):
+            try:
+                os.remove(image_path)
+                app.logger.info(f"已清理临时效果图: {image_path}")
+                # 尝试删除临时目录（如果为空）
+                temp_dir = os.path.dirname(image_path)
+                if not os.listdir(temp_dir):
+                    os.rmdir(temp_dir)
+                    app.logger.info(f"已清理临时目录: {temp_dir}")
+            except Exception as cleanup_error:
+                app.logger.warning(f"清理临时文件/目录失败: {cleanup_error}")
 
 # 添加路由处理公共交通报告生成请求
 @app.route('/generate_transport_report', methods=['POST'])

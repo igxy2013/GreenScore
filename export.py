@@ -12,6 +12,8 @@ from models import db
 from datetime import datetime
 from update_dwg_attribute import update_attribute_text # 导入本地DWG处理函数
 from urllib.parse import quote # 添加导入
+import openpyxl
+from io import BytesIO
 
 # 加载环境变量
 load_dotenv()
@@ -267,56 +269,82 @@ def generate_word(request_data):
             print(f"process_template 返回类型: {type(output_file_or_list)}")
             # --- 结束日志 ---
 
-            # --- 恢复处理不同返回类型的逻辑 ---
-            # 检查返回的是列表（多个文件）还是字符串（单个文件）
+            # --- 修改处理不同返回类型的逻辑 --- 
             if isinstance(output_file_or_list, list):
-                # --- 添加日志 ---
-                print("检测到返回值为列表，准备处理 Zip 文件...")
-                # --- 结束日志 ---
-                if not output_file_or_list: # 处理空列表的情况
+                # 如果列表为空，表示没有文件生成
+                if not output_file_or_list:
                     print("模板处理返回空列表，未生成文件")
                     return jsonify({"error": "模板处理未生成任何文件"}), 500
-
-                # 创建 Zip 文件
-                project_name = data[0].get('项目名称', '项目') # 获取项目名称用于文件名
-                zip_filename = f"{project_name}_报审表文件.zip"
-                zip_filepath = os.path.join('temp', zip_filename)
-
-                print(f"准备创建压缩文件: {zip_filepath}")
-                # 导入 zipfile
-                import zipfile
-                with zipfile.ZipFile(zip_filepath, 'w') as zipf:
-                    for file_path in output_file_or_list:
-                        # 检查每个文件是否存在
-                        if not os.path.exists(file_path):
-                            print(f"错误：生成的文件列表中的文件不存在: {file_path}")
-                            # 如果一个文件丢失，则返回错误
-                            return jsonify({"error": f"生成的文件不存在: {os.path.basename(file_path)}"}), 500
-
-                        # 将文件添加到 Zip 压缩包，arcname 保留原始文件名
-                        zipf.write(file_path, arcname=os.path.basename(file_path))
-                        print(f"已添加 {os.path.basename(file_path)} 到 {zip_filename}")
-
-                print(f"准备下载压缩文件: {zip_filename}")
-                # --- 添加最终发送日志 ---
-                print(f"=== 即将发送 Zip 文件 === Path: {zip_filepath}, DownloadName: {zip_filename}, MimeType: application/zip")
-                # --- 结束日志 ---
                 
-                # 使用 send_file 生成响应对象
-                response = send_file(
-                    zip_filepath,
-                    as_attachment=True,
-                    download_name=zip_filename,
-                    mimetype='application/zip'
-                )
+                # --- 新增：如果列表只有一个文件，直接发送该文件 --- 
+                elif len(output_file_or_list) == 1:
+                    single_file_path = output_file_or_list[0]
+                    print(f"检测到返回列表只包含单个文件: {single_file_path}")
+                    # 检查文件是否存在
+                    if not os.path.exists(single_file_path):
+                        print(f"错误：生成的文件不存在: {single_file_path}")
+                        return jsonify({"error": f"生成的文件不存在: {os.path.basename(single_file_path)}"}), 500
+                    
+                    # 获取项目名称用于文件名
+                    project_name = data[0].get('项目名称', '项目')
+                    try:
+                        download_filename = os.path.basename(single_file_path)
+                    except Exception:
+                        download_filename = f"{project_name}_报审表.docx"
+                    
+                    print(f"准备下载单个文件 (来自列表): {download_filename}")
+                    return send_file(
+                        single_file_path,
+                        as_attachment=True,
+                        download_name=download_filename,
+                        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    )
+                # --- 结束新增逻辑 ---
                 
-                # 尝试显式地设置响应头 (可能有助于某些浏览器)
-                response.headers["Content-Type"] = "application/zip"
-                # 确保 Content-Disposition 包含正确的文件名和类型
-                encoded_filename = quote(zip_filename)
-                response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+                # 如果列表包含多个文件，创建 Zip 文件
+                else:
+                    print("检测到返回值为列表 (多个文件)，准备处理 Zip 文件...")
+                    # --- (Zip 文件创建和发送逻辑保持不变) --- 
+                    project_name = data[0].get('项目名称', '项目')
+                    zip_filename = f"{project_name}_报审表文件.zip"
+                    zip_filepath = os.path.join('temp', zip_filename)
 
-                return response # 返回修改后的响应对象
+                    print(f"准备创建压缩文件: {zip_filepath}")
+                    # 导入 zipfile
+                    import zipfile
+                    with zipfile.ZipFile(zip_filepath, 'w') as zipf:
+                        for file_path in output_file_or_list:
+                            # 检查每个文件是否存在
+                            if not os.path.exists(file_path):
+                                print(f"错误：生成的文件列表中的文件不存在: {file_path}")
+                                # 如果一个文件丢失，则返回错误
+                                return jsonify({"error": f"生成的文件不存在: {os.path.basename(file_path)}"}), 500
+
+                            # 将文件添加到 Zip 压缩包，arcname 保留原始文件名
+                            zipf.write(file_path, arcname=os.path.basename(file_path))
+                            print(f"已添加 {os.path.basename(file_path)} 到 {zip_filename}")
+
+                    print(f"准备下载压缩文件: {zip_filename}")
+                    # --- 添加最终发送日志 ---
+                    print(f"=== 即将发送 Zip 文件 === Path: {zip_filepath}, DownloadName: {zip_filename}, MimeType: application/zip")
+                    # --- 结束日志 ---
+                    
+                    # 使用 send_file 生成响应对象
+                    response = send_file(
+                        zip_filepath,
+                        as_attachment=True,
+                        download_name=zip_filename,
+                        mimetype='application/zip'
+                    )
+                    
+                    # 尝试显式地设置响应头 (可能有助于某些浏览器)
+                    response.headers["Content-Type"] = "application/zip"
+                    # 确保 Content-Disposition 包含正确的文件名和类型
+                    encoded_filename = quote(zip_filename)
+                    response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+                    return response # 返回修改后的响应对象
+                    # --- (Zip 逻辑结束) ---
             elif isinstance(output_file_or_list, str):
                 # --- 添加日志 ---
                 print(f"检测到返回值为字符串，准备处理单个文件: {output_file_or_list}")
@@ -348,14 +376,14 @@ def generate_word(request_data):
                     mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                 )
             elif output_file_or_list is None:
-                print("模板处理未生成任何文件 (可能标准不匹配或无需处理)")
-                # 根据实际需求，可以返回成功消息或错误
-                return jsonify({"message": "根据评价标准，无需生成报审表。"}), 200
+                print("模板处理未生成任何文件 (国标非安徽 或 其他错误/无需处理情况)")
+                # 返回特定错误消息给前端
+                return jsonify({"error": "当前地区暂无报审表模板文件！"}), 400 # 使用 400 Bad Request 状态
             else:
                 # 处理未预期的返回值类型
                 print(f"错误：模板处理返回了未知的类型: {type(output_file_or_list)}")
                 return jsonify({"error": "模板处理返回了未知的类型"}), 500
-            # --- 结束恢复 ---
+            # --- 修改结束 --- 
 
         except Exception as e:
             print(f"处理Word模板失败: {str(e)}")
@@ -539,7 +567,7 @@ def save_project_info(project_data):
 
 def generate_self_assessment_report(request_data):
     """
-    生成绿色建筑设计自评估报告的函数
+    生成绿色建筑设计自评估报告的函数 (始终使用特定模板)
     
     参数:
     - request_data: 包含project_id的字典
@@ -554,14 +582,17 @@ def generate_self_assessment_report(request_data):
             print("未提供项目ID")
             return jsonify({"error": "请提供项目ID"}), 400
             
-        # 检查模板文件是否存在
+        # --- 直接指定自评估报告模板 --- 
         template_file = '绿色建筑设计自评估报告.docx'
         template_path = os.path.join(current_app.static_folder, 'templates', template_file)
+        print(f"目标模板文件: {template_path}")
         
         if not os.path.exists(template_path):
             print(f"模板文件不存在: {template_path}")
             return jsonify({"error": f"模板文件不存在: {template_file}"}), 404
+        # --- 模板指定结束 ---
 
+        # --- 数据获取逻辑 (保持不变) --- 
         # 尝试从缓存获取数据
         cache_file = os.path.join('temp', f'project_{project_id}_cache.json')
         data = None
@@ -706,6 +737,15 @@ def generate_self_assessment_report(request_data):
                     "技术措施": score_row[4] or ''
                 })
 
+            # --- 添加设计日期 --- 
+            if data and isinstance(data[0], dict):
+                # 检查 "设计日期" 是否已存在，如果不存在或为空，则添加/更新
+                if not data[0].get("设计日期"):
+                    current_date = datetime.now().strftime("%Y年%m月%d日") # 使用 年月日 格式
+                    data[0]["设计日期"] = current_date
+                    print(f"[export.py] 已自动添加设计日期到自评估报告数据: {current_date}")
+            # --- 设计日期添加结束 ---
+            
             # 保存数据到缓存
             try:
                 os.makedirs('temp', exist_ok=True)
@@ -714,63 +754,54 @@ def generate_self_assessment_report(request_data):
                 print(f"数据已保存到缓存: {cache_file}")
             except Exception as e:
                 print(f"保存缓存失败: {str(e)}")
+        # --- 数据获取逻辑结束 --- 
 
-        # 使用word_template模块处理文档
-        print("开始处理Word模板...")
-        
+        # --- 直接调用 replace_placeholders 处理指定模板 --- 
+        print(f"开始使用模板 {template_file} 处理占位符...")
         try:
-            # 使用word_template模块处理文档
-            output_file = process_template(data)
+            # 调用word_template模块的replace_placeholders函数处理占位符
+            placeholder_result = replace_placeholders(template_path, data)
+            output_file = None # 初始化
             
-            # 处理国标情况，国标时process_template返回None
-            if output_file is None:
-                # 对于国标，使用绿色建筑设计自评估报告.docx模板
-                standard = data[0].get('评价标准')
-                print(f"检测到评价标准为{standard}，使用绿色建筑设计自评估报告模板")
-                template_path = os.path.join(current_app.static_folder, 'templates', '绿色建筑设计自评估报告.docx')
-                
-                # 确保模板文件存在
-                if not os.path.exists(template_path):
-                    print(f"模板文件不存在: {template_path}")
-                    return jsonify({"error": "模板文件不存在"}), 404
-                
-                try:
-                    # 调用word_template模块的replace_placeholders函数处理占位符
-                    output_file = replace_placeholders(template_path, data)
-                    print(f"占位符替换完成，输出文件: {output_file}")
-                except Exception as e:
-                    print(f"处理占位符时出错: {str(e)}")
-                    print(f"异常详情: {traceback.format_exc()}")
-                    return jsonify({"error": f"处理占位符失败: {str(e)}"}), 500
-            
-            print(f"Word文档生成成功: {output_file}")
-            
-            # 检查生成的文件是否存在
-            if not os.path.exists(output_file):
-                print(f"生成的文件不存在: {output_file}")
-                return jsonify({"error": "生成的文件不存在"}), 500
-                
-            # 获取文件名
-            download_name = f"{data[0]['项目名称']}_绿色建筑设计自评估报告.docx"
-            if not download_name:
-                download_name = "self_assessment_report.docx"
-            
-            print(f"准备下载文件: {download_name}")
-            return send_file(
-                output_file,
-                as_attachment=True,
-                download_name=download_name,
-                mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-            )
+            if isinstance(placeholder_result, str):
+                 output_file = placeholder_result # 赋值给 output_file
+                 print(f"占位符替换完成，输出文件: {output_file}")
+            else:
+                 print(f"replace_placeholders 处理失败或返回无效值: {placeholder_result}")
+                 return jsonify({"error": "处理自评估报告模板占位符失败"}), 500
+                 
         except Exception as e:
-            print(f"处理Word模板失败: {str(e)}")
+            print(f"处理占位符时出错: {str(e)}")
             print(f"异常详情: {traceback.format_exc()}")
-            return jsonify({"error": f"处理Word模板失败: {str(e)}"}), 500
+            return jsonify({"error": f"处理占位符失败: {str(e)}"}), 500
+        # --- 处理结束 --- 
+            
+        # 检查生成的文件是否存在 (output_file 此时应为字符串)
+        if not os.path.exists(output_file):
+            print(f"生成的文件不存在: {output_file}")
+            return jsonify({"error": "生成的文件不存在"}), 500
+                
+        # 获取文件名
+        # --- 确保 data[0] 存在且是字典 --- 
+        project_name = "未知项目"
+        if data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+            project_name = data[0].get('项目名称', project_name)
+        # --- 结束检查 --- 
+        download_name = f"{project_name}_绿色建筑设计自评估报告.docx"
+        
+        print(f"准备下载文件: {download_name}")
+        return send_file(
+            output_file,
+            as_attachment=True,
+            download_name=download_name,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
 
     except Exception as e:
         print(f"生成绿色建筑设计自评估报告失败: {str(e)}")
         print(f"异常详情: {traceback.format_exc()}")
         return jsonify({"error": f"生成绿色建筑设计自评估报告失败: {str(e)}"}), 500
+
 def generate_generateljzpwb(request_data):
     """
     生成绿建专篇文本的函数
@@ -854,8 +885,18 @@ def generate_generateljzpwb(request_data):
 
             # 准备数据
             data = []
+            # --- 明确从传入的 request_data 获取图片路径 --- 
+            image_path_from_request = request_data.get('effect_image_path')
+            print(f"[export.py] 从 request_data 获取到的 effect_image_path: {image_path_from_request}")
+            # --- 获取用地性质和可再生能源 --- 
+            land_use_nature = request_data.get('land_use_nature', '') # 默认为空字符串
+            renewable_energy_use = request_data.get('renewable_energy_use', '') # 默认为空字符串
+            structure_form = request_data.get('structure_form', '') # <<< 获取结构形式
+            print(f"[export.py] 从 request_data 获取到的 用地性质: {land_use_nature}, 可再生能源: {renewable_energy_use}, 结构形式: {structure_form}") # <<< 添加日志
+            # --- 获取结束 ---
+
             # 添加项目信息作为第一条数据
-            data.append({
+            project_info_dict = {
                 "项目ID": str(project_rows[0][0] or ''),
                 "用户ID": str(project_rows[0][1] or ''),
                 "项目名称": project_rows[0][2] or '',
@@ -912,8 +953,20 @@ def generate_generateljzpwb(request_data):
                 "环境宜居总分": str(project_rows[0][53] or '0'),
                 "提高与创新总分": str(project_rows[0][54] or '0'),
                 "项目总分": str(project_rows[0][55] or '0'),
-                "评定结果": project_rows[0][56] or ''
-            })
+                "评定结果": project_rows[0][56] or '',
+                # --- 直接使用上面获取的路径 --- 
+                "鸟瞰图_path": image_path_from_request, 
+                # --- 添加新字段 --- 
+                "用地性质": land_use_nature,
+                "可再生能源": renewable_energy_use,
+                # --- 添加模板需要的额外字段映射 ---
+                "停车位数量": str(project_rows[0][20] or '0'),  # 使用 地面停车位数量 的值
+                "空调形式": project_rows[0][27] or '',        # 使用 空调类型 的值
+                "地上层数": project_rows[0][18] or '',         # 使用 建筑层数 的值
+                "结构形式": structure_form # <<< 添加结构形式字段
+            }
+            print(f"[export.py] 添加到 data[0] 的鸟瞰图_path: {project_info_dict.get('鸟瞰图_path')}")
+            data.append(project_info_dict)
 
             # 获取得分数据
             print(f"获取项目 {project_id} 的得分数据")
@@ -940,6 +993,15 @@ def generate_generateljzpwb(request_data):
                     "技术措施": score_row[4] or ''
                 })
 
+            # --- 添加设计日期 (针对 generate_generateljzpwb) ---
+            if data and isinstance(data[0], dict):
+                # 检查 "设计日期" 是否已存在，如果不存在或为空，则添加/更新
+                if not data[0].get("设计日期"):
+                    current_date = datetime.now().strftime("%Y年%m月%d日") # 使用 年月日 格式
+                    data[0]["设计日期"] = current_date
+                    print(f"[export.py] 已自动添加设计日期到绿建专篇文本数据: {current_date}")
+            # --- 设计日期添加结束 ---
+
             # 保存数据到缓存
             try:
                 os.makedirs('temp', exist_ok=True)
@@ -948,12 +1010,31 @@ def generate_generateljzpwb(request_data):
                 print(f"数据已保存到缓存: {cache_file}")
             except Exception as e:
                 print(f"保存缓存失败: {str(e)}")
+
+        # --- 如果是从缓存加载的，也需要确保图片路径被添加/更新 --- 
+        elif data and isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
+            image_path_from_request = request_data.get('effect_image_path')
+            print(f"[export.py] 处理缓存数据，从 request_data 获取到的 effect_image_path: {image_path_from_request}")
+            # 检查缓存中是否已有路径，如果没有，从 request_data 添加
+            if '鸟瞰图_path' not in data[0] or not data[0]['鸟瞰图_path']:
+                data[0]['鸟瞰图_path'] = image_path_from_request
+                print(f"[export.py] 缓存中无路径，已添加: {data[0]['鸟瞰图_path']}")
+            # 如果缓存中有路径但 request_data 中有新的路径（意味着用户新上传了），则更新
+            elif image_path_from_request and data[0].get('鸟瞰图_path') != image_path_from_request:
+                 data[0]['鸟瞰图_path'] = image_path_from_request
+                 print(f"[export.py] 缓存中有旧路径，已更新为新路径: {data[0]['鸟瞰图_path']}")
+            else:
+                 print(f"[export.py] 缓存中已有路径，且与请求一致或请求中无新路径: {data[0].get('鸟瞰图_path')}")
+            
         # 使用word_template模块处理文档
         print("开始处理Word模板...")
-
+        # --- 添加日志，确认最终传递给 replace_placeholders 的图片路径 --- 
+        final_image_path = data[0].get('鸟瞰图_path') if data else None
+        print(f"[export.py] 即将调用 replace_placeholders，传递的鸟瞰图_path: {final_image_path}")
+        # --- 日志结束 ---
         try:
             template_path = os.path.join(current_app.static_folder, 'templates', '绿建专篇文本.docx')
-            # 调用word_template模块的replace_placeholders_format函数处理占位符
+            # 调用word_template模块的replace_placeholders函数处理占位符
             output_file = replace_placeholders(template_path, data)
             print(f"占位符替换完成，输出文件: {output_file}")
         except Exception as e:
