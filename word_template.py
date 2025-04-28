@@ -65,6 +65,9 @@ def process_template(data):
         # 获取星级目标
         star_rating_target = data[0].get('星级目标', '')
         output_paths = [] # 用于存储生成的文档路径
+        # --- 修改：存储生成的文档信息 (路径, 基础名) --- 
+        output_info_list = [] 
+        # --- 修改结束 ---
 
         if standard == '国标':
             if "安徽" in data[0].get('项目地点', '') :
@@ -73,10 +76,17 @@ def process_template(data):
                 print(f"处理模板文件: {template_path}, 评价标准: {standard}")
                 if not os.path.exists(template_path):
                     raise Exception(f"模板文件不存在: {template_path}")
-                output_path = replace_placeholders(template_path, data)
-                if not isinstance(output_path, str) or not output_path.endswith('.docx'):
-                    raise Exception(f"模板处理失败：{output_path}")
-                output_paths.append(output_path)
+                # --- 修改：处理返回值 --- 
+                result = replace_placeholders(template_path, data)
+                if result:
+                    output_path, base_name = result
+                    if not isinstance(output_path, str) or not output_path.endswith('.docx'):
+                         print(f"警告: 国标模板处理返回无效路径 '{output_path}'，跳过添加。")
+                    else:
+                         output_info_list.append((output_path, base_name))
+                else:
+                     print(f"警告: 国标模板处理失败，跳过添加。")
+                # --- 修改结束 ---
             else:
                 return None  # 国标（非安徽）不进行任何操作
         elif standard == '四川省标':
@@ -84,19 +94,22 @@ def process_template(data):
                 # 处理第一个模板
                 template1_file = '四川省绿建审查表-基本级.docx'
             else:
-                template1_file = '四川省绿建审查表-提高级.docx' 
+                template1_file = '四川省绿建审查表-提高级.docx'
             template1_path = os.path.join(current_app.static_folder, 'templates', template1_file)
             print(f"处理第一个模板文件 (四川省标): {template1_path}")
             if not os.path.exists(template1_path):
                 raise Exception(f"模板文件不存在: {template1_path}")
-            output1_path = replace_placeholders(template1_path, data)
-            # 检查第一个模板是否处理成功
-            if output1_path is None:
-                print(f"警告: 处理第一个模板 {template1_file} 失败，跳过添加。")
-            elif not isinstance(output1_path, str) or not output1_path.endswith('.docx'):
-                 print(f"警告: 处理第一个模板 {template1_file} 返回无效路径 '{output1_path}'，跳过添加。")
+            # --- 修改：处理返回值 --- 
+            result1 = replace_placeholders(template1_path, data)
+            if result1:
+                output1_path, base1_name = result1
+                if not isinstance(output1_path, str) or not output1_path.endswith('.docx'):
+                    print(f"警告: 处理第一个模板 {template1_file} 返回无效路径 '{output1_path}'，跳过添加。")
+                else:
+                    output_info_list.append((output1_path, base1_name))
             else:
-                output_paths.append(output1_path)
+                print(f"警告: 处理第一个模板 {template1_file} 失败，跳过添加。")
+            # --- 修改结束 ---
             
             # 处理第二个模板
             template2_file = '水系统规划设计评审表.docx'
@@ -104,14 +117,17 @@ def process_template(data):
             print(f"处理第二个模板文件 (四川省标): {template2_path}")
             if not os.path.exists(template2_path):
                 raise Exception(f"模板文件不存在: {template2_path}")
-            output2_path = replace_placeholders(template2_path, data)
-            # 检查第二个模板是否处理成功
-            if output2_path is None:
-                print(f"警告: 处理第二个模板 {template2_file} 失败，跳过添加。")
-            elif not isinstance(output2_path, str) or not output2_path.endswith('.docx'):
-                 print(f"警告: 处理第二个模板 {template2_file} 返回无效路径 '{output2_path}'，跳过添加。")
+            # --- 修改：处理返回值 --- 
+            result2 = replace_placeholders(template2_path, data)
+            if result2:
+                output2_path, base2_name = result2
+                if not isinstance(output2_path, str) or not output2_path.endswith('.docx'):
+                    print(f"警告: 处理第二个模板 {template2_file} 返回无效路径 '{output2_path}'，跳过添加。")
+                else:
+                    output_info_list.append((output2_path, base2_name))
             else:
-                output_paths.append(output2_path)
+                print(f"警告: 处理第二个模板 {template2_file} 失败，跳过添加。")
+            # --- 修改结束 ---
 
         elif standard == '成都市标':
             # 定义成都市标需要处理的模板文件列表
@@ -133,29 +149,35 @@ def process_template(data):
                     # 或者可以选择报错: raise Exception(f"模板文件不存在: {template_path}")
                 
                 # 调用 replace_placeholders 处理模板
-                output_path = replace_placeholders(template_path, data)
+                # --- 修改：处理返回值 --- 
+                result = replace_placeholders(template_path, data)
                 
                 # 检查模板是否处理成功
-                if output_path is None:
-                    print(f"错误: 调用 replace_placeholders 处理模板 {template_file} 时返回 None，表示内部处理失败。请检查之前的日志查找具体错误。跳过添加。")
-                elif not isinstance(output_path, str) or not output_path.endswith('.docx'):
-                    print(f"警告: 处理模板 {template_file} 返回无效路径 '{output_path}'，跳过添加。")
+                if result:
+                    output_path, base_name = result
+                    if not isinstance(output_path, str) or not output_path.endswith('.docx'):
+                         print(f"警告: 处理模板 {template_file} 返回无效路径 '{output_path}'，跳过添加。")
+                    else:
+                        # 将成功生成的文档信息添加到列表
+                        output_info_list.append((output_path, base_name))
+                        print(f"已成功处理并添加: {output_path}")
                 else:
-                    # 将成功生成的文档路径添加到列表
-                    output_paths.append(output_path)
-                    print(f"已成功处理并添加: {output_path}")
+                    print(f"错误: 调用 replace_placeholders 处理模板 {template_file} 时返回 None，表示内部处理失败。请检查之前的日志查找具体错误。跳过添加。")
+                # --- 修改结束 ---
 
         else:
             # 对于其他未知的标准，或者不需要处理的情况
              print(f"未知的评价标准或无需处理: {standard}")
              return None # 或返回空列表 []，取决于后续逻辑
 
-        # --- 添加最终返回日志 ---
-        final_return_value = output_paths if output_paths else None
+        # --- 添加最终返回日志 --- 
+        # --- 修改：返回信息列表 --- 
+        final_return_value = output_info_list if output_info_list else None
         print(f"[word_template.py] process_template 即将返回: {final_return_value}")
         print(f"[word_template.py] process_template 即将返回类型: {type(final_return_value)}")
-        # --- 结束日志 ---
-        # 返回生成的文档路径列表
+        # --- 结束日志 --- 
+        # --- 修改结束 --- 
+        # 返回生成的文档信息列表
         return final_return_value
         
     except Exception as e:
@@ -511,11 +533,17 @@ def replace_placeholders(template_path, data):
     替换 Word 文档中的占位符或书签。
     根据评价标准选择不同的处理方式。
     完成后尝试更新目录。
+    返回: tuple (output_path, base_template_name) 或 None
     """
     output_path = None # 初始化为 None
+    base_template_name = None # 初始化模板基础名称
     try:
         print(f"\n=== 开始处理文档模板 ===")
         print(f"模板文件路径: {template_path}")
+        # --- 获取模板基础名称 --- 
+        base_template_name = os.path.splitext(os.path.basename(template_path))[0]
+        # --- 获取结束 ---
+        
         if not data:
             print("错误：传入的数据为空")
             return None
@@ -749,7 +777,6 @@ def replace_placeholders(template_path, data):
         output_dir = current_app.config.get('EXPORT_FOLDER', 'static/exports')
         os.makedirs(output_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        base_template_name = os.path.splitext(os.path.basename(template_path))[0]
         project_name = project_info.get('项目名称', '未知项目')
         safe_project_name = re.sub(r"[\\/*?:'\"<>|]", "_", project_name)
         output_filename = f"{safe_project_name}_{base_template_name}_{timestamp}.docx"
@@ -766,7 +793,7 @@ def replace_placeholders(template_path, data):
             # --- 目录更新结束 ---
 
             print(f"=== 完成处理文档模板 ===")
-            return output_path # 返回最终路径
+            return (output_path, base_template_name) # 返回元组
 
         except Exception as save_err:
             print(f"保存文档时出错: {save_err}")
