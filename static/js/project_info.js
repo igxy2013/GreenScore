@@ -371,7 +371,15 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 // 检查表单是否为只读模式
                 if (isFormReadOnly) {
-                    alert('您没有编辑权限，无法载入星级案例数据。');
+                    Toastify({
+                        text: '您没有编辑权限，无法载入星级案例数据。',
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                        }
+                    }).showToast();
                     return;
                 }
                 
@@ -802,7 +810,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 检查是否有编辑权限
             if (isFormReadOnly) {
-                toast('您没有编辑权限，无法保存项目信息', 'error');
+                Toastify({
+                    text: '您没有编辑权限，无法保存项目信息',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
                 return;
             }
             
@@ -851,7 +867,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     // --- 修改：根据评价标准或项目地点是否更改决定刷新或继续 ---
                     if (standardHasChanged || locationHasChanged) {
-                        toast('项目信息保存成功', 'success');
+                        Toastify({
+                            text: '项目信息保存成功',
+                            duration: 2000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                            }
+                        }).showToast();
                         // 更新初始值，防止重复刷新
                         initialStandardValue = currentStandardValue;
                         initialProjectLocation = currentLocationValue; // 更新地点初始值
@@ -860,7 +884,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             window.location.reload();
                         }, 1000); // 延迟1秒以便用户看到提示
                     } else {
-                        toast('项目信息保存成功', 'success');
+                        Toastify({
+                            text: '项目信息保存成功',
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                            }
+                        }).showToast();
                         // 更新页面显示的项目ID
                         if (data.project_id) {
                             document.getElementById('project_id').value = data.project_id;
@@ -882,17 +914,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     // 检查是否是权限错误
                     if (data.error && (data.error.includes('权限') || data.error.includes('permission'))) {
-                        toast('保存失败: 您没有编辑此项目的权限', 'error');
+                        Toastify({
+                            text: '保存失败: 您没有编辑此项目的权限',
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                            }
+                        }).showToast();
                         // 更新权限状态
                         setFormReadOnly(true);
                     } else {
-                        toast('保存失败: ' + (data.message || data.error || '未知错误'), 'error');
+                        Toastify({
+                            text: '保存失败: ' + (data.message || data.error || '未知错误'),
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                            }
+                        }).showToast();
                     }
                 }
             })
             .catch(error => {
                 console.error('保存项目信息出错:', error);
-                toast('保存失败: ' + error.message, 'error');
+                Toastify({
+                    text: '保存失败: ' + error.message,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
             });
         });
     } else {
@@ -976,7 +1032,15 @@ function clearImagePreview(event) {
 function handleImagePreview(file) {
     if (!file || !file.type || !file.type.startsWith('image/')) {
         console.warn('无效的图片文件:', file);
-        toast('请选择有效的图片文件 (JPG, PNG, BMP等)', 'warning');
+        Toastify({
+            text: '请选择有效的图片文件 (JPG, PNG, BMP等)',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            style: {
+                background: 'linear-gradient(to right, #f59e0b, #f7b733)'
+            }
+        }).showToast();
         clearImagePreview(); // 清除可能存在的无效状态
         return;
     }
@@ -1029,7 +1093,15 @@ function handleImagePreview(file) {
 
     reader.onerror = function(e) {
         console.error('FileReader 读取错误:', e);
-        toast('读取图片文件时出错', 'error');
+        Toastify({
+            text: '读取图片文件时出错',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            style: {
+                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+            }
+        }).showToast();
         clearImagePreview();
     };
 
@@ -1063,7 +1135,15 @@ window.showAiExtractModal = function() {
     
     // 检查是否有编辑权限
     if (isFormReadOnly) {
-        toast('您没有编辑权限，无法使用AI提取功能', 'error');
+        Toastify({
+            text: '您没有编辑权限，无法使用AI提取功能',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            style: {
+                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+            }
+        }).showToast();
         return;
     }
     
@@ -1328,8 +1408,15 @@ function extractProjectInfo() {
     
     // 检查是否有编辑权限
     if (isFormReadOnly) {
-        console.log("表单为只读状态，无法提取");
-        toast('您没有编辑权限，无法使用AI提取功能', 'error');
+        Toastify({
+            text: '您没有编辑权限，无法使用AI提取功能',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            style: {
+                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+            }
+        }).showToast();
         closeAiExtractModal(); // 关闭模态框
         return;
     }
@@ -1496,7 +1583,15 @@ function extractProjectInfo() {
 // 应用提取的信息到表单
 function applyExtractedInfo() {
     if (!lastExtractedData) {
-        toast('没有可应用的数据', 'error');
+        Toastify({
+            text: '没有可应用的数据',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            style: {
+                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+            }
+        }).showToast();
         closeAiExtractModal(); // 关闭模态框
         return;
     }
@@ -1504,7 +1599,15 @@ function applyExtractedInfo() {
     try {
         // 检查是否有编辑权限
         if (isFormReadOnly) {
-            toast('您没有编辑权限，无法应用提取的信息', 'error');
+            Toastify({
+                text: '您没有编辑权限，无法应用提取的信息',
+                duration: 3000,
+                gravity: 'top',
+                position: 'right',
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
+            }).showToast();
             closeAiExtractModal(); // 关闭模态框
             return;
         }
@@ -2242,56 +2345,6 @@ function autoDetectClimateZone(province, city) {
     });
 
 
-// Toast通知系统
-
-// 全局Toast函数实现
-function toast(message, type = 'info') {
-    console.log('Toast function called with message:', message, 'and type:', type); // 添加日志：记录 toast 函数调用
-    // 显示Toast
-    const container = document.getElementById('custom-toast-container');
-    if (container) {
-        console.log('Appending toast element to container:', container); // 添加日志：记录元素添加
-        // 确保container有足够高的z-index
-        container.style.zIndex = '9999';
-        
-        const toastElement = document.createElement('div');
-        toastElement.className = `custom-toast ${type}`;
-        
-        // 根据类型设置图标
-        let icon = '';
-        switch(type) {
-            case 'success':
-                icon = '<i class="fas fa-check-circle custom-toast-icon"></i>';
-                break;
-            case 'error':
-                icon = '<i class="fas fa-exclamation-circle custom-toast-icon"></i>';
-                break;
-            case 'warning':
-                icon = '<i class="fas fa-exclamation-triangle custom-toast-icon"></i>';
-                break;
-            case 'info':
-            default:
-                icon = '<i class="fas fa-info-circle custom-toast-icon"></i>';
-                break;
-        }
-        
-        toastElement.innerHTML = `
-            ${icon}
-            <div class="custom-toast-message">${message}</div>
-        `;
-        
-        container.appendChild(toastElement);
-        
-        // 3秒后自动移除
-        setTimeout(() => {
-            toastElement.style.animation = 'toast-out 0.3s ease-in forwards';
-            setTimeout(() => {
-                if (container.contains(toastElement)) {
-                    container.removeChild(toastElement);
-                }
-            }, 300);
-        }, 3000);
-    }
-}
+// Toast通知系统 (Removed - Moved to utils.js)
 
 

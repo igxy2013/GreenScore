@@ -67,6 +67,16 @@
             const preferredProvider = localStorage.getItem('preferred_map_provider') || 'baidu';
             console.log('首选地图提供商:', preferredProvider);
             switchMapProvider(preferredProvider);
+
+            // --- 新增：为应用得分按钮添加事件监听器 ---
+            const applyBtn = document.getElementById('apply-score-btn');
+            if (applyBtn) {
+                applyBtn.addEventListener('click', applyTransportScoresToProject);
+                console.log('已为应用得分按钮添加点击事件监听器');
+            } else {
+                console.warn('未找到应用得分按钮 (apply-score-btn)');
+            }
+            // --- 结束新增 ---
         }, 500); // 延迟500毫秒，确保DOM完全渲染
     });
     
@@ -1083,6 +1093,7 @@
             
             // 启用导出按钮
             document.getElementById('export-btn').disabled = false;
+            document.getElementById('apply-score-btn').disabled = false; // <-- 启用应用得分按钮
             
             // 添加导出按钮点击事件
             document.getElementById('export-btn').onclick = executeMapScreenshot;
@@ -1315,6 +1326,7 @@
             
             // 启用导出按钮
             document.getElementById('export-btn').disabled = false;
+            document.getElementById('apply-score-btn').disabled = false; // <-- 启用应用得分按钮
             
             // 添加导出按钮点击事件
             document.getElementById('export-btn').onclick = executeMapScreenshot;
@@ -2364,12 +2376,14 @@
             
             // 启用导出按钮
             const exportBtn = document.getElementById('export-btn');
+            const applyScoreBtn = document.getElementById('apply-score-btn'); // <-- 获取应用得分按钮
             if (exportBtn) {
                 exportBtn.disabled = false;
                 // 添加导出按钮点击事件
                 exportBtn.onclick = executeMapScreenshot;
-            } else {
-                console.error("未找到导出按钮元素 'export-btn'");
+            }
+            if (applyScoreBtn) { // <-- 启用应用得分按钮
+                applyScoreBtn.disabled = false;
             }
             
             // 生成评价结论
@@ -2589,4 +2603,70 @@
             }
            
         }
+    
+    // --- 新增：应用得分到项目 --- 
+    async function applyTransportScoresToProject() {
+        console.log("开始应用公共交通分析得分到项目");
+        const applyBtn = document.getElementById('apply-score-btn');
+        applyBtn.disabled = true; // 防止重复点击
+        applyBtn.textContent = '应用中...';
+
+        try {
+            // 1. 获取项目ID
+            const projectId = document.getElementById('transport-project-id')?.value || getCurrentProjectId();
+            if (!projectId) {
+                throw new Error("无法获取当前项目ID");
+            }
+
+            // 2. 获取评价结论数据
+            const conclusion612Text = document.getElementById('conclusion-6-1-2')?.textContent || '';
+
+            const totalScoreText = document.getElementById('conclusion-total-score')?.textContent || '0 分';
+            const is612Achieved = document.getElementById('status-indicator-6-1-2')?.classList.contains('bg-green-500');
+
+            const score621 = parseFloat(totalScoreText.replace(' 分', '')) || 0;
+            const isAchieved612 = is612Achieved ? '是' : '否';
+            const isAchieved621 = score621 > 0 ? '是' : '否'; // 如果有得分，则视为达标
+            const conclusion621Text = score621 > 0 ? '满足要求，详见公共交通站点分析报告' : '';
+            console.log("准备更新数据:", {
+                projectId,
+                clause_6_1_2: { isAchieved: isAchieved612, technicalMeasures: conclusion612Text },
+                clause_6_2_1: { score: score621, isAchieved: isAchieved621, technicalMeasures: conclusion621Text }
+            });
+
+            // 3. 调用 updateDatabaseScore 更新数据库
+            // 更新 6.1.2 (这是一个评价项，没有分数，我们将isAchieved和结论存入)
+            await updateDatabaseScore("6.1.2", 0, isAchieved612, conclusion612Text);
+            console.log("条文 6.1.2 更新成功");
+
+            // 更新 6.2.1
+            await updateDatabaseScore("6.2.1", score621, isAchieved621, conclusion621Text);
+            console.log("条文 6.2.1 更新成功");
+
+            Toastify({
+                text: '得分已成功应用到项目！',
+                duration: 3000,
+                gravity: 'top',
+                position: 'right',
+                style: {
+                    background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                }
+            }).showToast();
+
+        } catch (error) {
+            console.error("应用得分到项目时出错:", error);
+            Toastify({
+                text: `应用得分失败: ${error.message}`,
+                duration: 3000,
+                gravity: 'top',
+                position: 'right',
+                style: {
+                    background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                }
+            }).showToast();
+        } finally {
+            applyBtn.disabled = false; // 恢复按钮
+            applyBtn.textContent = '应用得分到项目';
+        }
+    }
     

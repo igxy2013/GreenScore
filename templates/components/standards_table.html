@@ -344,7 +344,20 @@
 
          if (invalidFiles.length > 0) {
              const msg = `包含不支持的文件类型: ${invalidFiles.join(', ')}. 只允许 ${allowedTypes.join(', ')}`;
-             if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
+             // 修改：使用 Toastify
+             if (typeof Toastify === 'function') {
+                 Toastify({
+                     text: msg,
+                     duration: 3000,
+                     gravity: 'top',
+                     position: 'right',
+                     style: {
+                         background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                     }
+                 }).showToast();
+             } else {
+                 alert(msg);
+             }
              selectedAiFiles = null; // Reject the selection // 拒绝选择
               // Clear the file input visually if possible (might not work reliably cross-browser) // 尝试在视觉上清除文件输入（可能无法跨浏览器可靠工作）
               const fileInput = document.getElementById('aiScoreFileInput');
@@ -379,8 +392,19 @@
         // console.log('triggerAiScoreExtraction 函数被调用'); // 添加日志
         // --- Add Permission Check --- // --- 添加权限检查 ---
         if (!hasEditPermission) {
-            if (typeof toast === 'function') {
-                toast('您没有编辑权限，无法执行此操作', 'error');
+            // 修改：使用 Toastify
+            if (typeof Toastify === 'function') {
+                Toastify({
+                    text: '您没有编辑权限，无法执行此操作',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
+            } else {
+                alert('您没有编辑权限，无法执行此操作');
             }
             closeAiUploadModal(); // Close the modal if no permission // 如果没有权限则关闭模态框
             return;
@@ -428,14 +452,36 @@
                 document.body.classList.add('overflow-hidden'); // Add overflow hidden for preview modal // 为预览模态框添加 overflow hidden
                 // Add ESC key listener for preview modal // 为预览模态框添加 ESC 键监听器
                 document.addEventListener('keydown', handleEscKeyForPreviewModal);
-                if (typeof toast === 'function') {
-                    toast(`成功提取 ${extractedScoresData.length} 条得分记录`, 'success');
+                // 修改：使用 Toastify
+                if (typeof Toastify === 'function') {
+                    Toastify({
+                        text: `成功提取 ${extractedScoresData.length} 条得分记录`,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                        }
+                    }).showToast();
                 }
 
             } else {
                 console.error('AI提取失败:', data.error);
                 const msg = `AI提取失败: ${data.error || '未知错误'}`;
-                if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
+                // 修改：使用 Toastify
+                if (typeof Toastify === 'function') {
+                    Toastify({
+                        text: msg,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                        }
+                    }).showToast();
+                } else {
+                    alert(msg);
+                }
                 extractedScoresData = []; // Clear previous data on failure // 失败时清除先前的数据
             }
 
@@ -444,7 +490,20 @@
             const msg = `请求失败: ${error.message}`;
              // Ensure upload modal is closed even on fetch error // 确保即使在 fetch 错误时也关闭上传模态框
              closeAiUploadModal();
-            if (typeof toast === 'function') { toast(msg, 'error'); } else { alert(msg); }
+            // 修改：使用 Toastify
+            if (typeof Toastify === 'function') {
+                Toastify({
+                    text: msg,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
+            } else {
+                alert(msg);
+            }
             extractedScoresData = []; // Clear previous data on failure // 失败时清除先前的数据
         } finally {
             // Hide loading indicator (upload modal one is hidden by closeAiUploadModal) // 隐藏加载指示器（上传模态框的那个由 closeAiUploadModal 隐藏）
@@ -670,8 +729,19 @@
             
             if (currentScore > maxScore) {
                 input.value = maxScore;
-                if (typeof toast === 'function') {
-                    toast(`得分不能超过最大分值${maxScore}`, 'warning');
+                // 修改：使用 Toastify
+                if (typeof Toastify === 'function') {
+                    Toastify({
+                        text: `得分不能超过最大分值${maxScore}`,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #f59e0b, #f7b733)'
+                        }
+                    }).showToast();
+                } else {
+                    alert(`得分不能超过最大分值${maxScore}`);
                 }
             }
             // 如果分数在 0 和 maxScore 之间，则保持不变
@@ -775,7 +845,20 @@
                 // console.log('开始提取按钮被点击'); // Added log
                 if (!selectedAiFiles || selectedAiFiles.length === 0) {
                      const msg = "请先选择要上传的文件。";
-                     if (typeof toast === 'function') { toast(msg, 'warning'); } else { alert(msg); }
+                     // 修改：使用 Toastify
+                     if (typeof Toastify === 'function') {
+                         Toastify({
+                             text: msg,
+                             duration: 3000,
+                             gravity: 'top',
+                             position: 'right',
+                             style: {
+                                 background: 'linear-gradient(to right, #f59e0b, #f7b733)'
+                             }
+                         }).showToast();
+                     } else {
+                         alert(msg);
+                     }
                      return;
                 }
                  // Start the extraction process using the selected files
@@ -813,13 +896,39 @@
             applyAiScoresBtn.addEventListener('click', () => {
                 // console.log('应用得分按钮被点击。');
                 if (!extractedScoresData || extractedScoresData.length === 0) {
-                    if (typeof toast === 'function') { toast('没有可应用的得分', 'info'); }
+                    // 修改：使用 Toastify
+                    if (typeof Toastify === 'function') {
+                        Toastify({
+                            text: '没有可应用的得分',
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #4facfe, #00f2fe)' // Info color
+                            }
+                        }).showToast();
+                    } else {
+                        alert('没有可应用的得分');
+                    }
                     return;
                 }
 
                  // 检查是否有编辑权限
                  if (!hasEditPermission) {
-                     if (typeof toast === 'function') { toast('您没有编辑权限，无法应用得分', 'error'); }
+                     // 修改：使用 Toastify
+                     if (typeof Toastify === 'function') {
+                         Toastify({
+                             text: '您没有编辑权限，无法应用得分',
+                             duration: 3000,
+                             gravity: 'top',
+                             position: 'right',
+                             style: {
+                                 background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                             }
+                         }).showToast();
+                     } else {
+                         alert('您没有编辑权限，无法应用得分');
+                     }
                      return;
                  }
 
@@ -914,9 +1023,21 @@
                  });
 
                 closeAiPreviewModal(); // Close the preview modal after applying
-                 if (typeof toast === 'function') {
-                    toast(`成功应用 ${appliedCount} 条得分`, 'success');
-                }
+                 // 修改：使用 Toastify
+                 if (typeof Toastify === 'function') {
+                     Toastify({
+                        text: `成功应用 ${appliedCount} 条得分`,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                        }
+                    }).showToast();
+                 } else {
+                    // Fallback, although unlikely needed now
+                    alert(`成功应用 ${appliedCount} 条得分`);
+                 }
 
                 // Optionally update summary/badges after applying // 应用后可选择更新汇总/徽章
                 if (typeof scoreUtils !== 'undefined' && scoreUtils.fetchScoreSummary) {
@@ -981,8 +1102,17 @@
         
         // 检查是否有编辑权限
         if (!hasEditPermission) {
-            if (typeof toast === 'function') {
-                toast('您没有编辑权限，无法保存评分信息', 'error');
+            // 修改：使用 Toastify
+            if (typeof Toastify === 'function') {
+                Toastify({
+                    text: '您没有编辑权限，无法保存评分信息',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
             } else {
                 alert('您没有编辑权限，无法保存评分信息');
             }
@@ -1013,8 +1143,17 @@
         // 如果仍为空，提示错误并返回
         if (!projectId) {
             console.error('项目ID为空，无法保存评分数据');
-            if (typeof toast === 'function') {
-                toast('项目ID为空，无法保存评分数据', 'error');
+            // 修改：使用 Toastify
+            if (typeof Toastify === 'function') {
+                Toastify({
+                    text: '项目ID为空，无法保存评分数据',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
             } else {
                 alert('项目ID为空，无法保存评分数据');
             }
@@ -1084,8 +1223,17 @@
                 
                 // 验证得分是否超过最大值
                 if (score !== '' && parseFloat(score) > parseFloat(maxScore)) {
-                    if (typeof toast === 'function') {
-                        toast(`条文${clause}的得分不能超过最大分值${maxScore}`, 'warning');
+                    // 修改：使用 Toastify
+                    if (typeof Toastify === 'function') {
+                        Toastify({
+                            text: `条文${clause}的得分不能超过最大分值${maxScore}`,
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #f59e0b, #f7b733)'
+                            }
+                        }).showToast();
                     } else {
                         alert(`条文${clause}的得分不能超过最大分值${maxScore}`);
                     }
@@ -1143,8 +1291,17 @@
             
             if (data.success) {
                 // 提示保存成功，但不使用阻塞性的alert，改用非阻塞通知
-                if (typeof toast === 'function') {
-                    toast('评分信息保存成功!', 'success');
+                // 修改：使用 Toastify
+                if (typeof Toastify === 'function') {
+                    Toastify({
+                        text: '评分信息保存成功!',
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                        }
+                    }).showToast();
                 } else {
                     // 使用非阻塞通知
                     const notification = document.createElement('div');
@@ -1165,19 +1322,20 @@
                     // console.log('更新分类达标徽章');
                     setTimeout(updateCategoryBadges, 1000);
                 }
-                
+
                 // 处理条文之间的依赖关系
-                if (typeof handleAllClauseDependencies === 'function') {
-                    // console.log('开始处理条文依赖关系');
+                // 仅在评价标准不是国标时执行
+                if (typeof handleAllClauseDependencies === 'function' && getCurrentProjectStandard() !== '国标') {
+                    console.log('评价标准非国标，开始处理条文依赖关系');
                     handleAllClauseDependencies(projectId)
                         .then(results => {
-                            // console.log('条文依赖关系处理完成:', results);
+                            console.log('条文依赖关系处理完成:', results);
                         })
                         .catch(error => {
                             console.error('处理条文依赖关系时出错:', error);
                         });
                 } else {
-                    console.warn('未找到条文依赖关系处理函数，跳过处理');
+                    // console.warn('未找到条文依赖关系处理函数或评价标准为国标，跳过处理');
                 }
                 
                 // 不再重新加载评分数据，保留用户当前输入的内容
@@ -1191,8 +1349,17 @@
                 // 保存失败时提示
                 const errorMsg = data.message || '保存失败';
                 console.error('保存失败:', errorMsg);
-                if (typeof toast === 'function') {
-                    toast(errorMsg, 'error');
+                // 修改：使用 Toastify
+                if (typeof Toastify === 'function') {
+                    Toastify({
+                        text: errorMsg,
+                        duration: 3000,
+                        gravity: 'top',
+                        position: 'right',
+                        style: {
+                            background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                        }
+                    }).showToast();
                 } else {
                     alert(errorMsg);
                 }
@@ -1200,8 +1367,17 @@
         })
         .catch(error => {
             console.error('保存失败:', error);
-            if (typeof toast === 'function') {
-                toast('保存失败，请重试: ' + error.message, 'error');
+            // 修改：使用 Toastify
+            if (typeof Toastify === 'function') {
+                Toastify({
+                    text: '保存失败，请重试: ' + error.message,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
             } else {
                 alert('保存失败，请重试: ' + error.message);
             }
@@ -1385,21 +1561,54 @@
                         });
                         
                         // 显示友好的错误提示
-                        if (typeof toast === 'function') {
-                            toast('没有找到保存的评分数据，请先进行评分', 'warning');
+                        // 修改：使用 Toastify
+                        if (typeof Toastify === 'function') {
+                            Toastify({
+                                text: '没有找到保存的评分数据，请先进行评分',
+                                duration: 3000,
+                                gravity: 'top',
+                                position: 'right',
+                                style: {
+                                    background: 'linear-gradient(to right, #f59e0b, #f7b733)'
+                                }
+                            }).showToast();
+                        } else {
+                            alert('没有找到保存的评分数据，请先进行评分'); // Fallback
                         }
                     }
                 })
                 .catch(error => {
                     console.error('加载评分数据失败:', error);
-                    if (typeof toast === 'function') {
-                        toast('加载评分数据失败: ' + error.message, 'error');
+                    // 修改：使用 Toastify
+                    if (typeof Toastify === 'function') {
+                        Toastify({
+                            text: '加载评分数据失败: ' + error.message,
+                            duration: 3000,
+                            gravity: 'top',
+                            position: 'right',
+                            style: {
+                                background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                            }
+                        }).showToast();
+                    } else {
+                        alert('加载评分数据失败: ' + error.message); // Fallback
                     }
                 });
         } catch (error) {
             console.error('加载过程发生异常:', error);
-            if (typeof toast === 'function') {
-                toast('加载过程发生异常:' + error.message, 'error');
+            // 修改：使用 Toastify
+            if (typeof Toastify === 'function') {
+                Toastify({
+                    text: '加载过程发生异常:' + error.message,
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                        background: 'linear-gradient(to right, #ff5f6d, #ffc371)'
+                    }
+                }).showToast();
+            } else {
+                alert('加载过程发生异常:' + error.message); // Fallback
             }
         }
     }

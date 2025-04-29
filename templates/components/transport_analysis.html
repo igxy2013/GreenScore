@@ -5,6 +5,7 @@
     <input type="hidden" id="transport-project-id" value="{{ project.id if project else '' }}">
     <script src="{{ url_for('static', filename='js/lib/html2canvas.min.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/components/export-loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/db_updater.js') }}"></script>
     
     <!-- 地图切换标签 -->
     <div class="flex justify-center mb-4 border-b border-gray-200">
@@ -70,7 +71,8 @@
     </div>
 
     <!-- 导出按钮 -->
-    <div class="text-center flex justify-center">
+    <div class="text-center flex justify-center space-x-4">
+        <button class="px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="apply-score-btn" disabled>应用得分到项目</button>
         <button class="export-btn px-6 py-2 bg-primary text-white rounded-lg shadow-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary text-base font-medium" id="export-btn" disabled>导出分析报告</button>
     </div>
     <div class="text-center text-gray-600 text-sm mt-2 flex justify-center">

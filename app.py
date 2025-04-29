@@ -3431,20 +3431,7 @@ def handle_transport_report():
             if isinstance(project_info, dict):
                 project_name = project_info.get('项目名称') or project_info.get('projectName') or ""
             
-            # 如果有项目名称则使用项目名称作为文件名
-            # 注意：这里可能仍然是 '未知项目'，因为 project_info 是在 generate_transport_report 之后才被神秘填充的
-            # 更好的方式是从 output_path 推断项目名称
-            if project_name:
-                 # 从 output_path 推断更可靠
-                 base_output_name = os.path.basename(output_path)
-                 # 假设文件名格式是 ProjectName_TemplateName_Timestamp.docx
-                 name_match = re.match(r"^([^_]+)_公共交通站点分析报告_\d+\.docx$", base_output_name)
-                 if name_match and name_match.group(1) != '未知项目':
-                      file_name = base_output_name # 使用生成的文件名
-                 else:
-                      file_name = f"{project_name}_公共交通站点分析报告.docx"
-            else:
-                 file_name = "公共交通站点分析报告.docx"
+            file_name = "公共交通站点分析报告.docx"
                 
             app.logger.info(f"准备发送文件：{file_name} (来自路径: {output_path})")
             

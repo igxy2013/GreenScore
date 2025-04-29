@@ -193,7 +193,15 @@ document.addEventListener('DOMContentLoaded', function() {
     saveBtn.addEventListener('click', function() {
         const data = collectData();
         localStorage.setItem('decorativeCostData', JSON.stringify(data));
-        alert('数据已保存！');
+        Toastify({
+            text: '数据已保存！',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            style: {
+                background: 'linear-gradient(to right, #00b09b, #96c93d)'
+            }
+        }).showToast();
     });
     
     // 导出数据（导出计算书）
