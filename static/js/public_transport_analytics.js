@@ -2410,7 +2410,9 @@
 
         // 处理地图图像并发送报告
         async function processMapImageAndSendReport(mapImageData, conclusion) {
-            console.log("地图图像数据生成完成，准备处理报告");
+            console.log("地图图像数据生成完成，准备处理报告 (外部JS - 已恢复)"); // 修改标识
+            
+            // <<< 恢复此函数内的所有逻辑 >>>
             
             try {
                 // 显示加载中提示
@@ -2507,7 +2509,7 @@
                         
                         if (contentDisposition) {
                             // 处理标准格式: attachment; filename="filename.docx"
-                            let filenameMatch = contentDisposition.match(/filename="?([^"]*)"?/i);
+                            let filenameMatch = contentDisposition.match(/filename="?([^\"]*)"?/i);
                             if (filenameMatch && filenameMatch[1]) {
                                 filename = filenameMatch[1];
                             }
@@ -2579,11 +2581,12 @@
                 }
                 
             } catch (error) {
-                console.error("生成报告时发生错误:", error);
-                alert("生成报告时发生错误: " + error.message);
+                console.error("生成报告时发生错误 (外部JS - 已恢复):", error);
+                 alert("生成报告时发生错误: " + error.message);
             } finally {
                 // 隐藏加载中提示
-                document.getElementById('loading').style.display = 'none';
+                 document.getElementById('loading').style.display = 'none';
             }
+           
         }
     

@@ -14,5 +14,7 @@
 <link href="{{ url_for('static', filename='css/index.css') }}" rel="stylesheet">
 <script src="/static/js/menu.js" defer></script>
 <script src="/static/js/libs/chart.min.js"></script>
-<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js" defer></script>
+<!-- Toastify CSS 本地引用 -->
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='js/lib/toastify/toastify.min.css') }}">
+<!-- Toastify JS 本地引用 -->
+<script type="text/javascript" src="{{ url_for('static', filename='js/lib/toastify/toastify.js') }}" defer></script>

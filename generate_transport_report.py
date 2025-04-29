@@ -1,4 +1,4 @@
-from word_template import replace_placeholders
+from word_template import replace_placeholders, replace_generic_placeholders
 import os
 import json
 import base64
@@ -97,14 +97,35 @@ def generate_transport_report(data):
         print(f"第一个元素包含的字段: {', '.join(k for k in final_data[0].keys() if k not in ['地图截图', '公交站点列表'])}")
         
         # 第一步：调用基本的Word模板处理函数处理文本占位符
-        temp_output_path = replace_placeholders(template_path, final_data)
-        
+        result = replace_placeholders(template_path, final_data)
+        if result and isinstance(result, (list, tuple)) and len(result) > 0:
+             temp_output_path = result[0] # 取返回的第一个元素（路径）
+        elif isinstance(result, str):
+             temp_output_path = result # 如果直接返回字符串路径
+        else:
+            raise Exception("replace_placeholders 未返回有效的路径信息")
+
         # 检查第一步处理的结果文件是否存在
-        if not os.path.exists(temp_output_path):
-            raise Exception(f"文本占位符处理失败，输出文件不存在: {temp_output_path}")
+        if not isinstance(temp_output_path, str) or not os.path.exists(temp_output_path):
+            # 添加更详细的错误信息
+            error_detail = f"无效路径 '{temp_output_path}'" if not isinstance(temp_output_path, str) else "文件不存在"
+            raise Exception(f"文本占位符处理失败，输出文件 {error_detail}: {temp_output_path}")
         
         print(f"\n基本文本替换完成: {temp_output_path}")
         
+        # 新增：调用通用替换函数处理基础占位符
+        try:
+            print(f"\n开始通用占位符替换...")
+            generic_replace_success = replace_generic_placeholders(temp_output_path, project_data)
+            if generic_replace_success:
+                print("通用占位符替换成功")
+            else:
+                # 如果替换失败或未进行替换，也继续执行，但打印日志
+                print("通用占位符替换未执行或失败，继续后续步骤")
+        except Exception as generic_err:
+            print(f"通用占位符替换时发生错误: {generic_err}")
+            # 即使通用替换失败，也尝试继续执行后续步骤
+
         # 设置替换后的文本为宋体小四
         set_replaced_text_font(temp_output_path, project_data)
         

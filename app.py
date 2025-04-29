@@ -10,6 +10,7 @@ import traceback
 import urllib.parse
 import uuid
 import shutil # Added import
+import copy # <--- Import copy module
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 import tempfile
@@ -3404,30 +3405,48 @@ def handle_transport_report():
         if not data:
             return jsonify({'success': False, 'error': '请求数据为空'}), 400
         
-        # 调用报告生成函数
-        output_path = generate_transport_report(data)
+        # --- 在处理前创建深拷贝 --- 
+        data_for_report = copy.deepcopy(data)
+        app.logger.info(f"创建数据深拷贝，原始 project_info: {data.get('project_info')}")
+        app.logger.info(f"拷贝后的 project_info: {data_for_report.get('project_info')}")
+        # --- 使用拷贝进行后续处理 --- 
+        
+        # 调用报告生成函数 (传入拷贝)
+        output_path = generate_transport_report(data_for_report)
         
         # 检查生成的文件是否存在
-        if not os.path.exists(output_path):
+        if not output_path or not os.path.exists(output_path):
+            # 添加更详细的日志
+            app.logger.error(f"报告生成函数返回无效路径或文件不存在: {output_path}")
             return jsonify({'success': False, 'error': '报告生成失败，文件未创建'}), 500
         
         # 获取文件名为项目名称加报告类型
         file_name = os.path.basename(output_path)
         
         try:
-            # 尝试获取项目名称来为文件命名
-            project_info = data.get('project_info', {})
+            # 尝试获取项目名称来为文件命名 (从原始 data 或拷贝 data_for_report 都可以，因为拷贝发生在 info 获取前)
+            # 但为了清晰，我们用原始 data (虽然理论上拷贝时 project_info 应该还是空的)
+            project_info = data.get('project_info', {}) 
             project_name = ""
             if isinstance(project_info, dict):
                 project_name = project_info.get('项目名称') or project_info.get('projectName') or ""
             
             # 如果有项目名称则使用项目名称作为文件名
+            # 注意：这里可能仍然是 '未知项目'，因为 project_info 是在 generate_transport_report 之后才被神秘填充的
+            # 更好的方式是从 output_path 推断项目名称
             if project_name:
-                file_name = f"{project_name}_公共交通站点分析报告.docx"
+                 # 从 output_path 推断更可靠
+                 base_output_name = os.path.basename(output_path)
+                 # 假设文件名格式是 ProjectName_TemplateName_Timestamp.docx
+                 name_match = re.match(r"^([^_]+)_公共交通站点分析报告_\d+\.docx$", base_output_name)
+                 if name_match and name_match.group(1) != '未知项目':
+                      file_name = base_output_name # 使用生成的文件名
+                 else:
+                      file_name = f"{project_name}_公共交通站点分析报告.docx"
             else:
-                file_name = "公共交通站点分析报告.docx"
+                 file_name = "公共交通站点分析报告.docx"
                 
-            app.logger.info(f"准备发送文件：{file_name}")
+            app.logger.info(f"准备发送文件：{file_name} (来自路径: {output_path})")
             
             # 直接发送文件给用户下载
             try:

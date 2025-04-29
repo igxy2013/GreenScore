@@ -485,31 +485,47 @@
 
         let applicableCount = 0;
         scores.forEach(item => {
-            // Check if a corresponding input exists in the main table // 检查主表格中是否存在对应的输入框
-            const targetInput = document.querySelector(`input[name="score"][data-clause="${item.clause}"]`);
+            // Check if a corresponding input exists in the main table, including fallbacks
+            const findResult = findTargetElementsWithFallback(item.clause);
+            let targetInput = null;
+            let foundClauseForStatus = null;
+
+            if (findResult) {
+                targetInput = findResult.elements.input;
+                foundClauseForStatus = findResult.foundClause;
+            }
+
             let statusIcon = '';
             let statusText = '';
+
             if (targetInput) {
+                // Now we have a targetInput, either primary or fallback
                 const maxScore = parseFloat(targetInput.dataset.maxscore);
-                 const currentScore = parseFloat(item.score);
-                 if (isNaN(maxScore)) { // Handle non-scoreable items like "—" // 处理像 "—" 这样的不可评分项
-                     statusIcon = '<i class="ri-prohibited-line text-gray-500" title="此项不可评分"></i>';
-                     statusText = '<span class="text-gray-500">不可评分</span>';
-                 } else if (isNaN(currentScore)) {
-                      statusIcon = '<i class="ri-error-warning-line text-yellow-500" title="提取值非数字"></i>';
-                     statusText = '<span class="text-yellow-500">非数字</span>';
-                 }
-                 else if (currentScore > maxScore) {
-                     statusIcon = '<i class="ri-error-warning-fill text-orange-500" title="提取分数超过最大值"></i>';
-                     statusText = `<span class="text-orange-500">超限(${maxScore})</span>`;
-                     applicableCount++; // Still applicable, but needs clamping // 仍然适用，但需要限制范围
-                 } else {
+                const currentScore = parseFloat(item.score);
+
+                if (isNaN(maxScore)) { // Handle non-scoreable items like "—"
+                    statusIcon = '<i class="ri-prohibited-line text-gray-500" title="此项不可评分"></i>';
+                    statusText = '<span class="text-gray-500">不可评分</span>';
+                } else if (isNaN(currentScore)) {
+                    statusIcon = '<i class="ri-error-warning-line text-yellow-500" title="提取值非数字"></i>';
+                    statusText = '<span class="text-yellow-500">非数字</span>';
+                } else if (currentScore > maxScore) {
+                    statusIcon = '<i class="ri-error-warning-fill text-orange-500" title="提取分数超过最大值"></i>';
+                    statusText = `<span class="text-orange-500">超限(${maxScore})</span>`;
+                    applicableCount++; // Still applicable, but needs clamping
+                } else {
                     statusIcon = '<i class="ri-check-fill text-green-500" title="可应用"></i>';
                     statusText = '<span class="text-green-400">可应用</span>';
+                    // Add a title if a fallback was used
+                    if (foundClauseForStatus !== item.clause) {
+                         statusText += ` <span class="text-gray-400 text-xs">(匹配到${foundClauseForStatus})</span>`;
+                         statusIcon += `<span class="text-gray-400 text-xs ml-1" title="实际匹配条文: ${foundClauseForStatus}"><i class="ri-arrow-right-double-line"></i></span>`;
+                    }
                     applicableCount++;
                 }
             } else {
-                statusIcon = '<i class="ri-question-fill text-gray-500" title="项目中未找到对应条文"></i>';
+                // No match found, even with fallbacks
+                statusIcon = '<i class="ri-question-fill text-gray-500" title="项目中未找到对应条文（包括备选）"></i>';
                 statusText = '<span class="text-gray-500">无匹配</span>';
             }
 
@@ -811,34 +827,91 @@
                 extractedScoresData.forEach(item => {
                      if (!item || typeof item.clause === 'undefined') return; // Skip invalid items
 
-                    const targetInput = document.querySelector(`input[name="score"][data-clause="${item.clause}"]`);
-                    if (targetInput) {
-                        const maxScoreText = targetInput.dataset.maxscore;
-                         // Skip if target is not scoreable (maxscore is not a number like "—") // 如果目标不可评分（maxscore 不是数字，例如 "—"），则跳过
+                     const primaryClause = item.clause;
+                     let elements = null;
+                     let foundClause = null; // 记录最终找到的条文号
+
+                     // 1. 尝试查找主条文号
+                     elements = findScoreElements(primaryClause);
+                     if (elements) {
+                         foundClause = primaryClause;
+                     } else {
+                         // 2. 如果主条文号未找到，检查是否有备选定义
+                         const fallbacks = clauseFallbacks[primaryClause];
+                         if (fallbacks && Array.isArray(fallbacks)) {
+                             console.log(`条文 ${primaryClause} 未找到，开始查找备选: ${fallbacks.join(', ')}`);
+                             // 遍历备选条文号
+                             for (const fallbackClause of fallbacks) {
+                                 elements = findScoreElements(fallbackClause);
+                                 if (elements) {
+                                     console.log(`条文 ${primaryClause} 的备选 ${fallbackClause} 找到.`);
+                                     foundClause = fallbackClause; // 记录找到的备选条文号
+                                     break; // 找到第一个匹配的备选就停止
+                                 }
+                             }
+                         }
+                     }
+
+                     // 3. 如果找到了元素（主或备选），则应用得分和技术措施
+                     if (elements && foundClause) {
+                         const targetInput = elements.input;
+                         const targetTextarea = elements.textarea;
+
+                         // 检查是否可评分 (对找到的元素进行检查)
+                         const maxScoreText = targetInput.dataset.maxscore;
                          if (isNaN(parseFloat(maxScoreText))) {
-                            console.warn(`条文 ${item.clause}: 目标输入框不可评分，跳过.`);
-                            return;
+                             console.warn(`条文 ${foundClause} (为 ${primaryClause} 找到): 目标输入框不可评分，跳过.`);
+                             return; // 跳过不可评分的项
                          }
 
-                        const maxScore = parseFloat(maxScoreText);
-                        let scoreToApply = parseFloat(item.score);
+                         const maxScore = parseFloat(maxScoreText);
+                         let scoreToApply = parseFloat(item.score); // 使用原始item的得分
 
-                        // Ensure score is a number and clamp to maxScore // 确保得分是数字并限制在 maxScore 内
-                        if (!isNaN(scoreToApply)) {
+                         // 验证得分是否是数字并限制范围
+                         if (!isNaN(scoreToApply)) {
                              if (scoreToApply > maxScore) {
-                                console.warn(`条文 ${item.clause}: 提取得分 ${scoreToApply} 超过最大值 ${maxScore}. 将应用最大值.`);
-                                scoreToApply = maxScore;
-                             } else if (scoreToApply < 0) { // Ensure score is not negative // 确保得分不是负数
-                                  console.warn(`条文 ${item.clause}: 提取得分 ${scoreToApply} 小于0. 将应用 0.`);
+                                 console.warn(`条文 ${primaryClause}: 提取得分 ${item.score} 超过目标条文 ${foundClause} 的最大值 ${maxScore}. 将应用最大值.`);
+                                 scoreToApply = maxScore;
+                             } else if (scoreToApply < 0) {
+                                 console.warn(`条文 ${primaryClause}: 提取得分 ${item.score} 小于0. 将应用 0 到目标条文 ${foundClause}.`);
                                  scoreToApply = 0;
                              }
-                            targetInput.value = scoreToApply;
-                            appliedCount++;
-                        } else {
-                             console.warn(`条文 ${item.clause}: 提取的得分 "${item.score}" 不是有效数字，跳过应用.`);
-                        }
-                    }
-                });
+
+                             // 应用得分到找到的输入框
+                             targetInput.value = scoreToApply;
+
+                             // 应用技术措施到找到的文本域（如果存在）
+                             if (targetTextarea) {
+                                 if (item.filename) {
+                                     // 提取文件名（去除后缀）
+                                     const lastDotIndex = item.filename.lastIndexOf('.');
+                                     const filenameWithoutExt = lastDotIndex > 0 ? item.filename.substring(0, lastDotIndex) : item.filename;
+                                     // 填充技术措施
+                                     targetTextarea.value = `满足要求，详见${filenameWithoutExt}`;
+                                 } else {
+                                     targetTextarea.value = '满足要求';
+                                     console.warn(`条文 ${primaryClause} 应用到 ${foundClause}: 未找到来源文件名，技术措施仅填充 "满足要求".`);
+                                 }
+                             } else {
+                                 console.warn(`条文 ${foundClause} (为 ${primaryClause} 找到): 未找到对应的技术措施文本域.`);
+                             }
+
+                             // 只有成功应用了有效分数才计数
+                             appliedCount++;
+
+                             // 如果应用到了备选条文，加个日志
+                             if (primaryClause !== foundClause) {
+                                 console.log(`成功将条文 ${primaryClause} 的数据应用到备选条文 ${foundClause}`);
+                             }
+
+                         } else {
+                             console.warn(`条文 ${primaryClause}: 提取的得分 "${item.score}" 不是有效数字，跳过应用.`);
+                         }
+                     } else {
+                         // 如果主条文和所有备选（如果适用）都找不到
+                         console.warn(`条文 ${primaryClause}: 在主表单${clauseFallbacks[primaryClause] ? '及其备选条文' : ''}中均未找到对应的输入元素，跳过应用.`);
+                     }
+                 });
 
                 closeAiPreviewModal(); // Close the preview modal after applying
                  if (typeof toast === 'function') {
@@ -1477,6 +1550,94 @@
             `;
         }
     }
+    {% raw %}
+    /**
+     * 辅助函数：查找指定条文号的得分输入框和技术措施文本域
+     * @param {string} clause - 条文号
+     * @returns {{input: HTMLInputElement|null, textarea: HTMLTextAreaElement|null}|null} - 包含元素的对，如果找不到输入框则返回null
+     */
+    function findScoreElements(clause) {
+        // --- 新增日志：打印正在查找的条文号 ---
+        console.log(`[findScoreElements] 正在查找条文号: "${clause}"`);
+        if (!clause) return null;
+
+        const input = document.querySelector(`input[name="score"][data-clause="${clause}"]`);
+        // --- 新增日志：打印查找 input 的结果 ---
+        console.log(`[findScoreElements] 查找 input[data-clause="${clause}"] 结果:`, input);
+
+        // 只有找到了输入框，才认为这对元素是有效的
+        if (!input) {
+            return null;
+        }
+        const textarea = document.querySelector(`textarea[name="technical_measures"][data-clause="${clause}"]`);
+        // --- 可选新增日志：打印查找 textarea 的结果 ---
+        // console.log(`[findScoreElements] 查找 textarea[data-clause="${clause}"] 结果:`, textarea);
+        return { input, textarea };
+    }
+    {% endraw %}
+    {% raw %}
+    /**
+     * 条文号备选查找映射
+     * key: 主条文号 (string)
+     * value: 备选条文号数组 (string[])，按查找顺序排列
+     */
+    const clauseFallbacks = {
+        // --- 在这里添加其他需要备选查找的条文号映射 ---
+        // '主条文号': ['备选1', '备选2', ...],
+        '7.2.4': ['3.7.8', '3.1.2.26'],
+        '7.2.5': ['3.4.4', '3.4.2.4'],
+        '5.2.1': ['3.7.1', '3.4.2.1'],
+        '5.2.6': ['3.7.2', '3.1.2.22'],
+        '5.2.7': ['3.7.3', '3.1.2.23'],
+        '5.2.8': ['3.7.4', '3.1.2.24'],
+        '5.2.9': ['3.7.5', '3.4.2.2'],
+        '5.2.10': ['3.7.6', '3.1.2.25'],
+        '7.2.8': ['3.7.9', '3.4.2.7'],
+        '8.2.6': ['3.7.10', '3.1.2.27'],
+        '8.2.7': ['3.7.11', '3.6.2.6'],
+        '8.2.8': ['3.7.12', '3.1.2.28'],
+        '8.2.9': ['3.7.13', '3.6.2.7'],
+        '9.2.1': ['3.7.14', '3.6.3.2'],
+        '9.2.7': ['3.7.15', '3.1.3.4'],
+        '7.2.18': ['3.1.24', '3.1.2.20'],
+        '6.2.1': ['3.1.11', '3.1.2.9'],
+        '5.2.11': ['3.1.10', '3.1.2.8'],
+        '6.2.3': ['3.1.13', '3.1.2.11'],
+        '7.2.17': ['3.1.23', '3.1.2.19'],
+
+    };
+    {% endraw %}
+    {% raw %}
+    /**
+     * 查找目标元素（包括备选条文号）
+     * @param {string} primaryClause - 主要查找的条文号
+     * @returns {{elements: {input: HTMLInputElement, textarea: HTMLTextAreaElement|null}|null, foundClause: string|null}} - 返回找到的元素对和实际匹配的条文号，如果都找不到则返回null
+     */
+    function findTargetElementsWithFallback(primaryClause) {
+        if (!primaryClause) return null;
+
+        let elements = findScoreElements(primaryClause);
+        if (elements) {
+            return { elements, foundClause: primaryClause };
+        }
+
+        // 如果主条文号未找到，检查是否有备选定义
+        const fallbacks = clauseFallbacks[primaryClause];
+        if (fallbacks && Array.isArray(fallbacks)) {
+            console.log(`[Fallback Check] 条文 ${primaryClause} 未直接找到，开始查找备选: ${fallbacks.join(', ')}`);
+            for (const fallbackClause of fallbacks) {
+                elements = findScoreElements(fallbackClause);
+                if (elements) {
+                    console.log(`[Fallback Check] 条文 ${primaryClause} 的备选 ${fallbackClause} 找到.`);
+                    return { elements, foundClause: fallbackClause }; // 找到第一个匹配的备选
+                }
+            }
+        }
+
+        // 主条文和所有备选都找不到
+        return null;
+    }
+    {% endraw %}
 </script>
 
 <!-- 引入条文依赖关系处理脚本 -->

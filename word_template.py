@@ -786,10 +786,11 @@ def replace_placeholders(template_path, data):
             doc.save(output_path)
             print(f"文档已初步保存: {output_path}")
             
-            # --- 更新目录 ---
+            # --- 更新目录 --- 
             # 需要绝对路径来传递给 COM
-            absolute_output_path = os.path.abspath(output_path) 
-            update_toc_with_com(absolute_output_path)
+            # absolute_output_path = os.path.abspath(output_path) 
+            # update_toc_with_com(absolute_output_path) # <-- Temporarily comment out COM call
+            print("[word_template.py] 跳过 COM 目录更新 (临时禁用)")
             # --- 目录更新结束 ---
 
             print(f"=== 完成处理文档模板 ===")
@@ -807,3 +808,111 @@ def replace_placeholders(template_path, data):
         print(traceback.format_exc())
         print(f"=== 处理文档失败 ===")
         return None
+
+def replace_simple_placeholders_in_runs(runs, data_dict):
+    """在给定的 runs 列表中替换简单的 {key} 占位符"""
+    full_text = "".join(run.text for run in runs)
+    
+    # 使用正则表达式查找所有 {key} 形式的占位符
+    placeholders = re.findall(r"\{([^{}]+?)\}", full_text)
+    
+    if not placeholders:
+        return # 没有找到占位符，直接返回
+    
+    modified = False
+    for key in placeholders:
+        # 检查 data_dict 中是否有对应的键
+        if key in data_dict:
+            value = str(data_dict[key]) if data_dict[key] is not None else "" # 转换为字符串，None 转为空字符串
+            
+            # 构建要替换的占位符字符串，例如 "{项目名称}"
+            placeholder_to_replace = f"{{{key}}}"
+            
+            # --- 复杂的替换逻辑，处理跨 run 的占位符 --- 
+            # 因为一个占位符可能跨越多个 run，例如 "{项" 在一个 run，"目名称}" 在另一个 run
+            # 我们需要迭代 runs，构建当前文本，查找并替换
+            current_run_index = 0
+            while current_run_index < len(runs):
+                # 从当前 run 开始构建文本片段，直到找到完整的占位符或结束
+                temp_text = ""
+                runs_involved_indices = []
+                for i in range(current_run_index, len(runs)):
+                    temp_text += runs[i].text
+                    runs_involved_indices.append(i)
+                    if placeholder_to_replace in temp_text:
+                        break # 找到了完整的占位符
+               
+                # 如果找到了占位符
+                if placeholder_to_replace in temp_text:
+                    first_run_index = runs_involved_indices[0]
+                    last_run_index = runs_involved_indices[-1]
+                   
+                    # 在第一个 run 中执行替换
+                    first_run_text = runs[first_run_index].text
+                    start_index = temp_text.find(placeholder_to_replace)
+                    # 计算占位符在第一个 run 中的起始位置
+                    placeholder_start_in_first_run = start_index - sum(len(runs[j].text) for j in range(current_run_index, first_run_index))
+                   
+                    # 替换逻辑：只在第一个run中进行替换，并清空后续相关run的文本
+                    runs[first_run_index].text = first_run_text[:placeholder_start_in_first_run] + value + first_run_text[placeholder_start_in_first_run + len(placeholder_to_replace):]
+                   
+                    # 清空参与构成占位符的后续runs的文本
+                    for i in range(first_run_index + 1, last_run_index + 1):
+                        # 需要确保不超出 runs_involved_indices 的范围
+                        if i in runs_involved_indices:
+                             runs[i].text = ""
+                   
+                    modified = True
+                    # 从替换后的下一个 run 开始继续检查（或从当前 run 重新开始以处理同一 run 内的多个占位符）
+                    # 为简单起见，我们从第一个被修改的 run 之后开始，这可能错过同一 run 的后续占位符，但更安全
+                    current_run_index = first_run_index + 1
+                else:
+                    # 如果从 current_run_index 开始没有找到完整的占位符，移动到下一个 run
+                    current_run_index += 1
+            # --- 复杂替换逻辑结束 --- 
+           
+    # 如果进行了修改，可以考虑合并相邻的、格式相同的空 run 或 run，但这比较复杂，暂时省略
+    return modified
+
+def replace_generic_placeholders(doc_path, data_dict):
+    """
+    打开 Word 文档，并替换所有段落和表格中的简单 {key} 占位符。
+    
+    参数:
+        doc_path: Word 文档的路径。
+        data_dict: 包含占位符键和替换值的字典。
+    返回:
+        bool: 如果进行了任何替换则返回 True，否则返回 False。
+    """
+    try:
+        doc = Document(doc_path)
+        print(f"[word_template.py] 开始通用占位符替换: {doc_path}")
+        print(f"  替换数据: {list(data_dict.keys())}")
+        
+        overall_modified = False
+        
+        # 遍历文档中的所有段落
+        for para in doc.paragraphs:
+            if replace_simple_placeholders_in_runs(para.runs, data_dict):
+                overall_modified = True
+               
+        # 遍历文档中的所有表格
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        if replace_simple_placeholders_in_runs(para.runs, data_dict):
+                            overall_modified = True
+                           
+        if overall_modified:
+            doc.save(doc_path)
+            print(f"[word_template.py] 通用占位符替换完成并保存: {doc_path}")
+        else:
+            print(f"[word_template.py] 未执行任何通用占位符替换: {doc_path}")
+           
+        return overall_modified
+
+    except Exception as e:
+        print(f"[word_template.py] 通用占位符替换失败: {doc_path}, 错误: {e}")
+        print(traceback.format_exc())
+        return False # 表示替换失败
