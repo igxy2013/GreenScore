@@ -2635,13 +2635,25 @@
             });
 
             // 3. 调用 updateDatabaseScore 更新数据库
-            // 更新 6.1.2 (这是一个评价项，没有分数，我们将isAchieved和结论存入)
-            await updateDatabaseScore("6.1.2", 0, isAchieved612, conclusion612Text);
-            console.log("条文 6.1.2 更新成功");
+            const standard = document.getElementById('standard')?.value || '';
+            console.log("当前项目评价标准:", standard);
+            let clause_base="6.1.2";
+            let clause_advanced="6.2.1";
+           if(standard=="四川省标"){
+            clause_base="2.1.14";
+            clause_advanced="3.1.11";
+           }
+           else if(standard=="成都市标"){
+            clause_base="3.1.1.12";
+            clause_advanced="3.1.2.9";
+           }
+            // 更新 基本级 (这是一个评价项，没有分数，我们将isAchieved和结论存入)
+            await updateDatabaseScore(clause_base, 0, isAchieved612, conclusion612Text);
+            console.log("条文 基本级 更新成功");
 
-            // 更新 6.2.1
-            await updateDatabaseScore("6.2.1", score621, isAchieved621, conclusion621Text);
-            console.log("条文 6.2.1 更新成功");
+            // 更新 提高级
+            await updateDatabaseScore(clause_advanced, score621, isAchieved621, conclusion621Text);
+            console.log("条文 提高级 更新成功");
 
             Toastify({
                 text: '得分已成功应用到项目！',
