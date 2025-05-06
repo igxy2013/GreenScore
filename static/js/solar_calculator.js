@@ -135,28 +135,95 @@ function initMap() {
         });
         
         // 搜索位置按钮事件
-        document.getElementById("searchLocation").addEventListener("click", function() {
-            var location = document.getElementById("location").value;
-            if (location) {
+        document.getElementById("searchLocation").addEventListener("click", async function() {
+            var locationValue = document.getElementById("location").value;
+            if (locationValue) {
+                // 显示加载提示
+                const annualRadiationEl = document.getElementById("annualRadiation");
+                const annualGenerationEl = document.getElementById("annualGeneration");
+                const resultsEl = document.getElementById("results");
+
+                annualRadiationEl.textContent = "查询中...";
+                annualGenerationEl.textContent = "查询中...";
+                // 确保在开始查询时，如果之前有图表，先清除或显示加载状态
+                if (window.radiationChart && typeof window.radiationChart.destroy === 'function') {
+                    window.radiationChart.destroy();
+                }
+                if (window.generationChart && typeof window.generationChart.destroy === 'function') {
+                    window.generationChart.destroy();
+                }
+                // 清空图表容器，或者放一个加载指示器
+                document.getElementById('radiationChart').innerHTML = '';
+                document.getElementById('generationChart').innerHTML = '';
+
+                resultsEl.style.display = "grid";
+
                 var myGeo = new BMap.Geocoder();
-                myGeo.getPoint(location, function(point) {
-                    if (point) {
-                        map.centerAndZoom(point, 15);
-                        // 确保地图禁用滚轮缩放功能
-                        map.enableScrollWheelZoom(false);
-                        map.disableScrollWheelZoom();
-                        
-                        // 此处不需要重新添加wheel事件处理，因为已经在初始化时添加
-                        
-                        marker.setPosition(point);
-                        document.getElementById("longitude").textContent = point.lng.toFixed(6);
-                        document.getElementById("latitude").textContent = point.lat.toFixed(6);
-                        // 获取海拔数据
-                        getElevation(point.lat, point.lng);
-                    } else {
-                        alert("未找到该地点");
+                // Promisify BMap.Geocoder.getPoint
+                const getPointPromise = (locationAddr) => {
+                    return new Promise((resolve, reject) => {
+                        myGeo.getPoint(locationAddr, function(point) {
+                            if (point) {
+                                resolve(point);
+                            } else {
+                                reject(new Error("未找到该地点: " + locationAddr));
+                            }
+                        }/*, city*/); // The third argument for getPoint is city, often same as location for broader search
+                    });
+                };
+
+                try {
+                    const point = await getPointPromise(locationValue);
+                    
+                    map.centerAndZoom(point, 15);
+                    // 确保地图禁用滚轮缩放功能
+                    map.enableScrollWheelZoom(false); 
+                    map.disableScrollWheelZoom();
+                    
+                    marker.setPosition(point);
+                    document.getElementById("longitude").textContent = point.lng.toFixed(6);
+                    document.getElementById("latitude").textContent = point.lat.toFixed(6);
+                    
+                    // 获取海拔数据 (already async, can run in parallel or awaited if needed before solar)
+                    getElevation(point.lat, point.lng); 
+                    
+                    const year = document.getElementById("year").value;
+                    
+                    // 调用 getSolarRadiationData 并等待结果
+                    const monthlyData = await getSolarRadiationData(point.lat, point.lng, year);
+                    
+                    // 获取计算发电量所需的参数
+                    const panelAreaInput = document.getElementById('panelArea');
+                    const systemEfficiencyInput = document.getElementById('systemEfficiency');
+                    const firstYearDegradationInput = document.getElementById('firstYearDegradation');
+
+                    let panelArea = parseFloat(panelAreaInput.value);
+                    if (isNaN(panelArea) || panelArea <= 0) {
+                        // alert("请输入有效的光伏板面积 (大于0的数字)。");
+                        // panelAreaInput.focus();
+                        // annualRadiationEl.textContent = "数据错误"; // Or revert to initial state
+                        // annualGenerationEl.textContent = "数据错误";
+                        // resultsEl.style.display = "none"; // Hide results if input is invalid
+                        // return; 
+                        // For now, let's proceed with a default or let updateCharts handle it if area is 0
+                         panelArea = 0; // Or a sensible default, or rely on updateCharts to show 0 generation
                     }
-                }, location);
+                    
+                    const systemEfficiency = parseFloat(systemEfficiencyInput.value) || 80; // Default from HTML
+                    const firstYearDegradation = parseFloat(firstYearDegradationInput.value) || 2; // Default from HTML
+                    
+                    // 更新图表和年度数据，updateCharts 内部会处理DOM更新
+                    updateCharts(monthlyData, panelArea, systemEfficiency, firstYearDegradation);
+
+                } catch (error) {
+                    console.error("搜索位置或获取太阳能数据时出错:", error);
+                    alert(error.message || "处理请求时发生错误，请稍后重试。");
+                    annualRadiationEl.textContent = "--"; // Revert to initial state or error state
+                    annualGenerationEl.textContent = "--";
+                    resultsEl.style.display = "none"; // Hide results on error
+                }
+            } else {
+                alert("请输入项目地点进行查询。");
             }
         });
         
@@ -303,11 +370,8 @@ async function getSolarRadiationData(lat, lng, year) {
                 return; // 跳过无效数据
             }
             
-            // 转换单位: MJ/m²/day 转为 kWh/m²/day (1 MJ = 0.2778 kWh)
-            const radiationKWh = radiation * 0.2778;
-            
             // 累加到对应月份
-            monthlyData[month].radiation += radiationKWh;
+            monthlyData[month].radiation += radiation;
         });
         
         console.log('月度数据处理完成', monthlyData);
