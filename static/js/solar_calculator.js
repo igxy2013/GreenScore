@@ -195,7 +195,7 @@ function initMap() {
                     // 获取计算发电量所需的参数
                     const panelAreaInput = document.getElementById('panelArea');
                     const systemEfficiencyInput = document.getElementById('systemEfficiency');
-                    const firstYearDegradationInput = document.getElementById('firstYearDegradation');
+                    const panelConversionEfficiencyInput = document.getElementById('panelConversionEfficiency');
 
                     let panelArea = parseFloat(panelAreaInput.value);
                     if (isNaN(panelArea) || panelArea <= 0) {
@@ -210,10 +210,10 @@ function initMap() {
                     }
                     
                     const systemEfficiency = parseFloat(systemEfficiencyInput.value) || 80; // Default from HTML
-                    const firstYearDegradation = parseFloat(firstYearDegradationInput.value) || 2; // Default from HTML
+                    const panelConversionEfficiency = parseFloat(panelConversionEfficiencyInput.value) || 22;
                     
                     // 更新图表和年度数据，updateCharts 内部会处理DOM更新
-                    updateCharts(monthlyData, panelArea, systemEfficiency, firstYearDegradation);
+                    updateCharts(monthlyData, panelArea, systemEfficiency, panelConversionEfficiency);
 
                 } catch (error) {
                     console.error("搜索位置或获取太阳能数据时出错:", error);
@@ -362,7 +362,7 @@ async function getSolarRadiationData(lat, lng, year) {
         Object.keys(radiationData).forEach(dateStr => {
             // 日期格式: YYYYMMDD
             const month = parseInt(dateStr.substring(4, 6)) - 1; // 月份从0开始
-            const radiation = radiationData[dateStr]; // 单位: MJ/m²/day
+            const radiation = radiationData[dateStr]; // 单位: kWh/m²/day (直接使用,无需转换)
             
             // 处理无效数据
             if (isNaN(radiation) || radiation < 0) {
@@ -370,7 +370,7 @@ async function getSolarRadiationData(lat, lng, year) {
                 return; // 跳过无效数据
             }
             
-            // 累加到对应月份
+            // 累加到对应月份 (单位已是 kWh/m²/day)
             monthlyData[month].radiation += radiation;
         });
         
@@ -412,19 +412,22 @@ async function getSolarRadiationData(lat, lng, year) {
 }
 
 // 计算发电量
-function calculateGeneration(radiation, area, systemEfficiency, firstYearDegradation) {
-    // 转换效率从百分比转为小数
+function calculateGeneration(radiation, area, systemEfficiency, panelConversionEfficiencyInput) {
+    // systemEfficiency: 系统综合效率 (%)
+    // panelConversionEfficiencyInput: 光伏组件转换效率 (%)
+
     const systemEfficiencyDecimal = systemEfficiency / 100;
-    const degradationDecimal = firstYearDegradation / 100;
-    // 计算发电量 (kWh) = 辐射量 (kWh/m²) * 面积 (m²) * 系统效率 * (1 - 首年衰减)
-    return radiation * area * systemEfficiencyDecimal * (1 - degradationDecimal);
+    const panelConversionEfficiencyDecimal = panelConversionEfficiencyInput / 100; 
+    
+    // 计算发电量 (kWh) = 辐射量 (kWh/m²) * 面积 (m²) * 光伏组件转换效率 * 系统综合效率
+    return radiation * area * panelConversionEfficiencyDecimal * systemEfficiencyDecimal;
 }
 
 // 更新图表
-function updateCharts(monthlyData, area, efficiency, firstYearDegradation) {
+function updateCharts(monthlyData, area, efficiency, panelConversionEfficiency) {
     const months = monthlyData.map(item => item.month);
     const radiationValues = monthlyData.map(item => item.radiation);
-    const generationValues = monthlyData.map(item => calculateGeneration(item.radiation, area, efficiency, firstYearDegradation));
+    const generationValues = monthlyData.map(item => calculateGeneration(item.radiation, area, efficiency, panelConversionEfficiency));
     
     // 计算年度总值
     const annualRadiation = radiationValues.reduce((sum, val) => sum + val, 0);
@@ -544,11 +547,11 @@ function updateMonthlyTable(monthlyData) {
 }
 
 // 创建模态窗口图表
-function createModalCharts(monthlyData, area, efficiency, firstYearDegradation) {
+function createModalCharts(monthlyData, area, efficiency, panelConversionEfficiency) {
     console.log('开始创建模态窗口图表');
     const months = monthlyData.map(item => item.month);
     const radiationValues = monthlyData.map(item => item.radiation);
-    const generationValues = monthlyData.map(item => calculateGeneration(item.radiation, area, efficiency, firstYearDegradation));
+    const generationValues = monthlyData.map(item => calculateGeneration(item.radiation, area, efficiency, panelConversionEfficiency));
     
     // 检查是否存在Canvas元素
     const radiationCanvas = document.getElementById('modalRadiationChart');
@@ -1083,7 +1086,7 @@ function showErrorInModal(errorMessage) {
                     // 使用模拟数据创建图表
                     const area = parseFloat(document.getElementById("panelArea")?.value || '0');
                     const systemEfficiency = parseFloat(document.getElementById("systemEfficiency")?.value || '0');
-                    const firstYearDegradation = parseFloat(document.getElementById("firstYearDegradation")?.value || '0');
+                    const panelConversionEfficiency = parseFloat(document.getElementById("panelConversionEfficiency")?.value || '22');
                     
                     // 创建模拟数据
                     const simulatedData = [
@@ -1101,12 +1104,12 @@ function showErrorInModal(errorMessage) {
                         { month: "十二月", radiation: 80.5, days: 31 }
                     ].map(item => ({
                         ...item,
-                        generation: calculateGeneration(item.radiation, area, systemEfficiency, firstYearDegradation),
+                        generation: calculateGeneration(item.radiation, area, systemEfficiency, panelConversionEfficiency),
                         dailyAvg: item.radiation / item.days
                     }));
                     
                     // 显示图表
-                    createModalCharts(simulatedData, area, systemEfficiency, firstYearDegradation);
+                    createModalCharts(simulatedData, area, systemEfficiency, panelConversionEfficiency);
                 });
             }
         }
@@ -1333,7 +1336,7 @@ function startApp() {
             const year = document.getElementById("year")?.value || '2023';
             const area = parseFloat(document.getElementById("panelArea")?.value || '0');
             const systemEfficiency = parseFloat(document.getElementById("systemEfficiency")?.value || '0');
-            const firstYearDegradation = parseFloat(document.getElementById("firstYearDegradation")?.value || '0');
+            const panelConversionEfficiency = parseFloat(document.getElementById("panelConversionEfficiency")?.value || '22');
             
             if (isNaN(lat) || isNaN(lng)) {
                 alert("请先选择或输入有效的地理坐标");
@@ -1350,8 +1353,8 @@ function startApp() {
                 return;
             }
             
-            if (isNaN(firstYearDegradation) || firstYearDegradation < 0 || firstYearDegradation > 100) {
-                alert("请输入有效的组件首年衰减(0-100%)");
+            if (isNaN(panelConversionEfficiency) || panelConversionEfficiency < 0 || panelConversionEfficiency > 100) {
+                alert("请输入有效的光伏组件转换效率(0-100%)");
                 return;
             }
             
@@ -1359,7 +1362,7 @@ function startApp() {
             const monthlyData = await getSolarRadiationData(lat, lng, year);
             if (monthlyData) {
                 // 更新图表
-                const result = updateCharts(monthlyData, area, systemEfficiency, firstYearDegradation);
+                const result = updateCharts(monthlyData, area, systemEfficiency, panelConversionEfficiency);
                 // 隐藏月度数据表格
                 const monthlyDataElem = document.getElementById("monthlyData");
                 if (monthlyDataElem) {
@@ -1389,7 +1392,7 @@ function startApp() {
             const year = document.getElementById("year")?.value || '2023';
             const area = parseFloat(document.getElementById("panelArea")?.value || '0');
             const systemEfficiency = parseFloat(document.getElementById("systemEfficiency")?.value || '0');
-            const firstYearDegradation = parseFloat(document.getElementById("firstYearDegradation")?.value || '0');
+            const panelConversionEfficiency = parseFloat(document.getElementById("panelConversionEfficiency")?.value || '22');
             
             if (isNaN(lat) || isNaN(lng)) {
                 alert("请先选择或输入有效的地理坐标");
@@ -1406,8 +1409,8 @@ function startApp() {
                 return;
             }
             
-            if (isNaN(firstYearDegradation) || firstYearDegradation < 0 || firstYearDegradation > 100) {
-                alert("请输入有效的组件首年衰减(0-100%)");
+            if (isNaN(panelConversionEfficiency) || panelConversionEfficiency < 0 || panelConversionEfficiency > 100) {
+                alert("请输入有效的光伏组件转换效率(0-100%)");
                 return;
             }
             
@@ -1433,7 +1436,7 @@ function startApp() {
                 // 处理数据并计算结果
                 const processedData = monthlyData.map((item) => ({
                     ...item,
-                    generation: calculateGeneration(item.radiation, area, systemEfficiency, firstYearDegradation),
+                    generation: calculateGeneration(item.radiation, area, systemEfficiency, panelConversionEfficiency),
                     dailyAvg: item.radiation / item.days
                 }));
                 
@@ -1452,7 +1455,7 @@ function startApp() {
                 hideLoadingInModal();
                 
                 // 创建模态窗口中的图表
-                createModalCharts(processedData, area, systemEfficiency, firstYearDegradation);
+                createModalCharts(processedData, area, systemEfficiency, panelConversionEfficiency);
                 
             } catch (err) {
                 console.error('月度详细统计处理失败:', err);
