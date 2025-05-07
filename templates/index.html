@@ -60,7 +60,9 @@
     <header class="w-full bg-white shadow-sm fixed top-0 left-0 z-50">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center">
-                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="GreenScore Logo" class="w-10 h-10 mr-3">
+                <source srcset="{{ url_for('static', filename='image/greenscore@3x.png') }}" media="(-webkit-min-device-pixel-ratio: 3), (min-resolution: 288dpi)">
+                <source srcset="{{ url_for('static', filename='image/greenscore@2x.png') }}" media="(-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi)">
+                <img src="{{ url_for('static', filename='image/greenscore.png') }}" alt="logo" class="inline-block h-10 mr-2">
                 <span class="text-xl font-bold text-gray-800">智能绿建评价系统</span>
             </div>
             <nav class="hidden md:flex space-x-8 items-center">
