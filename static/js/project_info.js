@@ -403,6 +403,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.textContent = originalText;
                 this.disabled = false;
 
+                const scoreToggle = document.getElementById('scoreToggle');
+                // 读取 input 的当前 checked 状态来决定是否计算
+                const isChecked = scoreToggle ? scoreToggle.checked : false; 
+                console.log("isChecked (from input element)", isChecked);
+                if (isChecked) { 
+                    console.log("自动计算功能开启，将异步执行");
+                    // calculateAndUpdateScores(); // 移除或保持注释之前的直接调用
+                    // 将耗时操作放入setTimeout异步执行
+                    setTimeout(calculateAndUpdateScores, 0);
+                }
+                auto_update_jscs();
                 if (data.success) {
                     alert(`成功导入 ${data.imported_count} 条星级案例数据！\n标准: ${data.standard}\n星级目标: ${data.star_rating_target}`);
                 } else {
@@ -774,6 +785,7 @@ function auto_update_jscs(){
                     updateDatabaseScore('5.1.6', 0,"不参评", '本项目无空调，本条不参评');
                     updateDatabaseScore('5.1.8', 0,"不参评", '本项目无空调，本条不参评');
                     updateDatabaseScore('7.1.2', 0,"不参评", '本项目无空调，本条不参评');
+                    updateDatabaseScore('7.2.11', 9,"是", '本项目采用分体式空调，第二款可直接得分。');
                 }
                 else if (ac_type === '分体式空调'){
                     updateDatabaseScore('5.1.6', 0,null, '本项目设置分体空调，直接满足要求');
@@ -781,14 +793,17 @@ function auto_update_jscs(){
                     updateDatabaseScore('7.1.2', 0,null, '本项目设置分体空调，直接满足要求');
                     updateDatabaseScore('7.2.5', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
                     updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
+                    updateDatabaseScore('7.2.11', 9,"是", '本项目采用分体式空调，第二款可直接得分。');
                 }
                 else if (ac_type === '多联式空调'){
                     updateDatabaseScore('5.1.6', 0,null, '本项目设置多联式空调，满足要求');
                     updateDatabaseScore('7.1.2', 0,null, '本项目设置多联式空调，满足要求');
                     updateDatabaseScore('7.2.6', 5,null, '本项目采用分体式空调系统，且设计能效等级为二级。');
-                }   
+
+                }
                 else if (ac_type === '集中空调'){
                     updateDatabaseScore('5.1.6', 0,null, '满足要求，详见暖通设计图纸');
+                    updateDatabaseScore('5.1.8', 0,null, '满足要求，详见暖通设计图纸');
                     updateDatabaseScore('7.1.2', 0,null, '满足要求，详见暖通设计图纸');
                 }
                 else if (ac_type === '组合形式'){
