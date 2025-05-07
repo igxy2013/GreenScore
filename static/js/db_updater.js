@@ -1225,7 +1225,12 @@ function handleAllClauseDependencies(projectId) {
             source: '3.1.10',
             target: '3.7.7',
             condition: 'score > 0',
-        },    
+        },
+        {
+            source: '3.7.8',
+            target: '3.1.19',
+            condition: 'score > 0',
+        },     
         {
             source: '3.6.7',
             target: '3.7.11',

@@ -66,13 +66,13 @@
                     <i class="ri-water-flash-line mr-3"></i>
                     <span>给排水</span>
                 </a>
-                <a href="{{ url_for('filter_standards', level='基本级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '电气' %}active{% endif %}">
-                    <i class="ri-plug-line mr-3"></i>
-                    <span>电气</span>
-                </a>
                 <a href="{{ url_for('filter_standards', level='基本级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '暖通' %}active{% endif %}">
                     <i class="ri-sun-foggy-line mr-3"></i>
                     <span>暖通</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='基本级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '电气' %}active{% endif %}">
+                    <i class="ri-plug-line mr-3"></i>
+                    <span>电气</span>
                 </a>
                 <a href="{{ url_for('filter_standards', level='基本级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '基本级' and current_specialty == '景观' %}active{% endif %}">
                     <i class="ri-plant-line mr-3"></i>
@@ -109,13 +109,13 @@
                         <i class="ri-water-flash-line mr-3"></i>
                     <span>给排水</span>
                 </a>
-                <a href="{{ url_for('filter_standards', level='提高级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
-                    <i class="ri-plug-line mr-3"></i>
-                    <span>电气</span>
-                </a>
                 <a href="{{ url_for('filter_standards', level='提高级', specialty='暖通', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '暖通' %}active{% endif %}">
                     <i class="ri-sun-foggy-line mr-3"></i>
                     <span>暖通</span>
+                </a>
+                <a href="{{ url_for('filter_standards', level='提高级', specialty='电气', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '电气' %}active{% endif %}">
+                    <i class="ri-plug-line mr-3"></i>
+                    <span>电气</span>
                 </a>
                 {% if project and project.standard == '成都市标' or project and project.standard == '四川省标' %}
                 <a href="{{ url_for('filter_standards', level='提高级', specialty='景观', project_id=project.id if project else None) }}" class="submenu-item flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 {% if current_level == '提高级' and current_specialty == '景观' %}active{% endif %}">
