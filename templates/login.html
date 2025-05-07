@@ -148,7 +148,7 @@
                         <span class="text-sm text-gray-600">记住我</span>
                     </label>
                     <script>
-                        // 检查是否有保存的登录信息
+                        // 检查是否有保存的登录信息 (这部分保持不变)
                         window.addEventListener('DOMContentLoaded', () => {
                             const savedUsername = localStorage.getItem('rememberedUsername');
                             const rememberMe = localStorage.getItem('rememberMe');
@@ -159,7 +159,7 @@
                             }
                         });
 
-                        // 处理记住我选项变化
+                        // 处理记住我选项变化 (这部分保持不变)
                         function handleRememberMe(checked) {
                             if (!checked) {
                                 localStorage.removeItem('rememberedUsername');
@@ -167,16 +167,16 @@
                             }
                         }
 
-                        // 在登录成功时保存用户信息
-                        document.getElementById('loginForm').addEventListener('submit', (e) => {
-                            const rememberMe = document.getElementById('remember').checked;
-                            const username = document.getElementById('username').value;
-                            
-                            if (rememberMe) {
-                                localStorage.setItem('rememberedUsername', username);
-                                localStorage.setItem('rememberMe', 'true');
-                            }
-                        });
+                        // 移除这里独立的 submit 监听器，逻辑将合并到下面的主监听器中
+                        // document.getElementById('loginForm').addEventListener('submit', (e) => {
+                        //     const rememberMe = document.getElementById('remember').checked;
+                        //     const username = document.getElementById('username').value;
+                        //     
+                        //     if (rememberMe) {
+                        //         localStorage.setItem('rememberedUsername', username);
+                        //         localStorage.setItem('rememberMe', 'true');
+                        //     }
+                        // });
                     </script>
                     <a href="/reset_password" class="text-sm text-primary hover:text-primary/80">忘记密码？</a>
                 </div>
@@ -254,6 +254,20 @@
                 const loginBtn = document.getElementById('loginBtn');
                 const btnText = document.getElementById('btnText');
                 const loadingIcon = document.getElementById('loadingIcon');
+                const rememberMeChecked = document.getElementById('remember').checked; // 获取记住我状态
+
+                // 在发送请求前处理“记住我”逻辑
+                if (rememberMeChecked) {
+                    localStorage.setItem('rememberedUsername', username);
+                    localStorage.setItem('rememberMe', 'true');
+                } else {
+                    // 如果用户在提交时取消了记住我，也应该清除（虽然 handleRememberMe 已经处理了 onchange 事件）
+                    // 这一步可以看作是双重保险，或者如果用户在勾选后、提交前通过某种方式取消了勾选（非标准操作）
+                    // localStorage.removeItem('rememberedUsername');
+                    // localStorage.removeItem('rememberMe');
+                    // 考虑到 handleRememberMe 已经存在，这里的 else 分支可能不是必需的，
+                    // 除非有特殊场景需要覆盖。通常 onchange 事件已经足够。
+                }
 
                 btnText.classList.add('hidden');
                 loadingIcon.classList.remove('hidden');
@@ -275,12 +289,7 @@
                     
                     if (response.ok) {
                         showToast('登录成功！');
-                        // 如果记住我被选中，保存用户信息
-                        const rememberMe = document.getElementById('remember').checked;
-                        if (rememberMe) {
-                            localStorage.setItem('rememberedUsername', username);
-                            localStorage.setItem('rememberMe', 'true');
-                        }
+                        // 此处不再需要重复处理 localStorage
                         setTimeout(() => {
                             window.location.href = data.redirect || '/calculator';
                         }, 1000);
