@@ -1222,74 +1222,73 @@ def save_form():
         data = request.json
         
         if not data:
+            app.logger.warning("API /api/save_form: 没有收到数据")
             return jsonify({'error': '没有收到数据'}), 400
-            
-        # 获取当前用户的项目ID
+        
+        # 详细记录接收到的数据
+        try:
+            app.logger.info(f"API /api/save_form: 接收到的原始数据: {json.dumps(data, ensure_ascii=False, indent=2)}")
+        except Exception as log_e:
+            app.logger.error(f"API /api/save_form: 记录原始数据失败: {log_e}")
+
         project_id = data.get('project_id')
         if not project_id:
-            # 没有提供项目ID时，获取第一个项目
-            project = Project.query.first()
+            project = Project.query.first() # Fallback, consider if this is desired
             project_id = project.id if project else None
         
         if not project_id:
+            app.logger.warning("API /api/save_form: 无效的项目ID")
             return jsonify({'error': '无效的项目ID'}), 400
         
-        # 记录请求信息，方便排查问题
-        app.logger.info(f"保存表单 - 项目ID: {project_id}")
+        app.logger.info(f"API /api/save_form: 准备保存表单数据，项目ID: {project_id}")
         
-        # 提取表单数据
         building_no = data.get('buildingNo', '')
         standard_selection = data.get('standardSelection', 'municipal')
-        form_data_json = json.dumps(data.get('formData', {}), ensure_ascii=False)
         
-        # 首先尝试检查是否已存在记录
+        form_data_content = data.get('formData') # Get the 'formData' object
+        if not isinstance(form_data_content, dict):
+            app.logger.warning(f"API /api/save_form: 请求中的 'formData' 不是一个字典，实际类型: {type(form_data_content)}。将使用空字典。")
+            form_data_content = {}
+            
+        form_data_json = json.dumps(form_data_content, ensure_ascii=False)
+        app.logger.info(f"API /api/save_form: 将要存入 FormData.form_data 的 JSON 字符串 (长度 {len(form_data_json)}): {form_data_json[:500]}{'...' if len(form_data_json) > 500 else ''}")
+        
         existing_record = None
         try:
             existing_record = db.session.query(FormData).filter(FormData.project_id == project_id).order_by(FormData.updated_at.desc()).first()
         except Exception as query_error:
-            app.logger.error(f"查询表单记录失败: {str(query_error)}")
-        
-        # 不使用subtransactions参数，SQLAlchemy较新版本已移除该参数
-        # db.session.begin(subtransactions=True)
+            app.logger.error(f"API /api/save_form: 查询现有 FormData 记录失败: {str(query_error)}")
         
         try:
             if existing_record:
-                # 已存在记录，进行更新
-                app.logger.info(f"更新现有表单记录 - ID: {existing_record.id}")
-                
-                # 更新记录的各个字段
+                app.logger.info(f"API /api/save_form: 更新现有表单记录 - ID: {existing_record.id}")
                 existing_record.building_no = building_no
                 existing_record.standard_selection = standard_selection
                 existing_record.form_data = form_data_json
+                # existing_record.updated_at = datetime.utcnow() # Let SQLAlchemy handle this if configured, or use server_default
                 
-                # 直接使用SQL更新时间戳，避免ORM可能的问题
-                update_sql = text("UPDATE form_data SET updated_at=NOW() WHERE id=:id")
+                # Using direct SQL for updated_at as per original code
+                update_sql = text("UPDATE form_data SET updated_at = NOW() WHERE id = :id")
                 db.session.execute(update_sql, {"id": existing_record.id})
-                
+
                 result_id = existing_record.id
                 is_new = False
             else:
-                # 不存在记录，创建新的
-                app.logger.info(f"创建新表单记录 - 项目ID: {project_id}")
-                
-                # 创建新记录
+                app.logger.info(f"API /api/save_form: 创建新表单记录 - 项目ID: {project_id}")
                 new_record = FormData(
                     project_id=project_id,
                     building_no=building_no,
                     standard_selection=standard_selection,
                     form_data=form_data_json
+                    # created_at, updated_at should be handled by model defaults ideally
                 )
-                
-                # 添加到数据库
                 db.session.add(new_record)
-                db.session.flush()  # 获取新记录的ID
-                
+                db.session.flush()
                 result_id = new_record.id
                 is_new = True
             
-            # 提交事务
             db.session.commit()
-            app.logger.info(f"表单保存成功 - 记录ID: {result_id}, 是新记录: {is_new}")
+            app.logger.info(f"API /api/save_form: 表单数据成功保存到数据库。记录ID: {result_id}, 是否为新记录: {is_new}")
             
             return jsonify({
                 'success': True, 
@@ -1299,76 +1298,84 @@ def save_form():
             })
             
         except Exception as db_error:
-            # 回滚事务
             db.session.rollback()
-            app.logger.error(f"保存表单数据失败: {str(db_error)}")
-            
+            app.logger.error(f"API /api/save_form: 数据库操作失败: {str(db_error)}", exc_info=True)
             if hasattr(db_error, 'orig') and db_error.orig:
-                app.logger.error(f"原始数据库错误: {db_error.orig}")
-            
+                app.logger.error(f"API /api/save_form: 原始数据库错误: {db_error.orig}")
             return jsonify({'error': f'数据库操作失败: {str(db_error)}'}), 500
             
     except Exception as e:
-        # 确保回滚任何打开的事务
         try:
-            db.session.rollback()
-        except:
-            pass
+            db.session.rollback() # Ensure rollback on any top-level exception
+        except: # nosec
+            pass # If rollback fails, not much else to do here
             
-        app.logger.error(f"处理表单保存请求失败: {str(e)}")
-        app.logger.error(traceback.format_exc())
+        app.logger.error(f"API /api/save_form: 处理请求时发生严重错误: {str(e)}", exc_info=True)
         return jsonify({'error': f'保存失败: {str(e)}'}), 500
 
 @app.route('/api/load_form', methods=['GET'])
 def load_form():
-    """加载保存的表单数据"""
-    # 获取项目ID
     project_id = request.args.get('project_id')
     if not project_id:
+        app.logger.warning("API /api/load_form: 请求缺少 project_id 参数")
         return jsonify({"error": "缺少项目ID参数"}), 400
         
     try:
-        app.logger.info(f"尝试加载项目ID {project_id} 的表单数据")
+        app.logger.info(f"API /api/load_form: 尝试加载项目ID {project_id} 的表单数据")
         
-        # 从数据库查询数据 - 使用SQLAlchemy而不是直接的mysql连接
-        form_data = FormData.query.filter_by(project_id=project_id).order_by(FormData.updated_at.desc()).first()
+        form_data_instance = FormData.query.filter_by(project_id=project_id).order_by(FormData.updated_at.desc()).first()
         
-        # 检查是否找到数据
-        if not form_data:
-            app.logger.info(f"项目ID {project_id} 没有保存的表单数据")
+        if not form_data_instance:
+            app.logger.info(f"API /api/load_form: 项目ID {project_id} 没有找到保存的表单数据")
             return jsonify({"error": "没有找到保存的表单数据"}), 404
             
-        # 提取JSON数据
-        form_data_json = form_data.form_data
-        if not form_data_json:
-            app.logger.warning(f"项目ID {project_id} 的表单数据为空")
-            return jsonify({"error": "表单数据为空"}), 404
-            
-        # 解析JSON数据
-        try:
-            # 如果存储的是JSON字符串，则解析它
-            if isinstance(form_data_json, str):
-                form_data_dict = json.loads(form_data_json)
+        form_data_json_string = form_data_instance.form_data
+        log_str = str(form_data_json_string)
+        app.logger.info(f"API /api/load_form: 从数据库读取的 FormData.form_data (类型: {type(form_data_json_string)}, 长度 {len(log_str) if form_data_json_string is not None else 'None'}): {log_str[:500]}{'...' if len(log_str) > 500 else ''}")
+
+        form_data_dict = {}
+        if form_data_json_string is not None:
+            if isinstance(form_data_json_string, str):
+                try:
+                    form_data_dict = json.loads(form_data_json_string)
+                    if not isinstance(form_data_dict, dict):
+                        app.logger.warning(f"API /api/load_form: 解析后的JSON数据不是字典类型，而是 {type(form_data_dict)}。将使用空字典。")
+                        form_data_dict = {}
+                except json.JSONDecodeError as json_e:
+                    app.logger.error(f"API /api/load_form: 解析 FormData.form_data JSON 字符串失败: {str(json_e)}. 内容: {form_data_json_string[:200]}...")
+                    form_data_dict = {} # Fallback to empty dict on error
+            elif isinstance(form_data_json_string, dict):
+                form_data_dict = form_data_json_string # Already a dict (e.g., from db.JSON type)
             else:
-                # 如果已经是字典，直接使用
-                form_data_dict = form_data_json
-                
-            # 构建完整的响应数据
-            response_data = {
-                'buildingNo': form_data.building_no,
-                'standardSelection': form_data.standard_selection,
-                'formData': form_data_dict
-            }
-            
-            app.logger.info(f"成功加载项目ID {project_id} 的表单数据")
-            return jsonify(response_data)
-        except json.JSONDecodeError as e:
-            app.logger.error(f"解析表单数据JSON失败: {str(e)}")
-            return jsonify({"error": f"解析表单数据失败: {str(e)}"}), 500
+                app.logger.warning(f"API /api/load_form: FormData.form_data 既不是字符串也不是字典，实际类型: {type(form_data_json_string)}。将使用空字典。")
+                form_data_dict = {}
+        else:
+            app.logger.info(f"API /api/load_form: FormData.form_data 从数据库读取为 None。将使用空字典。")
+            form_data_dict = {}
+
+        # Log the structure of the parsed form_data_dict
+        try:
+            parsed_form_data_log = json.dumps(form_data_dict, ensure_ascii=False, indent=2)
+            app.logger.info(f"API /api/load_form: 解析后的 form_data_dict (用于构建响应): {parsed_form_data_log[:500]}{'...' if len(parsed_form_data_log) > 500 else ''}")
+        except Exception as log_e:
+            app.logger.error(f"API /api/load_form: 记录解析后的 form_data_dict 失败: {log_e}")
+
+        response_data = {
+            'buildingNo': form_data_instance.building_no,
+            'standardSelection': form_data_instance.standard_selection,
+            'formData': form_data_dict # This is the critical part for the frontend
+        }
+        
+        try:
+            response_data_log = json.dumps(response_data, ensure_ascii=False, indent=2)
+            app.logger.info(f"API /api/load_form: 将要返回给前端的 response_data: {response_data_log[:500]}{'...' if len(response_data_log) > 500 else ''}")
+        except Exception as log_e:
+            app.logger.error(f"API /api/load_form: 记录将要返回的 response_data 失败: {log_e}")
+
+        return jsonify(response_data)
             
     except Exception as e:
-        app.logger.error(f"加载表单数据时出错: {str(e)}")
-        app.logger.error(traceback.format_exc())
+        app.logger.error(f"API /api/load_form: 加载表单数据时发生严重错误: {str(e)}", exc_info=True)
         return jsonify({"error": f"加载表单数据失败: {str(e)}"}), 500
 
 @app.route('/api/project_info', methods=['GET'])

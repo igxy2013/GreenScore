@@ -2,6 +2,7 @@
 <!-- 绿色建材计算器JS -->
 <script src="{{ url_for('static', filename='js/calculator.js') }}" defer></script>
 <!-- 绿色建材计算所需的外部库 -->
+ <script src="{{ url_for('static', filename='js/db_updater.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/lib/jszip.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/lib/FileSaver.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/lib/xlsx.full.min.js') }}" defer></script>
@@ -1054,12 +1055,16 @@
         <button onclick="calculate()" class="px-6 py-3 bg-primary text-white rounded-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
             立即计算
         </button>
+        <button onclick="saveForm()" class="px-6 py-3 bg-white text-primary border border-primary rounded-button hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            保存数据
+        </button>
+        <button  onclick="applyScore()" class="px-6 py-3 bg-primary text-white rounded-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+            应用得分到项目
+        </button>
         <button onclick="exportWord()" class="px-6 py-3 bg-primary text-white rounded-button hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
             导出计算书
         </button>
-        <button onclick="saveForm()" class="px-6 py-3 bg-white text-primary border border-primary rounded-button hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary hidden">
-            保存数据
-        </button>
+
     </div>
 
     <div id="result" class="mt-8 bg-white rounded-lg shadow-xl p-8 hidden">

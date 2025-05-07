@@ -1,4 +1,4 @@
-(function() {
+
     // 全局存储计算结果 - 仅在此作用域内
     let reportData = {
         projectName: '',
@@ -81,7 +81,7 @@
         }
 
         // 尝试加载表单数据
-        // loadForm();
+        loadForm();
     });
 
     // 折叠功能
@@ -351,15 +351,20 @@
             // 获取项目ID
             const projectId = DOM.projectId ? DOM.projectId.value : '';
             if (!projectId) {
-                throw new Error('未找到项目ID，请确保在项目环境中操作');
+                // 恢复按钮状态以防万一
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+                alert('未找到项目ID，请确保在项目环境中操作');
+                // throw new Error('未找到项目ID，请确保在项目环境中操作'); // 改为 alert 并提前返回
+                return;
             }
             
             // 收集所有表单数据
             const formData = {
                 buildingNo: DOM.buildingNo ? DOM.buildingNo.value || '' : '',
                 standardSelection: DOM.standardSelection ? DOM.standardSelection.value || 'municipal' : 'municipal',
-                project_id: projectId, // 获取当前项目ID
-                formData: {}
+                project_id: projectId,
+                formData: {} // This will store category data like Q1, Q2 etc.
             };
 
             // 收集所有分类的数据
@@ -367,62 +372,93 @@
                 const categoryKey = category.getAttribute('data-category');
                 formData.formData[categoryKey] = [];
                 
-                // 跳过第一个子项（标题行）
-                let isFirstItem = true;
+                let isFirstItem = true; // Skip header row
                 category.querySelectorAll('.sub-item').forEach(item => {
                     if (isFirstItem) {
                         isFirstItem = false;
                         return;
                     }
                     
+                    const indicatorSpan = item.querySelector('.col-indicator');
                     const checkbox = item.querySelector('input[type="checkbox"]');
-                    const input = item.querySelector('input[type="number"]');
+                    const ratioInput = item.querySelector('input[type="number"]'); // For "绿材应用比例"
+                    const totalQuantityInput = item.querySelector('input[placeholder="材料总量"]');
+                    const greenQuantityInput = item.querySelector('input[placeholder="绿材用量"]');
                     
-                    if (checkbox && input) {
-                        formData.formData[categoryKey].push({
+                    if (indicatorSpan && checkbox) { // Basic elements to identify a row
+                        const itemName = indicatorSpan.textContent.trim();
+                        const itemData = {
+                            name: itemName,
                             checked: checkbox.checked,
-                            value: input.value || "0"
-                        });
+                            ratio: ratioInput ? (ratioInput.value || "0") : "0",
+                            totalQuantity: totalQuantityInput ? (totalQuantityInput.value || "") : "",
+                            greenQuantity: greenQuantityInput ? (greenQuantityInput.value || "") : ""
+                        };
+                        formData.formData[categoryKey].push(itemData);
                     }
                 });
             });
 
-            // 确保 JSON 数据不超过数据库字段长度限制
-            const jsonString = JSON.stringify(formData.formData);
-            if (jsonString.length > 4000) {
-                throw new Error('表单数据过大，请减少输入数据量');
+            // 确保 JSON 数据不超过数据库字段长度限制 (针对 formData.formData 部分)
+            const itemsJsonString = JSON.stringify(formData.formData);
+            if (itemsJsonString.length > 40000) { // Increased limit, adjust as necessary for your DB
+                // 恢复按钮状态
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+                alert('表单数据过大，请减少输入数据量');
+                // throw new Error('表单数据过大，请减少输入数据量'); // 改为 alert 并提前返回
+                return;
             }
 
             // 发送保存请求
-            console.log(`正在保存项目ID ${projectId} 的表单数据...`);
+            console.log(`正在保存项目ID ${projectId} 的表单数据...`, formData);
             const response = await fetch('/api/save_form', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData) // Send the whole formData object
             });
 
-            // 恢复按钮状态
+            // 恢复按钮状态 (无论成功或失败，除非特定错误提前返回)
             saveBtn.textContent = originalText;
             saveBtn.disabled = false;
 
             if (response.ok) {
-                // 显示成功消息
                 const data = await response.json();
-                // alert(data.message || '数据保存成功！');
+                Toastify({
+                    text: '数据保存成功！',
+                    duration: 3000,
+                    gravity: 'top',
+                    position: 'right',
+                    style: {
+                            background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                        }
+                    }).showToast();
+
             } else {
-                const errorData = await response.json();
-                throw new Error(errorData.error || '保存失败');
+                const errorData = await response.json().catch(() => ({ error: '保存失败，无法解析响应内容' }));
+                // throw new Error(errorData.error || '保存失败，服务器返回错误'); 
+                // 让下面的 catch 处理UI和日志记录
+                // Forcing error to be an Error object for the catch block
+                const err = new Error(errorData.error || `保存失败，服务器状态: ${response.status}`);
+                err.response = errorData; // Attach more details if needed
+                throw err;
             }
         } catch (error) {
-            handleError('保存数据失败', error);
-            
+            console.error('保存数据时发生错误:', error); // Log the full error
             // 确保按钮恢复正常状态
             const saveBtn = document.querySelector('button[onclick="saveForm()"]');
-            if (saveBtn && saveBtn.disabled) {
-                saveBtn.textContent = '保存数据';
+            if (saveBtn && saveBtn.disabled) { // Check if it's still disabled (might have been enabled before error)
+                saveBtn.textContent = '保存数据'; // Or originalText if accessible here
                 saveBtn.disabled = false;
+            }
+            
+            // 调用 handleError (如果已定义) 或显示通用错误消息
+            if (typeof handleError === 'function') {
+                handleError('保存数据失败', error);
+            } else {
+                alert('保存数据失败: ' + (error.message || '未知错误，请查看控制台。'));
             }
         }
     }
@@ -481,13 +517,13 @@
             }
             
             // 检查数据结构，新的后端接口直接返回表单数据
-            const formData = data.formData || data;
+            const formDataToLoad = data.formData || data; // 'formData' is the key where item data is stored by saveForm
             
-            if (formData && Object.keys(formData).length > 0) {
+            if (formDataToLoad && Object.keys(formDataToLoad).length > 0) {
                 console.log('开始填充表单数据');
                 
                 // 遍历所有类别
-                Object.entries(formData).forEach(([categoryKey, items]) => {
+                Object.entries(formDataToLoad).forEach(([categoryKey, items]) => {
                     if (!Array.isArray(items)) {
                         console.warn(`类别 ${categoryKey} 的数据不是数组:`, items);
                         return;
@@ -505,7 +541,7 @@
                     const allSubItems = Array.from(categoryElement.querySelectorAll('.sub-item')).slice(1);
                     
                     // 填充数据
-                    items.forEach((item, index) => {
+                    items.forEach((itemData, index) => { // Renamed 'item' to 'itemData' to avoid conflict
                         if (index >= allSubItems.length) {
                             console.warn(`项索引超出范围: ${index}, 类别: ${categoryKey}`);
                             return;
@@ -513,43 +549,58 @@
                         
                         const subItem = allSubItems[index];
                         const checkbox = subItem.querySelector('input[type="checkbox"]');
-                        const input = subItem.querySelector('input[type="number"]');
+                        const ratioInput = subItem.querySelector('input[type="number"]'); // "绿材应用比例"
+                        const totalQuantityInput = subItem.querySelector('input[placeholder="材料总量"]');
+                        const greenQuantityInput = subItem.querySelector('input[placeholder="绿材用量"]');
                         
-                        if (checkbox && item && ('checked' in item)) {
-                            checkbox.checked = item.checked === true || item.checked === 'true';
+                        if (itemData) { // Ensure itemData exists
+                            if (checkbox && 'checked' in itemData) {
+                                checkbox.checked = itemData.checked === true || String(itemData.checked).toLowerCase() === 'true';
+                                // 触发change事件更新自定义复选框的样式
+                                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
                             
-                            // 触发change事件更新样式
-                            const event = new Event('change');
-                            checkbox.dispatchEvent(event);
-                        }
-                        
-                        if (input && item && ('value' in item || 'actual' in item)) {
-                            // 兼容不同字段名
-                            input.value = item.value || item.actual || '0';
+                            if (ratioInput && 'ratio' in itemData) {
+                                ratioInput.value = itemData.ratio || '0';
+                            }
+                            
+                            if (totalQuantityInput && 'totalQuantity' in itemData) {
+                                totalQuantityInput.value = itemData.totalQuantity || '';
+                            }
+                            
+                            if (greenQuantityInput && 'greenQuantity' in itemData) {
+                                // Directly set green quantity from saved data.
+                                // The automatic calculation will verify/override this if totalQuantity or ratio changes.
+                                greenQuantityInput.value = itemData.greenQuantity || '';
+                            }
+
+                            // After setting values, trigger input events to ensure
+                            // dependent calculations and UI updates (like checkbox state from totalQuantity) occur.
+                            if (ratioInput) {
+                                ratioInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                            if (totalQuantityInput) {
+                                totalQuantityInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
                         }
                     });
                 });
                 
                 console.log('表单数据填充完成');
             } else {
-                console.warn('没有可用的表单数据');
+                console.warn('没有可用的表单数据或表单数据为空');
             }
         } catch (error) {
             console.error('加载表单数据时出错:', error);
-            handleError('加载数据失败', error);
+            // Ensure handleError is defined or provide a fallback
+            if (typeof handleError === 'function') {
+                handleError('加载数据失败', error);
+            } else {
+                alert('加载数据失败: ' + error.message);
+            }
         }
     }
 
-    // 导出到Word功能
-    function exportToWordSimple() {
-        var exportContent = document.querySelector('#export-content');
-        if (!exportContent) return;
-        
-        var html = exportContent.innerHTML;
-        var blob = new Blob(['<html><head><meta charset="utf-8"><title>绿色建材应用比例计算</title><style>body{font-family:SimSun, serif;font-size:12pt;line-height:1.5;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid black;padding:8px;text-align:left;}th{background-color:#f2f2f2;}h1,h2,h3{text-align:center;}</style></head><body>' + html + '</body></html>'], {type: 'application/msword'});
-        saveAs(blob, '绿色建材应用比例计算.doc');
-    }
-    
     // 统一的错误处理函数
     function handleError(message, error) {
         console.error(`${message}:`, error);
@@ -564,13 +615,33 @@
         }
         alert(`${message}: ${error.message}`);
     }
-    
+    // 应用得分到项目
+    async function applyScore() {
+        //获取评价标准
+        const standardSelection = document.getElementById('standardSelection').value || 'municipal';
+        // 获取计算结果数据
+        if (reportData.result && reportData.result > 0) {
+            if(standardSelection == 'municipal'){
+                updateDatabaseScore('3.1.2.20', reportData.result,"是", '满足要求，详见绿色建材应用比例计算书');
+            }else if(standardSelection == 'provincial'){
+                updateDatabaseScore('3.1.24', reportData.result,"是", '满足要求，详见绿色建材应用比例计算书');
+            }else if(standardSelection == 'national'){
+                updateDatabaseScore('7.2.18', reportData.result,"是", '满足要求，详见绿色建材应用比例计算书');
+            }
+            Toastify({
+                text: '得分已成功应用到项目！',
+                duration: 3000,
+                gravity: 'top',
+                position: 'right',
+                style: {
+                    background: 'linear-gradient(to right, #00b09b, #96c93d)'
+                }
+            }).showToast();
+        }
+    }
     // 导出Word功能 - 异步函数
     async function exportWord() {
         try {
-            // 获取计算结果数据
-            const reportData = window.getCurrentReportData ? window.getCurrentReportData() : null;
-            
             // 数据校验
             if (!reportData || typeof reportData.totalScore === 'undefined') throw new Error('请先计算数据！');
             
@@ -879,16 +950,6 @@
         }
     }
 
-    // 将需要在外部调用的函数挂载到 window 对象
-    window.calculate = calculate;
-    window.saveForm = saveForm;
-    window.loadForm = loadForm;
-    window.exportToWordSimple = exportToWordSimple;
-    window.exportWord = exportWord;
-    window.handleFileSelect = handleFileSelect;
-    // 将reportData的引用也挂载到window，供导出函数使用
-    window.getCurrentReportData = function() { return reportData; }; 
-})();
 
 
 
