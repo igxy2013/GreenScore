@@ -143,7 +143,8 @@ def generate_word(request_data):
                            p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
                            p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
                            p.env_health_energy_innovation_score, p.architecture_innovation_score, 
-                           p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
+                           p.structure_innovation_score,p.water_supply_innovation_score, p.electrical_innovation_score,
+                           p.hvac_innovation_score, p.landscape_innovation_score, 
                            p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
                            p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
                            p.total_score, p.evaluation_result
@@ -211,16 +212,18 @@ def generate_word(request_data):
                 "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
                 "建筑创新总分": str(project_rows[0][45] or '0'),
                 "结构创新总分": str(project_rows[0][46] or '0'),
-                "暖通创新总分": str(project_rows[0][47] or '0'),
-                "景观创新总分": str(project_rows[0][48] or '0'),
-                "安全耐久总分": str(project_rows[0][49] or '0'),
-                "健康舒适总分": str(project_rows[0][50] or '0'),
-                "生活便利总分": str(project_rows[0][51] or '0'),
-                "资源节约总分": str(project_rows[0][52] or '0'),
-                "环境宜居总分": str(project_rows[0][53] or '0'),
-                "提高与创新总分": str(project_rows[0][54] or '0'),
-                "项目总分": str(project_rows[0][55] or '0'),
-                "评定结果": project_rows[0][56] or ''
+                "给排水创新总分": str(project_rows[0][47] or '0'),
+                "电气创新总分": str(project_rows[0][48] or '0'),
+                "暖通创新总分": str(project_rows[0][49] or '0'),
+                "景观创新总分": str(project_rows[0][50] or '0'),
+                "安全耐久总分": str(project_rows[0][51] or '0'),
+                "健康舒适总分": str(project_rows[0][52] or '0'),
+                "生活便利总分": str(project_rows[0][53] or '0'),
+                "资源节约总分": str(project_rows[0][54] or '0'),
+                "环境宜居总分": str(project_rows[0][55] or '0'),
+                "提高与创新总分": str(project_rows[0][56] or '0'),
+                "项目总分": str(project_rows[0][57] or '0'),
+                "评定结果": project_rows[0][58] or ''
             })
 
             # 获取得分数据
@@ -638,7 +641,8 @@ def generate_self_assessment_report(request_data):
                            p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
                            p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
                            p.env_health_energy_innovation_score, p.architecture_innovation_score, 
-                           p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
+                           p.structure_innovation_score, p.water_supply_innovation_score, p.electrical_innovation_score,
+                           p.hvac_innovation_score, p.landscape_innovation_score, 
                            p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
                            p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
                            p.total_score, p.evaluation_result
@@ -706,16 +710,18 @@ def generate_self_assessment_report(request_data):
                 "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
                 "建筑创新总分": str(project_rows[0][45] or '0'),
                 "结构创新总分": str(project_rows[0][46] or '0'),
-                "暖通创新总分": str(project_rows[0][47] or '0'),
-                "景观创新总分": str(project_rows[0][48] or '0'),
-                "安全耐久总分": str(project_rows[0][49] or '0'),
-                "健康舒适总分": str(project_rows[0][50] or '0'),
-                "生活便利总分": str(project_rows[0][51] or '0'),
-                "资源节约总分": str(project_rows[0][52] or '0'),
-                "环境宜居总分": str(project_rows[0][53] or '0'),
-                "提高与创新总分": str(project_rows[0][54] or '0'),
-                "项目总分": str(project_rows[0][55] or '0'),
-                "评定结果": project_rows[0][56] or ''
+                "给排水创新总分": str(project_rows[0][47] or '0'),
+                "电气创新总分": str(project_rows[0][48] or '0'),
+                "暖通创新总分": str(project_rows[0][49] or '0'),
+                "景观创新总分": str(project_rows[0][50] or '0'),
+                "安全耐久总分": str(project_rows[0][51] or '0'),
+                "健康舒适总分": str(project_rows[0][52] or '0'),
+                "生活便利总分": str(project_rows[0][53] or '0'),
+                "资源节约总分": str(project_rows[0][54] or '0'),
+                "环境宜居总分": str(project_rows[0][55] or '0'),
+                "提高与创新总分": str(project_rows[0][56] or '0'),
+                "项目总分": str(project_rows[0][57] or '0'),
+                "评定结果": project_rows[0][58] or ''
             })
 
             # 获取得分数据
@@ -872,7 +878,8 @@ def generate_generateljzpwb(request_data):
                            p.public_green_space, p.architecture_score, p.structure_score, p.water_supply_score, 
                            p.electrical_score, p.hvac_score, p.landscape_score, p.env_health_energy_score,
                            p.env_health_energy_innovation_score, p.architecture_innovation_score, 
-                           p.structure_innovation_score, p.hvac_innovation_score, p.landscape_innovation_score, 
+                           p.structure_innovation_score, p.water_supply_innovation_score, p.electrical_innovation_score,
+                           p.hvac_innovation_score, p.landscape_innovation_score, 
                            p.safety_durability_score, p.health_comfort_score, p.life_convenience_score, 
                            p.resource_saving_score, p.environment_livability_score, p.improvement_innovation_score, 
                            p.total_score, p.evaluation_result
@@ -950,16 +957,18 @@ def generate_generateljzpwb(request_data):
                 "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
                 "建筑创新总分": str(project_rows[0][45] or '0'),
                 "结构创新总分": str(project_rows[0][46] or '0'),
-                "暖通创新总分": str(project_rows[0][47] or '0'),
-                "景观创新总分": str(project_rows[0][48] or '0'),
-                "安全耐久总分": str(project_rows[0][49] or '0'),
-                "健康舒适总分": str(project_rows[0][50] or '0'),
-                "生活便利总分": str(project_rows[0][51] or '0'),
-                "资源节约总分": str(project_rows[0][52] or '0'),
+                "给排水创新总分": str(project_rows[0][47] or '0'),
+                "电气创新总分": str(project_rows[0][48] or '0'),
+                "暖通创新总分": str(project_rows[0][49] or '0'),
+                "景观创新总分": str(project_rows[0][50] or '0'),
+                "安全耐久总分": str(project_rows[0][51] or '0'),
+                "健康舒适总分": str(project_rows[0][52] or '0'),
+                "生活便利总分": str(project_rows[0][53] or '0'),
+                "资源节约总分": str(project_rows[0][54] or '0'),
                 "环境宜居总分": str(project_rows[0][53] or '0'),
-                "提高与创新总分": str(project_rows[0][54] or '0'),
-                "项目总分": str(project_rows[0][55] or '0'),
-                "评定结果": project_rows[0][56] or '',
+                "提高与创新总分": str(project_rows[0][56] or '0'),
+                "项目总分": str(project_rows[0][57] or '0'),
+                "评定结果": project_rows[0][58] or '',
                 # --- 直接使用上面获取的路径 --- 
                 "鸟瞰图_path": image_path_from_request, 
                 # --- 添加新字段 --- 
@@ -1134,6 +1143,8 @@ def generate_dwg(request_data):
                     p.env_health_energy_innovation_score,
                     p.architecture_innovation_score,
                     p.structure_innovation_score,
+                    p.water_supply_innovation_score,
+                    p.electrical_innovation_score,
                     p.hvac_innovation_score,
                     p.landscape_innovation_score,
                     p.safety_durability_score,
@@ -1281,16 +1292,18 @@ def generate_dwg(request_data):
                 "环境健康与节能创新总分": str(project_rows[0][44] or '0'),
                 "建筑创新总分": str(project_rows[0][45] or '0'),
                 "结构创新总分": str(project_rows[0][46] or '0'),
-                "暖通创新总分": str(project_rows[0][47] or '0'),
-                "景观创新总分": str(project_rows[0][48] or '0'),
-                "安全耐久总分": str(project_rows[0][49] or '0'),
-                "健康舒适总分": str(project_rows[0][50] or '0'),
-                "生活便利总分": str(project_rows[0][51] or '0'),
-                "资源节约总分": str(project_rows[0][52] or '0'),
-                "环境宜居总分": str(project_rows[0][53] or '0'),
-                "提高与创新总分": str(project_rows[0][54] or '0'),
-                "项目总分": str(project_rows[0][55] or '0'),
-                "评定结果": project_rows[0][56] or ''
+                "给排水创新总分": str(project_rows[0][47] or '0'),
+                "电气创新总分": str(project_rows[0][48] or '0'),
+                "暖通创新总分": str(project_rows[0][49] or '0'),
+                "景观创新总分": str(project_rows[0][50] or '0'),
+                "安全耐久总分": str(project_rows[0][51] or '0'),
+                "健康舒适总分": str(project_rows[0][52] or '0'),
+                "生活便利总分": str(project_rows[0][53] or '0'),
+                "资源节约总分": str(project_rows[0][54] or '0'),
+                "环境宜居总分": str(project_rows[0][55] or '0'),
+                "提高与创新总分": str(project_rows[0][56] or '0'),
+                "项目总分": str(project_rows[0][57] or '0'),
+                "评定结果": project_rows[0][58] or ''
             })
 
             # 添加得分数据
@@ -1366,16 +1379,18 @@ def generate_dwg(request_data):
         attributes["环境健康与节能创新总分"] = str(project_rows[0][44] or '0')
         attributes["建筑创新总分"] = str(project_rows[0][45] or '0')
         attributes["结构创新总分"] = str(project_rows[0][46] or '0')
-        attributes["暖通创新总分"] = str(project_rows[0][47] or '0')
-        attributes["景观创新总分"] = str(project_rows[0][48] or '0')
-        attributes["安全耐久总分"] = str(project_rows[0][49] or '0')
-        attributes["健康舒适总分"] = str(project_rows[0][50] or '0')
-        attributes["生活便利总分"] = str(project_rows[0][51] or '0')
-        attributes["资源节约总分"] = str(project_rows[0][52] or '0')
-        attributes["环境宜居总分"] = str(project_rows[0][53] or '0')
-        attributes["提高与创新总分"] = str(project_rows[0][54] or '0')
-        attributes["项目总分"] = str(project_rows[0][55] or '0')
-        attributes["评定结果"] = project_rows[0][56] or ''
+        attributes["给排水创新总分"] = str(project_rows[0][47] or '0')
+        attributes["电气创新总分"] = str(project_rows[0][48] or '0')
+        attributes["暖通创新总分"] = str(project_rows[0][49] or '0')
+        attributes["景观创新总分"] = str(project_rows[0][50] or '0')
+        attributes["安全耐久总分"] = str(project_rows[0][51] or '0')
+        attributes["健康舒适总分"] = str(project_rows[0][52] or '0')
+        attributes["生活便利总分"] = str(project_rows[0][53] or '0')
+        attributes["资源节约总分"] = str(project_rows[0][54] or '0')
+        attributes["环境宜居总分"] = str(project_rows[0][55] or '0')
+        attributes["提高与创新总分"] = str(project_rows[0][56] or '0')
+        attributes["项目总分"] = str(project_rows[0][57] or '0')
+        attributes["评定结果"] = project_rows[0][58] or ''
         
         # 添加得分数据
         for item in data[1:]:  # 跳过第一项（项目信息）

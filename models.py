@@ -61,6 +61,8 @@ class Project(db.Model):
     env_health_energy_innovation_score = db.Column(db.Float)  # 环境健康与节能创新总分
     architecture_innovation_score = db.Column(db.Float)  # 建筑创新总分
     structure_innovation_score = db.Column(db.Float)  # 结构创新总分
+    water_supply_innovation_score = db.Column(db.Float)  # 给排水创新总分
+    electrical_innovation_score = db.Column(db.Float)  # 电气创新总分
     hvac_innovation_score = db.Column(db.Float)  # 暖通创新总分
     landscape_innovation_score = db.Column(db.Float)  # 景观创新总分
     safety_durability_score = db.Column(db.Float)  # 安全耐久总分
