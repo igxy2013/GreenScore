@@ -1479,6 +1479,20 @@
         // 显示加载状态
         document.getElementById('loading').style.display = 'block';
         
+        // --- MODIFICATION STARTS HERE ---
+        // 显示导出加载提示
+        if (typeof ExportLoadingModal !== 'undefined') {
+            ExportLoadingModal.show({
+                title: '正在生成分析报告',
+                description: '请耐心等待，报告生成和截图可能需要一些时间...',
+                showTimer: true,
+                autoTimeout: 45000 // 设置一个合适的超时时间，例如45秒
+            });
+        } else {
+            console.warn("ExportLoadingModal组件未定义，无法显示加载提示。");
+        }
+        // --- MODIFICATION ENDS HERE ---
+        
         // 生成结论
         const conclusion = generateConclusion();
         
@@ -2409,6 +2423,12 @@
             // 检查图片数据是否有效
             if (!mapImageData || mapImageData.length < 1000) {
                 console.error("生成的地图截图数据无效或过小");
+                // --- MODIFICATION STARTS HERE ---
+                // 截图失败时也隐藏加载提示
+                if (typeof ExportLoadingModal !== 'undefined') {
+                    ExportLoadingModal.hide();
+                }
+                // --- MODIFICATION ENDS HERE ---
                 throw new Error("地图截图生成失败");
             }
             
@@ -2417,6 +2437,12 @@
         }).catch(error => {
             // 隐藏加载中
             document.getElementById('loading').style.display = 'none';
+            // --- MODIFICATION STARTS HERE ---
+            // 截图创建失败时隐藏加载提示
+            if (typeof ExportLoadingModal !== 'undefined') {
+                ExportLoadingModal.hide();
+            }
+            // --- MODIFICATION ENDS HERE ---
             console.error('地图截图创建失败:', error);
             alert('地图截图创建失败: ' + error.message);
         });
@@ -2600,6 +2626,12 @@
             } finally {
                 // 隐藏加载中提示
                  document.getElementById('loading').style.display = 'none';
+                // --- MODIFICATION STARTS HERE ---
+                // 在报告处理完成后隐藏加载提示
+                if (typeof ExportLoadingModal !== 'undefined') {
+                    ExportLoadingModal.hide();
+                }
+                // --- MODIFICATION ENDS HERE ---
             }
            
         }
