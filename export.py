@@ -1304,6 +1304,7 @@ def generate_dwg(request_data):
                 "提高与创新总分": str(project_rows[0][56] or '0'),
                 "项目总分": str(project_rows[0][57] or '0'),
                 "评定结果": project_rows[0][58] or ''
+
             })
 
             # 添加得分数据
@@ -1391,7 +1392,8 @@ def generate_dwg(request_data):
         attributes["提高与创新总分"] = str(project_rows[0][56] or '0')
         attributes["项目总分"] = str(project_rows[0][57] or '0')
         attributes["评定结果"] = project_rows[0][58] or ''
-        
+        attributes["设计日期"] = datetime.now().strftime('%Y年%m月%d日')
+        attributes["标准总分"] = f"{(project_rows[0][57] + 400) / 10:.1f}"
         # 添加得分数据
         for item in data[1:]:  # 跳过第一项（项目信息）
             条文号 = item.get("条文号", "")
