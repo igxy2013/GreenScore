@@ -124,7 +124,7 @@ def get_user(user_id):
         'id': user.id,
         'email': user.email,
         'role': user.role,
-        'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        'created_at': user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else None
     })
 
 @admin_app.route('/api/users/<int:user_id>', methods=['PUT'])
