@@ -14,9 +14,31 @@
             <div class="category-badge" data-category="资源节约" role="status" aria-label="资源节约达标状态">资源节约</div>
             <div class="category-badge" data-category="环境宜居" role="status" aria-label="环境宜居达标状态">环境宜居</div>
             <div class="category-badge" data-category="提高与创新" role="status" aria-label="提高与创新达标状态">提高与创新</div>
+            <div class="total-score-display text-center" id="totalScoreDisplay" role="status" aria-label="项目总分">
+                项目总分: <span id="totalScoreValue">N/A</span>
+            </div>
         </div>
+
     </div>
 </div>
+
+<style>
+.total-score-display {
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    font-weight: bold;
+    background-color: #f0f0f0;
+    border-radius: 0.25rem;
+    border: 1px solid #ddd;
+    font-size: 0.9rem;
+}
+
+#totalScoreValue {
+    font-size: 1rem;
+    color: #007bff; /* 蓝色，可以根据主题调整 */
+}
+</style>
 
 <script>
 // 添加徽章相关的JavaScript函数
@@ -80,6 +102,15 @@ function updateCategoryBadges() {
                     badge.title = `${category}: ${score.toFixed(1)} (未达标)`;
                 }
             });
+
+            // 更新项目总分显示
+            const totalScoreValueElement = document.getElementById('totalScoreValue');
+            if (totalScoreValueElement && data.total_score !== undefined) {
+                totalScoreValueElement.textContent = parseFloat(data.total_score).toFixed(1);
+            } else if (totalScoreValueElement) {
+                totalScoreValueElement.textContent = 'N/A';
+                console.warn('API响应中未找到总分 (total_score)');
+            }
         })
         .catch(error => {
             console.error('获取项目评分数据失败:', error);
