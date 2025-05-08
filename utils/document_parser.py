@@ -748,7 +748,7 @@ def parse_report_scores(docx_path: str) -> dict:
         # --- 室内声环境评价报告检查 ---
         is_indoor_sound_eval = False 
         fn_keyword_indoor_sound_eval = "室内声环境分析报告"
-        indoor_sound_eval_keywords_text = ["声环境评价结果", "GB/T 50378-2024", "室内声环境设计"] 
+        indoor_sound_eval_keywords_text = ["室内声环境分析报告", "声环境评价结果", "GB/T 50378-2024", "室内声环境设计"] 
         indoor_sound_eval_table_headers = ["检查项", "评价依据", "结论/得分"]
 
         if fn_keyword_indoor_sound_eval in docx_path.lower():
