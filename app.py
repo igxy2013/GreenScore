@@ -180,6 +180,14 @@ def privacy_policy():
 def terms_of_service():
     return render_template('terms_of_service.html')
 
+@app.route('/robots.txt')
+def robots_txt():
+    return send_from_directory(app.static_folder, 'robots.txt')
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(app.static_folder, 'image/favicon.ico')
+
 # 添加请求处理器来更新用户的last_seen时间
 @app.before_request
 def update_last_seen():
@@ -196,16 +204,24 @@ def update_last_seen():
 # 添加请求日志中间件
 @app.before_request
 def log_request_info():
-    # 只记录GET和POST请求
+    # 只记录特定类型的请求
     if request.method in ['GET', 'POST', 'PUT', 'DELETE']:
         try:
             # 获取用户ID（如果已登录）
             user_id = current_user.id if current_user.is_authenticated else None
             
-            # 记录请求信息，但排除静态文件和某些特定路径
             path = request.path
-            if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
-                app.logger.info(f"请求: {request.method} {path}, User: {user_id}")
+            # 定义不记录日志的路径列表
+            excluded_log_paths = ['/favicon.ico', '/robots.txt']
+
+            # 记录请求信息，但排除静态文件和特定路径
+            if not path.startswith('/static/') and path not in excluded_log_paths:
+                # 对于GET请求，只在调试模式下记录，以减少生产环境日志量
+                # 其他类型的请求（POST, PUT, DELETE）总是记录
+                if request.method == 'GET' and not app.debug:
+                    pass  # 在生产环境中不记录GET请求
+                else:
+                    app.logger.info(f"请求: {request.method} {path}, User: {user_id}")
         except Exception as e:
             app.logger.error(f"记录请求日志时出错: {str(e)}")
 
@@ -216,7 +232,9 @@ def log_response_info(response):
         # 只记录错误响应
         if response.status_code >= 400:
             path = request.path
-            if not path.startswith('/static/') and not path.startswith('/favicon.ico'):
+            # 定义不记录错误响应日志的路径列表
+            excluded_log_paths = ['/favicon.ico', '/robots.txt']
+            if not path.startswith('/static/') and path not in excluded_log_paths:
                 user_id = current_user.id if current_user.is_authenticated else None
                 level = "ERROR" if response.status_code >= 500 else "WARNING"
                 app.logger.log(logging.ERROR if level == "ERROR" else logging.WARNING, 
@@ -235,13 +253,16 @@ def log_exception(e):
         method = request.method if request else "未知方法"
         user_id = current_user.id if current_user and current_user.is_authenticated else None
         
-        # 对静态文件的404错误进行特殊处理，减少日志记录
-        if isinstance(e, werkzeug.exceptions.NotFound) and (path.startswith('/static/') or path == '/favicon.ico'):
+        # 对特定路径的404错误进行特殊处理
+        excluded_paths_for_404_debug = ['/favicon.ico', '/robots.txt']
+        if isinstance(e, werkzeug.exceptions.NotFound) and \
+           (path.startswith('/static/') or path in excluded_paths_for_404_debug):
             if app.debug:
-                app.logger.debug(f"静态文件未找到: {path}")
+                app.logger.debug(f"特定路径未找到 (由通用异常处理器记录调试信息): {path}")
+            # 这里的返回主要作为一种后备，如果专门的 @app.errorhandler(404) 未处理
             return render_template('error.html', error="文件未找到"), 404
         
-        # 记录异常信息
+        # 记录其他所有异常信息
         app.logger.error(f"系统异常: {str(e)}, Path: {path}, Method: {method}, User: {user_id}", exc_info=True)
         
     except Exception as log_err:
@@ -270,7 +291,7 @@ def page_not_found(e):
 @app.errorhandler(405)
 def method_not_allowed(e):
     # 检查是否为非应用路径的请求
-    non_app_paths = ['/dns-query', '/robots.txt', '/favicon.ico']
+    non_app_paths = ['/dns-query'] # <--- 修改此行
     if request.path in non_app_paths:
         app.logger.debug(f"忽略对非应用路径的请求: {request.method} {request.path}")
         return '', 204  # 返回无内容状态码
