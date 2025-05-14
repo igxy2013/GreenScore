@@ -81,10 +81,10 @@
     .table-container {
         position: relative;
         z-index: 1;
-        min-height: 500px;
-        padding-bottom: 100px;
+        /* min-height: 500px; */ /* Keep or remove based on whether a minimum height is desired when content is less */
+        /* padding-bottom: 100px; */ /* REMOVED as it might be excessive without scroll. Spacing handled by pagination container's margin-top */
         flex: 1;
-        overflow: visible;
+        overflow: visible; /* Ensure content overflows visibly if it exceeds container, which it will as height is not constrained */
     }
 
     /* 修改表格行样式 */
@@ -234,7 +234,7 @@
                     </select>
                 </div>
                 
-                <div class="relative w-full overflow-x-auto max-h-[500px] overflow-y-auto table-container pl-0">
+                <div class="relative w-full overflow-x-auto table-container pl-0">
                     <table class="w-full table-auto divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -260,8 +260,21 @@
                 
                 <!-- 添加分页控件 -->
                 <div class="mt-4 flex justify-between items-center">
-                    <div class="text-sm text-gray-500">
-                        显示 <span id="pageStart">1</span> 到 <span id="pageEnd">10</span> 条，共 <span id="totalRecords">0</span> 条记录
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-gray-500">
+                            显示 <span id="pageStart">1</span> 到 <span id="pageEnd">10</span> 条，共 <span id="totalRecords">0</span> 条记录
+                        </div>
+                        <div>
+                            <label for="pageSizeSelect" class="text-sm text-gray-700 mr-1">每页:</label>
+                            <select id="pageSizeSelect" class="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-primary focus:border-primary" title="每页显示数量">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="15">15</option>
+                                <option value="20">20</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="flex space-x-2">
                         <button id="prevPageBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -673,6 +686,28 @@
                     fetchProjects();
                 });
             }
+
+            // 添加角色过滤器的事件监听
+            const roleFilter = document.getElementById('roleFilter');
+            if (roleFilter) {
+                roleFilter.addEventListener('change', function() {
+                    currentPage = 1; // 重置到第一页
+                    fetchProjects();
+                });
+            }
+
+            // 添加每页显示数量选择器事件监听
+            const pageSizeSelect = document.getElementById('pageSizeSelect');
+            if (pageSizeSelect) {
+                pageSizeSelect.addEventListener('change', function() {
+                    const newSize = parseInt(this.value, 10);
+                    if (!isNaN(newSize) && newSize > 0) {
+                        pageSize = newSize;
+                        currentPage = 1; // 重置到第一页
+                        fetchProjects();
+                    }
+                });
+            }
         });
         
         // 分页变量
@@ -863,49 +898,15 @@
         }
         
         // 显示项目列表
-        function displayProjects(projects) {
+        function displayProjects(projectsToDisplay) { // Changed argument name for clarity
             const projectList = document.getElementById('projectList');
             
-            if (projects && projects.length > 0) {
-                // 清空加载提示
-                projectList.innerHTML = '';
-                
-                // 获取过滤条件
-                const searchTerm = document.getElementById('projectSearchInput').value.toLowerCase();
-                const statusFilter = document.getElementById('statusFilter').value;
-                const roleFilter = document.getElementById('roleFilter').value;
-                
-                // 过滤项目
-                const filteredProjects = projects.filter(project => {
-                    const nameMatch = project.name && project.name.toLowerCase().includes(searchTerm);
-                    const statusMatch = statusFilter === 'all' || (project.status === statusFilter);
-                    const roleMatch = roleFilter === 'all' || 
-                                     (roleFilter === '创建者' && project.is_owner) ||
-                                     (roleFilter === '参与者' && !project.is_owner);
-                    return nameMatch && statusMatch && roleMatch;
-                });
-                
-                if (filteredProjects.length === 0) {
-                    projectList.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
-                                未找到匹配的项目
-                            </td>
-                        </tr>
-                    `;
-                    
-                    // 更新分页信息
-                    document.getElementById('pageStart').textContent = '0';
-                    document.getElementById('pageEnd').textContent = '0';
-                    document.getElementById('totalRecords').textContent = '0';
-                    document.getElementById('prevPageBtn').disabled = true;
-                    document.getElementById('nextPageBtn').disabled = true;
-                    document.getElementById('pageNumbers').innerHTML = '';
-                    return;
-                }
-                
+            // 清空加载提示或旧的项目行
+            projectList.innerHTML = '';
+            
+            if (projectsToDisplay && projectsToDisplay.length > 0) {
                 // 添加项目列表
-                filteredProjects.forEach((project, index) => {
+                projectsToDisplay.forEach((project, index) => {
                     const row = document.createElement('tr');
                     row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                     
@@ -1016,20 +1017,21 @@
                     
                     projectList.appendChild(row);
                 });
-                
-                // 更新分页信息
-                document.getElementById('pageStart').textContent = filteredProjects.length > 0 ? 1 : 0;
-                document.getElementById('pageEnd').textContent = filteredProjects.length;
-                document.getElementById('totalRecords').textContent = filteredProjects.length;
-                
-                // 更新分页按钮状态
-                document.getElementById('prevPageBtn').disabled = true;
-                document.getElementById('nextPageBtn').disabled = true;
-                
-                // 生成页码按钮
-                generatePageNumbers(1, 1);
             } else {
-                displayNoProjects();
+                // 如果当前页没有项目可显示，则根据总记录数显示不同提示
+                // 分页控件的状态由 fetchProjects 函数负责更新
+                let message = "本页无项目"; // Default message if totalRecords > 0 but current page is empty
+                const totalRecordsSpan = document.getElementById('totalRecords');
+                if (totalRecordsSpan && totalRecordsSpan.textContent === '0') {
+                    message = "未找到匹配的项目"; // Message if no records match filters at all
+                }
+                projectList.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                            ${message}
+                        </td>
+                    </tr>
+                `;
             }
         }
         

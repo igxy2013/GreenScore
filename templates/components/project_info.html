@@ -4,6 +4,58 @@
     <script src="/static/js/db_updater.js"></script>
     <link rel="stylesheet" href="/static/css/switchery.min.css">
     <script src="/static/js/lib/switchery.min.js"></script>
+    <script defer>
+    document.addEventListener('DOMContentLoaded', function() {
+        const saveStarCaseBtnProjectInfo = document.getElementById('saveStarCaseBtnProjectInfo');
+        if (saveStarCaseBtnProjectInfo) {
+            saveStarCaseBtnProjectInfo.addEventListener('click', function() {
+                const projectId = document.getElementById('project_id').value;
+                if (!projectId) {
+                    console.error('Project ID not found for saving star case in project_info.html.');
+                    if (typeof Toastify === 'function') {
+                        Toastify({ text: '项目ID丢失，无法保存', duration: 3000, gravity: 'top', position: 'right', backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)' }).showToast();
+                    } else {
+                        alert('项目ID丢失，无法保存');
+                    }
+                    return;
+                }
+                console.log('执行保存星级案例 (from project_info.html)，项目ID:', projectId);
+                
+                fetch('/api/save_star_case', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ project_id: projectId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (typeof Toastify === 'function') {
+                        if (data.success) {
+                            Toastify({ text: '保存成功', duration: 3000, gravity: 'top', position: 'right', backgroundColor: 'linear-gradient(to right, #00b09b, #96c93d)' }).showToast();
+                        } else {
+                            Toastify({ text: data.message || '保存失败', duration: 3000, gravity: 'top', position: 'right', backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)' }).showToast();
+                        }
+                    } else {
+                        if (data.success) {
+                            alert('保存成功');
+                        } else {
+                            alert(data.message || '保存失败');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('保存星级案例时出错 (from project_info.html):', error);
+                    if (typeof Toastify === 'function') {
+                        Toastify({ text: '保存失败，请重试', duration: 3000, gravity: 'top', position: 'right', backgroundColor: 'linear-gradient(to right, #ff5f6d, #ffc371)' }).showToast();
+                    } else {
+                        alert('保存失败，请重试');
+                    }
+                });
+            });
+        }
+    });
+    </script>
     <!-- 自定义Toast组件 -->
     <div>
         <button id="aiExtractButton" onclick="showAiExtractModal()" class="ai-extract-btn flex items-center bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white px-3 py-3 rounded-lg shadow-lg transform hover:scale-105 transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] group">
@@ -396,6 +448,11 @@
             <button type="button" id="loadStarCaseBtn" class="ml-4 px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
                 载入星级案例
             </button>   
+            {% if session.get('role') == 'admin' or session.get('user_role') == 'admin' or session.get('is_admin') == True or session.get('admin') == True %}
+            <button type="button" id="saveStarCaseBtnProjectInfo" class="ml-4 px-6 py-2 bg-primary text-white rounded-button hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
+                <i class="ri-save-3-line mr-2"></i>保存星级案例
+            </button>
+            {% endif %}
         </div>
     </form>
     <!-- 自动计算得分 --> 
