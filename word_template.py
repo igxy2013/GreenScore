@@ -89,52 +89,51 @@ def process_template(data):
                 # --- 修改结束 ---
             else:
                 return None  # 国标（非安徽）不进行任何操作
+
         elif standard == '四川省标':
             if star_rating_target == '基本级':
-                # 处理第一个模板
-                template1_file = '四川省绿建审查表-基本级.docx'
+                template_files = [
+                '附表1 四川省民用绿色建筑施工图审查结果汇总表.docx',
+                '附表2 四川省民用绿色建筑设计基本级施工图审查明细一览表.docx',
+                '附表4 水系统规划设计评审表.docx'
+            ]
             else:
-                template1_file = '四川省绿建审查表-提高级.docx'
-            template1_path = os.path.join(current_app.static_folder, 'templates', template1_file)
-            print(f"处理第一个模板文件 (四川省标): {template1_path}")
-            if not os.path.exists(template1_path):
-                raise Exception(f"模板文件不存在: {template1_path}")
-            # --- 修改：处理返回值 --- 
-            result1 = replace_placeholders(template1_path, data)
-            if result1:
-                output1_path, base1_name = result1
-                if not isinstance(output1_path, str) or not output1_path.endswith('.docx'):
-                    print(f"警告: 处理第一个模板 {template1_file} 返回无效路径 '{output1_path}'，跳过添加。")
-                else:
-                    output_info_list.append((output1_path, base1_name))
-            else:
-                print(f"警告: 处理第一个模板 {template1_file} 失败，跳过添加。")
-            # --- 修改结束 ---
-            
-            # 处理第二个模板
-            template2_file = '水系统规划设计评审表.docx'
-            template2_path = os.path.join(current_app.static_folder, 'templates', template2_file)
-            print(f"处理第二个模板文件 (四川省标): {template2_path}")
-            if not os.path.exists(template2_path):
-                raise Exception(f"模板文件不存在: {template2_path}")
-            # --- 修改：处理返回值 --- 
-            result2 = replace_placeholders(template2_path, data)
-            if result2:
-                output2_path, base2_name = result2
-                if not isinstance(output2_path, str) or not output2_path.endswith('.docx'):
-                    print(f"警告: 处理第二个模板 {template2_file} 返回无效路径 '{output2_path}'，跳过添加。")
-                else:
-                    output_info_list.append((output2_path, base2_name))
-            else:
-                print(f"警告: 处理第二个模板 {template2_file} 失败，跳过添加。")
-            # --- 修改结束 ---
+                template_files = [
+                '附表1 四川省民用绿色建筑施工图审查结果汇总表.docx',
+                '附表2 四川省民用绿色建筑设计基本级施工图审查明细一览表.docx',
+                '附表3 四川省民用绿色建筑设计提高级施工图审查明细一览表.docx',
+                '附表4 水系统规划设计评审表.docx'
+            ]
 
+                for idx, template_file in enumerate(template_files):
+                    template_path = os.path.join(current_app.static_folder, 'templates', template_file)
+                    print(f"处理第 {idx+1} 个模板文件 (成都市标): {template_path}")
+                    
+                    if not os.path.exists(template_path):
+                        print(f"警告: 模板文件不存在: {template_path}, 将跳过此文件。")
+                        continue # 跳过当前文件，继续处理下一个
+                    # 调用 replace_placeholders 处理模板
+                    result = replace_placeholders(template_path, data)
+
+                                    # 检查模板是否处理成功
+                    if result:
+                        output_path, base_name = result
+                        if not isinstance(output_path, str) or not output_path.endswith('.docx'):
+                            print(f"警告: 处理模板 {template_file} 返回无效路径 '{output_path}'，跳过添加。")
+                        else:
+                            # 将成功生成的文档信息添加到列表
+                            output_info_list.append((output_path, base_name))
+                            print(f"已成功处理并添加: {output_path}")
+                    else:
+                        print(f"错误: 调用 replace_placeholders 处理模板 {template_file} 时返回 None，表示内部处理失败。请检查之前的日志查找具体错误。跳过添加。")
+                    # --- 修改结束 ---
         elif standard == '成都市标':
             # 定义成都市标需要处理的模板文件列表
             template_files = [
-                '成都市绿色建筑审查表.docx',
-                '水系统规划设计申报表.docx',
-                '专项报告申报一览表.docx'
+                '附表1-1 成都市绿色建筑设计施工图审查自评表（民用建筑）.docx',
+                '附表2-1 成都市绿色建筑设计施工图申报信息汇总表（民用建筑）.docx',   
+                '附表3 水系统规划设计申报表.docx',
+                '附表4 专项报告申报一览表.docx'
             ]
 
             for idx, template_file in enumerate(template_files):
@@ -142,14 +141,9 @@ def process_template(data):
                 print(f"处理第 {idx+1} 个模板文件 (成都市标): {template_path}")
                 
                 if not os.path.exists(template_path):
-                    # 如果任何一个模板文件不存在，可以选择是跳过还是报错
-                    # 这里选择打印警告并跳过该文件
                     print(f"警告: 模板文件不存在: {template_path}, 将跳过此文件。")
                     continue # 跳过当前文件，继续处理下一个
-                    # 或者可以选择报错: raise Exception(f"模板文件不存在: {template_path}")
-                
                 # 调用 replace_placeholders 处理模板
-                # --- 修改：处理返回值 --- 
                 result = replace_placeholders(template_path, data)
                 
                 # 检查模板是否处理成功
