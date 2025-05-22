@@ -45,9 +45,9 @@ IF %ERRORLEVEL% NEQ 0 (
 
 echo 依赖安装成功。
 
-echo 项目首次部署基本完成。
-echo 您现在可以运行数据库初始化脚本（例如 init_db.py 或 init_mysql_db.py），然后运行 start_win.bat 来启动项目。
+echo "项目首次部署基本完成。"
+echo "您现在可以运行数据库初始化脚本（例如 init_db.py 或 init_mysql_db.py），然后运行 start_win.bat 来启动项目。"
 
 :end
-echo 脚本执行完毕。
+echo "脚本执行完毕。"
 pause 
