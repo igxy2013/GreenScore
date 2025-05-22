@@ -1851,3 +1851,39 @@
 
 <!-- 引入条文依赖关系处理脚本 -->
 <script src="/static/js/db_updater.js"></script>
+
+<script>
+    // 添加 filterTableByClause 函数，用于根据输入的条文号过滤表格行
+    window.filterTableByClause = function(filterValue) {
+        const searchTerm = filterValue.trim().toLowerCase();
+        const rows = document.querySelectorAll('tbody tr'); // 获取所有表格行
+
+        rows.forEach(row => {
+            // 获取条文号单元格，假设它是第一列 (td:nth-child(1))
+            const clauseCell = row.querySelector('td:first-child'); // 使用 first-child 更直接
+            if (clauseCell) {
+                const clauseText = clauseCell.textContent.trim().toLowerCase();
+
+                // 检查条文号是否包含搜索词
+                if (clauseText.includes(searchTerm)) {
+                    row.style.display = ''; // 显示匹配的行
+                } else {
+                    row.style.display = 'none'; // 隐藏不匹配的行
+                }
+            }
+        });
+        // 在过滤后更新徽章状态（提高级页面）
+        if ('{{ current_level }}' === '提高级' && typeof updateCategoryBadges === 'function') {
+             // 添加一个小的延迟，确保 DOM 更新完成
+             setTimeout(() => {
+                 updateCategoryBadges(searchTerm); // 传递搜索词，让徽章知道当前过滤状态
+             }, 100);
+         } else if (typeof updateCategoryBadges === 'function') {
+             // 如果不是提高级页面，或者updateCategoryBadges存在，但没法处理searchTerm，则调用不带参数的版本
+             // updateCategoryBadges(); // 或者根据需要决定是否调用
+         }
+
+    };
+
+    // ... existing code ...
+</script>
