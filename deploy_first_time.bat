@@ -1,4 +1,5 @@
 @echo off
+chcp 65001
 :: GreenScore项目首次部署脚本
 
 echo 正在检查 Python 环境...
