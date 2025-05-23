@@ -27,3 +27,4 @@ opencv-python>=4.5.0
 requests>=2.25.0
 srtm.py>=0.3.6
 pyodbc
+openpyxl
