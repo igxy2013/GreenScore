@@ -32,8 +32,8 @@ def init_db():
                 
                 db.session.commit()
                 print("数据库初始化成功！")
-                print("管理员账号：admin@example.com")
-                print("管理员密码：admin123456")
+                print("管理员账号：admin@qq.com")
+                print("管理员密码：admin")
                 print("初始邀请码：INIT2024")
             else:
                 print("管理员账号已存在")
